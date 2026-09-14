@@ -1,0 +1,3 @@
+[submodule "vendor/init-repo"]
+	path = vendor/init-repo
+	url = https://github.com/ibuchanan/init-repo.git
