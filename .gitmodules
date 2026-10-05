@@ -1,3 +1,9 @@
 [submodule "vendor/init-repo"]
 	path = vendor/init-repo
 	url = https://github.com/ibuchanan/init-repo.git
+[submodule "vendor/explore-forge-jira-remote-data-fields"]
+	path = vendor/explore-forge-jira-remote-data-fields
+	url = https://github.com/ibuchanan/explore-forge-jira-remote-data-fields.git
+[submodule "vendor/forge-bootstrap"]
+	path = vendor/forge-bootstrap
+	url = https://github.com/ibuchanan/forge-bootstrap.git
