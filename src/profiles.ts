@@ -9,6 +9,7 @@ import {
   biomeFormatting,
   biomeLinting,
   bunTesting,
+  bundleSize,
   cleanBuild,
   forgeBuild,
   forgeLinting,
@@ -28,6 +29,7 @@ export const PROFILES: Record<string, Capability[]> = {
     tscTypecheck(),
     bunTesting(),
     libraryBuild(),
+    bundleSize("Library bundle", "dist/index.js"),
     cleanBuild(),
   ],
   "forge-app": [
@@ -39,6 +41,7 @@ export const PROFILES: Record<string, Capability[]> = {
     forgeAhead(),
     bunTesting(),
     forgeBuild(),
+    bundleSize("Forge app bundle", "dist/**/*.js"),
     cleanBuild(),
   ],
   tool: [

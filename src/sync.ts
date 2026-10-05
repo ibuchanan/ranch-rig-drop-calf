@@ -216,6 +216,48 @@ export function planSync(
         });
     }
   }
+  const sizeBudget = desired["size-limit"]?.[0];
+  if (sizeBudget) {
+    const existing = current["size-limit"];
+    if (existing !== undefined && !Array.isArray(existing))
+      throw new ParseError(
+        "package.json",
+        "expected size-limit to be an array",
+      );
+    const entries = (existing ?? []) as unknown[];
+    const matches = entries.filter(
+      (entry) =>
+        entry !== null &&
+        typeof entry === "object" &&
+        !Array.isArray(entry) &&
+        (entry as Record<string, unknown>).name === sizeBudget.name,
+    );
+    if (
+      matches.length > 1 ||
+      (matches.length === 1 &&
+        (matches[0] === null ||
+          typeof matches[0] !== "object" ||
+          Object.keys(matches[0]).length !== Object.keys(sizeBudget).length ||
+          Object.entries(sizeBudget).some(
+            ([key, value]) =>
+              (matches[0] as Record<string, unknown>)[key] !== value,
+          )))
+    )
+      throw new ConflictError(
+        "size-limit",
+        sizeBudget.name,
+        matches,
+        JSON.stringify(sizeBudget),
+      );
+    if (!matches.length)
+      operations.push({
+        path: "package.json",
+        key: "size-limit",
+        mode: "structured-merge",
+        before: existing === undefined ? undefined : JSON.stringify(existing),
+        after: JSON.stringify([...entries, sizeBudget]),
+      });
+  }
   if (profile === "library") {
     for (const key of ["main", "types", "exports"] as const) {
       const after = desired[key];
@@ -501,7 +543,8 @@ export function applySync(plan: SyncPlan): {
     packageChanged = true;
     const dot = key.indexOf(".");
     if (dot === -1) {
-      pkg[key] = key === "exports" ? JSON.parse(after) : after;
+      pkg[key] =
+        key === "exports" || key === "size-limit" ? JSON.parse(after) : after;
       continue;
     }
     const section = key.slice(0, dot);

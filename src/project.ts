@@ -10,6 +10,7 @@ export type PackageJson = {
   main?: string;
   types?: string;
   exports?: Record<string, { types: string; default: string }>;
+  "size-limit"?: { name: string; path: string; limit: string }[];
   scripts: Record<string, string>;
   devDependencies: Record<string, string>;
   dependencies?: Record<string, string>;
