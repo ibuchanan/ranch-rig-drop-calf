@@ -132,7 +132,7 @@ describe("forgeLinting capability", () => {
   test("uses forge lint without adding biome", () => {
     const project = createBlueprint("my-package", "", "MIT", "");
     forgeLinting().addTo(project);
-    expect(project.packageJson.scripts.lint).toBe("forge lint");
+    expect(project.packageJson.scripts["lint:forge"]).toBe("forge lint");
     expect(
       project.packageJson.devDependencies["@biomejs/biome"],
     ).toBeUndefined();
@@ -219,7 +219,12 @@ describe("profiles", () => {
 
   test.each([
     ["library", "biome lint", "tsdown", "bun test"],
-    ["forge-app", "forge lint", "tsc -p tsconfig.json", "bun test"],
+    [
+      "forge-app",
+      "npm run lint:prelint && npm run lint:check && npm run lint:forge",
+      "tsc -p tsconfig.json",
+      "bun test",
+    ],
     ["tool", "biome lint", "tsc", "bun test"],
     ["agent-skill", "biome lint", "tsc", undefined],
   ])("%s fills the stable developer slots", (kind, lint, build, testScript) => {

@@ -18,10 +18,30 @@ export function biomeLinting(
   };
 }
 
+export function forgeAhead(): Capability {
+  return {
+    addTo(project) {
+      project.packageJson.dependencies = {
+        "@forge-ahead/atlassian-api-types": TOOL_VERSIONS.forgeAheadApiTypes,
+        "@forge-ahead/errors": TOOL_VERSIONS.forgeAheadErrors,
+        "@forge-ahead/logging": TOOL_VERSIONS.forgeAheadLogging,
+      };
+    },
+  };
+}
+
 export function forgeLinting(): Capability {
   return {
     addTo(project) {
-      project.packageJson.scripts.lint = "forge lint";
+      project.packageJson.devDependencies["@ast-grep/cli"] =
+        TOOL_VERSIONS.astGrep;
+      project.packageJson.devDependencies["tool-forge-prelint-ast-grep"] =
+        TOOL_VERSIONS.forgePrelint;
+      project.packageJson.scripts["lint:prelint"] =
+        "ast-grep scan --config node_modules/tool-forge-prelint-ast-grep/sgconfig.ecosol.yml --globs '!node_modules/**'";
+      project.packageJson.scripts["lint:forge"] = "forge lint";
+      project.packageJson.scripts.lint =
+        "npm run lint:prelint && npm run lint:check && npm run lint:forge";
     },
   };
 }

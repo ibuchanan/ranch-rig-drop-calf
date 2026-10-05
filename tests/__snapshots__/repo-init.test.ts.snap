@@ -70,9 +70,16 @@ exports[`profiles agent-skill contains no test scripts and all kinds keep a comp
     "tsconfig.typecheck.json",
   ],
   "packageJson": {
+    "dependencies": {
+      "@forge-ahead/atlassian-api-types": "github:ibuchanan/forge-ahead-atlassian-api-types",
+      "@forge-ahead/errors": "github:ibuchanan/forge-ahead-errors",
+      "@forge-ahead/logging": "github:ibuchanan/forge-ahead-logging",
+    },
     "devDependencies": {
+      "@ast-grep/cli": "^0.44",
       "@biomejs/biome": "^1.9.4",
       "git-cliff": "^2.13",
+      "tool-forge-prelint-ast-grep": "github:ibuchanan/tool-forge-prelint-ast-grep",
       "typescript": "^5.9.3",
     },
     "engines": {
@@ -93,9 +100,11 @@ exports[`profiles agent-skill contains no test scripts and all kinds keep a comp
       "forge:variables:set:secretspec": "secretspec run -- bash scripts/forge-vars-from-secretspec.sh",
       "format": "biome format --write",
       "format:check": "biome format",
-      "lint": "forge lint",
+      "lint": "npm run lint:prelint && npm run lint:check && npm run lint:forge",
       "lint:check": "biome lint",
       "lint:fix": "biome lint --write",
+      "lint:forge": "forge lint",
+      "lint:prelint": "ast-grep scan --config node_modules/tool-forge-prelint-ast-grep/sgconfig.ecosol.yml --globs '!node_modules/**'",
       "test": "bun test",
       "typecheck": "tsc -p tsconfig.typecheck.json --noEmit",
     },

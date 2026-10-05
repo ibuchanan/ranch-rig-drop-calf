@@ -8,4 +8,9 @@ export const TOOL_VERSIONS = {
   vitest: "^2.1.0",
   promptfoo: "^0.116.0",
   gitCliff: "^2.13",
+  astGrep: "^0.44",
+  forgePrelint: "github:ibuchanan/tool-forge-prelint-ast-grep",
+  forgeAheadApiTypes: "github:ibuchanan/forge-ahead-atlassian-api-types",
+  forgeAheadErrors: "github:ibuchanan/forge-ahead-errors",
+  forgeAheadLogging: "github:ibuchanan/forge-ahead-logging",
 } as const;

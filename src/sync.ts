@@ -75,7 +75,12 @@ export function planSync(
       Array.isArray(current)
     )
       throw new Error("expected an object");
-    for (const section of ["scripts", "devDependencies", "engines"] as const) {
+    for (const section of [
+      "scripts",
+      "devDependencies",
+      "dependencies",
+      "engines",
+    ] as const) {
       const value = current[section];
       if (
         value !== undefined &&
@@ -156,9 +161,13 @@ export function planSync(
       before: undefined,
       after: desired.engines.node,
     });
-  for (const section of ["scripts", "devDependencies"] as const) {
+  for (const section of [
+    "scripts",
+    "devDependencies",
+    "dependencies",
+  ] as const) {
     const values = (current[section] ?? {}) as Record<string, unknown>;
-    for (const [key, after] of Object.entries(desired[section])) {
+    for (const [key, after] of Object.entries(desired[section] ?? {})) {
       const before = Object.hasOwn(values, key) ? values[key] : undefined;
       if (before !== undefined && before !== after)
         throw new ConflictError(section, key, before, after);
