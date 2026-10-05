@@ -35,7 +35,7 @@ Every kind:
 | Linting | biome | forge lint | biome | biome |
 | Formatting | biome | biome | biome | biome |
 | Type checking | tsc | forge-pinned tsc | tsc | tsc |
-| Testing | bun test | bun test | bun test | *no-op* |
+| Testing | bun test (+ watch/coverage) | bun test (+ watch/coverage) | bun test (+ watch/coverage) | *no-op* |
 | Build | tsdown | tsc | tsc | tsc |
 | Clean | rm -rf dist | rm -rf dist | rm -rf dist | rm -rf dist |
 

@@ -57,7 +57,7 @@ Every non-empty capability slot contributes to the stable developer API. The exa
 | Linting | `lint`, `lint:fix` (optional) | `biome lint`, `forge lint` |
 | Formatting | `format`, `format:check` | `biome format --write`, `biome format` |
 | Type checking | `typecheck` | `tsc --noEmit` |
-| Testing | `test` | `bun test`, `vitest run`, or absent |
+| Testing | `test`, `test:watch`, `test:coverage` (or absent) | `bun test` with a no-tests starter flag, or absent |
 | Build | `build` | `tsc` |
 | Clean | `clean` | `rm -rf dist` |
 

@@ -135,7 +135,11 @@ export function cleanBuild(): Capability {
 export function bunTesting(): Capability {
   return {
     addTo(project) {
-      project.packageJson.scripts.test = "bun test";
+      project.packageJson.scripts.test = "bun test --pass-with-no-tests";
+      project.packageJson.scripts["test:watch"] =
+        "bun test --watch --pass-with-no-tests";
+      project.packageJson.scripts["test:coverage"] =
+        "bun test --coverage --pass-with-no-tests";
     },
   };
 }

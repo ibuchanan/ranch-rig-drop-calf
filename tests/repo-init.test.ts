@@ -218,14 +218,14 @@ describe("profiles", () => {
   });
 
   test.each([
-    ["library", "biome lint", "tsdown", "bun test"],
+    ["library", "biome lint", "tsdown", "bun test --pass-with-no-tests"],
     [
       "forge-app",
       "npm run lint:prelint && npm run lint:check && npm run lint:forge",
       "tsc -p tsconfig.json",
-      "bun test",
+      "bun test --pass-with-no-tests",
     ],
-    ["tool", "biome lint", "tsc", "bun test"],
+    ["tool", "biome lint", "tsc", "bun test --pass-with-no-tests"],
     ["agent-skill", "biome lint", "tsc", undefined],
   ])("%s fills the stable developer slots", (kind, lint, build, testScript) => {
     const { packageJson } = buildProject(kind, "sample");
@@ -262,7 +262,9 @@ describe("profiles", () => {
       "evals",
     ]);
     expect(selected.packageJson.scripts.eval).toBeDefined();
-    expect(selected.packageJson.scripts.test).toBe("bun test");
+    expect(selected.packageJson.scripts.test).toBe(
+      "bun test --pass-with-no-tests",
+    );
     expect(selected.packageJson.devDependencies.promptfoo).toBeDefined();
     const all = buildProject(
       "forge-app",
@@ -286,7 +288,9 @@ describe("profiles", () => {
       "all",
     );
     expect(excluded.packageJson.scripts.eval).toBeUndefined();
-    expect(excluded.packageJson.scripts.test).toBe("bun test");
+    expect(excluded.packageJson.scripts.test).toBe(
+      "bun test --pass-with-no-tests",
+    );
     expect(() =>
       buildProject("forge-app", "sample", "", "MIT", "", [], [], "unknown"),
     ).toThrow(InvalidOptionsError);

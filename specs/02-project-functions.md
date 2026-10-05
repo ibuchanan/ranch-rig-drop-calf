@@ -109,10 +109,15 @@ Copy a versioned, Forge-focused `AGENTS.md` seed. Create-if-absent; guidance con
 not machine configuration.
 
 ### `test`
-Add `vitest` and `archunit`; own `test`, `test:watch`, `test:coverage` scripts. Create
-`vitest.config.ts` via a semantic AST procedure if absent (never overwrite an existing
-one). Copy the Forge architecture-test seed tree only into absent paths; report
-collisions per file.
+Use Bun's built-in runner for `library`, `forge-app`, and `tool`, following the
+project-kind contract in §01; `agent-skill` has no test scripts. Own `test`,
+`test:watch`, and `test:coverage` with `bun test --pass-with-no-tests`,
+`bun test --watch --pass-with-no-tests`, and
+`bun test --coverage --pass-with-no-tests` respectively. The no-tests flag lets
+newly generated repositories run the commands before tests are added. Bun needs
+no Vitest dependency, config, or Forge architecture-test seed. Existing Bun
+configuration and test sources are user-owned and survive sync; conflicting owned
+scripts are reported before any changes.
 
 ### `evals` (optional; `--preset all` or `--with evals`)
 Add `promptfoo`; own `eval`/`view` scripts. Copy versioned Promptfoo config and example
