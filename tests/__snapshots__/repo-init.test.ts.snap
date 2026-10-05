@@ -5,6 +5,9 @@ exports[`profiles agent-skill contains no test scripts and all kinds keep a comp
   "files": [
     ".editorconfig",
     ".gitignore",
+    "CODE_OF_CONDUCT.md",
+    "CONTRIBUTING.md",
+    "DEVELOPMENT.md",
     "README.md",
     "biome.json",
     "tsconfig.json",
@@ -45,6 +48,9 @@ exports[`profiles agent-skill contains no test scripts and all kinds keep a comp
   "files": [
     ".editorconfig",
     ".gitignore",
+    "CODE_OF_CONDUCT.md",
+    "CONTRIBUTING.md",
+    "DEVELOPMENT.md",
     "README.md",
     "biome.json",
     "tsconfig.json",
@@ -75,6 +81,9 @@ exports[`profiles agent-skill contains no test scripts and all kinds keep a comp
   "files": [
     ".editorconfig",
     ".gitignore",
+    "CODE_OF_CONDUCT.md",
+    "CONTRIBUTING.md",
+    "DEVELOPMENT.md",
     "README.md",
     "biome.json",
     "tsconfig.json",
@@ -106,6 +115,9 @@ exports[`profiles agent-skill contains no test scripts and all kinds keep a comp
   "files": [
     ".editorconfig",
     ".gitignore",
+    "CODE_OF_CONDUCT.md",
+    "CONTRIBUTING.md",
+    "DEVELOPMENT.md",
     "README.md",
     "biome.json",
     "tsconfig.json",

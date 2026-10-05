@@ -1,5 +1,6 @@
 import type { Capability } from "./capabilities.ts";
 import { createBlueprint, type ProjectBlueprint } from "./project.ts";
+import { seedOssDocuments } from "./oss.ts";
 import {
   biomeFormatting,
   biomeLinting,
@@ -113,6 +114,7 @@ export function buildProject(
   );
   const project = createBlueprint(packageName, description, license, author);
   for (const capability of capabilities) capability.addTo(project);
+  seedOssDocuments(project, author);
   if (
     profile === "forge-app" &&
     (preset === "all" || withFunctions.includes("evals")) &&

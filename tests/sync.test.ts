@@ -10,6 +10,47 @@ import {
 } from "../src/sync.ts";
 
 describe("repository sync", () => {
+  test("seeds missing OSS documents but preserves customized ones across repeated sync", () => {
+    const files = new Map([
+      [
+        "package.json",
+        '{"name":"sample","license":"MIT","author":"Maintainer"}',
+      ],
+      ["CONTRIBUTING.md", "# Our contribution rules\n"],
+      ["LICENSE", "Our existing license terms\n"],
+      ["README.md", "# Our own README\n"],
+    ]);
+    const plan = planSync(files, "tool");
+    expect(plan.operations).toContainEqual(
+      expect.objectContaining({
+        path: "DEVELOPMENT.md",
+        mode: "create-if-absent",
+      }),
+    );
+    expect(
+      plan.operations.some(
+        (op) =>
+          op.path === "CONTRIBUTING.md" ||
+          op.path === "LICENSE" ||
+          op.path === "README.md",
+      ),
+    ).toBe(false);
+    const result = applySync(plan).files;
+    expect(result.get("CONTRIBUTING.md")).toBe("# Our contribution rules\n");
+    expect(result.get("LICENSE")).toBe("Our existing license terms\n");
+    expect(result.get("README.md")).toBe("# Our own README\n");
+    expect(result.get("DEVELOPMENT.md")).toContain("npm run typecheck");
+    const withoutReadme = planSync(
+      new Map([["package.json", '{"name":"sample"}']]),
+      "tool",
+    );
+    expect(withoutReadme.operations).toContainEqual(
+      expect.objectContaining({ path: "README.md", mode: "create-if-absent" }),
+    );
+    expect(result.get("CODE_OF_CONDUCT.md")).toContain("harassment-free");
+    expect(result.get(".atlassian/OWNER")).toBe("Maintainer\n");
+    expect(planSync(result, "tool").operations).toEqual([]);
+  });
   test("adds missing ignore rules without disturbing custom entries or comments", () => {
     const original = "# mine\ncustom-cache\nnode_modules\n# keep\n";
     const files = new Map([
@@ -184,12 +225,16 @@ describe("repository sync", () => {
     const output = await new DropCalf().sync(source, "tool");
     expect(output).toBe(source);
     expect(writes.map(([path]) => path)).toEqual([
+      "CONTRIBUTING.md",
+      "CODE_OF_CONDUCT.md",
+      "DEVELOPMENT.md",
+      "README.md",
       "package.json",
       ".gitignore",
       ".editorconfig",
     ]);
-    expect(writes[0]?.[0]).toBe("package.json");
-    expect(JSON.parse(writes[0]?.[1] ?? "").scripts).toMatchObject({
+    const packageWrite = writes.find(([path]) => path === "package.json");
+    expect(JSON.parse(packageWrite?.[1] ?? "").scripts).toMatchObject({
       deploy: "echo deploy",
       lint: "biome lint",
     });

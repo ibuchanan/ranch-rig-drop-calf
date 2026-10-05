@@ -61,6 +61,11 @@ export class DropCalf {
       ".gitignore",
       ".editorconfig",
       "README.md",
+      "LICENSE",
+      "CONTRIBUTING.md",
+      "CODE_OF_CONDUCT.md",
+      "DEVELOPMENT.md",
+      ".atlassian/OWNER",
     ]) {
       if (await directory.exists(path))
         files.set(path, await directory.file(path).contents());

@@ -75,6 +75,36 @@ describe("kind selection", () => {
   });
 });
 
+describe("OSS document seeds", () => {
+  test("generates project-specific authored documents for each kind", () => {
+    for (const kind of ["library", "forge-app", "tool", "agent-skill"]) {
+      const project = buildProject(
+        kind,
+        "example-project",
+        "Example purpose",
+        "MIT",
+        "Example Owner",
+      );
+      expect(project.files.get("LICENSE")).toContain("Example Owner");
+      expect(project.files.get("LICENSE")).toContain(
+        String(new Date().getFullYear()),
+      );
+      expect(project.files.get("CONTRIBUTING.md")).toContain("example-project");
+      expect(project.files.get("CODE_OF_CONDUCT.md")).toContain(
+        "harassment-free",
+      );
+      expect(project.files.get("README.md")).toContain("Example purpose");
+      expect(project.files.get("DEVELOPMENT.md")).toContain(
+        "npm run typecheck",
+      );
+      expect(project.files.get(".atlassian/OWNER")).toBe("Example Owner\n");
+    }
+    expect(
+      buildProject("tool", "sample", "", "none").files.has("LICENSE"),
+    ).toBe(false);
+  });
+});
+
 describe("profiles", () => {
   test.each([
     ["library", "biome lint", "tsdown", "bun test"],

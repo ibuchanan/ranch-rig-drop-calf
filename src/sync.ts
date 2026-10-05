@@ -4,7 +4,12 @@ import { createBlueprint } from "./project.ts";
 export type SyncOperation = {
   path: string;
   key: string;
-  mode: "structured-merge" | "line-set" | "section-map" | "managed-region";
+  mode:
+    | "structured-merge"
+    | "line-set"
+    | "section-map"
+    | "managed-region"
+    | "create-if-absent";
   before: string | undefined;
   after: string;
 };
@@ -76,8 +81,33 @@ export function planSync(
   }
   if (typeof current.name !== "string" || !current.name.trim())
     throw new ValidationError("name must be a non-empty string");
-  const desired = buildProject(profile, current.name).packageJson;
+  const desiredProject = buildProject(
+    profile,
+    current.name,
+    typeof current.description === "string" ? current.description : "",
+    typeof current.license === "string" ? current.license : "none",
+    typeof current.author === "string" ? current.author : "",
+  );
+  const desired = desiredProject.packageJson;
   const operations: SyncOperation[] = [];
+  for (const path of [
+    "LICENSE",
+    "CONTRIBUTING.md",
+    "CODE_OF_CONDUCT.md",
+    "DEVELOPMENT.md",
+    ".atlassian/OWNER",
+    "README.md",
+  ]) {
+    const after = desiredProject.files.get(path);
+    if (after !== undefined && !files.has(path))
+      operations.push({
+        path,
+        key: "seed",
+        mode: "create-if-absent",
+        before: undefined,
+        after,
+      });
+  }
   for (const section of ["scripts", "devDependencies"] as const) {
     const values = (current[section] ?? {}) as Record<string, unknown>;
     for (const [key, after] of Object.entries(desired[section])) {
