@@ -3,6 +3,7 @@ import { TOOL_VERSIONS } from "./versions.ts";
 import { createBlueprint, type ProjectBlueprint } from "./project.ts";
 import { seedOssDocuments } from "./oss.ts";
 import { changelog } from "./changelog.ts";
+import { forgeSecrets } from "./secrets.ts";
 import {
   biomeFormatting,
   biomeLinting,
@@ -29,6 +30,7 @@ export const PROFILES: Record<string, Capability[]> = {
   ],
   "forge-app": [
     changelog(),
+    forgeSecrets(),
     forgeLinting(),
     biomeFormatting(),
     forgeTypecheck(),

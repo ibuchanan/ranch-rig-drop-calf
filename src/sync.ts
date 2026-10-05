@@ -126,6 +126,9 @@ export function planSync(
     ".atlassian/OWNER",
     "README.md",
     "cliff.toml",
+    ...(profile === "forge-app"
+      ? ["secretspec.toml", "scripts/forge-vars-from-secretspec.sh"]
+      : []),
   ]) {
     const after = desiredProject.files.get(path);
     if (after !== undefined && !files.has(path))

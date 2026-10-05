@@ -1,6 +1,13 @@
 import { type Directory, dag, func, object } from "@dagger.io/dagger";
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import {
+  accessSync,
+  constants,
+  existsSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+} from "node:fs";
 import { basename, join } from "node:path";
 import { TOOL_VERSIONS } from "./versions.ts";
 import { fileURLToPath } from "node:url";
@@ -67,6 +74,33 @@ function localBiomeConfig(fallback: string): string {
 
 @object()
 export class DropCalf {
+  @func()
+  doctor(profile: string): string {
+    resolveProfile(profile);
+    const found = (tool: string) => {
+      for (const directory of (process.env.PATH ?? "").split(
+        process.platform === "win32" ? ";" : ":",
+      )) {
+        try {
+          accessSync(join(directory, tool), constants.X_OK);
+          return true;
+        } catch {
+          /* keep searching */
+        }
+      }
+      return false;
+    };
+    return JSON.stringify(
+      (profile === "forge-app"
+        ? ["forge", "secretspec", "gitleaks", "git"]
+        : ["git"]
+      ).map((tool) => ({
+        tool,
+        status: found(tool) ? "available" : "missing",
+      })),
+    );
+  }
+
   @func()
   async files(
     profile: string,
@@ -169,6 +203,8 @@ export class DropCalf {
       "tsconfig.typecheck.json",
       "tsdown.config.ts",
       "cliff.toml",
+      "secretspec.toml",
+      "scripts/forge-vars-from-secretspec.sh",
       ".nvmrc",
       ".gitignore",
       ".editorconfig",
@@ -201,7 +237,13 @@ export class DropCalf {
       const contents = files.get(path);
       if (contents === undefined)
         throw new Error(`sync: ${path} missing after apply`);
-      result = result.withNewFile(path, contents);
+      result = result.withNewFile(
+        path,
+        contents,
+        path === "scripts/forge-vars-from-secretspec.sh"
+          ? { permissions: 0o755 }
+          : {},
+      );
     }
     return result;
   }
