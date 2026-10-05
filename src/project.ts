@@ -1,9 +1,11 @@
 import { type Directory, dag } from "@dagger.io/dagger";
+import { NODE_MAJOR } from "./versions.ts";
 
 export type PackageJson = {
   name: string;
   version: string;
   type: "module";
+  engines: { node: string };
   private?: boolean;
   main?: string;
   types?: string;
@@ -73,6 +75,7 @@ export function createBlueprint(
     name: packageName,
     version: "0.1.0",
     type: "module",
+    engines: { node: `${NODE_MAJOR}.x` },
     scripts: {},
     devDependencies: {},
   };
@@ -82,6 +85,7 @@ export function createBlueprint(
   if (lcLicense !== "none") packageJson.license = license;
 
   const files = new Map<string, string>([
+    [".nvmrc", `${NODE_MAJOR}\n`],
     [".gitignore", buildGitignore()],
     [".editorconfig", buildEditorconfig()],
     ["README.md", buildReadme(packageName, description, "none")],

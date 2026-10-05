@@ -106,6 +106,14 @@ describe("OSS document seeds", () => {
 });
 
 describe("profiles", () => {
+  test("all kinds generate matching Node 24 pins", () => {
+    for (const kind of ["library", "forge-app", "tool", "agent-skill"]) {
+      const project = buildProject(kind, "sample");
+      expect(project.files.get(".nvmrc")).toBe("24\n");
+      expect(project.packageJson.engines).toEqual({ node: "24.x" });
+    }
+  });
+
   test.each([
     ["library", "biome lint", "tsdown", "bun test"],
     ["forge-app", "forge lint", "tsc -p tsconfig.json", "bun test"],

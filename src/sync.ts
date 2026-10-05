@@ -15,9 +15,15 @@ export type SyncOperation = {
 };
 
 export class ConflictError extends Error {
-  constructor(section: string, key: string, found: unknown, wanted: string) {
+  constructor(
+    section: string,
+    key: string,
+    found: unknown,
+    wanted: string,
+    path = "package.json",
+  ) {
     super(
-      `sync: package.json ${section}.${key}: found ${JSON.stringify(found)}, wanted ${JSON.stringify(wanted)}; resolve the conflict before syncing.`,
+      `sync: ${path} ${section}.${key}: found ${JSON.stringify(found)}, wanted ${JSON.stringify(wanted)}; resolve the conflict before syncing.`,
     );
     this.name = "ConflictError";
   }
@@ -68,7 +74,7 @@ export function planSync(
       Array.isArray(current)
     )
       throw new Error("expected an object");
-    for (const section of ["scripts", "devDependencies"] as const) {
+    for (const section of ["scripts", "devDependencies", "engines"] as const) {
       const value = current[section];
       if (
         value !== undefined &&
@@ -90,6 +96,27 @@ export function planSync(
   );
   const desired = desiredProject.packageJson;
   const operations: SyncOperation[] = [];
+  const nodePin = desiredProject.files.get(".nvmrc");
+  if (
+    nodePin !== undefined &&
+    files.has(".nvmrc") &&
+    files.get(".nvmrc")?.trim() !== nodePin.trim()
+  )
+    throw new ConflictError(
+      "node",
+      "major",
+      files.get(".nvmrc"),
+      nodePin.trim(),
+      ".nvmrc",
+    );
+  if (nodePin !== undefined && !files.has(".nvmrc"))
+    operations.push({
+      path: ".nvmrc",
+      key: "node",
+      mode: "create-if-absent",
+      before: undefined,
+      after: nodePin,
+    });
   for (const path of [
     "LICENSE",
     "CONTRIBUTING.md",
@@ -108,6 +135,22 @@ export function planSync(
         after,
       });
   }
+  const engines = (current.engines ?? {}) as Record<string, unknown>;
+  if (engines.node !== undefined && engines.node !== desired.engines.node)
+    throw new ConflictError(
+      "engines",
+      "node",
+      engines.node,
+      desired.engines.node,
+    );
+  if (engines.node === undefined)
+    operations.push({
+      path: "package.json",
+      key: "engines.node",
+      mode: "structured-merge",
+      before: undefined,
+      after: desired.engines.node,
+    });
   for (const section of ["scripts", "devDependencies"] as const) {
     const values = (current[section] ?? {}) as Record<string, unknown>;
     for (const [key, after] of Object.entries(desired[section])) {

@@ -1,4 +1,5 @@
 import type { Capability } from "./capabilities.ts";
+import { TOOL_VERSIONS } from "./versions.ts";
 import { createBlueprint, type ProjectBlueprint } from "./project.ts";
 import { seedOssDocuments } from "./oss.ts";
 import {
@@ -122,7 +123,7 @@ export function buildProject(
   ) {
     project.packageJson.scripts.eval = "promptfoo eval";
     project.packageJson.scripts.view = "promptfoo view";
-    project.packageJson.devDependencies.promptfoo = "^0.116.0";
+    project.packageJson.devDependencies.promptfoo = TOOL_VERSIONS.promptfoo;
   }
   return project;
 }

@@ -1,10 +1,11 @@
 import type { ProjectBlueprint } from "./project.ts";
+import { TOOL_VERSIONS } from "./versions.ts";
 
 export type Capability = {
   addTo(project: ProjectBlueprint): void;
 };
 
-export function biomeLinting(version = "^1.9.4"): Capability {
+export function biomeLinting(version = TOOL_VERSIONS.biome): Capability {
   return {
     addTo(project) {
       project.packageJson.scripts.lint = "biome lint";
@@ -23,7 +24,7 @@ export function forgeLinting(): Capability {
   };
 }
 
-export function biomeFormatting(version = "^1.9.4"): Capability {
+export function biomeFormatting(version = TOOL_VERSIONS.biome): Capability {
   return {
     addTo(project) {
       project.packageJson.scripts.format = "biome format --write";
@@ -36,7 +37,7 @@ export function biomeFormatting(version = "^1.9.4"): Capability {
   };
 }
 
-export function tscTypecheck(tsVersion = "^5.4.0"): Capability {
+export function tscTypecheck(tsVersion = TOOL_VERSIONS.typescript): Capability {
   return {
     addTo(project) {
       project.packageJson.devDependencies.typescript = tsVersion;
@@ -53,7 +54,9 @@ export function tscBuild(): Capability {
   };
 }
 
-export function forgeTypecheck(tsVersion = "^5.9.3"): Capability {
+export function forgeTypecheck(
+  tsVersion = TOOL_VERSIONS.forgeTypescript,
+): Capability {
   return {
     addTo(project) {
       project.packageJson.devDependencies.typescript = tsVersion;
@@ -62,7 +65,7 @@ export function forgeTypecheck(tsVersion = "^5.9.3"): Capability {
   };
 }
 
-export function libraryBuild(version = "^0.15.0"): Capability {
+export function libraryBuild(version = TOOL_VERSIONS.tsdown): Capability {
   return {
     addTo(project) {
       project.packageJson.scripts.build = "tsdown";
@@ -100,7 +103,7 @@ export function bunTesting(): Capability {
   };
 }
 
-export function vitestTesting(version = "^2.1.0"): Capability {
+export function vitestTesting(version = TOOL_VERSIONS.vitest): Capability {
   return {
     addTo(project) {
       project.packageJson.scripts.test = "vitest run";
@@ -118,7 +121,7 @@ export function noTesting(): Capability {
 function buildBiomeConfig(): string {
   return JSON.stringify(
     {
-      $schema: "https://biomejs.dev/schemas/1.9.4/schema.json",
+      $schema: `https://biomejs.dev/schemas/${TOOL_VERSIONS.biome.replace(/^[^\d]*/, "")}/schema.json`,
       organizeImports: {
         enabled: true,
       },

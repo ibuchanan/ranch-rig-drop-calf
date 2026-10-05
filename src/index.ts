@@ -58,6 +58,7 @@ export class DropCalf {
     const files = new Map<string, string>();
     for (const path of [
       "package.json",
+      ".nvmrc",
       ".gitignore",
       ".editorconfig",
       "README.md",

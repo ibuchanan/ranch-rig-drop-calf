@@ -10,6 +10,64 @@ import {
 } from "../src/sync.ts";
 
 describe("repository sync", () => {
+  test("adds Node 24 pins while preserving unrelated package metadata", () => {
+    const files = new Map([
+      [
+        "package.json",
+        JSON.stringify({
+          name: "sample",
+          engines: { bun: ">=1" },
+          custom: { keep: true },
+        }),
+      ],
+    ]);
+    const plan = planSync(files, "tool");
+    expect(plan.operations).toContainEqual({
+      path: ".nvmrc",
+      key: "node",
+      mode: "create-if-absent",
+      before: undefined,
+      after: "24\n",
+    });
+    expect(plan.operations).toContainEqual({
+      path: "package.json",
+      key: "engines.node",
+      mode: "structured-merge",
+      before: undefined,
+      after: "24.x",
+    });
+    const result = applySync(plan).files;
+    expect(result.get(".nvmrc")).toBe("24\n");
+    expect(JSON.parse(result.get("package.json") ?? "")).toMatchObject({
+      engines: { bun: ">=1", node: "24.x" },
+      custom: { keep: true },
+    });
+    expect(planSync(result, "tool").operations).toEqual([]);
+  });
+
+  test("rejects incompatible Node pins without changing the input", () => {
+    for (const [path, content] of [
+      [".nvmrc", "22\n"],
+      ["package.json", '{"name":"sample","engines":{"node":"22.x"}}'],
+    ] as const) {
+      const files = new Map<string, string>([
+        ["package.json", '{"name":"sample"}'],
+      ]);
+      files.set(path, content);
+      expect(() => planSync(files, "tool")).toThrow(ConflictError);
+      expect(files.get(path)).toBe(content);
+      expect(files.size).toBe(path === ".nvmrc" ? 2 : 1);
+    }
+  });
+
+  test("matching Node pins are no-ops", () => {
+    const first = applySync(
+      planSync(new Map([["package.json", '{"name":"sample"}']]), "tool"),
+    ).files;
+    const plan = planSync(first, "tool");
+    expect(plan.operations).toEqual([]);
+  });
+
   test("seeds missing OSS documents but preserves customized ones across repeated sync", () => {
     const files = new Map([
       [
@@ -225,6 +283,7 @@ describe("repository sync", () => {
     const output = await new DropCalf().sync(source, "tool");
     expect(output).toBe(source);
     expect(writes.map(([path]) => path)).toEqual([
+      ".nvmrc",
       "CONTRIBUTING.md",
       "CODE_OF_CONDUCT.md",
       "DEVELOPMENT.md",
@@ -319,7 +378,7 @@ describe("repository sync", () => {
       '{"name":"sample","devDependencies":{"typescript":"^4.0.0"}}';
     let wrote = false;
     const source = {
-      exists: async () => true,
+      exists: async (path: string) => path === "package.json",
       file: () => ({ contents: async () => original }),
       withNewFile: () => {
         wrote = true;
