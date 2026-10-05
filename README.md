@@ -49,17 +49,19 @@ replace `entries` with `export --path /path/to/preview` and review the output
 before exporting into an existing repository: files with the same names can be
 replaced.
 
-The available profiles are `library` (default), `forge-app`, `tool`, and
-`agent-skill`. Pass `--description`, `--license`, and `--author` to customize
-metadata. The default license is MIT; `--license none` omits the license field
-and file. MIT and ISC produce a `LICENSE` file; other license values only
-populate package metadata.
+The available profiles are `library`, `forge-app`, `tool`, and `agent-skill`;
+`--profile` is required. On `forge-app`, `--with-functions evals` or
+`--preset all` enables evaluation scripts; `--without-functions evals`
+excludes them from `--preset all`. Core kind slots cannot be removed.
+Pass `--description`, `--license`, and `--author` to customize metadata.
+The default license is MIT; `--license none` omits the license field and file.
+MIT and ISC produce a `LICENSE` file; other license values only populate
+package metadata.
 
 The generated output is a starter configuration, **not a complete runnable
 application**: it does not include source files or install dependencies. Its
 generated README contains generic build instructions and should be reviewed
-before use. Unknown profile names currently fall back to base files rather than
-reporting an error.
+before use. Unknown or ambiguous profile names fail before generation.
 
 ## Contributing
 

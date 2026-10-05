@@ -1,0 +1,132 @@
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
+
+exports[`profiles agent-skill contains no test scripts and all kinds keep a complete blueprint: library 1`] = `
+{
+  "files": [
+    ".editorconfig",
+    ".gitignore",
+    "README.md",
+    "biome.json",
+    "tsconfig.json",
+  ],
+  "packageJson": {
+    "devDependencies": {
+      "@biomejs/biome": "^1.9.4",
+      "tsdown": "^0.15.0",
+      "typescript": "^5.4.0",
+    },
+    "exports": {
+      ".": {
+        "default": "./dist/index.js",
+        "types": "./dist/index.d.ts",
+      },
+    },
+    "main": "./dist/index.js",
+    "name": "sample",
+    "scripts": {
+      "build": "tsdown",
+      "clean": "rm -rf dist",
+      "format": "biome format --write",
+      "format:check": "biome format",
+      "lint": "biome lint",
+      "lint:fix": "biome lint --write",
+      "test": "bun test",
+      "typecheck": "tsc --noEmit",
+    },
+    "type": "module",
+    "types": "./dist/index.d.ts",
+    "version": "0.1.0",
+  },
+}
+`;
+
+exports[`profiles agent-skill contains no test scripts and all kinds keep a complete blueprint: forge-app 1`] = `
+{
+  "files": [
+    ".editorconfig",
+    ".gitignore",
+    "README.md",
+    "biome.json",
+    "tsconfig.json",
+  ],
+  "packageJson": {
+    "devDependencies": {
+      "@biomejs/biome": "^1.9.4",
+      "typescript": "^5.9.3",
+    },
+    "name": "sample",
+    "scripts": {
+      "build": "tsc -p tsconfig.json",
+      "clean": "rm -rf dist",
+      "format": "biome format --write",
+      "format:check": "biome format",
+      "lint": "forge lint",
+      "test": "bun test",
+      "typecheck": "tsc --noEmit",
+    },
+    "type": "module",
+    "version": "0.1.0",
+  },
+}
+`;
+
+exports[`profiles agent-skill contains no test scripts and all kinds keep a complete blueprint: tool 1`] = `
+{
+  "files": [
+    ".editorconfig",
+    ".gitignore",
+    "README.md",
+    "biome.json",
+    "tsconfig.json",
+  ],
+  "packageJson": {
+    "devDependencies": {
+      "@biomejs/biome": "^1.9.4",
+      "typescript": "^5.4.0",
+    },
+    "name": "sample",
+    "scripts": {
+      "build": "tsc",
+      "clean": "rm -rf dist",
+      "format": "biome format --write",
+      "format:check": "biome format",
+      "lint": "biome lint",
+      "lint:fix": "biome lint --write",
+      "test": "bun test",
+      "typecheck": "tsc --noEmit",
+    },
+    "type": "module",
+    "version": "0.1.0",
+  },
+}
+`;
+
+exports[`profiles agent-skill contains no test scripts and all kinds keep a complete blueprint: agent-skill 1`] = `
+{
+  "files": [
+    ".editorconfig",
+    ".gitignore",
+    "README.md",
+    "biome.json",
+    "tsconfig.json",
+  ],
+  "packageJson": {
+    "devDependencies": {
+      "@biomejs/biome": "^1.9.4",
+      "typescript": "^5.4.0",
+    },
+    "name": "sample",
+    "scripts": {
+      "build": "tsc",
+      "clean": "rm -rf dist",
+      "format": "biome format --write",
+      "format:check": "biome format",
+      "lint": "biome lint",
+      "lint:fix": "biome lint --write",
+      "typecheck": "tsc --noEmit",
+    },
+    "type": "module",
+    "version": "0.1.0",
+  },
+}
+`;

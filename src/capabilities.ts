@@ -41,17 +41,53 @@ export function tscTypecheck(tsVersion = "^5.4.0"): Capability {
     addTo(project) {
       project.packageJson.devDependencies.typescript = tsVersion;
       project.packageJson.scripts.typecheck = "tsc --noEmit";
+    },
+  };
+}
+
+export function tscBuild(): Capability {
+  return {
+    addTo(project) {
       project.packageJson.scripts.build = "tsc";
     },
   };
 }
 
-export function forgeTypecheck(tsVersion = "5.9.3"): Capability {
+export function forgeTypecheck(tsVersion = "^5.9.3"): Capability {
   return {
     addTo(project) {
       project.packageJson.devDependencies.typescript = tsVersion;
       project.packageJson.scripts.typecheck = "tsc --noEmit";
-      project.packageJson.scripts.build = "tsc";
+    },
+  };
+}
+
+export function libraryBuild(version = "^0.15.0"): Capability {
+  return {
+    addTo(project) {
+      project.packageJson.scripts.build = "tsdown";
+      project.packageJson.devDependencies.tsdown = version;
+      project.packageJson.main = "./dist/index.js";
+      project.packageJson.types = "./dist/index.d.ts";
+      project.packageJson.exports = {
+        ".": { types: "./dist/index.d.ts", default: "./dist/index.js" },
+      };
+    },
+  };
+}
+
+export function forgeBuild(): Capability {
+  return {
+    addTo(project) {
+      project.packageJson.scripts.build = "tsc -p tsconfig.json";
+    },
+  };
+}
+
+export function cleanBuild(): Capability {
+  return {
+    addTo(project) {
+      project.packageJson.scripts.clean = "rm -rf dist";
     },
   };
 }

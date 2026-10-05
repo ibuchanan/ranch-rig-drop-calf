@@ -1,27 +1,38 @@
 import { type Directory, dag, func, object } from "@dagger.io/dagger";
 import { basename } from "node:path";
 import { fileURLToPath } from "node:url";
-import { PROFILES, type ProjectProfile } from "./profiles.ts";
-import { createBlueprint, renderToDirectory } from "./project.ts";
+import { buildProject, resolveProfile } from "./profiles.ts";
+import { renderToDirectory } from "./project.ts";
 
 @object()
 export class DropCalf {
   @func()
   async files(
-    profile: ProjectProfile = "library",
+    profile: string,
     packageName?: string,
     description = "",
     license = "MIT",
     author = "",
+    withFunctions: string[] = [],
+    withoutFunctions: string[] = [],
+    preset?: string,
   ): Promise<Directory> {
+    resolveProfile(profile, withFunctions, withoutFunctions, preset);
     const name =
       packageName ??
       basename(fileURLToPath(await dag.currentWorkspace().address()));
-    const project = createBlueprint(name, description, license, author);
-    for (const capability of PROFILES[profile] ?? []) {
-      capability.addTo(project);
-    }
-    return renderToDirectory(project);
+    return renderToDirectory(
+      buildProject(
+        profile,
+        name,
+        description,
+        license,
+        author,
+        withFunctions,
+        withoutFunctions,
+        preset,
+      ),
+    );
   }
 
   @func()

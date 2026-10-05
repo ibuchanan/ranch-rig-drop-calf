@@ -5,6 +5,9 @@ export type PackageJson = {
   version: string;
   type: "module";
   private?: boolean;
+  main?: string;
+  types?: string;
+  exports?: Record<string, { types: string; default: string }>;
   scripts: Record<string, string>;
   devDependencies: Record<string, string>;
   dependencies?: Record<string, string>;
@@ -70,9 +73,7 @@ export function createBlueprint(
     name: packageName,
     version: "0.1.0",
     type: "module",
-    scripts: {
-      clean: "rm -rf dist",
-    },
+    scripts: {},
     devDependencies: {},
   };
 
