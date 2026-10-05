@@ -168,6 +168,7 @@ export class DropCalf {
       "tsconfig.json",
       "tsconfig.typecheck.json",
       "tsdown.config.ts",
+      "cliff.toml",
       ".nvmrc",
       ".gitignore",
       ".editorconfig",

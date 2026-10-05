@@ -2,6 +2,7 @@ import type { Capability } from "./capabilities.ts";
 import { TOOL_VERSIONS } from "./versions.ts";
 import { createBlueprint, type ProjectBlueprint } from "./project.ts";
 import { seedOssDocuments } from "./oss.ts";
+import { changelog } from "./changelog.ts";
 import {
   biomeFormatting,
   biomeLinting,
@@ -18,6 +19,7 @@ import {
 
 export const PROFILES: Record<string, Capability[]> = {
   library: [
+    changelog(),
     biomeLinting(),
     biomeFormatting(),
     tscTypecheck(),
@@ -26,6 +28,7 @@ export const PROFILES: Record<string, Capability[]> = {
     cleanBuild(),
   ],
   "forge-app": [
+    changelog(),
     forgeLinting(),
     biomeFormatting(),
     forgeTypecheck(),
@@ -34,6 +37,7 @@ export const PROFILES: Record<string, Capability[]> = {
     cleanBuild(),
   ],
   tool: [
+    changelog(),
     biomeLinting(),
     biomeFormatting(),
     tscTypecheck(),

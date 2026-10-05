@@ -362,6 +362,7 @@ describe("repository sync", () => {
       "CODE_OF_CONDUCT.md",
       "DEVELOPMENT.md",
       "README.md",
+      "cliff.toml",
       "package.json",
       "biome.json",
       "tsconfig.json",

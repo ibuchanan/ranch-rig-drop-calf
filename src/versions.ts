@@ -7,4 +7,5 @@ export const TOOL_VERSIONS = {
   tsdown: "^0.15.0",
   vitest: "^2.1.0",
   promptfoo: "^0.116.0",
+  gitCliff: "^2.13",
 } as const;

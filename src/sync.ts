@@ -125,6 +125,7 @@ export function planSync(
     "DEVELOPMENT.md",
     ".atlassian/OWNER",
     "README.md",
+    "cliff.toml",
   ]) {
     const after = desiredProject.files.get(path);
     if (after !== undefined && !files.has(path))
