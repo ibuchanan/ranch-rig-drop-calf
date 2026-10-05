@@ -144,6 +144,7 @@ export function buildReadme(
 
 ${desc}
 
+<!-- drop-calf:usage start -->
 ## Install
 
 \`\`\`bash
@@ -167,6 +168,7 @@ ${testLines}
 npm run format:check
 npm run format
 \`\`\`
+<!-- drop-calf:usage end -->
 `;
 }
 

@@ -1,9 +1,10 @@
-import { buildProject } from "./profiles.ts";
+import { buildProject, InvalidOptionsError } from "./profiles.ts";
+import { createBlueprint } from "./project.ts";
 
 export type SyncOperation = {
-  path: "package.json";
+  path: string;
   key: string;
-  mode: "structured-merge";
+  mode: "structured-merge" | "line-set" | "section-map" | "managed-region";
   before: string | undefined;
   after: string;
 };
@@ -35,6 +36,7 @@ export class ValidationError extends Error {
 
 export type SyncPlan = {
   profile: string;
+  ignoreSets: string[];
   files: Map<string, string>;
   operations: SyncOperation[];
 };
@@ -42,7 +44,14 @@ export type SyncPlan = {
 export function planSync(
   files: ReadonlyMap<string, string>,
   profile: string,
+  ignoreSets: string[] = ["node", "build", "coverage", "logs", "env", "editor"],
 ): SyncPlan {
+  const allowed = ["node", "build", "coverage", "logs", "env", "editor"];
+  for (const set of ignoreSets)
+    if (!allowed.includes(set))
+      throw new InvalidOptionsError(
+        `Unknown ignore set ${JSON.stringify(set)}; choose ${allowed.join(", ")}.`,
+      );
   const raw = files.get("package.json");
   if (raw === undefined) throw new ValidationError("is missing");
   let current: Record<string, unknown>;
@@ -85,7 +94,143 @@ export function planSync(
         });
     }
   }
-  return { profile, files: new Map(files), operations };
+  const allRules =
+    createBlueprint(current.name, "", "none", "").files.get(".gitignore") ?? "";
+  const groups = allRules.split(/(?=^# )/m).filter(Boolean);
+  const headings: Record<string, string> = {
+    dependencies: "node",
+    "build output": "build",
+    "test coverage": "coverage",
+    logs: "logs",
+    environment: "env",
+    "editor and OS": "editor",
+  };
+  const rules = groups
+    .filter((group) =>
+      ignoreSets.includes(headings[group.split("\n")[0]?.slice(2) ?? ""] ?? ""),
+    )
+    .join("");
+  const existing = files.get(".gitignore") ?? "";
+  const present = new Set(existing.split(/\r?\n/).map((line) => line.trim()));
+  const additions = rules
+    .split("\n")
+    .filter((line) => line && !line.startsWith("#") && !present.has(line));
+  if (additions.length)
+    operations.push({
+      path: ".gitignore",
+      key: "rules",
+      mode: "line-set",
+      before: files.get(".gitignore"),
+      after: `${existing}${existing && !existing.endsWith("\n") ? "\n" : ""}${additions.join("\n")}\n`,
+    });
+  const editorTemplate =
+    createBlueprint(current.name, "", "none", "").files.get(".editorconfig") ??
+    "";
+  const editor = files.get(".editorconfig") ?? "";
+  const mergedEditor = mergeEditorconfig(editor, editorTemplate);
+  if (mergedEditor !== editor)
+    operations.push({
+      path: ".editorconfig",
+      key: "sections",
+      mode: "section-map",
+      before: files.get(".editorconfig"),
+      after: mergedEditor,
+    });
+  const readme = files.get("README.md");
+  if (readme !== undefined) {
+    const start = "<!-- drop-calf:usage start -->";
+    const end = "<!-- drop-calf:usage end -->";
+    const starts = readme.split(start).length - 1;
+    const ends = readme.split(end).length - 1;
+    if (
+      starts !== ends ||
+      starts > 1 ||
+      (starts === 1 && readme.indexOf(end) < readme.indexOf(start))
+    )
+      throw new ParseError(
+        "README.md",
+        "unmatched or duplicate drop-calf:usage markers",
+      );
+    if (starts === 1) {
+      const wanted =
+        createBlueprint(current.name, "", "none", "").files.get("README.md") ??
+        "";
+      const region = wanted.slice(
+        wanted.indexOf(start),
+        wanted.indexOf(end) + end.length,
+      );
+      const after =
+        readme.slice(0, readme.indexOf(start)) +
+        region +
+        readme.slice(readme.indexOf(end) + end.length);
+      if (after !== readme)
+        operations.push({
+          path: "README.md",
+          key: "usage",
+          mode: "managed-region",
+          before: readme,
+          after,
+        });
+    }
+  }
+  return { profile, ignoreSets, files: new Map(files), operations };
+}
+
+function mergeEditorconfig(existing: string, template: string): string {
+  const lines = existing.split(/\r?\n/);
+  const sections = new Map<string, { end: number; keys: Set<string> }>();
+  let section = "";
+  sections.set(section, { end: 0, keys: new Set() });
+  for (const [index, line] of lines.entries()) {
+    const value = line.trim();
+    if (value.startsWith("[")) {
+      if (!/^\[[^\]]+\]$/.test(value))
+        throw new ParseError(
+          ".editorconfig",
+          `invalid section ${JSON.stringify(line)}`,
+        );
+      if (sections.has(value))
+        throw new ParseError(".editorconfig", `duplicate section ${value}`);
+      const previous = sections.get(section);
+      if (previous) previous.end = index;
+      section = value;
+      sections.set(section, { end: lines.length, keys: new Set() });
+    } else if (value && !value.startsWith("#") && !value.startsWith(";")) {
+      const match = /^([^=]+?)\s*=\s*(.*)$/.exec(value);
+      if (!match?.[1]?.trim() || !match[2]?.trim())
+        throw new ParseError(
+          ".editorconfig",
+          `invalid entry ${JSON.stringify(line)}`,
+        );
+      const key = match[1].trim();
+      const keys = sections.get(section)?.keys;
+      if (keys?.has(key))
+        throw new ParseError(".editorconfig", `duplicate ${section} ${key}`);
+      keys?.add(key);
+    }
+  }
+  const additions = new Map<string, string[]>();
+  section = "";
+  for (const line of template.split("\n")) {
+    if (line.startsWith("[")) section = line;
+    else if (line.includes(" = ")) {
+      const key = line.split(" = ")[0] ?? "";
+      if (!sections.get(section)?.keys.has(key)) {
+        const values = additions.get(section) ?? [];
+        values.push(line);
+        additions.set(section, values);
+      }
+    }
+  }
+  if (!additions.size) return existing;
+  const inserted = [...lines];
+  for (const [name, { end }] of [...sections].reverse()) {
+    const values = additions.get(name);
+    if (values) inserted.splice(end, 0, ...values);
+    additions.delete(name);
+  }
+  for (const [name, values] of additions) inserted.push("", name, ...values);
+  return `${inserted.join("\n").replace(/\n*$/, "")}\n`;
 }
 
 export function applySync(plan: SyncPlan): {
@@ -96,7 +241,13 @@ export function applySync(plan: SyncPlan): {
   const raw = files.get("package.json");
   if (raw === undefined) throw new ValidationError("is missing");
   const pkg = JSON.parse(raw);
-  for (const { key, after } of plan.operations) {
+  let packageChanged = false;
+  for (const { path, key, after } of plan.operations) {
+    if (path !== "package.json") {
+      files.set(path, after);
+      continue;
+    }
+    packageChanged = true;
     const dot = key.indexOf(".");
     const section = key.slice(0, dot);
     const name = key.slice(dot + 1);
@@ -105,9 +256,10 @@ export function applySync(plan: SyncPlan): {
   }
   if (plan.operations.length === 0)
     return { files, journal: { outcome: "validated", operations: 0 } };
-  files.set("package.json", `${JSON.stringify(pkg, null, 2)}\n`);
+  if (packageChanged)
+    files.set("package.json", `${JSON.stringify(pkg, null, 2)}\n`);
   try {
-    if (planSync(files, plan.profile).operations.length !== 0)
+    if (planSync(files, plan.profile, plan.ignoreSets).operations.length !== 0)
       throw new Error("owned keys did not converge");
   } catch (error) {
     throw new ValidationError(`did not converge: ${String(error)}`);

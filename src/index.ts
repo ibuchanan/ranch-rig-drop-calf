@@ -37,34 +37,56 @@ export class DropCalf {
   }
 
   @func()
-  async previewSync(directory: Directory, profile: string): Promise<string> {
+  async previewSync(
+    directory: Directory,
+    profile: string,
+    ignoreSets?: string[],
+  ): Promise<string> {
     return JSON.stringify(
-      (await this.syncPlan(directory, profile)).operations,
+      (await this.syncPlan(directory, profile, ignoreSets)).operations,
       null,
       2,
     );
   }
 
-  private async syncPlan(directory: Directory, profile: string) {
+  private async syncPlan(
+    directory: Directory,
+    profile: string,
+    ignoreSets?: string[],
+  ) {
     resolveProfile(profile);
     const files = new Map<string, string>();
-    if (await directory.exists("package.json")) {
-      files.set(
-        "package.json",
-        await directory.file("package.json").contents(),
-      );
+    for (const path of [
+      "package.json",
+      ".gitignore",
+      ".editorconfig",
+      "README.md",
+    ]) {
+      if (await directory.exists(path))
+        files.set(path, await directory.file(path).contents());
     }
-    return planSync(files, profile);
+    return planSync(files, profile, ignoreSets);
   }
 
   @func()
-  async sync(directory: Directory, profile: string): Promise<Directory> {
-    const plan = await this.syncPlan(directory, profile);
+  async sync(
+    directory: Directory,
+    profile: string,
+    ignoreSets?: string[],
+  ): Promise<Directory> {
+    const plan = await this.syncPlan(directory, profile, ignoreSets);
     if (plan.operations.length === 0) return directory;
-    const contents = applySync(plan).files.get("package.json");
-    if (contents === undefined)
-      throw new Error("sync: package.json missing after apply");
-    return directory.withNewFile("package.json", contents);
+    const files = applySync(plan).files;
+    let result = directory;
+    for (const path of new Set(
+      plan.operations.map((operation) => operation.path),
+    )) {
+      const contents = files.get(path);
+      if (contents === undefined)
+        throw new Error(`sync: ${path} missing after apply`);
+      result = result.withNewFile(path, contents);
+    }
+    return result;
   }
 
   @func()
