@@ -19,7 +19,11 @@ import { changelog } from "./changelog.ts";
 import { evals } from "./evals.ts";
 import { gitHooks } from "./git-hooks.ts";
 import { seedOssDocuments } from "./oss.ts";
-import { createBlueprint, type ProjectBlueprint } from "./project.ts";
+import {
+  buildReadme,
+  createBlueprint,
+  type ProjectBlueprint,
+} from "./project.ts";
 import { forgeSecrets } from "./secrets.ts";
 
 export const PROFILES: Record<string, Capability[]> = {
@@ -141,5 +145,9 @@ export function buildProject(
   ) {
     evals().addTo(project);
   }
+  project.files.set(
+    "README.md",
+    buildReadme(packageName, description, project.packageJson.scripts, profile),
+  );
   return project;
 }

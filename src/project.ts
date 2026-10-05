@@ -89,7 +89,7 @@ export function createBlueprint(
     [".nvmrc", `${NODE_MAJOR}\n`],
     [".gitignore", buildGitignore()],
     [".editorconfig", buildEditorconfig()],
-    ["README.md", buildReadme(packageName, description, "none")],
+    ["README.md", buildReadme(packageName, description)],
     [
       "tsconfig.json",
       `${JSON.stringify(
@@ -147,35 +147,41 @@ export function renderToDirectory(project: ProjectBlueprint): Directory {
 export function buildReadme(
   packageName: string,
   description: string,
-  testRunner: string,
+  scripts: Record<string, string> = {},
+  profile?: string,
 ): string {
   const desc = description || "A TypeScript project.";
-  const testLines = testRunner === "none" ? "" : "\n```bash\nnpm test\n```";
+  const forge =
+    profile === "forge-app"
+      ? " Scaffold your Forge manifest and app before deploying."
+      : "";
+  const test = scripts.test
+    ? "\n\n## Test\n\nRun `npm test` (which uses `bun test`). Add tests under `tests/` when ready.\n"
+    : "";
+  const evals = scripts.eval
+    ? "\n## Evaluations\n\nRun `npm run eval` to evaluate the supplied examples, then `npm run view` to inspect results.\n"
+    : "";
   return `# ${packageName}
 
 ${desc}
 
 <!-- drop-calf:usage start -->
-## Install
+## Get started
+
+This is a configuration starter, not a complete application. Add \`src/index.ts\`
+before building.${forge} Install dependencies and use the scripts below after
+adding project source.
 
 \`\`\`bash
 npm install
-\`\`\`
-
-## Build
-
-\`\`\`bash
 npm run build
 \`\`\`
 
-*Compiled output is written to \`dist/\`.*
-
-## Test
-${testLines}
-
+The build writes compiled files to \`dist/\`.${test}${evals}
 ## Lint & format
 
 \`\`\`bash
+npm run lint
 npm run format:check
 npm run format
 \`\`\`

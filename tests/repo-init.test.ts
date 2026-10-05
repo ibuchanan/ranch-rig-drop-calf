@@ -87,7 +87,7 @@ test("files skips a mismatched local Biome and uses the fallback", async () => {
 
 describe("buildReadme", () => {
   test("uses the package name as the title", () => {
-    const readme = buildReadme("my-package", "", "none");
+    const readme = buildReadme("my-package", "");
     expect(readme).toContain("# my-package");
   });
 });

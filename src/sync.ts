@@ -2,7 +2,7 @@ import { isDeepStrictEqual } from "node:util";
 import YAML, { isMap } from "yaml";
 import { EVAL_ASSETS } from "./evals.ts";
 import { buildProject, InvalidOptionsError } from "./profiles.ts";
-import { createBlueprint } from "./project.ts";
+import { buildReadme, createBlueprint } from "./project.ts";
 import { mergeTypeScriptConfig } from "./typescript-config.ts";
 
 export type SyncOperation = {
@@ -417,9 +417,16 @@ export function planSync(
         "unmatched or duplicate drop-calf:usage markers",
       );
     if (starts === 1) {
-      const wanted =
-        createBlueprint(current.name, "", "none", "").files.get("README.md") ??
-        "";
+      const effectiveScripts = {
+        ...((current.scripts ?? {}) as Record<string, string>),
+        ...desired.scripts,
+      };
+      const wanted = buildReadme(
+        current.name,
+        typeof current.description === "string" ? current.description : "",
+        effectiveScripts,
+        profile,
+      );
       const region = wanted.slice(
         wanted.indexOf(start),
         wanted.indexOf(end) + end.length,
