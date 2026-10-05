@@ -1,4 +1,4 @@
-import { dag, type Directory } from "@dagger.io/dagger";
+import { type Directory, dag } from "@dagger.io/dagger";
 
 export type PackageJson = {
   name: string;

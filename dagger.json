@@ -1,6 +1,6 @@
 {
-  "name": "repo-init",
-  "engineVersion": "v0.21.9",
+  "name": "drop-calf",
+  "engineVersion": "v0.21.10",
   "sdk": {
     "source": "typescript"
   }

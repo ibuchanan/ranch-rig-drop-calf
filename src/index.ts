@@ -1,9 +1,9 @@
 import { type Directory, func, object } from "@dagger.io/dagger";
-import { createBlueprint, renderToDirectory } from "./project.ts";
 import { PROFILES, type ProjectProfile } from "./profiles.ts";
+import { createBlueprint, renderToDirectory } from "./project.ts";
 
 @object()
-export class RepoInit {
+export class DropCalf {
   @func()
   files(
     profile: ProjectProfile = "library",

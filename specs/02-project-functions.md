@@ -1,7 +1,8 @@
 # Project-functions specification
 
-High-level specification of the repository capabilities ("functions") this project must
-implement, extracted from the `vendor/init-repo` design (`specs/esa-repo-init-spec.md`).
+High-level specification of the repository capabilities ("functions") Drop Calf
+(`drop-calf`) must implement, extracted from the `vendor/init-repo` design
+(`specs/esa-repo-init-spec.md`).
 
 ## 1. Purpose
 

@@ -35,3 +35,7 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 /sdk
 /**/node_modules/**
 /**/.pnpm-store/**
+
+#####
+# Additional ignores
+.scratch/

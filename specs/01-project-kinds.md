@@ -1,8 +1,9 @@
 # Project kinds specification
 
-Defines the project kinds this project generates and maintains. A project kind is the
-**Profile** concept from [`00-drop-calf-overview.md`](00-drop-calf-overview.md): a named
-composition of capabilities that fills a fixed set of capability slots. The individual
+Defines the project kinds Drop Calf (`drop-calf`) generates and maintains. A
+project kind is the **Profile** concept from
+[`00-drop-calf-overview.md`](00-drop-calf-overview.md): a named composition of
+capabilities that fills a fixed set of capability slots. The individual
 capabilities are specified in [`02-project-functions.md`](02-project-functions.md).
 
 ## 1. Purpose

@@ -1,8 +1,8 @@
-# repo-init Specification
+# Drop Calf specification
 
 ## 1. Purpose
 
-`repo-init` is a Dagger module that bootstraps and maintains software repositories. It treats a generated repository as the convergence of a **project profile** and a set of **capabilities**, rather than as a fixed template.
+`drop-calf` is a Dagger module that bootstraps and maintains software repositories. It treats a generated repository as the convergence of a **project profile** and a set of **capabilities**, rather than as a fixed template.
 
 A human declares intent by choosing a profile (e.g., `library`, `forge-app`, `tool`, `agent-skill`). Each profile assembles the same capability slots, but each slot may be fulfilled by a different implementation. The module generates new projects and can later converge existing projects back to the current profile.
 
@@ -16,7 +16,7 @@ A human declares intent by choosing a profile (e.g., `library`, `forge-app`, `to
 
 ## 3. Non-goals
 
-- Replace project-specific scaffolding tools such as `forge create` or `npm init`. `repo-init` composes on top of them.
+- Replace project-specific scaffolding tools such as `forge create` or `npm init`. `drop-calf` composes on top of them.
 - Track persistent state inside Dagger. State lives in Git and in the repository files themselves.
 - Enforce a single toolchain across all project kinds. Profiles may choose different tools.
 
@@ -84,7 +84,7 @@ Additional profiles may be added without changing existing capability implementa
 |---|---|---|
 | `.gitignore`, `.dockerignore` | Line set | Normalize, union, deduplicate, sort. Preserve comments. |
 | `.editorconfig`, INI files | Section map | Parse into `Map<section, Map<key, value>>`, merge per section, serialize. |
-| `README.md` | Block markers | Wrap generated sections in `<!-- repo-init:<slot> start/end -->` markers; replace only the marked block. |
+| `README.md` | Block markers | Wrap generated sections in `<!-- drop-calf:<slot> start/end -->` markers; replace only the marked block. |
 | `package.json` | Key ownership | Capabilities own specific script and dependency keys; leave unrelated keys alone. |
 | Owned config files (`biome.json`, `tsconfig.json`) | Full ownership | Regenerate entirely; mark as generated if appropriate. |
 | Complex workflows | Full ownership | Replace the whole file; warn that hand edits will be overwritten. |
@@ -107,7 +107,7 @@ A future `sync` Dagger function will:
 3. Render the result back to a `Directory`.
 4. The caller reviews the diff with Git and commits.
 
-This makes `repo-init` a configuration convergence tool, not just a one-time generator.
+This makes `drop-calf` a configuration convergence tool, not just a one-time generator.
 
 ## 11. Example-driven canonicalization
 
