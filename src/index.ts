@@ -2,6 +2,7 @@ import { type Directory, dag, func, object } from "@dagger.io/dagger";
 import { basename } from "node:path";
 import { fileURLToPath } from "node:url";
 import { buildProject, resolveProfile } from "./profiles.ts";
+import { planPreclean, UNWANTED } from "./preclean.ts";
 import { renderToDirectory } from "./project.ts";
 import { applySync, planSync } from "./sync.ts";
 
@@ -34,6 +35,51 @@ export class DropCalf {
         preset,
       ),
     );
+  }
+
+  private async precleanPlan(directory: Directory, packageName: string) {
+    const paths = [
+      "package.json",
+      "manifest.yml",
+      ...buildProject("forge-app", packageName).files.keys(),
+      ...UNWANTED,
+    ];
+    const files = new Map<string, string>();
+    for (const path of new Set(paths)) {
+      if (await directory.exists(path))
+        files.set(path, await directory.file(path).contents());
+      if (path !== "manifest.yml" && (await directory.exists(`${path}.old`)))
+        files.set(`${path}.old`, "");
+    }
+    return planPreclean(files, packageName);
+  }
+
+  @func()
+  async previewPreclean(
+    directory: Directory,
+    packageName: string,
+  ): Promise<string> {
+    return JSON.stringify(
+      (await this.precleanPlan(directory, packageName)).operations,
+      null,
+      2,
+    );
+  }
+
+  @func()
+  async preclean(
+    directory: Directory,
+    packageName: string,
+  ): Promise<Directory> {
+    const plan = await this.precleanPlan(directory, packageName);
+    let result = directory;
+    for (const operation of plan.operations) {
+      if (operation.action === "rename") {
+        result = result.withFile(operation.to, directory.file(operation.path));
+      }
+      result = result.withoutFile(operation.path);
+    }
+    return result;
   }
 
   @func()
