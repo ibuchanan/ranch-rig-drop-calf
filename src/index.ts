@@ -165,6 +165,9 @@ export class DropCalf {
     for (const path of [
       "package.json",
       "biome.json",
+      "tsconfig.json",
+      "tsconfig.typecheck.json",
+      "tsdown.config.ts",
       ".nvmrc",
       ".gitignore",
       ".editorconfig",

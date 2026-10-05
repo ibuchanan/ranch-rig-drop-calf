@@ -1,5 +1,6 @@
 import { buildProject, InvalidOptionsError } from "./profiles.ts";
 import { createBlueprint } from "./project.ts";
+import { mergeTypeScriptConfig } from "./typescript-config.ts";
 
 export type SyncOperation = {
   path: string;
@@ -167,6 +168,31 @@ export function planSync(
         });
     }
   }
+  if (profile === "library") {
+    for (const key of ["main", "types", "exports"] as const) {
+      const after = desired[key];
+      const before = current[key];
+      if (
+        before !== undefined &&
+        JSON.stringify(before) !== JSON.stringify(after)
+      )
+        throw new ConflictError(
+          "publishing",
+          key,
+          before,
+          JSON.stringify(after),
+          "package.json",
+        );
+      if (before === undefined && after !== undefined)
+        operations.push({
+          path: "package.json",
+          key,
+          mode: "structured-merge",
+          before: undefined,
+          after: typeof after === "string" ? after : JSON.stringify(after),
+        });
+    }
+  }
   const biome = desiredProject.files.get("biome.json");
   if (biome !== undefined) {
     const before = files.get("biome.json");
@@ -179,6 +205,43 @@ export function planSync(
         mode: before === undefined ? "create-if-absent" : "structured-merge",
         before,
         after,
+      });
+  }
+  for (const path of ["tsconfig.json", "tsconfig.typecheck.json"] as const) {
+    const template = desiredProject.files.get(path);
+    if (template === undefined) continue;
+    const before = files.get(path);
+    const after =
+      before === undefined
+        ? template
+        : mergeTypeScriptConfig(path, before, template);
+    if (after !== before)
+      operations.push({
+        path,
+        key: "config",
+        mode: before === undefined ? "create-if-absent" : "structured-merge",
+        before,
+        after,
+      });
+  }
+  const tsdown = desiredProject.files.get("tsdown.config.ts");
+  if (tsdown !== undefined) {
+    const before = files.get("tsdown.config.ts");
+    if (before !== undefined && before !== tsdown)
+      throw new ConflictError(
+        "config",
+        "content",
+        before,
+        tsdown,
+        "tsdown.config.ts",
+      );
+    if (before === undefined)
+      operations.push({
+        path: "tsdown.config.ts",
+        key: "config",
+        mode: "create-if-absent",
+        before,
+        after: tsdown,
       });
   }
   const allRules =
@@ -381,6 +444,10 @@ export function applySync(plan: SyncPlan): {
     }
     packageChanged = true;
     const dot = key.indexOf(".");
+    if (dot === -1) {
+      pkg[key] = key === "exports" ? JSON.parse(after) : after;
+      continue;
+    }
     const section = key.slice(0, dot);
     const name = key.slice(dot + 1);
     pkg[section] ??= {};

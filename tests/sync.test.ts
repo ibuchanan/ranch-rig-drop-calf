@@ -364,6 +364,7 @@ describe("repository sync", () => {
       "README.md",
       "package.json",
       "biome.json",
+      "tsconfig.json",
       ".gitignore",
       ".editorconfig",
     ]);

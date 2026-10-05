@@ -227,7 +227,10 @@ describe("profiles", () => {
     expect(packageJson.scripts).toMatchObject({
       lint,
       format: "biome format --write",
-      typecheck: "tsc --noEmit",
+      typecheck:
+        kind === "forge-app"
+          ? "tsc -p tsconfig.typecheck.json --noEmit"
+          : "tsc --noEmit",
       build,
       clean: "rm -rf dist",
     });
