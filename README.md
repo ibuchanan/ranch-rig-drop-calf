@@ -29,13 +29,25 @@ with the [Dagger CLI](https://docs.dagger.io/install/)
 and a working Dagger engine installed:
 
 ```bash
-dagger call files --profile forge-app --package-name example-app entries
+dagger call files --profile forge-app entries
 ```
 
 This lists the generated files, including `package.json`, `README.md`,
 `tsconfig.json`, `.gitignore`, and `.editorconfig`. The command inspects a
 Dagger `Directory`; it does not write the files to your working tree. Run
 `dagger call files --help` for the available arguments and directory operations.
+To use a local Drop Calf checkout from another repository, run:
+
+```bash
+cd /path/to/target-repo
+dagger call --mod /path/to/ranch-rig-drop-calf files --profile forge-app entries
+```
+
+The generated package name defaults to the target directory name; set
+`--package-name` to override it. `entries` only lists files. To write them,
+replace `entries` with `export --path /path/to/preview` and review the output
+before exporting into an existing repository: files with the same names can be
+replaced.
 
 The available profiles are `library` (default), `forge-app`, `tool`, and
 `agent-skill`. Pass `--description`, `--license`, and `--author` to customize

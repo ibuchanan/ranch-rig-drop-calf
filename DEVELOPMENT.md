@@ -69,7 +69,7 @@ starting Dagger. To exercise the Dagger boundary without writing generated
 files locally:
 
 ```bash
-dagger call files --profile library --package-name example-lib entries
+dagger call files --profile library entries
 ```
 
 The CLI loads the module from `dagger.json` and may generate a local `sdk/`
