@@ -213,6 +213,7 @@ export class DropCalf {
       "CONTRIBUTING.md",
       "CODE_OF_CONDUCT.md",
       "DEVELOPMENT.md",
+      "AGENTS.md",
       ".atlassian/OWNER",
     ]) {
       if (await directory.exists(path))

@@ -130,6 +130,7 @@ export function planSync(
     "DEVELOPMENT.md",
     ".atlassian/OWNER",
     "README.md",
+    "AGENTS.md",
     "cliff.toml",
     ...(profile === "forge-app"
       ? ["secretspec.toml", "scripts/forge-vars-from-secretspec.sh"]
@@ -145,6 +146,19 @@ export function planSync(
         after,
       });
   }
+  const guidance = desiredProject.files.get("AGENTS.md");
+  if (
+    guidance !== undefined &&
+    files.has("AGENTS.md") &&
+    files.get("AGENTS.md") !== guidance
+  )
+    throw new ConflictError(
+      "guidance",
+      "content",
+      files.get("AGENTS.md"),
+      guidance,
+      "AGENTS.md",
+    );
   const engines = (current.engines ?? {}) as Record<string, unknown>;
   if (engines.node !== undefined && engines.node !== desired.engines.node)
     throw new ConflictError(

@@ -1,0 +1,84 @@
+import { expect, test } from "bun:test";
+import { buildProject } from "../src/profiles.ts";
+import { applyPreclean, planPreclean } from "../src/preclean.ts";
+import { applySync, ConflictError, planSync } from "../src/sync.ts";
+import { DropCalf } from "../src/index.ts";
+
+test("Forge generation includes authored agent guidance for Forge work", () => {
+  const guidance = buildProject("forge-app", "sample").files.get("AGENTS.md");
+  expect(guidance).toContain("manifest.yml");
+  expect(guidance).toContain("Forge");
+  expect(guidance).toContain("npm run typecheck");
+});
+
+test("non-Forge kinds omit Forge-specific guidance", () => {
+  for (const kind of ["library", "tool", "agent-skill"])
+    expect(buildProject(kind, "sample").files.has("AGENTS.md")).toBe(false);
+});
+
+test("explicit Forge preclean removes scaffold guidance before authored guidance is seeded", () => {
+  const scaffold = new Map([
+    [
+      "manifest.yml",
+      "app:\n  id: ari:cloud:ecosystem::app/example\nmodules:\n  function: []\n",
+    ],
+    [
+      "package.json",
+      '{"name":"example","scripts":{"lint":"eslint ."},"dependencies":{"@forge/api":"^7.0.0"}}',
+    ],
+    ["AGENTS.md", "# Forge starter guidance\n"],
+  ]);
+  const cleaned = applyPreclean(planPreclean(scaffold, "example"));
+  expect(cleaned.has("AGENTS.md")).toBe(false);
+  cleaned.set(
+    "package.json",
+    JSON.stringify(buildProject("forge-app", "example").packageJson),
+  );
+  const result = applySync(planSync(cleaned, "forge-app")).files;
+  expect(result.get("AGENTS.md")).toBe(
+    buildProject("forge-app", "example").files.get("AGENTS.md"),
+  );
+});
+
+test("routine sync seeds missing guidance and repeats without changing it", () => {
+  const original = new Map([["package.json", '{"name":"sample"}']]);
+  const plan = planSync(original, "forge-app");
+  expect(plan.operations).toContainEqual(
+    expect.objectContaining({
+      path: "AGENTS.md",
+      key: "seed",
+      mode: "create-if-absent",
+    }),
+  );
+  const result = applySync(plan).files;
+  expect(result.get("AGENTS.md")).toBe(
+    buildProject("forge-app", "sample").files.get("AGENTS.md"),
+  );
+  expect(planSync(result, "forge-app").operations).toEqual([]);
+});
+
+test("routine sync reports edited guidance as a conflict without changing it", async () => {
+  const original = new Map([
+    ["package.json", '{"name":"sample"}'],
+    ["AGENTS.md", "# Our local instructions\n"],
+  ]);
+  expect(() => planSync(original, "forge-app")).toThrow(ConflictError);
+  expect(() => planSync(original, "forge-app")).toThrow(/AGENTS\.md/);
+  const writes: string[] = [];
+  const directory = {
+    exists: async (path: string) => original.has(path),
+    file: (path: string) => ({ contents: async () => original.get(path) }),
+    withNewFile: (path: string) => {
+      writes.push(path);
+      return directory;
+    },
+  };
+  await expect(
+    new DropCalf().previewSync(directory as never, "forge-app"),
+  ).rejects.toThrow(/AGENTS\.md/);
+  await expect(
+    new DropCalf().sync(directory as never, "forge-app"),
+  ).rejects.toThrow(/AGENTS\.md/);
+  expect(writes).toEqual([]);
+  expect(original.get("AGENTS.md")).toBe("# Our local instructions\n");
+});

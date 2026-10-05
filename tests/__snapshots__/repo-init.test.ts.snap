@@ -58,6 +58,7 @@ exports[`profiles agent-skill contains no test scripts and all kinds keep a comp
     ".editorconfig",
     ".gitignore",
     ".nvmrc",
+    "AGENTS.md",
     "CODE_OF_CONDUCT.md",
     "CONTRIBUTING.md",
     "DEVELOPMENT.md",

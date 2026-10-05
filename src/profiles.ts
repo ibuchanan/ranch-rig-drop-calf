@@ -2,6 +2,7 @@ import type { Capability } from "./capabilities.ts";
 import { TOOL_VERSIONS } from "./versions.ts";
 import { createBlueprint, type ProjectBlueprint } from "./project.ts";
 import { seedOssDocuments } from "./oss.ts";
+import { seedAgentGuidance } from "./aidev.ts";
 import { changelog } from "./changelog.ts";
 import { forgeSecrets } from "./secrets.ts";
 import {
@@ -124,6 +125,7 @@ export function buildProject(
   const project = createBlueprint(packageName, description, license, author);
   for (const capability of capabilities) capability.addTo(project);
   seedOssDocuments(project, author);
+  seedAgentGuidance(project, profile);
   if (
     profile === "forge-app" &&
     (preset === "all" || withFunctions.includes("evals")) &&
