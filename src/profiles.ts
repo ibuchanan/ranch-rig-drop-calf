@@ -1,5 +1,5 @@
 import type { Capability } from "./capabilities.ts";
-import { TOOL_VERSIONS } from "./versions.ts";
+import { evals } from "./evals.ts";
 import { createBlueprint, type ProjectBlueprint } from "./project.ts";
 import { seedOssDocuments } from "./oss.ts";
 import { seedAgentGuidance } from "./aidev.ts";
@@ -131,9 +131,7 @@ export function buildProject(
     (preset === "all" || withFunctions.includes("evals")) &&
     !withoutFunctions.includes("evals")
   ) {
-    project.packageJson.scripts.eval = "promptfoo eval";
-    project.packageJson.scripts.view = "promptfoo view";
-    project.packageJson.devDependencies.promptfoo = TOOL_VERSIONS.promptfoo;
+    evals().addTo(project);
   }
   return project;
 }

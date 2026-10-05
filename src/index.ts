@@ -1,4 +1,5 @@
 import { type Directory, dag, func, object } from "@dagger.io/dagger";
+import { EVAL_ASSETS } from "./evals.ts";
 import { execFileSync } from "node:child_process";
 import {
   accessSync,
@@ -181,9 +182,21 @@ export class DropCalf {
     directory: Directory,
     profile: string,
     ignoreSets?: string[],
+    withFunctions: string[] = [],
+    withoutFunctions: string[] = [],
+    preset?: string,
   ): Promise<string> {
     return JSON.stringify(
-      (await this.syncPlan(directory, profile, ignoreSets)).operations,
+      (
+        await this.syncPlan(
+          directory,
+          profile,
+          ignoreSets,
+          withFunctions,
+          withoutFunctions,
+          preset,
+        )
+      ).operations,
       null,
       2,
     );
@@ -193,8 +206,11 @@ export class DropCalf {
     directory: Directory,
     profile: string,
     ignoreSets?: string[],
+    withFunctions: string[] = [],
+    withoutFunctions: string[] = [],
+    preset?: string,
   ) {
-    resolveProfile(profile);
+    resolveProfile(profile, withFunctions, withoutFunctions, preset);
     const files = new Map<string, string>();
     for (const path of [
       "package.json",
@@ -215,11 +231,19 @@ export class DropCalf {
       "DEVELOPMENT.md",
       "AGENTS.md",
       ".atlassian/OWNER",
+      ...EVAL_ASSETS.keys(),
     ]) {
       if (await directory.exists(path))
         files.set(path, await directory.file(path).contents());
     }
-    return planSync(files, profile, ignoreSets);
+    return planSync(
+      files,
+      profile,
+      ignoreSets,
+      withFunctions,
+      withoutFunctions,
+      preset,
+    );
   }
 
   @func()
@@ -227,8 +251,18 @@ export class DropCalf {
     directory: Directory,
     profile: string,
     ignoreSets?: string[],
+    withFunctions: string[] = [],
+    withoutFunctions: string[] = [],
+    preset?: string,
   ): Promise<Directory> {
-    const plan = await this.syncPlan(directory, profile, ignoreSets);
+    const plan = await this.syncPlan(
+      directory,
+      profile,
+      ignoreSets,
+      withFunctions,
+      withoutFunctions,
+      preset,
+    );
     if (plan.operations.length === 0) return directory;
     const files = applySync(plan).files;
     let result = directory;

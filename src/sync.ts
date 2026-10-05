@@ -1,5 +1,6 @@
 import { buildProject, InvalidOptionsError } from "./profiles.ts";
 import { createBlueprint } from "./project.ts";
+import { EVAL_ASSETS } from "./evals.ts";
 import { mergeTypeScriptConfig } from "./typescript-config.ts";
 
 export type SyncOperation = {
@@ -49,6 +50,9 @@ export class ValidationError extends Error {
 export type SyncPlan = {
   profile: string;
   ignoreSets: string[];
+  withFunctions: string[];
+  withoutFunctions: string[];
+  preset?: string;
   files: Map<string, string>;
   operations: SyncOperation[];
 };
@@ -57,6 +61,9 @@ export function planSync(
   files: ReadonlyMap<string, string>,
   profile: string,
   ignoreSets: string[] = ["node", "build", "coverage", "logs", "env", "editor"],
+  withFunctions: string[] = [],
+  withoutFunctions: string[] = [],
+  preset?: string,
 ): SyncPlan {
   const allowed = ["node", "build", "coverage", "logs", "env", "editor"];
   for (const set of ignoreSets)
@@ -99,6 +106,9 @@ export function planSync(
     typeof current.description === "string" ? current.description : "",
     typeof current.license === "string" ? current.license : "none",
     typeof current.author === "string" ? current.author : "",
+    withFunctions,
+    withoutFunctions,
+    preset,
   );
   const desired = desiredProject.packageJson;
   const operations: SyncOperation[] = [];
@@ -141,6 +151,17 @@ export function planSync(
       operations.push({
         path,
         key: "seed",
+        mode: "create-if-absent",
+        before: undefined,
+        after,
+      });
+  }
+  for (const path of EVAL_ASSETS.keys()) {
+    const after = desiredProject.files.get(path);
+    if (after !== undefined && !files.has(path))
+      operations.push({
+        path,
+        key: "evals",
         mode: "create-if-absent",
         before: undefined,
         after,
@@ -350,7 +371,15 @@ export function planSync(
         });
     }
   }
-  return { profile, ignoreSets, files: new Map(files), operations };
+  return {
+    profile,
+    ignoreSets,
+    withFunctions,
+    withoutFunctions,
+    preset,
+    files: new Map(files),
+    operations,
+  };
 }
 
 function mergeBiomeConfig(existing: string, template: string): string {
@@ -485,7 +514,16 @@ export function applySync(plan: SyncPlan): {
   if (packageChanged)
     files.set("package.json", `${JSON.stringify(pkg, null, 2)}\n`);
   try {
-    if (planSync(files, plan.profile, plan.ignoreSets).operations.length !== 0)
+    if (
+      planSync(
+        files,
+        plan.profile,
+        plan.ignoreSets,
+        plan.withFunctions,
+        plan.withoutFunctions,
+        plan.preset,
+      ).operations.length !== 0
+    )
       throw new Error("owned keys did not converge");
   } catch (error) {
     throw new ValidationError(`did not converge: ${String(error)}`);
