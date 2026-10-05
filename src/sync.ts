@@ -167,6 +167,20 @@ export function planSync(
         });
     }
   }
+  const biome = desiredProject.files.get("biome.json");
+  if (biome !== undefined) {
+    const before = files.get("biome.json");
+    const after =
+      before === undefined ? biome : mergeBiomeConfig(before, biome);
+    if (before !== after)
+      operations.push({
+        path: "biome.json",
+        key: "config",
+        mode: before === undefined ? "create-if-absent" : "structured-merge",
+        before,
+        after,
+      });
+  }
   const allRules =
     createBlueprint(current.name, "", "none", "").files.get(".gitignore") ?? "";
   const groups = allRules.split(/(?=^# )/m).filter(Boolean);
@@ -247,6 +261,51 @@ export function planSync(
     }
   }
   return { profile, ignoreSets, files: new Map(files), operations };
+}
+
+function mergeBiomeConfig(existing: string, template: string): string {
+  let current: Record<string, unknown>;
+  try {
+    current = JSON.parse(existing);
+    if (
+      current === null ||
+      typeof current !== "object" ||
+      Array.isArray(current)
+    )
+      throw new Error("expected an object");
+  } catch (error) {
+    throw new ParseError("biome.json", String(error));
+  }
+  const required = JSON.parse(template) as Record<string, unknown>;
+  let changed = false;
+  const isObject = (value: unknown): value is Record<string, unknown> =>
+    value !== null && typeof value === "object" && !Array.isArray(value);
+  const merge = (
+    target: Record<string, unknown>,
+    source: Record<string, unknown>,
+    prefix = "",
+  ) => {
+    for (const [key, wanted] of Object.entries(source)) {
+      const path = prefix ? `${prefix}.${key}` : key;
+      const found = target[key];
+      if (found === undefined) {
+        target[key] = wanted;
+        changed = true;
+      } else if (isObject(wanted) && isObject(found)) {
+        merge(found, wanted, path);
+      } else if (JSON.stringify(found) !== JSON.stringify(wanted)) {
+        throw new ConflictError(
+          "config",
+          path,
+          found,
+          JSON.stringify(wanted),
+          "biome.json",
+        );
+      }
+    }
+  };
+  merge(current, required);
+  return changed ? `${JSON.stringify(current, null, 2)}\n` : existing;
 }
 
 function mergeEditorconfig(existing: string, template: string): string {

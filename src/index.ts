@@ -1,10 +1,69 @@
 import { type Directory, dag, func, object } from "@dagger.io/dagger";
-import { basename } from "node:path";
+import { execFileSync } from "node:child_process";
+import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { basename, join } from "node:path";
+import { TOOL_VERSIONS } from "./versions.ts";
 import { fileURLToPath } from "node:url";
 import { buildProject, resolveProfile } from "./profiles.ts";
 import { planPreclean, UNWANTED } from "./preclean.ts";
 import { renderToDirectory } from "./project.ts";
 import { applySync, planSync } from "./sync.ts";
+
+function localBiomeConfig(fallback: string): string {
+  const binary = join(process.cwd(), "node_modules", ".bin", "biome");
+  const version = TOOL_VERSIONS.biome.replace(/^[^\d]*/, "");
+  if (!existsSync(binary)) return fallback;
+  let temp: string | undefined;
+  try {
+    const reported = execFileSync(binary, ["--version"], {
+      encoding: "utf8",
+      timeout: 5000,
+    }).trim();
+    if (
+      !new RegExp(`(?:^|\\s)${version.replace(/\./g, "\\.")}$`).test(reported)
+    )
+      return fallback;
+    temp = mkdtempSync(join(process.cwd(), "tmp_rovo_biome_"));
+    execFileSync(binary, ["init"], {
+      cwd: temp,
+      stdio: "ignore",
+      timeout: 5000,
+    });
+    const initialized = JSON.parse(
+      readFileSync(join(temp, "biome.json"), "utf8"),
+    );
+    if (initialized?.$schema !== JSON.parse(fallback).$schema) return fallback;
+    const required = JSON.parse(fallback);
+    const merge = (
+      target: Record<string, unknown>,
+      source: Record<string, unknown>,
+    ) => {
+      for (const [key, value] of Object.entries(source)) {
+        if (
+          value !== null &&
+          typeof value === "object" &&
+          !Array.isArray(value)
+        ) {
+          const current = target[key];
+          target[key] = merge(
+            current !== null &&
+              typeof current === "object" &&
+              !Array.isArray(current)
+              ? (current as Record<string, unknown>)
+              : {},
+            value as Record<string, unknown>,
+          );
+        } else target[key] = value;
+      }
+      return target;
+    };
+    return `${JSON.stringify(merge(initialized, required), null, 2)}\n`;
+  } catch {
+    return fallback;
+  } finally {
+    if (temp) rmSync(temp, { recursive: true, force: true });
+  }
+}
 
 @object()
 export class DropCalf {
@@ -23,18 +82,19 @@ export class DropCalf {
     const name =
       packageName ??
       basename(fileURLToPath(await dag.currentWorkspace().address()));
-    return renderToDirectory(
-      buildProject(
-        profile,
-        name,
-        description,
-        license,
-        author,
-        withFunctions,
-        withoutFunctions,
-        preset,
-      ),
+    const project = buildProject(
+      profile,
+      name,
+      description,
+      license,
+      author,
+      withFunctions,
+      withoutFunctions,
+      preset,
     );
+    const fallback = project.files.get("biome.json");
+    if (fallback) project.files.set("biome.json", localBiomeConfig(fallback));
+    return renderToDirectory(project);
   }
 
   private async precleanPlan(directory: Directory, packageName: string) {
@@ -104,6 +164,7 @@ export class DropCalf {
     const files = new Map<string, string>();
     for (const path of [
       "package.json",
+      "biome.json",
       ".nvmrc",
       ".gitignore",
       ".editorconfig",

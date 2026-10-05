@@ -10,6 +10,80 @@ import {
 } from "../src/sync.ts";
 
 describe("repository sync", () => {
+  test("merges Biome config without losing custom settings and converges", () => {
+    const original = JSON.stringify({
+      $schema: "https://biomejs.dev/schemas/1.9.4/schema.json",
+      formatter: { indentStyle: "space", lineWidth: 100 },
+      linter: {
+        enabled: true,
+        rules: { recommended: true, style: { noVar: "error" } },
+      },
+      javascript: { formatter: { quoteStyle: "single" } },
+    });
+    const files = new Map([
+      ["package.json", '{"name":"sample","scripts":{"deploy":"echo deploy"}}'],
+      ["biome.json", original],
+    ]);
+    const plan = planSync(files, "tool");
+    expect(plan.operations).toContainEqual(
+      expect.objectContaining({
+        path: "biome.json",
+        mode: "structured-merge",
+      }),
+    );
+    const result = applySync(plan).files;
+    const config = JSON.parse(result.get("biome.json") ?? "null");
+    expect(config.javascript.formatter.quoteStyle).toBe("single");
+    expect(config.formatter.lineWidth).toBe(100);
+    expect(config.formatter.indentWidth).toBe(2);
+    expect(config.linter.rules.style.noVar).toBe("error");
+    expect(
+      JSON.parse(result.get("package.json") ?? "null").scripts.deploy,
+    ).toBe("echo deploy");
+    expect(planSync(result, "tool").operations).toEqual([]);
+  });
+
+  test("reports conflicting owned Biome settings and malformed config", () => {
+    const pkg = '{"name":"sample"}';
+    expect(() =>
+      planSync(
+        new Map([
+          ["package.json", pkg],
+          ["biome.json", '{"formatter":{"indentStyle":"tab"}}'],
+        ]),
+        "tool",
+      ),
+    ).toThrow(/biome.json.*formatter.indentStyle/);
+    expect(() =>
+      planSync(
+        new Map([
+          ["package.json", pkg],
+          ["biome.json", "{"],
+        ]),
+        "tool",
+      ),
+    ).toThrow(/biome.json/);
+  });
+  test("directory sync reads Biome settings and refuses conflicts before writing", async () => {
+    const existing = new Map([
+      ["package.json", '{"name":"sample"}'],
+      ["biome.json", '{"formatter":{"indentStyle":"tab"}}'],
+    ]);
+    let writes = 0;
+    const directory = {
+      exists: async (path: string) => existing.has(path),
+      file: (path: string) => ({ contents: async () => existing.get(path) }),
+      withNewFile: () => {
+        writes++;
+        return directory;
+      },
+    } as unknown as Directory;
+    await expect(new DropCalf().sync(directory, "tool")).rejects.toThrow(
+      /biome.json.*formatter.indentStyle/,
+    );
+    expect(writes).toBe(0);
+  });
+
   test("adds Node 24 pins while preserving unrelated package metadata", () => {
     const files = new Map([
       [
@@ -289,6 +363,7 @@ describe("repository sync", () => {
       "DEVELOPMENT.md",
       "README.md",
       "package.json",
+      "biome.json",
       ".gitignore",
       ".editorconfig",
     ]);

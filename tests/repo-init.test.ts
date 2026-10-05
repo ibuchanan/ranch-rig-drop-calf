@@ -1,9 +1,86 @@
-import { describe, expect, test } from "bun:test";
+import { describe, expect, spyOn, test } from "bun:test";
+import { dag, type Directory } from "@dagger.io/dagger";
+import {
+  chmodSync,
+  existsSync,
+  mkdtempSync,
+  mkdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
+import { join } from "node:path";
 import { biomeLinting, forgeLinting } from "../src/capabilities.ts";
 import { DropCalf } from "../src/index.ts";
 import { InvalidOptionsError, buildProject } from "../src/profiles.ts";
 import { PROFILES } from "../src/profiles.ts";
 import { buildReadme, createBlueprint } from "../src/project.ts";
+
+test("files uses matching local Biome init defaults without losing required policy", async () => {
+  const root = process.cwd();
+  const temp = mkdtempSync(join(root, "tmp_rovo_biome_"));
+  const bin = join(temp, "node_modules", ".bin");
+  mkdirSync(bin, { recursive: true });
+  const executable = join(bin, "biome");
+  writeFileSync(
+    executable,
+    '#!/bin/sh\nif [ "$1" = "--version" ]; then echo "Version: 1.9.4"; exit 0; fi\nif [ "$1" = "init" ]; then printf \'{"$schema":"https://biomejs.dev/schemas/1.9.4/schema.json","javascript":{"formatter":{"quoteStyle":"single"}},"formatter":{"indentStyle":"tab"}}\\n\' > biome.json; exit 0; fi\nexit 1\n',
+  );
+  chmodSync(executable, 0o755);
+  const writes = new Map<string, string>();
+  const directory = {
+    withNewFile: (path: string, content: string) => {
+      writes.set(path, content);
+      return directory;
+    },
+  } as unknown as Directory;
+  const stub = spyOn(dag, "directory").mockReturnValue(directory);
+  try {
+    process.chdir(temp);
+    await new DropCalf().files("tool", "sample", "", "none");
+    const config = JSON.parse(writes.get("biome.json") ?? "null");
+    expect(config.javascript.formatter.quoteStyle).toBe("single");
+    expect(config.formatter.indentStyle).toBe("space");
+    expect(readFileSync(executable, "utf8")).toContain("init");
+  } finally {
+    process.chdir(root);
+    stub.mockRestore();
+    rmSync(temp, { recursive: true, force: true });
+  }
+});
+
+test("files skips a mismatched local Biome and uses the fallback", async () => {
+  const root = process.cwd();
+  const temp = mkdtempSync(join(root, "tmp_rovo_biome_"));
+  const bin = join(temp, "node_modules", ".bin");
+  mkdirSync(bin, { recursive: true });
+  const executable = join(bin, "biome");
+  writeFileSync(
+    executable,
+    '#!/bin/sh\nif [ "$1" = "--version" ]; then echo "Version: 2.5.15"; exit 0; fi\necho init > was-initialized\n',
+  );
+  chmodSync(executable, 0o755);
+  const writes = new Map<string, string>();
+  const directory = {
+    withNewFile: (path: string, content: string) => {
+      writes.set(path, content);
+      return directory;
+    },
+  } as unknown as Directory;
+  const stub = spyOn(dag, "directory").mockReturnValue(directory);
+  try {
+    process.chdir(temp);
+    await new DropCalf().files("tool", "sample", "", "none");
+    expect(writes.get("biome.json")).toBe(
+      buildProject("tool", "sample", "", "none").files.get("biome.json"),
+    );
+    expect(existsSync(join(temp, "was-initialized"))).toBe(false);
+  } finally {
+    process.chdir(root);
+    stub.mockRestore();
+    rmSync(temp, { recursive: true, force: true });
+  }
+});
 
 describe("buildReadme", () => {
   test("uses the package name as the title", () => {
@@ -23,6 +100,32 @@ describe("biomeLinting capability", () => {
     );
     expect(project.files.has("biome.json")).toBe(true);
   });
+});
+
+test("generated kinds ship version-compatible Biome config and check scripts", () => {
+  for (const kind of ["library", "forge-app", "tool", "agent-skill"]) {
+    const project = buildProject(kind, "sample", "", "none");
+    const scripts = project.packageJson.scripts;
+    const version = project.packageJson.devDependencies["@biomejs/biome"];
+    const configText = project.files.get("biome.json") ?? "";
+    const config = JSON.parse(configText);
+    expect(configText.endsWith("\n")).toBe(true);
+    expect(scripts.format).toBe("biome format --write");
+    expect(scripts["format:check"]).toBe("biome format");
+    expect(scripts["lint:check"]).toBe("biome lint");
+    expect(scripts["lint:fix"]).toBe("biome lint --write");
+    expect(config.$schema).toBe(
+      `https://biomejs.dev/schemas/${version?.replace(/^[^\d]*/, "")}/schema.json`,
+    );
+  }
+});
+
+test("a requested Biome version determines its schema", () => {
+  const project = createBlueprint("sample", "", "none", "");
+  biomeLinting("^1.9.3").addTo(project);
+  expect(JSON.parse(project.files.get("biome.json") ?? "null").$schema).toBe(
+    "https://biomejs.dev/schemas/1.9.3/schema.json",
+  );
 });
 
 describe("forgeLinting capability", () => {

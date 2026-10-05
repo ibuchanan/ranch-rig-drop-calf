@@ -5,13 +5,15 @@ export type Capability = {
   addTo(project: ProjectBlueprint): void;
 };
 
-export function biomeLinting(version = TOOL_VERSIONS.biome): Capability {
+export function biomeLinting(
+  version: string = TOOL_VERSIONS.biome,
+): Capability {
   return {
     addTo(project) {
       project.packageJson.scripts.lint = "biome lint";
       project.packageJson.scripts["lint:fix"] = "biome lint --write";
       project.packageJson.devDependencies["@biomejs/biome"] = version;
-      project.files.set("biome.json", buildBiomeConfig());
+      project.files.set("biome.json", buildBiomeConfig(version));
     },
   };
 }
@@ -24,15 +26,17 @@ export function forgeLinting(): Capability {
   };
 }
 
-export function biomeFormatting(version = TOOL_VERSIONS.biome): Capability {
+export function biomeFormatting(
+  version: string = TOOL_VERSIONS.biome,
+): Capability {
   return {
     addTo(project) {
       project.packageJson.scripts.format = "biome format --write";
       project.packageJson.scripts["format:check"] = "biome format";
+      project.packageJson.scripts["lint:check"] = "biome lint";
+      project.packageJson.scripts["lint:fix"] = "biome lint --write";
       project.packageJson.devDependencies["@biomejs/biome"] = version;
-      if (!project.files.has("biome.json")) {
-        project.files.set("biome.json", buildBiomeConfig());
-      }
+      project.files.set("biome.json", buildBiomeConfig(version));
     },
   };
 }
@@ -118,10 +122,10 @@ export function noTesting(): Capability {
   };
 }
 
-function buildBiomeConfig(): string {
+function buildBiomeConfig(version: string): string {
   return JSON.stringify(
     {
-      $schema: `https://biomejs.dev/schemas/${TOOL_VERSIONS.biome.replace(/^[^\d]*/, "")}/schema.json`,
+      $schema: `https://biomejs.dev/schemas/${version.replace(/^[^\d]*/, "")}/schema.json`,
       organizeImports: {
         enabled: true,
       },
@@ -143,5 +147,5 @@ function buildBiomeConfig(): string {
     },
     null,
     2,
-  );
+  ).concat("\n");
 }
