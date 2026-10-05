@@ -1,19 +1,22 @@
 import { describe, expect, spyOn, test } from "bun:test";
-import { dag, type Directory } from "@dagger.io/dagger";
 import {
   chmodSync,
   existsSync,
-  mkdtempSync,
   mkdirSync,
+  mkdtempSync,
   readFileSync,
   rmSync,
   writeFileSync,
 } from "node:fs";
 import { join } from "node:path";
+import { type Directory, dag } from "@dagger.io/dagger";
 import { biomeLinting, forgeLinting } from "../src/capabilities.ts";
 import { DropCalf } from "../src/index.ts";
-import { InvalidOptionsError, buildProject } from "../src/profiles.ts";
-import { PROFILES } from "../src/profiles.ts";
+import {
+  buildProject,
+  InvalidOptionsError,
+  PROFILES,
+} from "../src/profiles.ts";
 import { buildReadme, createBlueprint } from "../src/project.ts";
 
 test("files uses matching local Biome init defaults without losing required policy", async () => {
@@ -218,15 +221,20 @@ describe("profiles", () => {
   });
 
   test.each([
-    ["library", "biome lint", "tsdown", "bun test --pass-with-no-tests"],
+    [
+      "library",
+      "lefthook run esa-lint",
+      "tsdown",
+      "bun test --pass-with-no-tests",
+    ],
     [
       "forge-app",
-      "npm run lint:prelint && npm run lint:check && npm run lint:forge",
+      "lefthook run esa-lint",
       "tsc -p tsconfig.json",
       "bun test --pass-with-no-tests",
     ],
-    ["tool", "biome lint", "tsc", "bun test --pass-with-no-tests"],
-    ["agent-skill", "biome lint", "tsc", undefined],
+    ["tool", "lefthook run esa-lint", "tsc", "bun test --pass-with-no-tests"],
+    ["agent-skill", "lefthook run esa-lint", "tsc", undefined],
   ])("%s fills the stable developer slots", (kind, lint, build, testScript) => {
     const { packageJson } = buildProject(kind, "sample");
     expect(packageJson.scripts).toMatchObject({

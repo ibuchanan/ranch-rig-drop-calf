@@ -1,5 +1,3 @@
-import { type Directory, dag, func, object } from "@dagger.io/dagger";
-import { EVAL_ASSETS } from "./evals.ts";
 import { execFileSync } from "node:child_process";
 import {
   accessSync,
@@ -10,12 +8,14 @@ import {
   rmSync,
 } from "node:fs";
 import { basename, join } from "node:path";
-import { TOOL_VERSIONS } from "./versions.ts";
 import { fileURLToPath } from "node:url";
-import { buildProject, resolveProfile } from "./profiles.ts";
+import { type Directory, dag, func, object } from "@dagger.io/dagger";
+import { EVAL_ASSETS } from "./evals.ts";
 import { planPreclean, UNWANTED } from "./preclean.ts";
+import { buildProject, resolveProfile } from "./profiles.ts";
 import { renderToDirectory } from "./project.ts";
 import { applySync, planSync } from "./sync.ts";
+import { TOOL_VERSIONS } from "./versions.ts";
 
 function localBiomeConfig(fallback: string): string {
   const binary = join(process.cwd(), "node_modules", ".bin", "biome");
@@ -215,6 +215,7 @@ export class DropCalf {
     for (const path of [
       "package.json",
       "biome.json",
+      "lefthook.yml",
       "tsconfig.json",
       "tsconfig.typecheck.json",
       "tsdown.config.ts",

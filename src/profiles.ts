@@ -1,25 +1,26 @@
-import type { Capability } from "./capabilities.ts";
-import { evals } from "./evals.ts";
-import { createBlueprint, type ProjectBlueprint } from "./project.ts";
-import { seedOssDocuments } from "./oss.ts";
 import { seedAgentGuidance } from "./aidev.ts";
-import { changelog } from "./changelog.ts";
-import { forgeSecrets } from "./secrets.ts";
+import type { Capability } from "./capabilities.ts";
 import {
   biomeFormatting,
   biomeLinting,
-  bunTesting,
   bundleSize,
+  bunTesting,
   cleanBuild,
+  forgeAhead,
   forgeBuild,
   forgeLinting,
-  forgeAhead,
   forgeTypecheck,
   libraryBuild,
   noTesting,
   tscBuild,
   tscTypecheck,
 } from "./capabilities.ts";
+import { changelog } from "./changelog.ts";
+import { evals } from "./evals.ts";
+import { gitHooks } from "./git-hooks.ts";
+import { seedOssDocuments } from "./oss.ts";
+import { createBlueprint, type ProjectBlueprint } from "./project.ts";
+import { forgeSecrets } from "./secrets.ts";
 
 export const PROFILES: Record<string, Capability[]> = {
   library: [
@@ -31,6 +32,7 @@ export const PROFILES: Record<string, Capability[]> = {
     libraryBuild(),
     bundleSize("Library bundle", "dist/index.js"),
     cleanBuild(),
+    gitHooks(true),
   ],
   "forge-app": [
     changelog(),
@@ -43,6 +45,7 @@ export const PROFILES: Record<string, Capability[]> = {
     forgeBuild(),
     bundleSize("Forge app bundle", "dist/**/*.js"),
     cleanBuild(),
+    gitHooks(true),
   ],
   tool: [
     changelog(),
@@ -52,6 +55,7 @@ export const PROFILES: Record<string, Capability[]> = {
     bunTesting(),
     tscBuild(),
     cleanBuild(),
+    gitHooks(true),
   ],
   "agent-skill": [
     biomeLinting(),
@@ -60,6 +64,7 @@ export const PROFILES: Record<string, Capability[]> = {
     noTesting(),
     tscBuild(),
     cleanBuild(),
+    gitHooks(false),
   ],
 };
 

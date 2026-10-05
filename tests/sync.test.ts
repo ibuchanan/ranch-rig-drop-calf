@@ -293,7 +293,7 @@ describe("repository sync", () => {
       key: "scripts.lint",
       mode: "structured-merge",
       before: undefined,
-      after: "biome lint",
+      after: "lefthook run esa-lint",
     });
     const result = applySync(plan);
     expect(result.files.get("src/index.ts")).toBe(
@@ -303,7 +303,7 @@ describe("repository sync", () => {
       name: "sample",
       version: "2.0.0",
       custom: { keep: true },
-      scripts: { deploy: "echo deploy", lint: "biome lint" },
+      scripts: { deploy: "echo deploy", lint: "lefthook run esa-lint" },
       devDependencies: { custom: "1.0.0" },
     });
     expect(result.journal).toEqual({
@@ -318,9 +318,9 @@ describe("repository sync", () => {
       "tool",
     );
     const lint = plan.operations.find(
-      (operation) => operation.key === "scripts.lint",
+      (operation) => operation.key === "scripts.typecheck",
     );
-    if (!lint) throw new Error("missing planned lint script");
+    if (!lint) throw new Error("missing planned typecheck script");
     lint.after = "wrong command";
     expect(() => applySync(plan)).toThrow(ValidationError);
   });
@@ -364,6 +364,7 @@ describe("repository sync", () => {
       "README.md",
       "cliff.toml",
       "package.json",
+      "lefthook.yml",
       "biome.json",
       "tsconfig.json",
       ".gitignore",
@@ -372,7 +373,7 @@ describe("repository sync", () => {
     const packageWrite = writes.find(([path]) => path === "package.json");
     expect(JSON.parse(packageWrite?.[1] ?? "").scripts).toMatchObject({
       deploy: "echo deploy",
-      lint: "biome lint",
+      lint: "lefthook run esa-lint",
     });
   });
 
@@ -410,7 +411,7 @@ describe("repository sync", () => {
   });
 
   test("Dagger preview exposes the plan and no-op sync preserves the source directory", async () => {
-    const contents = '{"name":"sample","scripts":{"lint":"biome lint"}}\n';
+    const contents = '{"name":"sample","scripts":{}}\n';
     const source = {
       exists: async (path: string) => path === "package.json",
       file: () => ({ contents: async () => contents }),

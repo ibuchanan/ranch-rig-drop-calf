@@ -1,6 +1,8 @@
+import { isDeepStrictEqual } from "node:util";
+import YAML, { isMap } from "yaml";
+import { EVAL_ASSETS } from "./evals.ts";
 import { buildProject, InvalidOptionsError } from "./profiles.ts";
 import { createBlueprint } from "./project.ts";
-import { EVAL_ASSETS } from "./evals.ts";
 import { mergeTypeScriptConfig } from "./typescript-config.ts";
 
 export type SyncOperation = {
@@ -203,6 +205,13 @@ export function planSync(
   ] as const) {
     const values = (current[section] ?? {}) as Record<string, unknown>;
     for (const [key, after] of Object.entries(desired[section] ?? {})) {
+      if (
+        section === "scripts" &&
+        files.has("lefthook.yml") &&
+        (key === "lint" || key === "check") &&
+        Object.hasOwn(values, key)
+      )
+        continue;
       const before = Object.hasOwn(values, key) ? values[key] : undefined;
       if (before !== undefined && before !== after)
         throw new ConflictError(section, key, before, after);
@@ -282,6 +291,22 @@ export function planSync(
           after: typeof after === "string" ? after : JSON.stringify(after),
         });
     }
+  }
+  const hookTemplate = desiredProject.files.get("lefthook.yml");
+  if (hookTemplate !== undefined) {
+    const before = files.get("lefthook.yml");
+    const after =
+      before === undefined
+        ? hookTemplate
+        : mergeHookConfig(before, hookTemplate);
+    if (before !== after)
+      operations.push({
+        path: "lefthook.yml",
+        key: "commands",
+        mode: before === undefined ? "create-if-absent" : "structured-merge",
+        before,
+        after,
+      });
   }
   const biome = desiredProject.files.get("biome.json");
   if (biome !== undefined) {
@@ -524,6 +549,85 @@ function mergeEditorconfig(existing: string, template: string): string {
   }
   for (const [name, values] of additions) inserted.push("", name, ...values);
   return `${inserted.join("\n").replace(/\n*$/, "")}\n`;
+}
+
+function mergeHookConfig(existing: string, template: string): string {
+  const doc = YAML.parseDocument(existing, { uniqueKeys: true });
+  if (doc.errors.length || !isMap(doc.contents))
+    throw new ParseError(
+      "lefthook.yml",
+      doc.errors[0]?.message ?? "expected a YAML mapping",
+    );
+  const desired = YAML.parseDocument(template);
+  let changed = false;
+  for (const group of ["esa-lint", "pre-commit", "pre-push"]) {
+    const wanted = desired.getIn([group, "commands"], true);
+    if (!isMap(wanted)) throw new Error(`invalid hook template: ${group}`);
+    const section = doc.get(group, true);
+    if (
+      section !== undefined &&
+      (!isMap(section) ||
+        (section.has("commands") && !isMap(section.get("commands", true))) ||
+        section.has("scripts") ||
+        section.has("run") ||
+        section.has("runner"))
+    )
+      throw new ConflictError(
+        group,
+        "commands",
+        isMap(section) ? section.toJSON() : section,
+        "named commands map",
+        "lefthook.yml",
+      );
+    if (section === undefined) {
+      doc.set(group, { commands: wanted.toJSON() });
+      changed = true;
+      continue;
+    }
+    if (!section.has("commands")) {
+      section.set("commands", {});
+      changed = true;
+    }
+    const commands = section.get("commands", true);
+    if (!isMap(commands))
+      throw new ConflictError(
+        group,
+        "commands",
+        commands,
+        "named commands map",
+        "lefthook.yml",
+      );
+    for (const item of commands.items) {
+      if (!isMap(item.value))
+        throw new ConflictError(
+          group,
+          String(item.key),
+          item.value,
+          "command mapping",
+          "lefthook.yml",
+        );
+    }
+    for (const item of wanted.items) {
+      const name = String(item.key);
+      const value = (wanted.toJSON() as Record<string, unknown>)[name];
+      if (commands.has(name)) {
+        const current = commands.get(name, true);
+        const actual = isMap(current) ? current.toJSON() : current;
+        if (!isDeepStrictEqual(actual, value))
+          throw new ConflictError(
+            group,
+            name,
+            actual,
+            JSON.stringify(value),
+            "lefthook.yml",
+          );
+      } else {
+        commands.set(name, value);
+        changed = true;
+      }
+    }
+  }
+  return changed ? String(doc) : existing;
 }
 
 export function applySync(plan: SyncPlan): {
