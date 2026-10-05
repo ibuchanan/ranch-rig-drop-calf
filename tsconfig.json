@@ -27,5 +27,6 @@
       "@dagger.io/dagger/telemetry": ["./sdk/telemetry.ts"]
     },
     "experimentalDecorators": true
-  }
+  },
+  "exclude": ["vendor", "node_modules"]
 }

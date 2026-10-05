@@ -57,7 +57,7 @@ dependency. If you need to consult it, initialize it separately with
 ## Development loop
 
 ```bash
-bun test
+bun run test
 bun run typecheck
 bun run lint
 bun run format:check

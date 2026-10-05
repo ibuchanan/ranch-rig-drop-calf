@@ -12,6 +12,6 @@
     "indentStyle": "space"
   },
   "files": {
-    "includes": ["**", "!**/node_modules", "!**/sdk", "!**/dist"]
+    "includes": ["**", "!!vendor", "!**/node_modules", "!**/sdk", "!**/dist"]
   }
 }
