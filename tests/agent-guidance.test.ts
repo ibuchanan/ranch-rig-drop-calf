@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { buildProject } from "../src/profiles.ts";
+import { buildProject, InvalidOptionsError } from "../src/profiles.ts";
 import { applyPreclean, planPreclean } from "../src/preclean.ts";
 import { applySync, ConflictError, planSync } from "../src/sync.ts";
 import { DropCalf } from "../src/index.ts";
@@ -11,6 +11,44 @@ test("Forge generation includes authored agent guidance for Forge work", () => {
   expect(guidance).toContain("manifest.yml");
   expect(guidance).toContain("Forge");
   expect(guidance).toContain("npm run typecheck");
+});
+
+test("excluding aidev prevents Forge guidance generation and sync seeding", () => {
+  const without = ["aidev"];
+  expect(
+    buildProject(
+      "forge-app",
+      "sample",
+      "tester",
+      "",
+      "",
+      [],
+      without,
+    ).files.has("AGENTS.md"),
+  ).toBe(false);
+  const original = new Map([["package.json", '{"name":"sample"}']]);
+  const plan = planSync(
+    original,
+    "forge-app",
+    "tester",
+    undefined,
+    [],
+    without,
+  );
+  expect(
+    plan.operations.some((operation) => operation.path === "AGENTS.md"),
+  ).toBe(false);
+  const result = applySync(plan).files;
+  expect(result.has("AGENTS.md")).toBe(false);
+  expect(
+    planSync(result, "forge-app", "tester", undefined, [], without).operations,
+  ).toEqual([]);
+  expect(() =>
+    buildProject("forge-app", "sample", "tester", "", "", ["aidev"], without),
+  ).toThrow(InvalidOptionsError);
+  expect(() =>
+    buildProject("library", "sample", "tester", "", "", [], without),
+  ).toThrow(InvalidOptionsError);
 });
 
 test("non-Forge kinds omit Forge-specific guidance", () => {

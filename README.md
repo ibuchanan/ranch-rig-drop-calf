@@ -49,7 +49,9 @@ replaced.
 The available profiles are `library`, `forge-app`, `tool`, and `agent-skill`;
 `--profile` is required. On `forge-app`, `--with-functions evals` or
 `--preset all` enables evaluation scripts; `--without-functions evals`
-excludes them from `--preset all`. Core kind slots cannot be removed.
+excludes them from `--preset all`. Use `--without-functions aidev` on
+`files` or `sync` to omit the `AGENTS.md` guidance seed. Core kind slots
+cannot be removed.
 Pass `--description` and `--author` to customize package metadata. OSS output
 uses the pinned [`vendor/oss-templates`](vendor/oss-templates) Bitbucket
 submodule: `LICENSE`, `README.md`, `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`,
@@ -63,6 +65,27 @@ The generated output is a starter configuration, **not a complete runnable
 application**: it does not include source files or install dependencies. Its
 copied README is a placeholder template and must be completed before use.
 Unknown or ambiguous profile names fail before generation.
+
+### Preclean a Forge starter
+
+Before generating or syncing a Forge-created ESLint starter, preview its cleanup
+and apply the changeset from the target repo using a local checkout of this
+module (or replace the local module path with a published ref containing this
+function):
+
+```bash
+cd /path/to/target-repo
+dagger call -m /path/to/drop-calf preview-preclean --directory . --package-name my-app
+dagger call -m /path/to/drop-calf preclean-changes --directory . --package-name my-app export --path .
+```
+
+This backs up conflicting files as `.old` and removes scaffold `AGENTS.md` and
+ESLint configs such as `.eslintrc`; it does not delete unrelated files. Replace
+`my-app` with your package name. The plain `preclean ... export --path .`
+command is **not** equivalent: Dagger's directory export merges by default,
+leaving deleted files on disk. Do not use `--wipe` on an existing repo: it also
+removes unrelated files. If you do not want a new `AGENTS.md` afterward, pass
+`--without-functions aidev` to the subsequent `files` or `sync` call.
 
 ## Contributing
 

@@ -95,9 +95,15 @@ export function resolveProfile(
     );
   }
   for (const name of [...withFunctions, ...withoutFunctions]) {
+    if (
+      name === "aidev" &&
+      !withFunctions.includes(name) &&
+      profile === "forge-app"
+    )
+      continue;
     if (name !== "evals") {
       throw new InvalidOptionsError(
-        `Cannot select optional function ${JSON.stringify(name)}; only evals is optional and kind slots are mandatory.`,
+        `Cannot select optional function ${JSON.stringify(name)}; only evals and --without-functions aidev on forge-app are supported; kind slots are mandatory.`,
       );
     }
     if (profile !== "forge-app") {
@@ -133,7 +139,7 @@ export function buildProject(
   const project = createBlueprint(packageName, description, author);
   for (const capability of capabilities) capability.addTo(project);
   seedOssDocuments(project, owner);
-  seedAgentGuidance(project, profile);
+  if (!withoutFunctions.includes("aidev")) seedAgentGuidance(project, profile);
   if (
     profile === "forge-app" &&
     (preset === "all" || withFunctions.includes("evals")) &&

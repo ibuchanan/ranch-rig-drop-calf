@@ -20,6 +20,7 @@ describe("Forge bootstrap preclean", () => {
       ["README.md", "starter"],
       ["tsconfig.json", "{}"],
       ["AGENTS.md", "starter"],
+      [".eslintrc", "starter config"],
       [".eslint", "starter"],
       ["eslint.config.js", "module.exports = {}"],
       ["src/index.ts", "keep"],
@@ -30,6 +31,7 @@ describe("Forge bootstrap preclean", () => {
       { action: "rename", path: "README.md", to: "README.md.old" },
       { action: "delete", path: "AGENTS.md" },
       { action: "delete", path: ".eslint" },
+      { action: "delete", path: ".eslintrc" },
       { action: "delete", path: "eslint.config.js" },
     ]);
   });
@@ -86,6 +88,7 @@ describe("Forge bootstrap preclean", () => {
       ...scaffold,
       ["README.md", "starter"],
       ["AGENTS.md", "remove"],
+      [".eslintrc", "remove"],
     ]);
     const writes: string[] = [];
     const source = {
@@ -115,7 +118,42 @@ describe("Forge bootstrap preclean", () => {
       "README.md.old",
       "-README.md",
       "-AGENTS.md",
+      "-.eslintrc",
     ]);
+  });
+
+  test("precleanChanges compares the cleaned snapshot to the original for exportable deletions", async () => {
+    const files = new Map([
+      ...scaffold,
+      ["AGENTS.md", "remove"],
+      [".eslintrc", "remove"],
+    ]);
+    const operations: string[] = [];
+    const cleaned = {
+      withFile: (_path: string) => cleaned,
+      withoutFile: (path: string) => {
+        operations.push(path);
+        return cleaned;
+      },
+      changes: (before: unknown) => ({ before, operations }),
+    };
+    const source = {
+      exists: async (path: string) => files.has(path),
+      file: (path: string) => ({ contents: async () => files.get(path) }),
+      withFile: () => cleaned,
+      withoutFile: (path: string) => {
+        operations.push(path);
+        return cleaned;
+      },
+    };
+    const changes = await new DropCalf().precleanChanges(
+      source as never,
+      "example",
+    );
+    expect(changes as unknown).toEqual({
+      before: source,
+      operations: ["package.json", "AGENTS.md", ".eslintrc"],
+    });
   });
 
   test("public preclean refuses a backup collision without any Directory writes", async () => {

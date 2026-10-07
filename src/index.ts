@@ -9,7 +9,13 @@ import {
 } from "node:fs";
 import { basename, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { type Directory, dag, func, object } from "@dagger.io/dagger";
+import {
+  type Changeset,
+  type Directory,
+  dag,
+  func,
+  object,
+} from "@dagger.io/dagger";
 import { EVAL_ASSETS } from "./evals.ts";
 import { OSS_ASSETS } from "./oss.ts";
 import { planPreclean, UNWANTED } from "./preclean.ts";
@@ -176,6 +182,14 @@ export class DropCalf {
       result = result.withoutFile(operation.path);
     }
     return result;
+  }
+
+  @func()
+  async precleanChanges(
+    directory: Directory,
+    packageName: string,
+  ): Promise<Changeset> {
+    return (await this.preclean(directory, packageName)).changes(directory);
   }
 
   @func()
