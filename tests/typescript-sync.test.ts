@@ -20,7 +20,7 @@ test("sync preserves TypeScript comments and unrelated settings while adding req
     ["package.json", packageFile],
     ["tsconfig.json", existing],
   ]);
-  const plan = planSync(files, "forge-app");
+  const plan = planSync(files, "forge-app", "tester");
   expect(plan.operations).toContainEqual(
     expect.objectContaining({
       path: "tsconfig.json",
@@ -50,7 +50,7 @@ test("sync preserves TypeScript comments and unrelated settings while adding req
     extends: "./tsconfig.json",
     compilerOptions: { noUncheckedIndexedAccess: true },
   });
-  expect(planSync(output, "forge-app").operations).toEqual([]);
+  expect(planSync(output, "forge-app", "tester").operations).toEqual([]);
 });
 
 test("sync reports an owned TypeScript option conflict without changing input", () => {
@@ -60,8 +60,8 @@ test("sync reports an owned TypeScript option conflict without changing input", 
     ["package.json", packageFile],
     ["tsconfig.json", original],
   ]);
-  expect(() => planSync(files, "forge-app")).toThrow(ConflictError);
-  expect(() => planSync(files, "forge-app")).toThrow(
+  expect(() => planSync(files, "forge-app", "tester")).toThrow(ConflictError);
+  expect(() => planSync(files, "forge-app", "tester")).toThrow(
     /tsconfig.json.*moduleResolution/,
   );
   expect(files.get("tsconfig.json")).toBe(original);
@@ -74,7 +74,7 @@ test("library sync adds publishing fields and its build config without losing cu
       '{"name":"sample","private":false,"description":"custom"}',
     ],
   ]);
-  const result = applySync(planSync(files, "library")).files;
+  const result = applySync(planSync(files, "library", "tester")).files;
   const pkg = JSON.parse(result.get("package.json") ?? "null");
   expect(pkg).toMatchObject({
     private: false,
@@ -86,7 +86,7 @@ test("library sync adds publishing fields and its build config without losing cu
     },
   });
   expect(result.get("tsdown.config.ts")).toContain('entry: ["src/index.ts"]');
-  expect(planSync(result, "library").operations).toEqual([]);
+  expect(planSync(result, "library", "tester").operations).toEqual([]);
 });
 
 test("library sync surfaces conflicting publishing fields or tsdown config", () => {
@@ -94,6 +94,7 @@ test("library sync surfaces conflicting publishing fields or tsdown config", () 
     planSync(
       new Map([["package.json", '{"name":"sample","main":"./other.js"}']]),
       "library",
+      "tester",
     ),
   ).toThrow(/package.json.*main/);
   expect(() =>
@@ -103,6 +104,7 @@ test("library sync surfaces conflicting publishing fields or tsdown config", () 
         ["tsdown.config.ts", "// custom tsdown config\n"],
       ]),
       "library",
+      "tester",
     ),
   ).toThrow(/tsdown.config.ts/);
 });
@@ -115,6 +117,7 @@ test("sync rejects invalid TypeScript config before any apply", () => {
         ["tsconfig.json", '{"compilerOptions": {'],
       ]),
       "tool",
+      "tester",
     ),
   ).toThrow(ParseError);
 });
@@ -133,8 +136,8 @@ test("Dagger sync reads existing TypeScript config instead of overwriting it", a
       return source;
     },
   } as unknown as Parameters<DropCalf["sync"]>[0];
-  await expect(new DropCalf().sync(source, "forge-app")).rejects.toThrow(
-    /tsconfig.json.*moduleResolution/,
-  );
+  await expect(
+    new DropCalf().sync(source, "forge-app", "tester"),
+  ).rejects.toThrow(/tsconfig.json.*moduleResolution/);
   expect(writes).toBe(0);
 });

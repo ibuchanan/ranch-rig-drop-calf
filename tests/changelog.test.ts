@@ -15,7 +15,7 @@ import { applySync, ConflictError, planSync } from "../src/sync.ts";
 
 test("changelog kinds generate a pinned command and authored release policy", () => {
   for (const kind of ["library", "forge-app", "tool"]) {
-    const project = buildProject(kind, "sample", "", "none");
+    const project = buildProject(kind, "sample", "tester");
     expect(project.packageJson.devDependencies["git-cliff"]).toBe(
       TOOL_VERSIONS.gitCliff,
     );
@@ -27,7 +27,7 @@ test("changelog kinds generate a pinned command and authored release policy", ()
     );
     expect(project.files.get("cliff.toml")).toContain('message = "^feat"');
   }
-  const skill = buildProject("agent-skill", "sample", "", "none");
+  const skill = buildProject("agent-skill", "sample", "tester");
   expect(skill.packageJson.scripts.changelog).toBeUndefined();
   expect(skill.packageJson.devDependencies["git-cliff"]).toBeUndefined();
   expect(skill.files.has("cliff.toml")).toBe(false);
@@ -35,25 +35,25 @@ test("changelog kinds generate a pinned command and authored release policy", ()
 
 test("sync seeds release policy and converges without changing custom policy", () => {
   const files = new Map([["package.json", '{"name":"sample"}']]);
-  const first = applySync(planSync(files, "tool")).files;
+  const first = applySync(planSync(files, "tool", "tester")).files;
   expect(first.get("cliff.toml")).toBe(
-    buildProject("tool", "sample", "", "none").files.get("cliff.toml"),
+    buildProject("tool", "sample", "tester").files.get("cliff.toml"),
   );
-  expect(planSync(first, "tool").operations).toEqual([]);
+  expect(planSync(first, "tool", "tester").operations).toEqual([]);
 
   const custom = "# team's own release policy\n[changelog]\nbody = 'custom'\n";
   const customized = new Map(first);
   customized.set("cliff.toml", custom);
-  expect(planSync(customized, "tool").operations).toEqual([]);
-  expect(applySync(planSync(customized, "tool")).files.get("cliff.toml")).toBe(
-    custom,
-  );
+  expect(planSync(customized, "tool", "tester").operations).toEqual([]);
+  expect(
+    applySync(planSync(customized, "tool", "tester")).files.get("cliff.toml"),
+  ).toBe(custom);
 });
 
 test("sync rejects a conflicting changelog command without mutating files", () => {
   const original = '{"name":"sample","scripts":{"changelog":"release-it"}}';
   const files = new Map([["package.json", original]]);
-  expect(() => planSync(files, "tool")).toThrow(ConflictError);
+  expect(() => planSync(files, "tool", "tester")).toThrow(ConflictError);
   expect(files.get("package.json")).toBe(original);
   expect(files.has("cliff.toml")).toBe(false);
 });
@@ -67,7 +67,7 @@ test("validation explicitly skips without config, history, or local tool", () =>
     });
     writeFileSync(
       join(root, "cliff.toml"),
-      buildProject("tool", "sample").files.get("cliff.toml") ?? "",
+      buildProject("tool", "sample", "tester").files.get("cliff.toml") ?? "",
     );
     expect(validateChangelog(root)).toEqual({
       status: "skipped",
@@ -105,7 +105,7 @@ test("validation invokes the local git-cliff against history and reports failure
     mkdirSync(join(root, "node_modules", ".bin"), { recursive: true });
     writeFileSync(
       join(root, "cliff.toml"),
-      buildProject("tool", "sample").files.get("cliff.toml") ?? "",
+      buildProject("tool", "sample", "tester").files.get("cliff.toml") ?? "",
     );
     execFileSync("git", ["init", "-q", root]);
     writeFileSync(join(root, "README.md"), "sample\n");

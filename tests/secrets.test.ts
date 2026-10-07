@@ -29,7 +29,7 @@ test("rendered Forge helper is executable", () => {
   } as unknown as Directory;
   const stub = spyOn(dag, "directory").mockReturnValue(directory);
   try {
-    renderToDirectory(buildProject("forge-app", "sample", "", "none"));
+    renderToDirectory(buildProject("forge-app", "sample", "tester"));
     expect(modes.get("scripts/forge-vars-from-secretspec.sh")).toBe(0o755);
   } finally {
     stub.mockRestore();
@@ -65,7 +65,7 @@ test("Forge sync seeds missing secrets files and preserves customized files and 
   const files = new Map([
     ["package.json", '{"name":"sample-app","scripts":{"custom":"echo safe"}}'],
   ]);
-  const first = applySync(planSync(files, "forge-app")).files;
+  const first = applySync(planSync(files, "forge-app", "tester")).files;
   expect(first.get("secretspec.toml")).toContain('name = "sample-app"');
   expect(first.get("scripts/forge-vars-from-secretspec.sh")).toContain(
     "forge variables set",
@@ -73,17 +73,19 @@ test("Forge sync seeds missing secrets files and preserves customized files and 
   expect(JSON.parse(first.get("package.json") ?? "").scripts.custom).toBe(
     "echo safe",
   );
-  expect(planSync(first, "forge-app").operations).toEqual([]);
+  expect(planSync(first, "forge-app", "tester").operations).toEqual([]);
   first.set("secretspec.toml", "# custom config\n");
   first.set("scripts/forge-vars-from-secretspec.sh", "#!/bin/sh\n# custom\n");
-  expect(planSync(first, "forge-app").operations).toEqual([]);
+  expect(planSync(first, "forge-app", "tester").operations).toEqual([]);
   expect(first.get("secretspec.toml")).toBe("# custom config\n");
   const conflicting = new Map(files);
   conflicting.set(
     "package.json",
     '{"name":"sample-app","scripts":{"forge:deploy":"custom deploy"}}',
   );
-  expect(() => planSync(conflicting, "forge-app")).toThrow(ConflictError);
+  expect(() => planSync(conflicting, "forge-app", "tester")).toThrow(
+    ConflictError,
+  );
   expect(conflicting.size).toBe(1);
 });
 
@@ -92,7 +94,7 @@ test("generated helper pushes only configured non-FORGE variables and hides valu
   try {
     mkdirSync(join(root, "scripts"));
     mkdirSync(join(root, "bin"));
-    const project = buildProject("forge-app", "sample", "", "none");
+    const project = buildProject("forge-app", "sample", "tester");
     writeFileSync(
       join(root, "secretspec.toml"),
       `${project.files.get("secretspec.toml")}\nAPI_SECRET = { required = true }\nPUBLIC_KEY = { required = true }\n[profiles.other]\nUNLISTED = { required = true }\n`,
@@ -153,7 +155,7 @@ test("generated helper pushes only configured non-FORGE variables and hides valu
 });
 
 test("Forge generation configures project-specific Secretspec and delayed Forge argument expansion", () => {
-  const project = buildProject("forge-app", "sample-app", "", "none");
+  const project = buildProject("forge-app", "sample-app", "tester");
   expect(project.files.get("secretspec.toml")).toContain('name = "sample-app"');
   for (const name of ["FORGE_SITE", "FORGE_PRODUCT", "FORGE_ENVIRONMENT"])
     expect(project.files.get("secretspec.toml")).toContain(name);

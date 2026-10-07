@@ -7,3 +7,6 @@
 [submodule "vendor/forge-bootstrap"]
 	path = vendor/forge-bootstrap
 	url = https://github.com/ibuchanan/forge-bootstrap.git
+[submodule "vendor/oss-templates"]
+	path = vendor/oss-templates
+	url = https://ian_buchanan@bitbucket.org/atlassian/oss-templates.git

@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import type { Directory } from "@dagger.io/dagger";
 import { DropCalf } from "../src/index.ts";
+import { buildProject } from "../src/profiles.ts";
 import {
   applySync,
   ConflictError,
@@ -24,7 +25,7 @@ describe("repository sync", () => {
       ["package.json", '{"name":"sample","scripts":{"deploy":"echo deploy"}}'],
       ["biome.json", original],
     ]);
-    const plan = planSync(files, "tool");
+    const plan = planSync(files, "tool", "tester");
     expect(plan.operations).toContainEqual(
       expect.objectContaining({
         path: "biome.json",
@@ -40,7 +41,7 @@ describe("repository sync", () => {
     expect(
       JSON.parse(result.get("package.json") ?? "null").scripts.deploy,
     ).toBe("echo deploy");
-    expect(planSync(result, "tool").operations).toEqual([]);
+    expect(planSync(result, "tool", "tester").operations).toEqual([]);
   });
 
   test("reports conflicting owned Biome settings and malformed config", () => {
@@ -52,6 +53,7 @@ describe("repository sync", () => {
           ["biome.json", '{"formatter":{"indentStyle":"tab"}}'],
         ]),
         "tool",
+        "tester",
       ),
     ).toThrow(/biome.json.*formatter.indentStyle/);
     expect(() =>
@@ -61,6 +63,7 @@ describe("repository sync", () => {
           ["biome.json", "{"],
         ]),
         "tool",
+        "tester",
       ),
     ).toThrow(/biome.json/);
   });
@@ -78,9 +81,9 @@ describe("repository sync", () => {
         return directory;
       },
     } as unknown as Directory;
-    await expect(new DropCalf().sync(directory, "tool")).rejects.toThrow(
-      /biome.json.*formatter.indentStyle/,
-    );
+    await expect(
+      new DropCalf().sync(directory, "tool", "tester"),
+    ).rejects.toThrow(/biome.json.*formatter.indentStyle/);
     expect(writes).toBe(0);
   });
 
@@ -95,7 +98,7 @@ describe("repository sync", () => {
         }),
       ],
     ]);
-    const plan = planSync(files, "tool");
+    const plan = planSync(files, "tool", "tester");
     expect(plan.operations).toContainEqual({
       path: ".nvmrc",
       key: "node",
@@ -116,7 +119,7 @@ describe("repository sync", () => {
       engines: { bun: ">=1", node: "24.x" },
       custom: { keep: true },
     });
-    expect(planSync(result, "tool").operations).toEqual([]);
+    expect(planSync(result, "tool", "tester").operations).toEqual([]);
   });
 
   test("rejects incompatible Node pins without changing the input", () => {
@@ -128,17 +131,31 @@ describe("repository sync", () => {
         ["package.json", '{"name":"sample"}'],
       ]);
       files.set(path, content);
-      expect(() => planSync(files, "tool")).toThrow(ConflictError);
+      expect(() => planSync(files, "tool", "tester")).toThrow(ConflictError);
       expect(files.get(path)).toBe(content);
       expect(files.size).toBe(path === ".nvmrc" ? 2 : 1);
     }
   });
 
+  test("rejects a conflicting package license before copying OSS files", () => {
+    const original = '{"name":"sample","license":"MIT"}';
+    const files = new Map([["package.json", original]]);
+    expect(() => planSync(files, "tool", "tester")).toThrow(ConflictError);
+    expect(() => planSync(files, "tool", "tester")).toThrow(
+      /license.*MIT.*Apache-2.0/,
+    );
+    expect(files).toEqual(new Map([["package.json", original]]));
+  });
+
   test("matching Node pins are no-ops", () => {
     const first = applySync(
-      planSync(new Map([["package.json", '{"name":"sample"}']]), "tool"),
+      planSync(
+        new Map([["package.json", '{"name":"sample"}']]),
+        "tool",
+        "tester",
+      ),
     ).files;
-    const plan = planSync(first, "tool");
+    const plan = planSync(first, "tool", "tester");
     expect(plan.operations).toEqual([]);
   });
 
@@ -146,13 +163,14 @@ describe("repository sync", () => {
     const files = new Map([
       [
         "package.json",
-        '{"name":"sample","license":"MIT","author":"Maintainer"}',
+        '{"name":"sample","license":"Apache-2.0","author":"Maintainer"}',
       ],
       ["CONTRIBUTING.md", "# Our contribution rules\n"],
       ["LICENSE", "Our existing license terms\n"],
       ["README.md", "# Our own README\n"],
+      [".atlassian/OWNER", "existing-owner\n"],
     ]);
-    const plan = planSync(files, "tool");
+    const plan = planSync(files, "tool", "tester");
     expect(plan.operations).toContainEqual(
       expect.objectContaining({
         path: "DEVELOPMENT.md",
@@ -175,13 +193,22 @@ describe("repository sync", () => {
     const withoutReadme = planSync(
       new Map([["package.json", '{"name":"sample"}']]),
       "tool",
+      "tester",
     );
     expect(withoutReadme.operations).toContainEqual(
       expect.objectContaining({ path: "README.md", mode: "create-if-absent" }),
     );
-    expect(result.get("CODE_OF_CONDUCT.md")).toContain("harassment-free");
-    expect(result.get(".atlassian/OWNER")).toBe("Maintainer\n");
-    expect(planSync(result, "tool").operations).toEqual([]);
+    expect(result.get("CODE_OF_CONDUCT.md")).toBe(
+      buildProject("tool", "sample", "tester").files.get("CODE_OF_CONDUCT.md"),
+    );
+    expect(result.get(".atlassian/OWNER")).toBe("existing-owner\n");
+    expect(withoutReadme.operations).toContainEqual(
+      expect.objectContaining({ path: ".atlassian/OWNER", after: "tester" }),
+    );
+    expect(result.get("SECURITY.md")).toBe(
+      buildProject("tool", "sample", "tester").files.get("SECURITY.md"),
+    );
+    expect(planSync(result, "tool", "tester").operations).toEqual([]);
   });
   test("adds missing ignore rules without disturbing custom entries or comments", () => {
     const original = "# mine\ncustom-cache\nnode_modules\n# keep\n";
@@ -189,7 +216,7 @@ describe("repository sync", () => {
       ["package.json", '{"name":"sample"}'],
       [".gitignore", original],
     ]);
-    const plan = planSync(files, "tool");
+    const plan = planSync(files, "tool", "tester");
     expect(plan.operations).toContainEqual(
       expect.objectContaining({ path: ".gitignore", mode: "line-set" }),
     );
@@ -199,15 +226,17 @@ describe("repository sync", () => {
     expect(ignore).toStartWith(original);
     expect(ignore.match(/^node_modules$/gm)).toHaveLength(1);
     expect(ignore).toContain("dist\n");
-    expect(planSync(result, "tool").operations).toEqual([]);
+    expect(planSync(result, "tool", "tester").operations).toEqual([]);
   });
 
   test("selects named ignore sets and rejects unknown names before applying", () => {
     const files = new Map([["package.json", '{"name":"sample"}']]);
-    const result = applySync(planSync(files, "tool", ["node"])).files;
+    const result = applySync(planSync(files, "tool", "tester", ["node"])).files;
     expect(result.get(".gitignore")).toContain("node_modules");
     expect(result.get(".gitignore")).not.toContain(".DS_Store");
-    expect(() => planSync(files, "tool", ["unknown"])).toThrow(/unknown/);
+    expect(() => planSync(files, "tool", "tester", ["unknown"])).toThrow(
+      /unknown/,
+    );
     expect(files.has(".gitignore")).toBe(false);
   });
 
@@ -218,7 +247,7 @@ describe("repository sync", () => {
       ["package.json", '{"name":"sample"}'],
       [".editorconfig", original],
     ]);
-    const plan = planSync(files, "tool");
+    const plan = planSync(files, "tool", "tester");
     expect(plan.operations).toContainEqual(
       expect.objectContaining({ path: ".editorconfig", mode: "section-map" }),
     );
@@ -229,7 +258,7 @@ describe("repository sync", () => {
     expect(text).toContain("[*.ts]\nindent_size = 8");
     expect(text).toContain("charset = utf-8");
     expect(text).toContain("[*.md]");
-    expect(planSync(result, "tool").operations).toEqual([]);
+    expect(planSync(result, "tool", "tester").operations).toEqual([]);
   });
 
   test("updates only a marked README region and preserves surrounding prose", () => {
@@ -239,7 +268,7 @@ describe("repository sync", () => {
       ["package.json", '{"name":"sample"}'],
       ["README.md", original],
     ]);
-    const plan = planSync(files, "tool");
+    const plan = planSync(files, "tool", "tester");
     expect(plan.operations).toContainEqual(
       expect.objectContaining({ path: "README.md", mode: "managed-region" }),
     );
@@ -249,7 +278,7 @@ describe("repository sync", () => {
     expect(readme).toContain("My outro.\n");
     expect(readme).not.toContain("old instructions");
     expect(readme).toContain("npm run build");
-    expect(planSync(result, "tool").operations).toEqual([]);
+    expect(planSync(result, "tool", "tester").operations).toEqual([]);
     expect(
       planSync(
         new Map([
@@ -257,6 +286,7 @@ describe("repository sync", () => {
           ["README.md", "# Unmarked custom docs\n"],
         ]),
         "tool",
+        "tester",
       ).operations.some((op) => op.path === "README.md"),
     ).toBe(false);
   });
@@ -266,7 +296,7 @@ describe("repository sync", () => {
       ["package.json", '{"name":"sample"}'],
       ["README.md", "<!-- drop-calf:usage start -->\nunfinished"],
     ]);
-    expect(() => planSync(files, "tool")).toThrow(ParseError);
+    expect(() => planSync(files, "tool", "tester")).toThrow(ParseError);
     expect(files.get("README.md")).toContain("unfinished");
     expect(() =>
       planSync(
@@ -275,6 +305,7 @@ describe("repository sync", () => {
           [".editorconfig", "[*]\nindent_size = 2\nindent_size = 4\n"],
         ]),
         "tool",
+        "tester",
       ),
     ).toThrow(ParseError);
   });
@@ -287,7 +318,7 @@ describe("repository sync", () => {
       ],
       ["src/index.ts", "export const answer = 42;\n"],
     ]);
-    const plan = planSync(existing, "tool");
+    const plan = planSync(existing, "tool", "tester");
     expect(plan.operations).toContainEqual({
       path: "package.json",
       key: "scripts.lint",
@@ -316,6 +347,7 @@ describe("repository sync", () => {
     const plan = planSync(
       new Map([["package.json", '{"name":"sample"}']]),
       "tool",
+      "tester",
     );
     const lint = plan.operations.find(
       (operation) => operation.key === "scripts.typecheck",
@@ -327,9 +359,13 @@ describe("repository sync", () => {
 
   test("repeated sync has no semantic changes", () => {
     const first = applySync(
-      planSync(new Map([["package.json", '{"name":"sample"}\n']]), "library"),
+      planSync(
+        new Map([["package.json", '{"name":"sample"}\n']]),
+        "library",
+        "tester",
+      ),
     );
-    const second = planSync(first.files, "library");
+    const second = planSync(first.files, "library", "tester");
     expect(second.operations).toEqual([]);
     expect(applySync(second).files).toEqual(first.files);
   });
@@ -338,7 +374,7 @@ describe("repository sync", () => {
     const original =
       '{"name":"sample","scripts":{"lint":"eslint .","deploy":"echo deploy"}}\n';
     const files = new Map([["package.json", original]]);
-    expect(() => planSync(files, "tool")).toThrow(ConflictError);
+    expect(() => planSync(files, "tool", "tester")).toThrow(ConflictError);
     expect(files.get("package.json")).toBe(original);
     expect([...files.keys()]).toEqual(["package.json"]);
   });
@@ -354,16 +390,19 @@ describe("repository sync", () => {
         return source;
       },
     } as unknown as Directory;
-    const output = await new DropCalf().sync(source, "tool");
+    const output = await new DropCalf().sync(source, "tool", "tester");
     expect(output).toBe(source);
     expect(writes.map(([path]) => path)).toEqual([
-      ".nvmrc",
-      "CONTRIBUTING.md",
-      "CODE_OF_CONDUCT.md",
-      "DEVELOPMENT.md",
-      "README.md",
-      "cliff.toml",
       "package.json",
+      ".nvmrc",
+      "LICENSE",
+      "CODE_OF_CONDUCT.md",
+      "CONTRIBUTING.md",
+      "README.md",
+      "SECURITY.md",
+      ".atlassian/OWNER",
+      "DEVELOPMENT.md",
+      "cliff.toml",
       "lefthook.yml",
       "biome.json",
       "tsconfig.json",
@@ -395,11 +434,11 @@ describe("repository sync", () => {
     } as unknown as Directory;
     const calf = new DropCalf();
     expect(
-      JSON.parse(await calf.previewSync(directory, "tool")).map(
+      JSON.parse(await calf.previewSync(directory, "tool", "tester")).map(
         (op: { path: string }) => op.path,
       ),
     ).not.toContain("README.md");
-    await calf.sync(directory, "tool");
+    await calf.sync(directory, "tool", "tester");
     expect(writes.get(".gitignore")).toStartWith(
       original.get(".gitignore") ?? "",
     );
@@ -420,9 +459,11 @@ describe("repository sync", () => {
       },
     } as unknown as Directory;
     const calf = new DropCalf();
-    const preview = JSON.parse(await calf.previewSync(source, "tool"));
+    const preview = JSON.parse(
+      await calf.previewSync(source, "tool", "tester"),
+    );
     const selected = JSON.parse(
-      await calf.previewSync(source, "tool", ["node"]),
+      await calf.previewSync(source, "tool", "tester", ["node"]),
     );
     expect(
       selected.find((op: { path: string }) => op.path === ".gitignore")?.after,
@@ -434,20 +475,22 @@ describe("repository sync", () => {
       after: "tsc --noEmit",
     });
     const converged = applySync(
-      planSync(new Map([["package.json", contents]]), "tool"),
+      planSync(new Map([["package.json", contents]]), "tool", "tester"),
     ).files;
     const unchanged = {
       ...source,
       exists: async (path: string) => converged.has(path),
       file: (path: string) => ({ contents: async () => converged.get(path) }),
     } as unknown as Directory;
-    expect(await calf.sync(unchanged, "tool")).toBe(unchanged);
+    expect(await calf.sync(unchanged, "tool", "tester")).toBe(unchanged);
   });
 
   test("refuses a missing package or invalid metadata before a directory can be produced", () => {
-    expect(() => planSync(new Map(), "tool")).toThrow(ValidationError);
+    expect(() => planSync(new Map(), "tool", "tester")).toThrow(
+      ValidationError,
+    );
     expect(() =>
-      planSync(new Map([["package.json", '{"scripts":{}}']]), "tool"),
+      planSync(new Map([["package.json", '{"scripts":{}}']]), "tool", "tester"),
     ).toThrow(/package.json.*name/);
   });
 
@@ -463,7 +506,7 @@ describe("repository sync", () => {
         return source;
       },
     } as unknown as Directory;
-    await expect(new DropCalf().sync(source, "tool")).rejects.toThrow(
+    await expect(new DropCalf().sync(source, "tool", "tester")).rejects.toThrow(
       /devDependencies.typescript/,
     );
     expect(wrote).toBe(false);
@@ -471,16 +514,17 @@ describe("repository sync", () => {
       planSync(
         new Map([["package.json", '{"name":"sample","scripts":[]}']]),
         "tool",
+        "tester",
       ),
     ).toThrow(ParseError);
   });
 
   test("reports malformed package.json as a contextual parse error", () => {
-    expect(() => planSync(new Map([["package.json", "{"]]), "tool")).toThrow(
-      ParseError,
-    );
-    expect(() => planSync(new Map([["package.json", "{"]]), "tool")).toThrow(
-      /package.json/,
-    );
+    expect(() =>
+      planSync(new Map([["package.json", "{"]]), "tool", "tester"),
+    ).toThrow(ParseError);
+    expect(() =>
+      planSync(new Map([["package.json", "{"]]), "tool", "tester"),
+    ).toThrow(/package.json/);
   });
 });

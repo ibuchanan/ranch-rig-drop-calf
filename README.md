@@ -24,24 +24,21 @@ are not implemented.
 
 ## Try it
 
-From this repository,
+From a target repository,
 with the [Dagger CLI](https://docs.dagger.io/install/)
-and a working Dagger engine installed:
-
-```bash
-dagger call files --profile forge-app entries
-```
-
-This lists the generated files, including `package.json`, `README.md`,
-`tsconfig.json`, `.gitignore`, and `.editorconfig`. The command inspects a
-Dagger `Directory`; it does not write the files to your working tree. Run
-`dagger call files --help` for the available arguments and directory operations.
-To use a local Drop Calf checkout from another repository, run:
+and a working Dagger engine installed, call the hosted module:
 
 ```bash
 cd /path/to/target-repo
-dagger call --mod /path/to/ranch-rig-drop-calf files --profile forge-app entries
+dagger call -m github.com/ibuchanan/ranch-rig-drop-calf files --profile forge-app --owner your-staff-id entries
 ```
+
+Dagger fetches the module from GitHub, so you do not need a local checkout of
+Drop Calf. This lists the generated files, including `package.json`, `README.md`,
+`tsconfig.json`, `.gitignore`, and `.editorconfig`. The command inspects a
+Dagger `Directory`; it does not write the files to your working tree. Run
+`dagger call -m github.com/ibuchanan/ranch-rig-drop-calf files --help` for the
+available arguments and directory operations.
 
 The generated package name defaults to the target directory name; set
 `--package-name` to override it. `entries` only lists files. To write them,
@@ -53,15 +50,19 @@ The available profiles are `library`, `forge-app`, `tool`, and `agent-skill`;
 `--profile` is required. On `forge-app`, `--with-functions evals` or
 `--preset all` enables evaluation scripts; `--without-functions evals`
 excludes them from `--preset all`. Core kind slots cannot be removed.
-Pass `--description`, `--license`, and `--author` to customize metadata.
-The default license is MIT; `--license none` omits the license field and file.
-MIT and ISC produce a `LICENSE` file; other license values only populate
-package metadata.
+Pass `--description` and `--author` to customize package metadata. OSS output
+uses the pinned [`vendor/oss-templates`](vendor/oss-templates) Bitbucket
+submodule: `LICENSE`, `README.md`, `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`,
+`SECURITY.md`, and `.atlassian/OWNER` are copied from that source. Pass your
+Atlassian staff ID via required `--owner`: it replaces the OWNER
+placeholder. The project name replaces `[Project name]` in README and
+CONTRIBUTING; the current year replaces `[YYYY]` in LICENSE. The license is
+fixed to Apache-2.0. Review remaining template guidance before publishing.
 
 The generated output is a starter configuration, **not a complete runnable
 application**: it does not include source files or install dependencies. Its
-generated README contains generic build instructions and should be reviewed
-before use. Unknown or ambiguous profile names fail before generation.
+copied README is a placeholder template and must be completed before use.
+Unknown or ambiguous profile names fail before generation.
 
 ## Contributing
 
@@ -72,5 +73,4 @@ module.
 
 ## License
 
-This repository is licensed under the [Apache License 2.0](LICENSE). Generated
-projects use their selected license independently.
+This repository and generated OSS projects use [Apache License 2.0](LICENSE).

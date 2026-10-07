@@ -12,14 +12,14 @@ const suitePaths = [
 ];
 
 test("Forge evals selection and all preset generate the same complete starter suite", () => {
-  const selected = buildProject("forge-app", "sample", "", "none", "", [
+  const selected = buildProject("forge-app", "sample", "tester", "", "", [
     "evals",
   ]);
   const all = buildProject(
     "forge-app",
     "sample",
+    "tester",
     "",
-    "none",
     "",
     [],
     [],
@@ -43,12 +43,12 @@ test("Forge evals selection and all preset generate the same complete starter su
     "file://prompts/agent-instructions.md",
   );
 
-  const ordinary = buildProject("forge-app", "sample", "", "none");
+  const ordinary = buildProject("forge-app", "sample", "tester");
   const excluded = buildProject(
     "forge-app",
     "sample",
+    "tester",
     "",
-    "none",
     "",
     [],
     ["evals"],
@@ -70,7 +70,7 @@ test("opt-in sync seeds missing assets, preserves existing suite, and converges"
     ["promptfooconfig.yaml", "# My evaluation configuration\n"],
     ["test/data/page-1.md", "My own context\n"],
   ]);
-  const plan = planSync(current, "forge-app", undefined, ["evals"]);
+  const plan = planSync(current, "forge-app", "tester", undefined, ["evals"]);
   expect(
     plan.operations.filter(
       ({ key }) => key === "scripts.eval" || key === "scripts.view",
@@ -96,22 +96,33 @@ test("opt-in sync seeds missing assets, preserves existing suite, and converges"
   expect(result.get("test/data/page-1.md")).toBe("My own context\n");
   expect(result.get("test/promptfoo-test.yaml")).toBeTruthy();
   expect(
-    planSync(result, "forge-app", undefined, ["evals"]).operations,
+    planSync(result, "forge-app", "tester", undefined, ["evals"]).operations,
   ).toEqual([]);
-  expect(planSync(result, "forge-app").operations).toEqual([]);
+  expect(planSync(result, "forge-app", "tester").operations).toEqual([]);
 });
 
 test("all preset and explicit evals produce equivalent sync plans; conflicting owned keys fail", () => {
   const current = new Map([
     ["package.json", JSON.stringify({ name: "sample" })],
   ]);
-  const selected = planSync(current, "forge-app", undefined, ["evals"]);
-  const all = planSync(current, "forge-app", undefined, [], [], "all");
+  const selected = planSync(current, "forge-app", "tester", undefined, [
+    "evals",
+  ]);
+  const all = planSync(
+    current,
+    "forge-app",
+    "tester",
+    undefined,
+    [],
+    [],
+    "all",
+  );
   expect(all.operations).toEqual(selected.operations);
   expect(
     planSync(
       current,
       "forge-app",
+      "tester",
       undefined,
       [],
       ["evals"],
@@ -124,15 +135,15 @@ test("all preset and explicit evals produce equivalent sync plans; conflicting o
       JSON.stringify({ name: "sample", scripts: { eval: "custom eval" } }),
     ],
   ]);
-  expect(() => planSync(conflict, "forge-app", undefined, ["evals"])).toThrow(
-    ConflictError,
-  );
-  expect(() => planSync(conflict, "forge-app", undefined, ["evals"])).toThrow(
-    /scripts\.eval/,
-  );
-  expect(() => planSync(current, "forge-app", undefined, [], ["test"])).toThrow(
-    /test/,
-  );
+  expect(() =>
+    planSync(conflict, "forge-app", "tester", undefined, ["evals"]),
+  ).toThrow(ConflictError);
+  expect(() =>
+    planSync(conflict, "forge-app", "tester", undefined, ["evals"]),
+  ).toThrow(/scripts\.eval/);
+  expect(() =>
+    planSync(current, "forge-app", "tester", undefined, [], ["test"]),
+  ).toThrow(/test/);
 });
 
 test("Dagger preview and sync accept eval selection without replacing an existing suite", async () => {
@@ -151,7 +162,9 @@ test("Dagger preview and sync accept eval selection without replacing an existin
   } as unknown as Directory;
   const calf = new DropCalf();
   const operations = JSON.parse(
-    await calf.previewSync(directory, "forge-app", undefined, ["evals"]),
+    await calf.previewSync(directory, "forge-app", "tester", undefined, [
+      "evals",
+    ]),
   );
   expect(
     operations.some(({ key }: { key: string }) => key === "scripts.eval"),
@@ -161,7 +174,7 @@ test("Dagger preview and sync accept eval selection without replacing an existin
       ({ path }: { path: string }) => path === "promptfooconfig.yaml",
     ),
   ).toBe(false);
-  await calf.sync(directory, "forge-app", undefined, ["evals"]);
+  await calf.sync(directory, "forge-app", "tester", undefined, ["evals"]);
   expect(writes.get("test/promptfoo-test.yaml")).toBeTruthy();
   expect(writes.has("promptfooconfig.yaml")).toBe(false);
   expect(existing.get("promptfooconfig.yaml")).toBe("# custom suite\n");

@@ -11,7 +11,7 @@ function config(text: string | undefined) {
 }
 
 test("Forge builds with bundler-compatible TypeScript and a strict no-emit typecheck", () => {
-  const project = buildProject("forge-app", "sample", "", "none");
+  const project = buildProject("forge-app", "sample", "tester");
   const pkg = project.packageJson;
   const base = config(project.files.get("tsconfig.json"));
   const check = config(project.files.get("tsconfig.typecheck.json"));
@@ -50,7 +50,7 @@ test("Forge builds with bundler-compatible TypeScript and a strict no-emit typec
 });
 
 test("library build publishes the same entry and declarations that tsdown emits", () => {
-  const project = buildProject("library", "sample", "", "none");
+  const project = buildProject("library", "sample", "tester");
   const pkg = project.packageJson;
   const compiler = config(project.files.get("tsconfig.json")).compilerOptions;
   expect(pkg.scripts.build).toBe("tsdown");
@@ -74,7 +74,7 @@ test("generated TypeScript configs typecheck and compile a sample entry", () => 
   const root = mkdtempSync(join(process.cwd(), "tmp_rovo_build_"));
   try {
     for (const kind of ["library", "forge-app", "tool", "agent-skill"]) {
-      const project = buildProject(kind, "sample", "", "none");
+      const project = buildProject(kind, "sample", "tester");
       const folder = join(root, kind);
       mkdirSync(join(folder, "src"), { recursive: true });
       writeFileSync(
@@ -118,7 +118,7 @@ test("generated TypeScript configs typecheck and compile a sample entry", () => 
 test.each(["tool", "agent-skill"])(
   "%s emits TypeScript from src into dist",
   (kind) => {
-    const project = buildProject(kind, "sample", "", "none");
+    const project = buildProject(kind, "sample", "tester");
     expect(project.packageJson.scripts.build).toBe("tsc");
     expect(project.packageJson.scripts.typecheck).toBe("tsc --noEmit");
     expect(

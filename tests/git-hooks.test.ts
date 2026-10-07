@@ -6,7 +6,7 @@ import { applySync, ConflictError, ParseError, planSync } from "../src/sync.ts";
 test.each(["library", "forge-app", "tool", "agent-skill"])(
   "%s generates managed Lefthook scripts and named commands",
   (kind) => {
-    const project = buildProject(kind, "sample", "", "none");
+    const project = buildProject(kind, "sample", "tester");
     const { scripts, devDependencies } = project.packageJson;
     const config = project.files.get("lefthook.yml") ?? "";
     expect(devDependencies.lefthook).toBeDefined();
@@ -42,7 +42,7 @@ test("adopts existing hooks without replacing lint/check or unrelated YAML", () 
     ],
     ["lefthook.yml", config],
   ]);
-  const plan = planSync(files, "tool");
+  const plan = planSync(files, "tool", "tester");
   expect(
     plan.operations.some(
       (op) => op.key === "scripts.lint" || op.key === "scripts.check",
@@ -69,7 +69,7 @@ test("adopts existing hooks without replacing lint/check or unrelated YAML", () 
     check: "echo check",
     prepare: "lefthook install",
   });
-  expect(planSync(result, "tool").operations).toEqual([]);
+  expect(planSync(result, "tool", "tester").operations).toEqual([]);
 });
 
 test("adoption adds missing lint and check scripts without replacing existing ones", () => {
@@ -77,7 +77,7 @@ test("adoption adds missing lint and check scripts without replacing existing on
     ["package.json", '{"name":"sample","scripts":{}}'],
     ["lefthook.yml", "colors: true\n"],
   ]);
-  const result = applySync(planSync(files, "agent-skill")).files;
+  const result = applySync(planSync(files, "agent-skill", "tester")).files;
   const scripts = JSON.parse(result.get("package.json") ?? "").scripts;
   expect(scripts.lint).toBe("lefthook run esa-lint");
   expect(scripts.check).toBe("lefthook run pre-push --force");
@@ -86,11 +86,11 @@ test("adoption adds missing lint and check scripts without replacing existing on
       "esa-test"
     ],
   ).toBeUndefined();
-  expect(planSync(result, "agent-skill").operations).toEqual([]);
+  expect(planSync(result, "agent-skill", "tester").operations).toEqual([]);
 });
 
 test("equivalent named commands are no-ops despite YAML style differences", () => {
-  const project = buildProject("tool", "sample", "", "none");
+  const project = buildProject("tool", "sample", "tester");
   const parsed = YAML.parse(project.files.get("lefthook.yml") ?? "");
   const config = `# owned by team\n${YAML.stringify(parsed)}`;
   const files = new Map([
@@ -98,7 +98,7 @@ test("equivalent named commands are no-ops despite YAML style differences", () =
     ["lefthook.yml", config],
   ]);
   expect(
-    planSync(files, "tool").operations.filter(
+    planSync(files, "tool", "tester").operations.filter(
       (op) => op.path === "lefthook.yml",
     ),
   ).toEqual([]);
@@ -118,6 +118,7 @@ test("conflicts on changed named command or unsupported hook structure", () => {
           ["lefthook.yml", config],
         ]),
         "tool",
+        "tester",
       ),
     ).toThrow(ConflictError);
   }
@@ -128,6 +129,7 @@ test("conflicts on changed named command or unsupported hook structure", () => {
         ["lefthook.yml", "pre-commit: ["],
       ]),
       "tool",
+      "tester",
     ),
   ).toThrow(ParseError);
 });

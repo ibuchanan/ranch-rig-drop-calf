@@ -5,6 +5,7 @@ import {
   mkdirSync,
   mkdtempSync,
   readFileSync,
+  readdirSync,
   rmSync,
   writeFileSync,
 } from "node:fs";
@@ -12,6 +13,7 @@ import { join } from "node:path";
 import { type Directory, dag } from "@dagger.io/dagger";
 import { biomeLinting, forgeLinting } from "../src/capabilities.ts";
 import { DropCalf } from "../src/index.ts";
+import { OSS_ASSETS } from "../src/oss.ts";
 import {
   buildProject,
   InvalidOptionsError,
@@ -40,7 +42,7 @@ test("files uses matching local Biome init defaults without losing required poli
   const stub = spyOn(dag, "directory").mockReturnValue(directory);
   try {
     process.chdir(temp);
-    await new DropCalf().files("tool", "sample", "", "none");
+    await new DropCalf().files("tool", "tester", "sample");
     const config = JSON.parse(writes.get("biome.json") ?? "null");
     expect(config.javascript.formatter.quoteStyle).toBe("single");
     expect(config.formatter.indentStyle).toBe("space");
@@ -73,9 +75,9 @@ test("files skips a mismatched local Biome and uses the fallback", async () => {
   const stub = spyOn(dag, "directory").mockReturnValue(directory);
   try {
     process.chdir(temp);
-    await new DropCalf().files("tool", "sample", "", "none");
+    await new DropCalf().files("tool", "tester", "sample");
     expect(writes.get("biome.json")).toBe(
-      buildProject("tool", "sample", "", "none").files.get("biome.json"),
+      buildProject("tool", "sample", "tester").files.get("biome.json"),
     );
     expect(existsSync(join(temp, "was-initialized"))).toBe(false);
   } finally {
@@ -94,7 +96,7 @@ describe("buildReadme", () => {
 
 describe("biomeLinting capability", () => {
   test("adds lint scripts, dependency, and config", () => {
-    const project = createBlueprint("my-package", "", "MIT", "");
+    const project = createBlueprint("my-package", "", "");
     biomeLinting().addTo(project);
     expect(project.packageJson.scripts.lint).toBe("biome lint");
     expect(project.packageJson.scripts["lint:fix"]).toBe("biome lint --write");
@@ -107,7 +109,7 @@ describe("biomeLinting capability", () => {
 
 test("generated kinds ship version-compatible Biome config and check scripts", () => {
   for (const kind of ["library", "forge-app", "tool", "agent-skill"]) {
-    const project = buildProject(kind, "sample", "", "none");
+    const project = buildProject(kind, "sample", "tester");
     const scripts = project.packageJson.scripts;
     const version = project.packageJson.devDependencies["@biomejs/biome"];
     const configText = project.files.get("biome.json") ?? "";
@@ -124,7 +126,7 @@ test("generated kinds ship version-compatible Biome config and check scripts", (
 });
 
 test("a requested Biome version determines its schema", () => {
-  const project = createBlueprint("sample", "", "none", "");
+  const project = createBlueprint("sample", "", "");
   biomeLinting("^1.9.3").addTo(project);
   expect(JSON.parse(project.files.get("biome.json") ?? "null").$schema).toBe(
     "https://biomejs.dev/schemas/1.9.3/schema.json",
@@ -133,7 +135,7 @@ test("a requested Biome version determines its schema", () => {
 
 describe("forgeLinting capability", () => {
   test("uses forge lint without adding biome", () => {
-    const project = createBlueprint("my-package", "", "MIT", "");
+    const project = createBlueprint("my-package", "", "");
     forgeLinting().addTo(project);
     expect(project.packageJson.scripts["lint:forge"]).toBe("forge lint");
     expect(
@@ -145,76 +147,118 @@ describe("forgeLinting capability", () => {
 
 describe("kind selection", () => {
   test("rejects unknown kinds before blueprint assembly", () => {
-    expect(() => buildProject("unknown", "sample")).toThrow(
+    expect(() => buildProject("unknown", "sample", "tester")).toThrow(
       InvalidOptionsError,
     );
-    expect(() => buildProject("unknown", "sample")).toThrow(
+    expect(() => buildProject("unknown", "sample", "tester")).toThrow(
       /library.*forge-app.*tool.*agent-skill/,
     );
   });
 
   test("rejects ambiguous kinds and optional selections", () => {
     for (const kind of [undefined, "", "library,tool", "Library"]) {
-      expect(() => buildProject(kind, "sample")).toThrow(InvalidOptionsError);
+      expect(() => buildProject(kind, "sample", "tester")).toThrow(
+        InvalidOptionsError,
+      );
     }
     expect(() =>
-      buildProject("forge-app", "sample", "", "MIT", "", ["unknown"]),
+      buildProject("forge-app", "sample", "tester", "", "", ["unknown"]),
     ).toThrow(/unknown/);
     expect(() =>
-      buildProject("forge-app", "sample", "", "MIT", "", ["evals"], ["evals"]),
+      buildProject(
+        "forge-app",
+        "sample",
+        "tester",
+        "",
+        "",
+        ["evals"],
+        ["evals"],
+      ),
     ).toThrow(/evals/);
     expect(() =>
-      buildProject("library", "sample", "", "MIT", "", [], ["test"]),
+      buildProject("library", "sample", "tester", "", "", [], ["test"]),
     ).toThrow(/test/);
   });
 
   test("Dagger files rejects invalid selection before workspace or rendering", async () => {
     await expect(
-      new DropCalf().files(undefined as unknown as string, "sample"),
+      new DropCalf().files(undefined as unknown as string, "tester", "sample"),
     ).rejects.toBeInstanceOf(InvalidOptionsError);
     await expect(
-      new DropCalf().files("tool", "sample", "", "MIT", "", ["evals"]),
+      new DropCalf().files("tool", "tester", "sample", "", "", ["evals"]),
     ).rejects.toBeInstanceOf(InvalidOptionsError);
     await expect(
-      new DropCalf().files("library", "sample", "", "MIT", "", [], ["lint"]),
+      new DropCalf().files("library", "tester", "sample", "", "", [], ["lint"]),
     ).rejects.toBeInstanceOf(InvalidOptionsError);
   });
 });
 
 describe("OSS document seeds", () => {
-  test("generates project-specific authored documents for each kind", () => {
-    for (const kind of ["library", "forge-app", "tool", "agent-skill"]) {
+  test("tracks every file in the pinned OSS template", () => {
+    const vendor = join(import.meta.dir, "../vendor/oss-templates");
+    expect([...OSS_ASSETS].map(String).sort()).toEqual(
+      [
+        ...readdirSync(vendor).filter(
+          (name) => name.endsWith(".md") || name === "LICENSE",
+        ),
+        ...readdirSync(join(vendor, ".atlassian")).map(
+          (name) => `.atlassian/${name}`,
+        ),
+      ].sort(),
+    );
+  });
+
+  test.each(["library", "forge-app", "tool", "agent-skill"])(
+    "%s applies template transformations correctly",
+    (kind) => {
       const project = buildProject(
         kind,
         "example-project",
+        "tester",
         "Example purpose",
-        "MIT",
         "Example Owner",
       );
-      expect(project.files.get("LICENSE")).toContain("Example Owner");
-      expect(project.files.get("LICENSE")).toContain(
-        String(new Date().getFullYear()),
-      );
-      expect(project.files.get("CONTRIBUTING.md")).toContain("example-project");
-      expect(project.files.get("CODE_OF_CONDUCT.md")).toContain(
-        "harassment-free",
-      );
-      expect(project.files.get("README.md")).toContain("Example purpose");
+      expect(project.packageJson.license).toBe("Apache-2.0");
+
+      for (const path of OSS_ASSETS) {
+        const template = readFileSync(
+          join(import.meta.dir, "../vendor/oss-templates", path),
+          "utf8",
+        );
+        const expected =
+          path === ".atlassian/OWNER"
+            ? "tester"
+            : path === "README.md" || path === "CONTRIBUTING.md"
+              ? template.replaceAll("[Project name]", "example-project")
+              : path === "LICENSE"
+                ? template.replaceAll(
+                    "[YYYY]",
+                    String(new Date().getFullYear()),
+                  )
+                : template;
+        expect(project.files.get(path)).toBe(expected);
+      }
+      expect(project.files.get("README.md")).toContain("[YYYY]");
+
       expect(project.files.get("DEVELOPMENT.md")).toContain(
         "npm run typecheck",
       );
-      expect(project.files.get(".atlassian/OWNER")).toBe("Example Owner\n");
-    }
-    expect(
-      buildProject("tool", "sample", "", "none").files.has("LICENSE"),
-    ).toBe(false);
+    },
+  );
+
+  test("OSS documents reject invalid/blank owner", () => {
+    expect(() => buildProject("tool", "sample", "")).toThrow(/owner/i);
+    expect(() => buildProject("tool", "sample", "   ")).toThrow(/owner/i);
+    expect(() => buildProject("tool", "sample", "invalid owner")).toThrow(
+      /owner/i,
+    );
   });
 });
 
 describe("profiles", () => {
   test("all kinds generate matching Node 24 pins", () => {
     for (const kind of ["library", "forge-app", "tool", "agent-skill"]) {
-      const project = buildProject(kind, "sample");
+      const project = buildProject(kind, "sample", "tester");
       expect(project.files.get(".nvmrc")).toBe("24\n");
       expect(project.packageJson.engines).toEqual({ node: "24.x" });
     }
@@ -236,7 +280,7 @@ describe("profiles", () => {
     ["tool", "lefthook run esa-lint", "tsc", "bun test --pass-with-no-tests"],
     ["agent-skill", "lefthook run esa-lint", "tsc", undefined],
   ])("%s fills the stable developer slots", (kind, lint, build, testScript) => {
-    const { packageJson } = buildProject(kind, "sample");
+    const { packageJson } = buildProject(kind, "sample", "tester");
     expect(packageJson.scripts).toMatchObject({
       lint,
       format: "biome format --write",
@@ -264,9 +308,9 @@ describe("profiles", () => {
   });
 
   test("evals is opt-in without removing mandatory slots", () => {
-    const base = buildProject("forge-app", "sample");
+    const base = buildProject("forge-app", "sample", "tester");
     expect(base.packageJson.scripts.eval).toBeUndefined();
-    const selected = buildProject("forge-app", "sample", "", "MIT", "", [
+    const selected = buildProject("forge-app", "sample", "tester", "", "", [
       "evals",
     ]);
     expect(selected.packageJson.scripts.eval).toBeDefined();
@@ -277,8 +321,8 @@ describe("profiles", () => {
     const all = buildProject(
       "forge-app",
       "sample",
+      "tester",
       "",
-      "none",
       "",
       [],
       [],
@@ -288,8 +332,8 @@ describe("profiles", () => {
     const excluded = buildProject(
       "forge-app",
       "sample",
+      "tester",
       "",
-      "none",
       "",
       [],
       ["evals"],
@@ -300,17 +344,17 @@ describe("profiles", () => {
       "bun test --pass-with-no-tests",
     );
     expect(() =>
-      buildProject("forge-app", "sample", "", "MIT", "", [], [], "unknown"),
+      buildProject("forge-app", "sample", "tester", "", "", [], [], "unknown"),
     ).toThrow(InvalidOptionsError);
     expect(
-      buildProject("tool", "sample", "", "MIT", "", [], [], "all").packageJson
-        .scripts.eval,
+      buildProject("tool", "sample", "tester", "", "", [], [], "all")
+        .packageJson.scripts.eval,
     ).toBeUndefined();
   });
 
   test("agent-skill contains no test scripts and all kinds keep a complete blueprint", () => {
     for (const kind of ["library", "forge-app", "tool", "agent-skill"]) {
-      const project = buildProject(kind, "sample", "", "none");
+      const project = buildProject(kind, "sample", "tester");
       expect({
         packageJson: project.packageJson,
         files: [...project.files.keys()].sort(),
@@ -325,7 +369,7 @@ describe("profiles", () => {
   });
 
   test("agent-skill profile omits the test script", () => {
-    const project = createBlueprint("my-package", "", "MIT", "");
+    const project = createBlueprint("my-package", "", "");
     for (const capability of PROFILES["agent-skill"] ?? []) {
       capability.addTo(project);
     }

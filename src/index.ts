@@ -11,6 +11,7 @@ import { basename, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { type Directory, dag, func, object } from "@dagger.io/dagger";
 import { EVAL_ASSETS } from "./evals.ts";
+import { OSS_ASSETS } from "./oss.ts";
 import { planPreclean, UNWANTED } from "./preclean.ts";
 import { buildProject, resolveProfile } from "./profiles.ts";
 import { renderToDirectory } from "./project.ts";
@@ -105,9 +106,9 @@ export class DropCalf {
   @func()
   async files(
     profile: string,
+    owner: string,
     packageName?: string,
     description = "",
-    license = "MIT",
     author = "",
     withFunctions: string[] = [],
     withoutFunctions: string[] = [],
@@ -120,8 +121,8 @@ export class DropCalf {
     const project = buildProject(
       profile,
       name,
+      owner,
       description,
-      license,
       author,
       withFunctions,
       withoutFunctions,
@@ -136,7 +137,7 @@ export class DropCalf {
     const paths = [
       "package.json",
       "manifest.yml",
-      ...buildProject("forge-app", packageName).files.keys(),
+      ...buildProject("forge-app", packageName, "preclean").files.keys(),
       ...UNWANTED,
     ];
     const files = new Map<string, string>();
@@ -181,6 +182,7 @@ export class DropCalf {
   async previewSync(
     directory: Directory,
     profile: string,
+    owner: string,
     ignoreSets?: string[],
     withFunctions: string[] = [],
     withoutFunctions: string[] = [],
@@ -191,6 +193,7 @@ export class DropCalf {
         await this.syncPlan(
           directory,
           profile,
+          owner,
           ignoreSets,
           withFunctions,
           withoutFunctions,
@@ -205,6 +208,7 @@ export class DropCalf {
   private async syncPlan(
     directory: Directory,
     profile: string,
+    owner: string,
     ignoreSets?: string[],
     withFunctions: string[] = [],
     withoutFunctions: string[] = [],
@@ -225,13 +229,9 @@ export class DropCalf {
       ".nvmrc",
       ".gitignore",
       ".editorconfig",
-      "README.md",
-      "LICENSE",
-      "CONTRIBUTING.md",
-      "CODE_OF_CONDUCT.md",
+      ...OSS_ASSETS,
       "DEVELOPMENT.md",
       "AGENTS.md",
-      ".atlassian/OWNER",
       ...EVAL_ASSETS.keys(),
     ]) {
       if (await directory.exists(path))
@@ -240,6 +240,7 @@ export class DropCalf {
     return planSync(
       files,
       profile,
+      owner,
       ignoreSets,
       withFunctions,
       withoutFunctions,
@@ -251,6 +252,7 @@ export class DropCalf {
   async sync(
     directory: Directory,
     profile: string,
+    owner: string,
     ignoreSets?: string[],
     withFunctions: string[] = [],
     withoutFunctions: string[] = [],
@@ -259,6 +261,7 @@ export class DropCalf {
     const plan = await this.syncPlan(
       directory,
       profile,
+      owner,
       ignoreSets,
       withFunctions,
       withoutFunctions,

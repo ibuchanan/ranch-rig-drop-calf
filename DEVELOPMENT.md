@@ -82,7 +82,10 @@ through that generated SDK, so if type checking reports a missing
 - `src/index.ts`: Dagger `DropCalf` entry point; `files` builds a `Directory`
   and `export` writes a supplied `Directory` to a path.
 - `src/project.ts`: project blueprint, base package metadata and files,
-  license text, and Dagger directory rendering.
+  and Dagger directory rendering.
+- `src/oss.ts`: copies pinned `vendor/oss-templates` assets with only the
+  documented owner, project name, and LICENSE year substitutions;
+  generated `DEVELOPMENT.md` is separate from the official template.
 - `src/capabilities.ts`: adapters that add scripts, development dependencies,
   and configuration to the blueprint.
 - `src/profiles.ts`: ordered capability lists for the four supported profiles.
@@ -98,6 +101,6 @@ a focused test of the resulting blueprint and run the checks above.
 testable without the engine.
 
 The current generator does not read or merge an existing repository. Generated
-projects have scripts and configs but no source tree, and the generated README
-is generic. The `agent-skill` profile intentionally omits a test script. Use
-the specs as a roadmap, not as a description of current CLI behavior.
+projects have scripts and configs but no source tree, and the copied OSS README
+is an unfilled template. The `agent-skill` profile intentionally omits a test
+script. Use the specs as a roadmap, not as a description of current CLI behavior.

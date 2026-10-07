@@ -5,7 +5,9 @@ import { applySync, ConflictError, planSync } from "../src/sync.ts";
 import { DropCalf } from "../src/index.ts";
 
 test("Forge generation includes authored agent guidance for Forge work", () => {
-  const guidance = buildProject("forge-app", "sample").files.get("AGENTS.md");
+  const guidance = buildProject("forge-app", "sample", "tester").files.get(
+    "AGENTS.md",
+  );
   expect(guidance).toContain("manifest.yml");
   expect(guidance).toContain("Forge");
   expect(guidance).toContain("npm run typecheck");
@@ -13,7 +15,9 @@ test("Forge generation includes authored agent guidance for Forge work", () => {
 
 test("non-Forge kinds omit Forge-specific guidance", () => {
   for (const kind of ["library", "tool", "agent-skill"])
-    expect(buildProject(kind, "sample").files.has("AGENTS.md")).toBe(false);
+    expect(buildProject(kind, "sample", "tester").files.has("AGENTS.md")).toBe(
+      false,
+    );
 });
 
 test("explicit Forge preclean removes scaffold guidance before authored guidance is seeded", () => {
@@ -32,17 +36,17 @@ test("explicit Forge preclean removes scaffold guidance before authored guidance
   expect(cleaned.has("AGENTS.md")).toBe(false);
   cleaned.set(
     "package.json",
-    JSON.stringify(buildProject("forge-app", "example").packageJson),
+    JSON.stringify(buildProject("forge-app", "example", "tester").packageJson),
   );
-  const result = applySync(planSync(cleaned, "forge-app")).files;
+  const result = applySync(planSync(cleaned, "forge-app", "tester")).files;
   expect(result.get("AGENTS.md")).toBe(
-    buildProject("forge-app", "example").files.get("AGENTS.md"),
+    buildProject("forge-app", "example", "tester").files.get("AGENTS.md"),
   );
 });
 
 test("routine sync seeds missing guidance and repeats without changing it", () => {
   const original = new Map([["package.json", '{"name":"sample"}']]);
-  const plan = planSync(original, "forge-app");
+  const plan = planSync(original, "forge-app", "tester");
   expect(plan.operations).toContainEqual(
     expect.objectContaining({
       path: "AGENTS.md",
@@ -52,9 +56,9 @@ test("routine sync seeds missing guidance and repeats without changing it", () =
   );
   const result = applySync(plan).files;
   expect(result.get("AGENTS.md")).toBe(
-    buildProject("forge-app", "sample").files.get("AGENTS.md"),
+    buildProject("forge-app", "sample", "tester").files.get("AGENTS.md"),
   );
-  expect(planSync(result, "forge-app").operations).toEqual([]);
+  expect(planSync(result, "forge-app", "tester").operations).toEqual([]);
 });
 
 test("routine sync reports edited guidance as a conflict without changing it", async () => {
@@ -62,8 +66,10 @@ test("routine sync reports edited guidance as a conflict without changing it", a
     ["package.json", '{"name":"sample"}'],
     ["AGENTS.md", "# Our local instructions\n"],
   ]);
-  expect(() => planSync(original, "forge-app")).toThrow(ConflictError);
-  expect(() => planSync(original, "forge-app")).toThrow(/AGENTS\.md/);
+  expect(() => planSync(original, "forge-app", "tester")).toThrow(
+    ConflictError,
+  );
+  expect(() => planSync(original, "forge-app", "tester")).toThrow(/AGENTS\.md/);
   const writes: string[] = [];
   const directory = {
     exists: async (path: string) => original.has(path),
@@ -74,10 +80,10 @@ test("routine sync reports edited guidance as a conflict without changing it", a
     },
   };
   await expect(
-    new DropCalf().previewSync(directory as never, "forge-app"),
+    new DropCalf().previewSync(directory as never, "forge-app", "tester"),
   ).rejects.toThrow(/AGENTS\.md/);
   await expect(
-    new DropCalf().sync(directory as never, "forge-app"),
+    new DropCalf().sync(directory as never, "forge-app", "tester"),
   ).rejects.toThrow(/AGENTS\.md/);
   expect(writes).toEqual([]);
   expect(original.get("AGENTS.md")).toBe("# Our local instructions\n");

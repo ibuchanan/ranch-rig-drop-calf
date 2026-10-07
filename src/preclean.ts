@@ -68,7 +68,8 @@ export function planPreclean(
       "preclean: expected a Forge-created ESLint starter project",
     );
 
-  const project = buildProject("forge-app", packageName);
+  // Only the generated path names matter here; no OSS contents leave preclean.
+  const project = buildProject("forge-app", packageName, "preclean");
   const outputs = ["package.json", ...project.files.keys()];
   const operations: PrecleanOperation[] = [];
   for (const path of outputs) {

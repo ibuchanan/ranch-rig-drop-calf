@@ -26,8 +26,8 @@ describe("Forge bootstrap preclean", () => {
     ]);
     expect(planPreclean(files, "example").operations).toEqual([
       { action: "rename", path: "package.json", to: "package.json.old" },
-      { action: "rename", path: "README.md", to: "README.md.old" },
       { action: "rename", path: "tsconfig.json", to: "tsconfig.json.old" },
+      { action: "rename", path: "README.md", to: "README.md.old" },
       { action: "delete", path: "AGENTS.md" },
       { action: "delete", path: ".eslint" },
       { action: "delete", path: "eslint.config.js" },

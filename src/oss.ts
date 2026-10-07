@@ -1,28 +1,17 @@
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import type { ProjectBlueprint } from "./project.ts";
 
-// Authored OSS documents: edit these seeds deliberately; only marked tokens are substituted.
-const CONTRIBUTING = `# Contributing to {{project}}
+export const OSS_LICENSE = "Apache-2.0";
 
-Thank you for considering a contribution! Issues and pull requests are welcome.
-Please add tests for fixes and features, follow the existing style, and keep
-unrelated changes in separate pull requests. For larger changes, open an issue
-first to discuss the approach.
-
-See [DEVELOPMENT.md](DEVELOPMENT.md) for setup and checks, and
-[CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) for community expectations.
-`;
-
-const CODE_OF_CONDUCT = `# Code of Conduct
-
-We pledge to make participation in this project a harassment-free experience
-for everyone, regardless of background or identity. Be respectful and
-constructive. Harassment, personal attacks, and publishing private information
-without permission are unacceptable.
-
-Report concerns privately to the project maintainers. Maintainers will review
-reports confidentially and may remove contributions or participants who violate
-this code.
-`;
+export const OSS_ASSETS = [
+  "LICENSE",
+  "CODE_OF_CONDUCT.md",
+  "CONTRIBUTING.md",
+  "README.md",
+  "SECURITY.md",
+  ".atlassian/OWNER",
+] as const;
 
 const DEVELOPMENT = `# Development
 
@@ -42,12 +31,30 @@ export function seedOssDocuments(
   project: ProjectBlueprint,
   owner: string,
 ): void {
-  const name = project.packageJson.name;
-  project.files.set(
-    "CONTRIBUTING.md",
-    CONTRIBUTING.replace("{{project}}", name),
-  );
-  project.files.set("CODE_OF_CONDUCT.md", CODE_OF_CONDUCT);
+  if (!/^[a-z][a-z0-9._-]*$/i.test(owner)) {
+    throw new Error("OSS owner must be a nonempty staff ID");
+  }
+  for (const path of OSS_ASSETS) {
+    let contents = readFileSync(
+      fileURLToPath(
+        new URL(`../vendor/oss-templates/${path}`, import.meta.url),
+      ),
+      "utf8",
+    );
+    if (path === ".atlassian/OWNER") contents = owner;
+    if (path === "CONTRIBUTING.md" || path === "README.md")
+      contents = contents.replaceAll(
+        "[Project name]",
+        project.packageJson.name,
+      );
+    if (path === "LICENSE")
+      contents = contents.replaceAll(
+        "[YYYY]",
+        String(new Date().getFullYear()),
+      );
+    project.files.set(path, contents);
+  }
+  // The official template does not contain DEVELOPMENT.md; this guide is generated separately.
   project.files.set(
     "DEVELOPMENT.md",
     DEVELOPMENT.replace(
@@ -57,5 +64,4 @@ export function seedOssDocuments(
         : "# No test script for this project kind",
     ),
   );
-  if (owner) project.files.set(".atlassian/OWNER", `${owner}\n`);
 }

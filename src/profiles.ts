@@ -19,11 +19,7 @@ import { changelog } from "./changelog.ts";
 import { evals } from "./evals.ts";
 import { gitHooks } from "./git-hooks.ts";
 import { seedOssDocuments } from "./oss.ts";
-import {
-  buildReadme,
-  createBlueprint,
-  type ProjectBlueprint,
-} from "./project.ts";
+import { createBlueprint, type ProjectBlueprint } from "./project.ts";
 import { forgeSecrets } from "./secrets.ts";
 
 export const PROFILES: Record<string, Capability[]> = {
@@ -121,8 +117,8 @@ export function resolveProfile(
 export function buildProject(
   profile: string | undefined,
   packageName: string,
+  owner: string,
   description = "",
-  license = "MIT",
   author = "",
   withFunctions: string[] = [],
   withoutFunctions: string[] = [],
@@ -134,9 +130,9 @@ export function buildProject(
     withoutFunctions,
     preset,
   );
-  const project = createBlueprint(packageName, description, license, author);
+  const project = createBlueprint(packageName, description, author);
   for (const capability of capabilities) capability.addTo(project);
-  seedOssDocuments(project, author);
+  seedOssDocuments(project, owner);
   seedAgentGuidance(project, profile);
   if (
     profile === "forge-app" &&
@@ -145,9 +141,5 @@ export function buildProject(
   ) {
     evals().addTo(project);
   }
-  project.files.set(
-    "README.md",
-    buildReadme(packageName, description, project.packageJson.scripts, profile),
-  );
   return project;
 }

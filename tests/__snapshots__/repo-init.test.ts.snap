@@ -3,13 +3,16 @@
 exports[`profiles agent-skill contains no test scripts and all kinds keep a complete blueprint: library 1`] = `
 {
   "files": [
+    ".atlassian/OWNER",
     ".editorconfig",
     ".gitignore",
     ".nvmrc",
     "CODE_OF_CONDUCT.md",
     "CONTRIBUTING.md",
     "DEVELOPMENT.md",
+    "LICENSE",
     "README.md",
+    "SECURITY.md",
     "biome.json",
     "cliff.toml",
     "lefthook.yml",
@@ -35,6 +38,7 @@ exports[`profiles agent-skill contains no test scripts and all kinds keep a comp
         "types": "./dist/index.d.ts",
       },
     },
+    "license": "Apache-2.0",
     "main": "./dist/index.js",
     "name": "sample",
     "scripts": {
@@ -71,6 +75,7 @@ exports[`profiles agent-skill contains no test scripts and all kinds keep a comp
 exports[`profiles agent-skill contains no test scripts and all kinds keep a complete blueprint: forge-app 1`] = `
 {
   "files": [
+    ".atlassian/OWNER",
     ".editorconfig",
     ".gitignore",
     ".nvmrc",
@@ -78,7 +83,9 @@ exports[`profiles agent-skill contains no test scripts and all kinds keep a comp
     "CODE_OF_CONDUCT.md",
     "CONTRIBUTING.md",
     "DEVELOPMENT.md",
+    "LICENSE",
     "README.md",
+    "SECURITY.md",
     "biome.json",
     "cliff.toml",
     "lefthook.yml",
@@ -106,6 +113,7 @@ exports[`profiles agent-skill contains no test scripts and all kinds keep a comp
     "engines": {
       "node": "24.x",
     },
+    "license": "Apache-2.0",
     "name": "sample",
     "scripts": {
       "build": "tsc -p tsconfig.json",
@@ -150,13 +158,16 @@ exports[`profiles agent-skill contains no test scripts and all kinds keep a comp
 exports[`profiles agent-skill contains no test scripts and all kinds keep a complete blueprint: tool 1`] = `
 {
   "files": [
+    ".atlassian/OWNER",
     ".editorconfig",
     ".gitignore",
     ".nvmrc",
     "CODE_OF_CONDUCT.md",
     "CONTRIBUTING.md",
     "DEVELOPMENT.md",
+    "LICENSE",
     "README.md",
+    "SECURITY.md",
     "biome.json",
     "cliff.toml",
     "lefthook.yml",
@@ -172,6 +183,7 @@ exports[`profiles agent-skill contains no test scripts and all kinds keep a comp
     "engines": {
       "node": "24.x",
     },
+    "license": "Apache-2.0",
     "name": "sample",
     "scripts": {
       "build": "tsc",
@@ -198,13 +210,16 @@ exports[`profiles agent-skill contains no test scripts and all kinds keep a comp
 exports[`profiles agent-skill contains no test scripts and all kinds keep a complete blueprint: agent-skill 1`] = `
 {
   "files": [
+    ".atlassian/OWNER",
     ".editorconfig",
     ".gitignore",
     ".nvmrc",
     "CODE_OF_CONDUCT.md",
     "CONTRIBUTING.md",
     "DEVELOPMENT.md",
+    "LICENSE",
     "README.md",
+    "SECURITY.md",
     "biome.json",
     "lefthook.yml",
     "tsconfig.json",
@@ -218,6 +233,7 @@ exports[`profiles agent-skill contains no test scripts and all kinds keep a comp
     "engines": {
       "node": "24.x",
     },
+    "license": "Apache-2.0",
     "name": "sample",
     "scripts": {
       "build": "tsc",

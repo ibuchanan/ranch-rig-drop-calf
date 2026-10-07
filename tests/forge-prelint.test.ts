@@ -3,7 +3,7 @@ import { buildProject } from "../src/profiles.ts";
 import { applySync, ConflictError, planSync } from "../src/sync.ts";
 
 test("Forge projects run prelint, Biome and Forge lint through the direct lint script", () => {
-  const pkg = buildProject("forge-app", "sample", "", "none").packageJson;
+  const pkg = buildProject("forge-app", "sample", "tester").packageJson;
   expect(pkg.devDependencies["@ast-grep/cli"]).toBeDefined();
   expect(pkg.devDependencies["tool-forge-prelint-ast-grep"]).toBeDefined();
   expect(pkg.devDependencies["@ast-grep/cli"]).toBe("^0.44");
@@ -15,7 +15,7 @@ test("Forge projects run prelint, Biome and Forge lint through the direct lint s
 });
 
 test("Forge projects include only the three Forge Ahead runtime dependencies", () => {
-  const pkg = buildProject("forge-app", "sample", "", "none").packageJson;
+  const pkg = buildProject("forge-app", "sample", "tester").packageJson;
   expect(pkg.dependencies).toEqual({
     "@forge-ahead/atlassian-api-types":
       "github:ibuchanan/forge-ahead-atlassian-api-types",
@@ -23,7 +23,7 @@ test("Forge projects include only the three Forge Ahead runtime dependencies", (
     "@forge-ahead/logging": "github:ibuchanan/forge-ahead-logging",
   });
   for (const kind of ["library", "tool", "agent-skill"]) {
-    const other = buildProject(kind, "sample", "", "none").packageJson;
+    const other = buildProject(kind, "sample", "tester").packageJson;
     expect(other.dependencies).toBeUndefined();
     expect(other.devDependencies["@ast-grep/cli"]).toBeUndefined();
     expect(
@@ -43,7 +43,7 @@ test("Forge sync adds owned runtime dependencies and converges without losing un
       }),
     ],
   ]);
-  const output = applySync(planSync(files, "forge-app")).files;
+  const output = applySync(planSync(files, "forge-app", "tester")).files;
   const pkg = JSON.parse(output.get("package.json") ?? "null");
   expect(pkg.dependencies).toMatchObject({
     "@forge/api": "^7.0.0",
@@ -52,7 +52,7 @@ test("Forge sync adds owned runtime dependencies and converges without losing un
     "@forge-ahead/atlassian-api-types":
       "github:ibuchanan/forge-ahead-atlassian-api-types",
   });
-  expect(planSync(output, "forge-app").operations).toEqual([]);
+  expect(planSync(output, "forge-app", "tester").operations).toEqual([]);
 });
 
 test("Forge sync rejects conflicting owned scripts and packages without changing input", () => {
@@ -68,8 +68,10 @@ test("Forge sync rejects conflicting owned scripts and packages without changing
       [section]: { [key]: "custom" },
     });
     const files = new Map([["package.json", original]]);
-    expect(() => planSync(files, "forge-app")).toThrow(ConflictError);
-    expect(() => planSync(files, "forge-app")).toThrow(`${section}.${key}`);
+    expect(() => planSync(files, "forge-app", "tester")).toThrow(ConflictError);
+    expect(() => planSync(files, "forge-app", "tester")).toThrow(
+      `${section}.${key}`,
+    );
     expect(files.get("package.json")).toBe(original);
   }
 });

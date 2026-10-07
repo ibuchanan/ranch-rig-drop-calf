@@ -1,6 +1,7 @@
 import { isDeepStrictEqual } from "node:util";
 import YAML, { isMap } from "yaml";
 import { EVAL_ASSETS } from "./evals.ts";
+import { OSS_ASSETS, OSS_LICENSE } from "./oss.ts";
 import { buildProject, InvalidOptionsError } from "./profiles.ts";
 import { buildReadme, createBlueprint } from "./project.ts";
 import { mergeTypeScriptConfig } from "./typescript-config.ts";
@@ -51,6 +52,7 @@ export class ValidationError extends Error {
 
 export type SyncPlan = {
   profile: string;
+  owner: string;
   ignoreSets: string[];
   withFunctions: string[];
   withoutFunctions: string[];
@@ -62,6 +64,7 @@ export type SyncPlan = {
 export function planSync(
   files: ReadonlyMap<string, string>,
   profile: string,
+  owner: string,
   ignoreSets: string[] = ["node", "build", "coverage", "logs", "env", "editor"],
   withFunctions: string[] = [],
   withoutFunctions: string[] = [],
@@ -105,8 +108,8 @@ export function planSync(
   const desiredProject = buildProject(
     profile,
     current.name,
+    owner,
     typeof current.description === "string" ? current.description : "",
-    typeof current.license === "string" ? current.license : "none",
     typeof current.author === "string" ? current.author : "",
     withFunctions,
     withoutFunctions,
@@ -114,6 +117,16 @@ export function planSync(
   );
   const desired = desiredProject.packageJson;
   const operations: SyncOperation[] = [];
+  if (current.license !== undefined && current.license !== OSS_LICENSE)
+    throw new ConflictError("license", "value", current.license, OSS_LICENSE);
+  if (current.license === undefined)
+    operations.push({
+      path: "package.json",
+      key: "license",
+      mode: "structured-merge",
+      before: undefined,
+      after: OSS_LICENSE,
+    });
   const nodePin = desiredProject.files.get(".nvmrc");
   if (
     nodePin !== undefined &&
@@ -136,12 +149,8 @@ export function planSync(
       after: nodePin,
     });
   for (const path of [
-    "LICENSE",
-    "CONTRIBUTING.md",
-    "CODE_OF_CONDUCT.md",
+    ...OSS_ASSETS,
     "DEVELOPMENT.md",
-    ".atlassian/OWNER",
-    "README.md",
     "AGENTS.md",
     "cliff.toml",
     ...(profile === "forge-app"
@@ -360,7 +369,7 @@ export function planSync(
       });
   }
   const allRules =
-    createBlueprint(current.name, "", "none", "").files.get(".gitignore") ?? "";
+    createBlueprint(current.name, "", "").files.get(".gitignore") ?? "";
   const groups = allRules.split(/(?=^# )/m).filter(Boolean);
   const headings: Record<string, string> = {
     dependencies: "node",
@@ -389,8 +398,7 @@ export function planSync(
       after: `${existing}${existing && !existing.endsWith("\n") ? "\n" : ""}${additions.join("\n")}\n`,
     });
   const editorTemplate =
-    createBlueprint(current.name, "", "none", "").files.get(".editorconfig") ??
-    "";
+    createBlueprint(current.name, "", "").files.get(".editorconfig") ?? "";
   const editor = files.get(".editorconfig") ?? "";
   const mergedEditor = mergeEditorconfig(editor, editorTemplate);
   if (mergedEditor !== editor)
@@ -447,6 +455,7 @@ export function planSync(
   }
   return {
     profile,
+    owner,
     ignoreSets,
     withFunctions,
     withoutFunctions,
@@ -672,6 +681,7 @@ export function applySync(plan: SyncPlan): {
       planSync(
         files,
         plan.profile,
+        plan.owner,
         plan.ignoreSets,
         plan.withFunctions,
         plan.withoutFunctions,

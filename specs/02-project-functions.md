@@ -51,9 +51,13 @@ oss → gitignore → node → changelog → secrets → format → forge-prelin
 ```
 
 ### `oss`
-Copy versioned seed assets (`LICENSE`, `CODE_OF_CONDUCT.md`, `CONTRIBUTING.md`,
-`README.md`, `DEVELOPMENT.md`, `.atlassian/OWNER`). Substitute project name, year, and
-owner only in designated tokens/managed regions. Create-if-absent.
+Copy `LICENSE`, `CODE_OF_CONDUCT.md`, `CONTRIBUTING.md`, `README.md`,
+`SECURITY.md`, and `.atlassian/OWNER` from the pinned Bitbucket
+`vendor/oss-templates` submodule. Substitute only the required staff ID in OWNER,
+`[Project name]` in CONTRIBUTING and README, and `[YYYY]` in LICENSE; preserve
+all other template bytes. The Apache-2.0 license is fixed. `DEVELOPMENT.md` is
+generated separately because it is not in that template. Seed files are
+create-if-absent on sync, preserving existing user content.
 
 ### `gitignore`
 Build an ordered `.gitignore` from named sets (`visualstudiocode`, `linux`, `macos`,
