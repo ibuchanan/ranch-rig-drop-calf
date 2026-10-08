@@ -1,5 +1,4 @@
-import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
+import type { Directory } from "@dagger.io/dagger";
 import type { ProjectBlueprint } from "./project.ts";
 
 export const OSS_LICENSE = "Apache-2.0";
@@ -27,32 +26,47 @@ npm run typecheck
 See [CONTRIBUTING.md](CONTRIBUTING.md) for the contribution process.
 `;
 
+export function transformOssTemplate(
+  path: string,
+  contents: string,
+  name: string,
+  owner: string,
+): string {
+  if (path === ".atlassian/OWNER") return owner;
+  if (path === "CONTRIBUTING.md" || path === "README.md")
+    return contents.replaceAll("[Project name]", name);
+  if (path === "LICENSE")
+    return contents.replaceAll("[YYYY]", String(new Date().getFullYear()));
+  return contents;
+}
+
+export async function copyOssAssets(
+  destination: Directory,
+  source: Directory,
+  name: string,
+  owner: string,
+  paths: readonly string[] = OSS_ASSETS,
+): Promise<Directory> {
+  let result = destination;
+  for (const path of paths) {
+    const file = source.file(path);
+    if (path === "CODE_OF_CONDUCT.md" || path === "SECURITY.md")
+      result = result.withFile(path, file);
+    else
+      result = result.withNewFile(
+        path,
+        transformOssTemplate(path, await file.contents(), name, owner),
+      );
+  }
+  return result;
+}
+
 export function seedOssDocuments(
   project: ProjectBlueprint,
   owner: string,
 ): void {
   if (!/^[a-z][a-z0-9._-]*$/i.test(owner)) {
     throw new Error("OSS owner must be a nonempty staff ID");
-  }
-  for (const path of OSS_ASSETS) {
-    let contents = readFileSync(
-      fileURLToPath(
-        new URL(`../vendor/oss-templates/${path}`, import.meta.url),
-      ),
-      "utf8",
-    );
-    if (path === ".atlassian/OWNER") contents = owner;
-    if (path === "CONTRIBUTING.md" || path === "README.md")
-      contents = contents.replaceAll(
-        "[Project name]",
-        project.packageJson.name,
-      );
-    if (path === "LICENSE")
-      contents = contents.replaceAll(
-        "[YYYY]",
-        String(new Date().getFullYear()),
-      );
-    project.files.set(path, contents);
   }
   // The official template does not contain DEVELOPMENT.md; this guide is generated separately.
   project.files.set(

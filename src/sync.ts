@@ -1,7 +1,7 @@
 import { isDeepStrictEqual } from "node:util";
 import YAML, { isMap } from "yaml";
 import { EVAL_ASSETS } from "./evals.ts";
-import { OSS_ASSETS, OSS_LICENSE } from "./oss.ts";
+import { OSS_ASSETS, OSS_LICENSE, transformOssTemplate } from "./oss.ts";
 import { buildProject, InvalidOptionsError } from "./profiles.ts";
 import { buildReadme, createBlueprint } from "./project.ts";
 import { mergeTypeScriptConfig } from "./typescript-config.ts";
@@ -57,6 +57,7 @@ export type SyncPlan = {
   withFunctions: string[];
   withoutFunctions: string[];
   preset?: string;
+  templates: ReadonlyMap<string, string>;
   files: Map<string, string>;
   operations: SyncOperation[];
 };
@@ -69,6 +70,7 @@ export function planSync(
   withFunctions: string[] = [],
   withoutFunctions: string[] = [],
   preset?: string,
+  templates: ReadonlyMap<string, string> = new Map(),
 ): SyncPlan {
   const allowed = ["node", "build", "coverage", "logs", "env", "editor"];
   for (const set of ignoreSets)
@@ -157,7 +159,13 @@ export function planSync(
       ? ["secretspec.toml", "scripts/forge-vars-from-secretspec.sh"]
       : []),
   ]) {
-    const after = desiredProject.files.get(path);
+    const template = OSS_ASSETS.includes(path as (typeof OSS_ASSETS)[number])
+      ? templates.get(path)
+      : undefined;
+    const after =
+      template === undefined
+        ? desiredProject.files.get(path)
+        : transformOssTemplate(path, template, current.name as string, owner);
     if (after !== undefined && !files.has(path))
       operations.push({
         path,
@@ -460,6 +468,7 @@ export function planSync(
     withFunctions,
     withoutFunctions,
     preset,
+    templates,
     files: new Map(files),
     operations,
   };
@@ -686,6 +695,7 @@ export function applySync(plan: SyncPlan): {
         plan.withFunctions,
         plan.withoutFunctions,
         plan.preset,
+        plan.templates,
       ).operations.length !== 0
     )
       throw new Error("owned keys did not converge");

@@ -1,7 +1,6 @@
-import { describe, expect, test } from "bun:test";
+import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import type { Directory } from "@dagger.io/dagger";
 import { DropCalf } from "../src/index.ts";
-import { buildProject } from "../src/profiles.ts";
 import {
   applySync,
   ConflictError,
@@ -9,8 +8,36 @@ import {
   planSync,
   ValidationError,
 } from "../src/sync.ts";
+import { mockOssSource, ossTemplates } from "./oss-source.ts";
+
+const planWithOss = (
+  files: ReadonlyMap<string, string>,
+  profile: string,
+  owner: string,
+  ignoreSets?: string[],
+  withFunctions?: string[],
+  withoutFunctions?: string[],
+  preset?: string,
+) =>
+  planSync(
+    files,
+    profile,
+    owner,
+    ignoreSets,
+    withFunctions,
+    withoutFunctions,
+    preset,
+    ossTemplates(),
+  );
 
 describe("repository sync", () => {
+  let sourceMock: ReturnType<typeof mockOssSource>;
+  beforeEach(() => {
+    sourceMock = mockOssSource();
+  });
+  afterEach(() => {
+    sourceMock.mockRestore();
+  });
   test("merges Biome config without losing custom settings and converges", () => {
     const original = JSON.stringify({
       $schema: "https://biomejs.dev/schemas/1.9.4/schema.json",
@@ -170,7 +197,7 @@ describe("repository sync", () => {
       ["README.md", "# Our own README\n"],
       [".atlassian/OWNER", "existing-owner\n"],
     ]);
-    const plan = planSync(files, "tool", "tester");
+    const plan = planWithOss(files, "tool", "tester");
     expect(plan.operations).toContainEqual(
       expect.objectContaining({
         path: "DEVELOPMENT.md",
@@ -190,7 +217,7 @@ describe("repository sync", () => {
     expect(result.get("LICENSE")).toBe("Our existing license terms\n");
     expect(result.get("README.md")).toBe("# Our own README\n");
     expect(result.get("DEVELOPMENT.md")).toContain("npm run typecheck");
-    const withoutReadme = planSync(
+    const withoutReadme = planWithOss(
       new Map([["package.json", '{"name":"sample"}']]),
       "tool",
       "tester",
@@ -199,16 +226,14 @@ describe("repository sync", () => {
       expect.objectContaining({ path: "README.md", mode: "create-if-absent" }),
     );
     expect(result.get("CODE_OF_CONDUCT.md")).toBe(
-      buildProject("tool", "sample", "tester").files.get("CODE_OF_CONDUCT.md"),
+      ossTemplates().get("CODE_OF_CONDUCT.md"),
     );
     expect(result.get(".atlassian/OWNER")).toBe("existing-owner\n");
     expect(withoutReadme.operations).toContainEqual(
       expect.objectContaining({ path: ".atlassian/OWNER", after: "tester" }),
     );
-    expect(result.get("SECURITY.md")).toBe(
-      buildProject("tool", "sample", "tester").files.get("SECURITY.md"),
-    );
-    expect(planSync(result, "tool", "tester").operations).toEqual([]);
+    expect(result.get("SECURITY.md")).toBe(ossTemplates().get("SECURITY.md"));
+    expect(planWithOss(result, "tool", "tester").operations).toEqual([]);
   });
   test("adds missing ignore rules without disturbing custom entries or comments", () => {
     const original = "# mine\ncustom-cache\nnode_modules\n# keep\n";
@@ -389,18 +414,22 @@ describe("repository sync", () => {
         writes.push([path, contents]);
         return source;
       },
+      withFile: (path: string, file: { text: string }) => {
+        writes.push([path, file.text]);
+        return source;
+      },
     } as unknown as Directory;
     const output = await new DropCalf().sync(source, "tool", "tester");
     expect(output).toBe(source);
     expect(writes.map(([path]) => path)).toEqual([
-      "package.json",
-      ".nvmrc",
       "LICENSE",
       "CODE_OF_CONDUCT.md",
       "CONTRIBUTING.md",
       "README.md",
       "SECURITY.md",
       ".atlassian/OWNER",
+      "package.json",
+      ".nvmrc",
       "DEVELOPMENT.md",
       "cliff.toml",
       "lefthook.yml",
@@ -429,6 +458,10 @@ describe("repository sync", () => {
       file: (path: string) => ({ contents: async () => original.get(path) }),
       withNewFile: (path: string, contents: string) => {
         writes.set(path, contents);
+        return directory;
+      },
+      withFile: (path: string, file: { text: string }) => {
+        writes.set(path, file.text);
         return directory;
       },
     } as unknown as Directory;
@@ -475,7 +508,7 @@ describe("repository sync", () => {
       after: "tsc --noEmit",
     });
     const converged = applySync(
-      planSync(new Map([["package.json", contents]]), "tool", "tester"),
+      planWithOss(new Map([["package.json", contents]]), "tool", "tester"),
     ).files;
     const unchanged = {
       ...source,

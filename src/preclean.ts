@@ -1,3 +1,4 @@
+import { OSS_ASSETS } from "./oss.ts";
 import { buildProject } from "./profiles.ts";
 
 export type PrecleanOperation =
@@ -70,7 +71,7 @@ export function planPreclean(
 
   // Only the generated path names matter here; no OSS contents leave preclean.
   const project = buildProject("forge-app", packageName, "preclean");
-  const outputs = ["package.json", ...project.files.keys()];
+  const outputs = ["package.json", ...project.files.keys(), ...OSS_ASSETS];
   const operations: PrecleanOperation[] = [];
   for (const path of outputs) {
     if (!files.has(path) || UNWANTED.includes(path)) continue;

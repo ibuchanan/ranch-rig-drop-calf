@@ -17,7 +17,7 @@ import {
   object,
 } from "@dagger.io/dagger";
 import { EVAL_ASSETS } from "./evals.ts";
-import { OSS_ASSETS } from "./oss.ts";
+import { copyOssAssets, OSS_ASSETS } from "./oss.ts";
 import { planPreclean, UNWANTED } from "./preclean.ts";
 import { buildProject, resolveProfile } from "./profiles.ts";
 import { renderToDirectory } from "./project.ts";
@@ -136,7 +136,12 @@ export class DropCalf {
     );
     const fallback = project.files.get("biome.json");
     if (fallback) project.files.set("biome.json", localBiomeConfig(fallback));
-    return renderToDirectory(project);
+    return copyOssAssets(
+      renderToDirectory(project),
+      dag.currentModule().source().directory("vendor/oss-templates"),
+      name,
+      owner,
+    );
   }
 
   private async precleanPlan(directory: Directory, packageName: string) {
@@ -144,6 +149,7 @@ export class DropCalf {
       "package.json",
       "manifest.yml",
       ...buildProject("forge-app", packageName, "preclean").files.keys(),
+      ...OSS_ASSETS,
       ...UNWANTED,
     ];
     const files = new Map<string, string>();
@@ -251,6 +257,26 @@ export class DropCalf {
       if (await directory.exists(path))
         files.set(path, await directory.file(path).contents());
     }
+    // Surface conflicts in existing content before asking Dagger for seed assets.
+    planSync(
+      files,
+      profile,
+      owner,
+      ignoreSets,
+      withFunctions,
+      withoutFunctions,
+      preset,
+    );
+    const templates = new Map<string, string>();
+    const missing = OSS_ASSETS.filter((path) => !files.has(path));
+    if (missing.length) {
+      const source = dag
+        .currentModule()
+        .source()
+        .directory("vendor/oss-templates");
+      for (const path of missing)
+        templates.set(path, await source.file(path).contents());
+    }
     return planSync(
       files,
       profile,
@@ -259,6 +285,7 @@ export class DropCalf {
       withFunctions,
       withoutFunctions,
       preset,
+      templates,
     );
   }
 
@@ -284,9 +311,26 @@ export class DropCalf {
     if (plan.operations.length === 0) return directory;
     const files = applySync(plan).files;
     let result = directory;
+    const missingOss = plan.operations
+      .filter((operation) =>
+        OSS_ASSETS.includes(operation.path as (typeof OSS_ASSETS)[number]),
+      )
+      .map((operation) => operation.path);
+    if (missingOss.length) {
+      const name = JSON.parse(plan.files.get("package.json") ?? "{}")
+        .name as string;
+      result = await copyOssAssets(
+        result,
+        dag.currentModule().source().directory("vendor/oss-templates"),
+        name,
+        owner,
+        missingOss,
+      );
+    }
     for (const path of new Set(
       plan.operations.map((operation) => operation.path),
     )) {
+      if (OSS_ASSETS.includes(path as (typeof OSS_ASSETS)[number])) continue;
       const contents = files.get(path);
       if (contents === undefined)
         throw new Error(`sync: ${path} missing after apply`);

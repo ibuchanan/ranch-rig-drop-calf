@@ -1,8 +1,17 @@
-import { expect, test } from "bun:test";
+import { afterEach, beforeEach, expect, test } from "bun:test";
 import type { Directory } from "@dagger.io/dagger";
 import { DropCalf } from "../src/index.ts";
 import { buildProject } from "../src/profiles.ts";
 import { applySync, ConflictError, planSync } from "../src/sync.ts";
+import { mockOssSource } from "./oss-source.ts";
+
+let ossSource: ReturnType<typeof mockOssSource>;
+beforeEach(() => {
+  ossSource = mockOssSource();
+});
+afterEach(() => {
+  ossSource.mockRestore();
+});
 
 const suitePaths = [
   "promptfooconfig.yaml",
@@ -157,6 +166,10 @@ test("Dagger preview and sync accept eval selection without replacing an existin
     file: (path: string) => ({ contents: async () => existing.get(path) }),
     withNewFile: (path: string, contents: string) => {
       writes.set(path, contents);
+      return directory;
+    },
+    withFile: (path: string, file: { text: string }) => {
+      writes.set(path, file.text);
       return directory;
     },
   } as unknown as Directory;

@@ -4,6 +4,7 @@ import { DropCalf } from "../src/index.ts";
 import { OSS_ASSETS } from "../src/oss.ts";
 import { buildProject } from "../src/profiles.ts";
 import { applySync, planSync } from "../src/sync.ts";
+import { mockOssSource, ossTemplates } from "./oss-source.ts";
 
 test.each(["library", "forge-app", "tool", "agent-skill"])(
   "%s generated output has the selected functions and converges without losing user prose",
@@ -49,7 +50,7 @@ test.each(["library", "forge-app", "tool", "agent-skill"])(
 );
 
 test.each(["library", "forge-app", "tool", "agent-skill"])(
-  "%s Dagger files renders the selected package and README",
+  "%s Dagger files renders the selected package and all assets",
   async (kind) => {
     const writes = new Map<string, string>();
     const directory = {
@@ -57,8 +58,13 @@ test.each(["library", "forge-app", "tool", "agent-skill"])(
         writes.set(path, contents);
         return directory;
       },
+      withFile(path: string, file: { text: string }) {
+        writes.set(path, file.text);
+        return directory;
+      },
     } as unknown as Directory;
     const stub = spyOn(dag, "directory").mockReturnValue(directory);
+    const oss = mockOssSource();
     try {
       await new DropCalf().files(kind, "tester", "sample", "A sample project");
       const project = buildProject(
@@ -70,11 +76,17 @@ test.each(["library", "forge-app", "tool", "agent-skill"])(
       expect(JSON.parse(writes.get("package.json") ?? "null")).toEqual(
         project.packageJson,
       );
-      expect(writes.get("README.md")).toBe(project.files.get("README.md"));
+      expect(writes.get("README.md")).toBe(
+        ossTemplates().get("README.md")?.replaceAll("[Project name]", "sample"),
+      );
+      expect(writes.get("CODE_OF_CONDUCT.md")).toBe(
+        ossTemplates().get("CODE_OF_CONDUCT.md"),
+      );
       expect([...writes.keys()].sort()).toEqual(
-        ["package.json", ...project.files.keys()].sort(),
+        ["package.json", ...project.files.keys(), ...OSS_ASSETS].sort(),
       );
     } finally {
+      oss.mockRestore();
       stub.mockRestore();
     }
   },

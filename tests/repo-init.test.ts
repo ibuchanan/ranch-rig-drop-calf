@@ -1,11 +1,11 @@
-import { describe, expect, spyOn, test } from "bun:test";
+import { afterEach, beforeEach, describe, expect, spyOn, test } from "bun:test";
 import {
   chmodSync,
   existsSync,
   mkdirSync,
   mkdtempSync,
-  readFileSync,
   readdirSync,
+  readFileSync,
   rmSync,
   writeFileSync,
 } from "node:fs";
@@ -13,13 +13,22 @@ import { join } from "node:path";
 import { type Directory, dag } from "@dagger.io/dagger";
 import { biomeLinting, forgeLinting } from "../src/capabilities.ts";
 import { DropCalf } from "../src/index.ts";
-import { OSS_ASSETS } from "../src/oss.ts";
+import { OSS_ASSETS, transformOssTemplate } from "../src/oss.ts";
 import {
   buildProject,
   InvalidOptionsError,
   PROFILES,
 } from "../src/profiles.ts";
 import { buildReadme, createBlueprint } from "../src/project.ts";
+import { mockOssSource } from "./oss-source.ts";
+
+let ossSource: ReturnType<typeof mockOssSource>;
+beforeEach(() => {
+  ossSource = mockOssSource();
+});
+afterEach(() => {
+  ossSource.mockRestore();
+});
 
 test("files uses matching local Biome init defaults without losing required policy", async () => {
   const root = process.cwd();
@@ -36,6 +45,10 @@ test("files uses matching local Biome init defaults without losing required poli
   const directory = {
     withNewFile: (path: string, content: string) => {
       writes.set(path, content);
+      return directory;
+    },
+    withFile: (path: string, file: { text: string }) => {
+      writes.set(path, file.text);
       return directory;
     },
   } as unknown as Directory;
@@ -69,6 +82,10 @@ test("files skips a mismatched local Biome and uses the fallback", async () => {
   const directory = {
     withNewFile: (path: string, content: string) => {
       writes.set(path, content);
+      return directory;
+    },
+    withFile: (path: string, file: { text: string }) => {
+      writes.set(path, file.text);
       return directory;
     },
   } as unknown as Directory;
@@ -194,7 +211,7 @@ describe("kind selection", () => {
 });
 
 describe("OSS document seeds", () => {
-  test("tracks every file in the pinned OSS template", () => {
+  test("tracks every file in the pinned OSS template for sync injection", () => {
     const vendor = join(import.meta.dir, "../vendor/oss-templates");
     expect([...OSS_ASSETS].map(String).sort()).toEqual(
       [
@@ -209,7 +226,7 @@ describe("OSS document seeds", () => {
   });
 
   test.each(["library", "forge-app", "tool", "agent-skill"])(
-    "%s applies template transformations correctly",
+    "%s applies template transformations correctly with fixture templates",
     (kind) => {
       const project = buildProject(
         kind,
@@ -219,6 +236,11 @@ describe("OSS document seeds", () => {
         "Example Owner",
       );
       expect(project.packageJson.license).toBe("Apache-2.0");
+
+      // Verify DEVELOPMENT.md transformation via buildProject
+      expect(project.files.get("DEVELOPMENT.md")).toContain(
+        "npm run typecheck",
+      );
 
       for (const path of OSS_ASSETS) {
         const template = readFileSync(
@@ -236,13 +258,11 @@ describe("OSS document seeds", () => {
                     String(new Date().getFullYear()),
                   )
                 : template;
-        expect(project.files.get(path)).toBe(expected);
+        expect(
+          transformOssTemplate(path, template, "example-project", "tester"),
+        ).toBe(expected);
+        expect(project.files.has(path)).toBe(false);
       }
-      expect(project.files.get("README.md")).toContain("[YYYY]");
-
-      expect(project.files.get("DEVELOPMENT.md")).toContain(
-        "npm run typecheck",
-      );
     },
   );
 
@@ -357,7 +377,7 @@ describe("profiles", () => {
       const project = buildProject(kind, "sample", "tester");
       expect({
         packageJson: project.packageJson,
-        files: [...project.files.keys()].sort(),
+        files: [...project.files.keys(), ...OSS_ASSETS].sort(),
       }).toMatchSnapshot(kind);
       if (kind === "agent-skill")
         expect(
