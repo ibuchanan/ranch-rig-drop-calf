@@ -11,6 +11,7 @@ import { basename, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   type Changeset,
+  type Container,
   type Directory,
   type File,
   dag,
@@ -37,6 +38,7 @@ import { applyPreclean } from "./preclean.ts";
 import { buildProject, resolveProfile } from "./profiles.ts";
 import { renderToDirectory } from "./project.ts";
 import { applySync, planSync } from "./sync.ts";
+import { nodeContainer as buildNodeContainer } from "./node.ts";
 import {
   copyTypeScript,
   TYPESCRIPT_TEMPLATE,
@@ -127,6 +129,16 @@ export class DropCalf {
         status: found(tool) ? "available" : "missing",
       })),
     );
+  }
+
+  /**
+   * The Node baseline as a native Dagger container. Containerized tools run the
+   * same major the file pins promise rather than whatever the host has
+   * installed.
+   */
+  @func()
+  nodeContainer(): Container {
+    return buildNodeContainer();
   }
 
   /**

@@ -1,7 +1,8 @@
-import { type Directory, dag } from "@dagger.io/dagger";
+import type { Directory } from "@dagger.io/dagger";
 import type { Capability } from "./capabilities.ts";
+import { nodeContainer } from "./node.ts";
 import { copyTemplate, templatePaths } from "./templates.ts";
-import { NODE_MAJOR, TOOL_VERSIONS } from "./versions.ts";
+import { TOOL_VERSIONS } from "./versions.ts";
 
 /**
  * The release workflow: the `git-cliff` devDependency, the command that renders
@@ -86,10 +87,7 @@ export async function validateChangelog(
 ): Promise<ChangelogValidation> {
   if (!(await directory.exists(CHANGELOG_CONFIG)))
     return { status: "skipped", reason: `${CHANGELOG_CONFIG} is missing` };
-  const container = dag
-    .container()
-    // The Node baseline image carries git, which `git cliff` dispatches through.
-    .from(`node:${NODE_MAJOR}`)
+  const container = nodeContainer()
     .withExec([
       "npm",
       "install",

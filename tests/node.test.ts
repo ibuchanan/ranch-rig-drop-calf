@@ -1,7 +1,13 @@
-import { describe, expect, test } from "bun:test";
+import { describe, expect, spyOn, test } from "bun:test";
+import { dag } from "@dagger.io/dagger";
 import { buildProject } from "../src/profiles.ts";
 import { applySync, ConflictError, ParseError, planSync } from "../src/sync.ts";
-import { NODE_FORGE_RUNTIME, NPM_REGISTRY, NPMRC } from "../src/node.ts";
+import {
+  NODE_FORGE_RUNTIME,
+  NPM_REGISTRY,
+  NPMRC,
+  nodeContainer,
+} from "../src/node.ts";
 
 const packageJson = (extra: Record<string, unknown> = {}) =>
   JSON.stringify({ name: "sample", ...extra });
@@ -163,4 +169,21 @@ test("node-owned keys converge on a second pass", () => {
   ]);
   const first = applySync(planSync(files, "forge-app", "tester")).files;
   expect(planSync(first, "forge-app", "tester").operations).toEqual([]);
+});
+
+test("nodeContainer builds the baseline image through native Dagger", () => {
+  const images: string[] = [];
+  const container = {
+    from: (image: string) => {
+      images.push(image);
+      return container;
+    },
+  };
+  const spy = spyOn(dag, "container").mockReturnValue(container as never);
+  try {
+    expect(nodeContainer()).toBe(container as never);
+    expect(images).toEqual(["node:24"]);
+  } finally {
+    spy.mockRestore();
+  }
 });

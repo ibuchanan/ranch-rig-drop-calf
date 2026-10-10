@@ -1,3 +1,4 @@
+import { type Container, dag } from "@dagger.io/dagger";
 import YAML, { isMap } from "yaml";
 import type { Capability } from "./capabilities.ts";
 import type { ProjectBlueprint } from "./project.ts";
@@ -21,6 +22,17 @@ export const NPM_REGISTRY = "https://registry.npmjs.org/";
 export const NPMRC = `# Use the public npm registry (not the default for internal Atlassians)\nregistry=${NPM_REGISTRY}\n`;
 
 const NPMRC_KEY = "registry";
+
+/**
+ * The Node baseline as a native Dagger container. This is the one place the
+ * Node image is chosen, so a containerized tool (such as `validateChangelog`)
+ * runs the same major the file pins promise rather than whatever the host has
+ * installed. The `node` image carries `git`, which containerized commands
+ * dispatch through.
+ */
+export function nodeContainer(): Container {
+  return dag.container().from(`node:${NODE_MAJOR}`);
+}
 
 export function nodeBaseline(): Capability {
   return {

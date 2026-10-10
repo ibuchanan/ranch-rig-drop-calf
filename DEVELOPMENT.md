@@ -114,7 +114,10 @@ through that generated SDK, so if type checking reports a missing
 - `src/node.ts`: the Node baseline. `nodeBaseline()` seeds `.nvmrc`, `.npmrc`,
   `engines.node`, and `@types/node`; `planNode` reconciles those keys on sync and
   adds `app.runtime.name` to a `manifest.yml` that already exists on `forge-app`.
-  It never creates the manifest.
+  It never creates the manifest. `nodeContainer()` is the native Dagger side of
+  the same baseline: the one place the Node image is chosen, so containerized
+  tools (such as `validateChangelog`) run the pinned major rather than whatever
+  the host has installed.
 - `src/profiles.ts`: ordered capability lists for the four supported profiles.
 - `tests/repo-init.test.ts`: Bun unit tests for the pure blueprint/capability
   layer.
