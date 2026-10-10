@@ -10,3 +10,6 @@
 [submodule "vendor/oss-templates"]
 	path = vendor/oss-templates
 	url = https://ian_buchanan@bitbucket.org/atlassian/oss-templates.git
+[submodule "vendor/explore-forge-confluence-okf-producer"]
+	path = vendor/explore-forge-confluence-okf-producer
+	url = https://github.com/ibuchanan/explore-forge-confluence-okf-producer.git
