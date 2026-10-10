@@ -4,10 +4,10 @@ import YAML, { isMap } from "yaml";
 import { EVAL_ASSETS } from "./evals.ts";
 import { GITIGNORE_TEMPLATES, mergeGitignore } from "./gitignore.ts";
 import { OSS_ASSETS, OSS_LICENSE, transformOssTemplate } from "./oss.ts";
-import { planNode } from "./node.ts";
 import { buildProject } from "./profiles.ts";
+import { planNode } from "./node.ts";
 import { buildReadme, createBlueprint } from "./project.ts";
-import { mergeTypeScriptConfig } from "./typescript-config.ts";
+import { TYPESCRIPT_ASSETS } from "./typescript.ts";
 
 export type SyncOperation = {
   path: string;
@@ -132,10 +132,13 @@ export function planSync(
   for (const path of [
     ...OSS_ASSETS,
     // `.gitignore` arrives in the same map but is line-merged below, never seeded.
+    // The TypeScript configs are seeded by their own loop, which also covers the
+    // kinds that carry a config in the blueprint rather than in `templates`.
     ...[...templates.keys()].filter(
       (path) =>
         !OSS_ASSETS.includes(path as (typeof OSS_ASSETS)[number]) &&
-        path !== ".gitignore",
+        path !== ".gitignore" &&
+        !TYPESCRIPT_ASSETS.includes(path as (typeof TYPESCRIPT_ASSETS)[number]),
     ),
     "AGENTS.md",
     "cliff.toml",
@@ -307,22 +310,21 @@ export function planSync(
         after,
       });
   }
-  for (const path of ["tsconfig.json", "tsconfig.typecheck.json"] as const) {
-    const template = desiredProject.files.get(path);
-    if (template === undefined) continue;
-    const before = files.get(path);
-    const after =
-      before === undefined
-        ? template
-        : mergeTypeScriptConfig(path, before, template);
-    if (after !== before)
-      operations.push({
-        path,
-        key: "config",
-        mode: before === undefined ? "create-if-absent" : "structured-merge",
-        before,
-        after,
-      });
+  for (const path of TYPESCRIPT_ASSETS) {
+    // Seeded, never rewritten: an existing config belongs to the project, the
+    // same rule the docs tree follows. `forge-app` takes these from
+    // `templates/typescript`; every other kind carries its config in the
+    // blueprint. Templates are supplied per profile, so a library sync never
+    // sees the Forge config.
+    const template = templates.get(path) ?? desiredProject.files.get(path);
+    if (template === undefined || files.has(path)) continue;
+    operations.push({
+      path,
+      key: "config",
+      mode: "create-if-absent",
+      before: undefined,
+      after: template,
+    });
   }
   const tsdown = desiredProject.files.get("tsdown.config.ts");
   if (tsdown !== undefined) {

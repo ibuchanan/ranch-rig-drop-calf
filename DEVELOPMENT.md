@@ -87,6 +87,12 @@ through that generated SDK, so if type checking reports a missing
   documented owner, project name, and LICENSE year substitutions.
 - `src/docs.ts`: copies `templates/docs/` through Dagger for generation and
   discovers its relative paths for create-if-absent sync, separate from OSS.
+- `src/templates.ts`: `copyTemplate`/`templatePaths`, the shared overlay and
+  glob used by every `templates/` tree.
+- `src/typescript.ts`: the TypeScript toolchain — the `typescript`
+  devDependency, the `typecheck` and `build` scripts that invoke `tsc`, and
+  `copyTypeScript`/`typescriptPaths` for `templates/typescript/`, the one config
+  every kind receives verbatim. Nothing else sets the compiler or calls it.
 - `src/gitignore.ts`: assembles `.gitignore` from the pinned gitignore.io
   response, de-duplicating rules on first occurrence and appending the personal
   defaults. `copyGitignoreAssets` is the Dagger boundary used by generation and
@@ -137,3 +143,16 @@ trees, it is pinned outside `ProjectBlueprint` and copied into the rendered
 `Directory` by `copyGitignore`. That keeps assembly pure and testable, and means
 `buildProject` does not produce `.gitignore` — a unit test asserting on generated
 `.gitignore` content should assert on `buildGitignore` instead.
+
+The same applies to the TypeScript configs. `templates/typescript/` holds the
+two files copied verbatim from
+`vendor/explore-forge-jira-remote-data-fields`, and every kind seeds them, so no
+capability writes a `tsconfig` and `buildProject` carries none for any profile.
+`sync` supplies the templates for every profile. Assert on
+`templates/typescript` rather than on the blueprint when testing what a kind
+generates.
+
+A capability cannot read the module source — that would break the pure blueprint
+layer the Bun tests rely on. So content that belongs to a function but is
+authored rather than derived is pinned in `templates/` and read at the Dagger
+boundary, exactly like `oss` and `gitignore`.

@@ -9,7 +9,7 @@ import {
   planSync,
   ValidationError,
 } from "../src/sync.ts";
-import { docsTemplates } from "./docs-source.ts";
+import { docsTemplates, typescriptTemplates } from "./templates-source.ts";
 import {
   mockModuleSource,
   moduleTemplates,
@@ -55,6 +55,7 @@ const planWithOss = (
       ...ignoreTemplates(ignoreSets),
       ...moduleTemplates(),
       ...docsTemplates(),
+      ...typescriptTemplates(),
     ]),
   );
 
@@ -469,6 +470,7 @@ describe("repository sync", () => {
       "lefthook.yml",
       "biome.json",
       "tsconfig.json",
+      "tsconfig.typecheck.json",
       ".gitignore",
       ".editorconfig",
     ]);
@@ -539,7 +541,7 @@ describe("repository sync", () => {
       path: "package.json",
       key: "scripts.typecheck",
       mode: "structured-merge",
-      after: "tsc --noEmit",
+      after: "tsc --project tsconfig.typecheck.json --noEmit",
     });
     const converged = applySync(
       planWithOss(new Map([["package.json", contents]]), "tool", "tester"),

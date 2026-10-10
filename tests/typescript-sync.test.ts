@@ -1,71 +1,102 @@
 import { expect, test } from "bun:test";
-import ts from "typescript";
 import { DropCalf } from "../src/index.ts";
-import { applySync, ConflictError, ParseError, planSync } from "../src/sync.ts";
+import { applySync, planSync } from "../src/sync.ts";
 import { mockModuleSource } from "./module-source.ts";
+import { typescriptTemplates } from "./templates-source.ts";
 
 const packageFile = '{"name":"sample"}';
-const parse = (text: string | undefined) =>
-  ts.parseConfigFileTextToJson("tsconfig.json", text ?? "").config;
 
-test("sync preserves TypeScript comments and unrelated settings while adding required options", () => {
+/** `forge-app` seeds its configs from `templates/typescript`, so sync needs them. */
+const forgePlan = (files: Map<string, string>) =>
+  planSync(
+    files,
+    "forge-app",
+    "tester",
+    undefined,
+    [],
+    [],
+    undefined,
+    typescriptTemplates(),
+  );
+
+test("forge sync seeds both TypeScript configs verbatim when absent", () => {
+  const templates = typescriptTemplates();
+  const base = templates.get("tsconfig.json");
+  const check = templates.get("tsconfig.typecheck.json");
+  if (base === undefined || check === undefined)
+    throw new Error("templates/typescript is missing a config");
+  const plan = forgePlan(new Map([["package.json", packageFile]]));
+  expect(plan.operations).toContainEqual({
+    path: "tsconfig.json",
+    key: "config",
+    mode: "create-if-absent",
+    before: undefined,
+    after: base,
+  });
+  expect(plan.operations).toContainEqual({
+    path: "tsconfig.typecheck.json",
+    key: "config",
+    mode: "create-if-absent",
+    before: undefined,
+    after: check,
+  });
+  const output = applySync(plan).files;
+  for (const [path, template] of templates)
+    expect(output.get(path)).toBe(template);
+  expect(forgePlan(output).operations).toEqual([]);
+});
+
+test("sync never rewrites a TypeScript config the project already has", () => {
   const existing = `{
-  // Keep this project-specific setting.
   "compilerOptions": {
-    "paths": { "@app/*": ["src/*"] },
-    "strict": true // user note
-  },
-  "exclude": ["generated"]
+    // mine
+    "paths": { "@app/*": ["src/*"] }
+  }
 }\n`;
   const files = new Map([
     ["package.json", packageFile],
     ["tsconfig.json", existing],
   ]);
-  const plan = planSync(files, "forge-app", "tester");
-  expect(plan.operations).toContainEqual(
-    expect.objectContaining({
-      path: "tsconfig.json",
-      mode: "structured-merge",
-    }),
-  );
-  expect(plan.operations).toContainEqual(
-    expect.objectContaining({
-      path: "tsconfig.typecheck.json",
-      mode: "create-if-absent",
-    }),
-  );
+  const plan = forgePlan(files);
+  // The existing config is untouched; only the absent one is seeded.
+  expect(
+    plan.operations
+      .filter((operation) => operation.path.includes("tsconfig"))
+      .map((operation) => operation.path),
+  ).toEqual(["tsconfig.typecheck.json"]);
   const output = applySync(plan).files;
-  const base = output.get("tsconfig.json") ?? "";
-  expect(base).toContain("// Keep this project-specific setting.");
-  expect(base).toContain("// user note");
-  expect(parse(base).compilerOptions.strict).toBe(true);
-  expect(parse(base)).toMatchObject({
-    compilerOptions: {
-      paths: { "@app/*": ["src/*"] },
-      moduleResolution: "Node",
-      strict: true,
-    },
-    exclude: ["generated"],
-  });
-  expect(parse(output.get("tsconfig.typecheck.json"))).toMatchObject({
-    extends: "./tsconfig.json",
-    compilerOptions: { noUncheckedIndexedAccess: true },
-  });
-  expect(planSync(output, "forge-app", "tester").operations).toEqual([]);
+  expect(output.get("tsconfig.json")).toBe(existing);
+  expect(output.get("tsconfig.typecheck.json")).toBe(
+    typescriptTemplates().get("tsconfig.typecheck.json"),
+  );
 });
-
-test("sync reports an owned TypeScript option conflict without changing input", () => {
-  const original =
-    '{ // custom\n "compilerOptions": { "moduleResolution": "Bundler" }\n}\n';
+test("sync leaves an unparseable TypeScript config alone rather than failing", () => {
+  const broken = '{"compilerOptions": {';
   const files = new Map([
     ["package.json", packageFile],
-    ["tsconfig.json", original],
+    ["tsconfig.json", broken],
   ]);
-  expect(() => planSync(files, "forge-app", "tester")).toThrow(ConflictError);
-  expect(() => planSync(files, "forge-app", "tester")).toThrow(
-    /tsconfig.json.*moduleResolution/,
-  );
-  expect(files.get("tsconfig.json")).toBe(original);
+  expect(applySync(forgePlan(files)).files.get("tsconfig.json")).toBe(broken);
+});
+
+test("every kind seeds the same shared config", () => {
+  const templates = typescriptTemplates();
+  for (const kind of ["library", "forge-app", "tool", "agent-skill"]) {
+    const result = applySync(
+      planSync(
+        new Map([["package.json", packageFile]]),
+        kind,
+        "tester",
+        undefined,
+        [],
+        [],
+        undefined,
+        templates,
+      ),
+    ).files;
+    for (const [path, template] of templates)
+      expect(result.get(path)).toBe(template);
+  }
 });
 
 test("library sync adds publishing fields and its build config without losing custom metadata", () => {
@@ -110,39 +141,28 @@ test("library sync surfaces conflicting publishing fields or tsdown config", () 
   ).toThrow(/tsdown.config.ts/);
 });
 
-test("sync rejects invalid TypeScript config before any apply", () => {
-  expect(() =>
-    planSync(
-      new Map([
-        ["package.json", packageFile],
-        ["tsconfig.json", '{"compilerOptions": {'],
-      ]),
-      "tool",
-      "tester",
-    ),
-  ).toThrow(ParseError);
-});
-
-test("Dagger sync reads existing TypeScript config instead of overwriting it", async () => {
+test("Dagger sync leaves an existing TypeScript config untouched", async () => {
   const existing = '{ "compilerOptions": { "moduleResolution": "Bundler" } }';
-  let writes = 0;
+  const writes: string[] = [];
   const source = {
     exists: async (path: string) =>
       path === "package.json" || path === "tsconfig.json",
     file: (path: string) => ({
       contents: async () => (path === "package.json" ? packageFile : existing),
     }),
-    withNewFile: () => {
-      writes++;
+    withNewFile: (path: string) => {
+      writes.push(path);
+      return source;
+    },
+    withFile: (path: string) => {
+      writes.push(path);
       return source;
     },
   } as unknown as Parameters<DropCalf["sync"]>[0];
   const module = mockModuleSource();
   try {
-    await expect(
-      new DropCalf().sync(source, "forge-app", "tester"),
-    ).rejects.toThrow(/tsconfig.json.*moduleResolution/);
-    expect(writes).toBe(0);
+    await new DropCalf().sync(source, "forge-app", "tester");
+    expect(writes).not.toContain("tsconfig.json");
   } finally {
     module.mockRestore();
   }

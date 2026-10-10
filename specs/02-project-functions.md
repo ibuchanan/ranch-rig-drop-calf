@@ -117,14 +117,24 @@ Add `@ast-grep/cli` and the Forge prelint rules package. Add the `lint:prelint` 
 command and establish the direct `lint` chain (unless `git-hooks` later owns `lint`).
 
 ### `typescript`
-Add `typescript@^5` (Forge-bundler constraint); `@types/node` belongs to `node`. Own
-`build`, `dev`, `typecheck` scripts. Two profiles:
-- **forge-app**: JSONC `tsconfig.json` (JSX react-jsx, ES2022, CommonJS, Node resolution,
-  strict, `src` root / `dist` out) plus a `tsconfig.typecheck.json` extending it with the
-  stricter no-* / exact flags; `build`/`dev` run `tsc`.
-- **typescript-library**: separate library config; build owned by `tsdown`.
+The TypeScript toolchain: the `typescript` devDependency, the `build` and `typecheck`
+scripts that invoke it, and the config it reads. `@types/node` belongs to `node`.
 
-Comments and unrelated settings are preserved (JSONC-aware editor, never regex).
+Every kind uses one config, seeded verbatim from `templates/typescript` (copied from the
+vendored Forge example) so the JSONC comments explaining which options the bundler forces
+survive. `build` and `typecheck` are the only two `tsc` scripts the example uses — a Forge
+app is a static resource bundle plus resolvers rather than a running server, so there is no
+`dev` script. `tsconfig.typecheck.json` extends the base config with the stricter no-* /
+exact flags; it omits `noUnusedLocals`, `noUnusedParameters`, and
+`noFallthroughCasesInSwitch` because Biome's recommended set already reports all three.
+
+Only the compiler range was ever different between kinds, and it no longer is: every kind
+takes `typescript@^5.9`. `library` additionally overrides `build` with `tsdown` and owns the
+publishing fields.
+
+Comments and unrelated settings in an existing config are preserved by never rewriting it:
+both configs are seeded create-if-absent, so a `tsconfig` the project already has is left
+untouched rather than parsed and edited.
 
 ### `forge-ahead`
 Add the three Forge Ahead runtime dependencies (`@forge-ahead/atlassian-api-types`,

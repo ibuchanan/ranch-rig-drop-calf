@@ -5,7 +5,7 @@ import { type Directory, dag } from "@dagger.io/dagger";
 import { DropCalf } from "../src/index.ts";
 import { OSS_ASSETS, transformOssTemplate } from "../src/oss.ts";
 import { buildProject } from "../src/profiles.ts";
-import { docsTemplates } from "./docs-source.ts";
+import { docsTemplates } from "./templates-source.ts";
 import { mockOssSource, ossTemplates } from "./oss-source.ts";
 
 const vendor = join(import.meta.dir, "../vendor/oss-templates");

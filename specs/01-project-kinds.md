@@ -34,19 +34,18 @@ Every kind:
 |---|---|---|---|---|
 | Linting | biome | forge lint | biome | biome |
 | Formatting | biome | biome | biome | biome |
-| Type checking | tsc | forge-pinned tsc | tsc | tsc |
+| Type checking | tsc | tsc | tsc | tsc |
 | Testing | bun test (+ watch/coverage) | bun test (+ watch/coverage) | bun test (+ watch/coverage) | *no-op* |
 | Build | tsdown | tsc | tsc | tsc |
 | Clean | rm -rf dist | rm -rf dist | rm -rf dist | rm -rf dist |
 
 Kind-specific policies:
 
-- **`forge-app`** never uses `tsdown`: `build` runs `tsc -p tsconfig.json` and TypeScript
-  stays on a `^5` range until the Forge bundler supports TypeScript 6. Forge-only concerns
-  (manifest-adjacent scripts, Secretspec wrapping, Forge lint in the `lint` slot) belong
+- **`forge-app`** never uses `tsdown`: `build` runs `tsc --project tsconfig.json`. Forge-only
+  concerns (manifest-adjacent scripts, Secretspec wrapping, Forge lint in the `lint` slot) belong
   to this kind and must not leak into others.
-- **`library`** owns the publishing profile: `tsdown` build, library `tsconfig`, and
-  publishing fields (`main`, `types`, `exports`) that `forge-app` must not emit.
+- **`library`** owns the publishing profile: `tsdown` build and publishing fields (`main`,
+  `types`, `exports`) that `forge-app` must not emit.
 - **`agent-skill`** is the only kind with a deliberate no-op testing slot; `test` and its
   variants must be absent from `package.json`, and git hooks must not reference them.
 

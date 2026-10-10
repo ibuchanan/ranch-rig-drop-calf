@@ -20,6 +20,7 @@ import {
 } from "../src/profiles.ts";
 import { buildReadme, createBlueprint } from "../src/project.ts";
 import { mockModuleSource } from "./module-source.ts";
+import { typescriptTemplates } from "./templates-source.ts";
 
 let moduleSource: ReturnType<typeof mockModuleSource>;
 beforeEach(() => {
@@ -238,20 +239,27 @@ describe("profiles", () => {
     [
       "forge-app",
       "lefthook run esa-lint",
-      "tsc -p tsconfig.json",
+      "tsc --project tsconfig.json",
       "bun test --pass-with-no-tests",
     ],
-    ["tool", "lefthook run esa-lint", "tsc", "bun test --pass-with-no-tests"],
-    ["agent-skill", "lefthook run esa-lint", "tsc", undefined],
+    [
+      "tool",
+      "lefthook run esa-lint",
+      "tsc --project tsconfig.json",
+      "bun test --pass-with-no-tests",
+    ],
+    [
+      "agent-skill",
+      "lefthook run esa-lint",
+      "tsc --project tsconfig.json",
+      undefined,
+    ],
   ])("%s fills the stable developer slots", (kind, lint, build, testScript) => {
     const { packageJson } = buildProject(kind, "sample", "tester");
     expect(packageJson.scripts).toMatchObject({
       lint,
       format: "biome format --write",
-      typecheck:
-        kind === "forge-app"
-          ? "tsc -p tsconfig.typecheck.json --noEmit"
-          : "tsc --noEmit",
+      typecheck: "tsc --project tsconfig.typecheck.json --noEmit",
       build,
       clean: "rm -rf dist",
     });
@@ -321,7 +329,13 @@ describe("profiles", () => {
       const project = buildProject(kind, "sample", "tester");
       expect({
         packageJson: project.packageJson,
-        files: [...project.files.keys(), ...OSS_ASSETS].sort(),
+        // Seeded trees are not in the blueprint, so add the ones this kind
+        // actually receives.
+        files: [
+          ...project.files.keys(),
+          ...OSS_ASSETS,
+          ...typescriptTemplates().keys(),
+        ].sort(),
       }).toMatchSnapshot(kind);
       if (kind === "agent-skill")
         expect(

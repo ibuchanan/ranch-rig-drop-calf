@@ -4,7 +4,7 @@ import { copyDocs, docPaths } from "../src/docs.ts";
 import { DropCalf } from "../src/index.ts";
 import { buildProject } from "../src/profiles.ts";
 import { applySync, planSync } from "../src/sync.ts";
-import { docsTemplates } from "./docs-source.ts";
+import { docsTemplates } from "./templates-source.ts";
 
 test("Dagger copies nested docs verbatim and discovers only files", async () => {
   const paths = ["guides/", "guides/setup.md", "DEVELOPMENT.md"];

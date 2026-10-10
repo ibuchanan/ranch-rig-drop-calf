@@ -2,8 +2,7 @@ export const NODE_MAJOR = "24";
 
 export const TOOL_VERSIONS = {
   biome: "^1.9.4",
-  typescript: "^5.4.0",
-  forgeTypescript: "^5.9.3",
+  typescript: "^5.9.3",
   tsdown: "^0.15.0",
   sizeLimit: "^11.2.0",
   sizeLimitFile: "^5.0.0",

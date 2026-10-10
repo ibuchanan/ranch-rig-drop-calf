@@ -7,13 +7,9 @@ import {
   bunTesting,
   cleanBuild,
   forgeAhead,
-  forgeBuild,
   forgeLinting,
-  forgeTypecheck,
   libraryBuild,
   noTesting,
-  tscBuild,
-  tscTypecheck,
 } from "./capabilities.ts";
 import { changelog } from "./changelog.ts";
 import { evals } from "./evals.ts";
@@ -22,6 +18,7 @@ import { nodeBaseline } from "./node.ts";
 import { validateOssOwner } from "./oss.ts";
 import { createBlueprint, type ProjectBlueprint } from "./project.ts";
 import { forgeSecrets } from "./secrets.ts";
+import { typeScriptToolchain } from "./typescript.ts";
 
 export const PROFILES: Record<string, Capability[]> = {
   library: [
@@ -29,7 +26,7 @@ export const PROFILES: Record<string, Capability[]> = {
     changelog(),
     biomeLinting(),
     biomeFormatting(),
-    tscTypecheck(),
+    typeScriptToolchain(),
     bunTesting(),
     libraryBuild(),
     bundleSize("Library bundle", "dist/index.js"),
@@ -42,10 +39,9 @@ export const PROFILES: Record<string, Capability[]> = {
     forgeSecrets(),
     forgeLinting(),
     biomeFormatting(),
-    forgeTypecheck(),
+    typeScriptToolchain(),
     forgeAhead(),
     bunTesting(),
-    forgeBuild(),
     bundleSize("Forge app bundle", "dist/**/*.js"),
     cleanBuild(),
     gitHooks(true),
@@ -55,9 +51,8 @@ export const PROFILES: Record<string, Capability[]> = {
     changelog(),
     biomeLinting(),
     biomeFormatting(),
-    tscTypecheck(),
+    typeScriptToolchain(),
     bunTesting(),
-    tscBuild(),
     cleanBuild(),
     gitHooks(true),
   ],
@@ -65,9 +60,8 @@ export const PROFILES: Record<string, Capability[]> = {
     nodeBaseline(),
     biomeLinting(),
     biomeFormatting(),
-    tscTypecheck(),
+    typeScriptToolchain(),
     noTesting(),
-    tscBuild(),
     cleanBuild(),
     gitHooks(false),
   ],

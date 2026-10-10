@@ -30,6 +30,11 @@ import { applyPreclean } from "./preclean.ts";
 import { buildProject, resolveProfile } from "./profiles.ts";
 import { renderToDirectory } from "./project.ts";
 import { applySync, planSync } from "./sync.ts";
+import {
+  copyTypeScript,
+  TYPESCRIPT_TEMPLATE,
+  typescriptPaths,
+} from "./typescript.ts";
 import { TOOL_VERSIONS } from "./versions.ts";
 
 function localBiomeConfig(fallback: string): string {
@@ -153,9 +158,10 @@ export class DropCalf {
     );
     const fallback = project.files.get("biome.json");
     if (fallback) project.files.set("biome.json", localBiomeConfig(fallback));
+    const rendered = renderToDirectory(project);
     return this.copyGitignore(
       await this.copyOss(
-        this.copyDocs(renderToDirectory(project)),
+        this.copyDocs(await this.copyTypeScript(rendered)),
         name,
         owner,
       ),
@@ -167,6 +173,14 @@ export class DropCalf {
     return copyDocs(
       directory,
       dag.currentModule().source().directory("templates/docs"),
+    );
+  }
+
+  @func()
+  copyTypeScript(directory: Directory): Directory {
+    return copyTypeScript(
+      directory,
+      dag.currentModule().source().directory(TYPESCRIPT_TEMPLATE),
     );
   }
 
@@ -294,6 +308,15 @@ export class DropCalf {
       if (!files.has(path))
         templates.set(path, await docs.file(path).contents());
     }
+    // Every kind seeds its configs from `templates/typescript`, and read them
+    // even when the repository already has one: the merge is create-if-absent,
+    // so the template is still what decides.
+    const typeScript = dag
+      .currentModule()
+      .source()
+      .directory(TYPESCRIPT_TEMPLATE);
+    for (const path of await typescriptPaths(typeScript))
+      templates.set(path, await typeScript.file(path).contents());
     return planSync(
       files,
       profile,

@@ -42,33 +42,15 @@ export function createBlueprint(
   if (author) packageJson.author = author;
   const files = new Map<string, string>([
     [".editorconfig", buildEditorconfig()],
-    [
-      "tsconfig.json",
-      `${JSON.stringify(
-        {
-          compilerOptions: {
-            target: "ES2022",
-            module: "NodeNext",
-            moduleResolution: "NodeNext",
-            strict: true,
-            esModuleInterop: true,
-            skipLibCheck: true,
-            forceConsistentCasingInFileNames: true,
-            declaration: true,
-            outDir: "dist",
-            rootDir: "src",
-          },
-          include: ["src"],
-        },
-        null,
-        2,
-      )}\n`,
-    ],
   ]);
 
   // `.gitignore` is deliberately absent: it is a pinned, seeded asset like the
   // OSS and docs trees, so the Dagger layer copies it in after rendering. See
-  // src/gitignore.ts.
+  // src/gitignore.ts. The node baseline (`.nvmrc`, `.npmrc`, `engines.node`)
+  // is absent for a different reason: it belongs to the `node` capability, not
+  // to every blueprint. See src/node.ts. `tsconfig.json` belongs to the
+  // `typescript` capability, which `forge-app` deliberately does not use: it
+  // seeds the Forge config from `templates/typescript` instead.
   return { packageJson, files };
 }
 

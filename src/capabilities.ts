@@ -61,43 +61,6 @@ export function biomeFormatting(
   };
 }
 
-export function tscTypecheck(tsVersion = TOOL_VERSIONS.typescript): Capability {
-  return {
-    addTo(project) {
-      project.packageJson.devDependencies.typescript = tsVersion;
-      project.packageJson.scripts.typecheck = "tsc --noEmit";
-    },
-  };
-}
-
-export function tscBuild(): Capability {
-  return {
-    addTo(project) {
-      project.packageJson.scripts.build = "tsc";
-    },
-  };
-}
-
-export function forgeTypecheck(
-  tsVersion = TOOL_VERSIONS.forgeTypescript,
-): Capability {
-  return {
-    addTo(project) {
-      project.packageJson.devDependencies.typescript = tsVersion;
-      project.packageJson.scripts.typecheck =
-        "tsc -p tsconfig.typecheck.json --noEmit";
-      project.files.set(
-        "tsconfig.json",
-        `${JSON.stringify({ compilerOptions: { target: "ES2022", module: "CommonJS", moduleResolution: "Node", jsx: "react-jsx", sourceMap: true, lib: ["ES2022"], strict: true, esModuleInterop: true, skipLibCheck: true, forceConsistentCasingInFileNames: true, rootDir: "src", outDir: "dist" }, include: ["src"] }, null, 2)}\n`,
-      );
-      project.files.set(
-        "tsconfig.typecheck.json",
-        `${JSON.stringify({ extends: "./tsconfig.json", compilerOptions: { noEmit: true, noImplicitReturns: true, noUncheckedSideEffectImports: true, noImplicitOverride: true, noPropertyAccessFromIndexSignature: true, noUnusedLocals: true, noUnusedParameters: true, noFallthroughCasesInSwitch: true, noUncheckedIndexedAccess: true, exactOptionalPropertyTypes: true } }, null, 2)}\n`,
-      );
-    },
-  };
-}
-
 export function libraryBuild(version = TOOL_VERSIONS.tsdown): Capability {
   return {
     addTo(project) {
@@ -112,14 +75,6 @@ export function libraryBuild(version = TOOL_VERSIONS.tsdown): Capability {
       project.packageJson.exports = {
         ".": { types: "./dist/index.d.ts", default: "./dist/index.js" },
       };
-    },
-  };
-}
-
-export function forgeBuild(): Capability {
-  return {
-    addTo(project) {
-      project.packageJson.scripts.build = "tsc -p tsconfig.json";
     },
   };
 }
