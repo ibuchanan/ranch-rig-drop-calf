@@ -83,8 +83,10 @@ through that generated SDK, so if type checking reports a missing
   and `export` writes a supplied `Directory` to a path.
 - `src/project.ts`: project blueprint, base package metadata and files,
   and Dagger directory rendering.
-- `src/oss.ts`: copies pinned `vendor/oss-templates` assets with only the
-  documented owner, project name, and LICENSE year substitutions.
+- `src/oss.ts`: owns the fixed Apache-2.0 `license` field, written into the
+  blueprint by `ossLicense()` and reconciled on sync by `planOssLicense()`; and
+  copies pinned `vendor/oss-templates` assets with only the documented owner,
+  project name, and LICENSE year substitutions.
 - `src/docs.ts`: copies `templates/docs/` through Dagger for generation and
   discovers its relative paths for create-if-absent sync, separate from OSS.
   The tree carries the generated `docs/` placeholders plus the pinned

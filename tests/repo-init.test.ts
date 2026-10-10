@@ -13,7 +13,7 @@ import { type Directory, dag } from "@dagger.io/dagger";
 import { biomeToolchain } from "../src/biome.ts";
 import { forgeLinting } from "../src/capabilities.ts";
 import { DropCalf } from "../src/index.ts";
-import { OSS_ASSETS } from "../src/oss.ts";
+import { OSS_ASSETS, ossLicense } from "../src/oss.ts";
 import {
   buildProject,
   InvalidOptionsError,
@@ -220,6 +220,14 @@ test("OSS documents reject invalid/blank owner", () => {
   expect(() => buildProject("tool", "sample", "invalid owner")).toThrow(
     /owner/i,
   );
+});
+
+test("the OSS module writes the fixed Apache-2.0 license into package.json", () => {
+  expect(ossLicense()).toEqual({ license: "Apache-2.0" });
+  for (const kind of ["library", "forge-app", "tool", "agent-skill"])
+    expect(buildProject(kind, "sample", "tester").packageJson.license).toBe(
+      "Apache-2.0",
+    );
 });
 
 describe("profiles", () => {

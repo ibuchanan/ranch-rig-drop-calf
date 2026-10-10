@@ -4,7 +4,7 @@ import YAML, { isMap } from "yaml";
 import { CHANGELOG_ASSETS } from "./changelog.ts";
 import { EVAL_ASSETS } from "./evals.ts";
 import { GITIGNORE_TEMPLATES, mergeGitignore } from "./gitignore.ts";
-import { OSS_ASSETS, OSS_LICENSE, transformOssTemplate } from "./oss.ts";
+import { OSS_ASSETS, planOssLicense, transformOssTemplate } from "./oss.ts";
 import { buildProject } from "./profiles.ts";
 import { planNode } from "./node.ts";
 import { buildReadme, createBlueprint } from "./project.ts";
@@ -117,16 +117,7 @@ export function planSync(
   );
   const desired = desiredProject.packageJson;
   const operations: SyncOperation[] = [];
-  if (current.license !== undefined && current.license !== OSS_LICENSE)
-    throw new ConflictError("license", "value", current.license, OSS_LICENSE);
-  if (current.license === undefined)
-    operations.push({
-      path: "package.json",
-      key: "license",
-      mode: "structured-merge",
-      before: undefined,
-      after: OSS_LICENSE,
-    });
+  operations.push(...planOssLicense(current));
   operations.push(
     ...planNode(desiredProject, current, files, profile === "forge-app"),
   );

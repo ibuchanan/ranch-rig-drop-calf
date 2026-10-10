@@ -1,4 +1,6 @@
 import type { Directory } from "@dagger.io/dagger";
+import { ConflictError, type SyncOperation } from "./sync.ts";
+
 export const OSS_LICENSE = "Apache-2.0";
 
 export const OSS_ASSETS = [
@@ -9,6 +11,16 @@ export const OSS_ASSETS = [
   "SECURITY.md",
   ".atlassian/OWNER",
 ] as const;
+
+/**
+ * The `license` field is OSS metadata, so the OSS module owns it: the blueprint
+ * spreads this into `package.json` beside the other base metadata. The value is
+ * fixed, so a repository under a different license is a conflict on sync, never
+ * a silent rewrite.
+ */
+export function ossLicense(): { license: typeof OSS_LICENSE } {
+  return { license: OSS_LICENSE };
+}
 
 export function transformOssTemplate(
   path: string,
@@ -49,4 +61,26 @@ export function validateOssOwner(owner: string): void {
   if (!/^[a-z][a-z0-9._-]*$/i.test(owner)) {
     throw new Error("OSS owner must be a nonempty staff ID");
   }
+}
+
+/**
+ * Plan the OSS-owned `license` key against an existing repository: fill it in
+ * when absent, leave a matching value alone, and stop on a different license
+ * rather than overwrite the project's choice.
+ */
+export function planOssLicense(
+  current: Record<string, unknown>,
+): SyncOperation[] {
+  if (current.license !== undefined && current.license !== OSS_LICENSE)
+    throw new ConflictError("license", "value", current.license, OSS_LICENSE);
+  if (current.license !== undefined) return [];
+  return [
+    {
+      path: "package.json",
+      key: "license",
+      mode: "structured-merge",
+      before: undefined,
+      after: OSS_LICENSE,
+    },
+  ];
 }
