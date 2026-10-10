@@ -54,19 +54,6 @@ export function libraryBuild(version = TOOL_VERSIONS.tsdown): Capability {
   };
 }
 
-export function bundleSize(name: string, path: string): Capability {
-  return {
-    addTo(project) {
-      project.packageJson.scripts.size = "npm run build && size-limit";
-      project.packageJson.devDependencies["size-limit"] =
-        TOOL_VERSIONS.sizeLimit;
-      project.packageJson.devDependencies["@size-limit/file"] =
-        TOOL_VERSIONS.sizeLimitFile;
-      project.packageJson["size-limit"] = [{ name, path, limit: "10 kB" }];
-    },
-  };
-}
-
 export function cleanBuild(): Capability {
   return {
     addTo(project) {

@@ -105,6 +105,12 @@ through that generated SDK, so if type checking reports a missing
   devDependency, the `typecheck` and `build` scripts that invoke `tsc`, and
   `copyTypeScript`/`typescriptPaths` for `templates/typescript/`, the one config
   every kind receives verbatim. Nothing else sets the compiler or calls it.
+- `src/size-limit.ts`: the bundle-size budget — the `size-limit` and
+  `@size-limit/file` devDependencies, the `size` script, and the named
+  `size-limit` section of `package.json`. `size-limit` reads its budgets from
+  `package.json` rather than a config file, so the capability owns the section
+  outright and there is no template to seed. `sync` structured-merges one entry
+  by name, keyed by `SIZE_LIMIT_FIELD` so the field name lives in one place.
 - `src/gitignore.ts`: assembles `.gitignore` from the pinned gitignore.io
   response, de-duplicating rules on first occurrence and appending the personal
   defaults. `copyGitignoreAssets` is the Dagger boundary used by generation and

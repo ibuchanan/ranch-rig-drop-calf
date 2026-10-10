@@ -8,6 +8,7 @@ import { OSS_ASSETS, planOssLicense, transformOssTemplate } from "./oss.ts";
 import { buildProject } from "./profiles.ts";
 import { planNode } from "./node.ts";
 import { buildReadme, createBlueprint } from "./project.ts";
+import { SIZE_LIMIT_FIELD } from "./size-limit.ts";
 import { TYPESCRIPT_ASSETS } from "./typescript.ts";
 
 export type SyncOperation = {
@@ -207,9 +208,9 @@ export function planSync(
         });
     }
   }
-  const sizeBudget = desired["size-limit"]?.[0];
+  const sizeBudget = desired[SIZE_LIMIT_FIELD]?.[0];
   if (sizeBudget) {
-    const existing = current["size-limit"];
+    const existing = current[SIZE_LIMIT_FIELD];
     if (existing !== undefined && !Array.isArray(existing))
       throw new ParseError(
         "package.json",
@@ -235,7 +236,7 @@ export function planSync(
           )))
     )
       throw new ConflictError(
-        "size-limit",
+        SIZE_LIMIT_FIELD,
         sizeBudget.name,
         matches,
         JSON.stringify(sizeBudget),
@@ -243,7 +244,7 @@ export function planSync(
     if (!matches.length)
       operations.push({
         path: "package.json",
-        key: "size-limit",
+        key: SIZE_LIMIT_FIELD,
         mode: "structured-merge",
         before: existing === undefined ? undefined : JSON.stringify(existing),
         after: JSON.stringify([...entries, sizeBudget]),
@@ -639,7 +640,9 @@ export function applySync(plan: SyncPlan): {
     const dot = key.indexOf(".");
     if (dot === -1) {
       pkg[key] =
-        key === "exports" || key === "size-limit" ? JSON.parse(after) : after;
+        key === "exports" || key === SIZE_LIMIT_FIELD
+          ? JSON.parse(after)
+          : after;
       continue;
     }
     const section = key.slice(0, dot);

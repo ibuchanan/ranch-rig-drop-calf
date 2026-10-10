@@ -2,7 +2,6 @@ import { seedAgentGuidance } from "./aidev.ts";
 import type { Capability } from "./capabilities.ts";
 import {
   biomeToolchain,
-  bundleSize,
   bunTesting,
   cleanBuild,
   docsLinting,
@@ -18,6 +17,7 @@ import { nodeBaseline } from "./node.ts";
 import { validateOssOwner } from "./oss.ts";
 import { createBlueprint, type ProjectBlueprint } from "./project.ts";
 import { forgeSecrets } from "./secrets.ts";
+import { bundleSize } from "./size-limit.ts";
 import { typeScriptToolchain } from "./typescript.ts";
 
 export const PROFILES: Record<string, Capability[]> = {
