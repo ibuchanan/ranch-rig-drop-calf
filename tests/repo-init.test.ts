@@ -20,7 +20,7 @@ import {
 } from "../src/profiles.ts";
 import { buildReadme, createBlueprint } from "../src/project.ts";
 import { mockModuleSource } from "./module-source.ts";
-import { typescriptTemplates } from "./templates-source.ts";
+import { changelogTemplates, typescriptTemplates } from "./templates-source.ts";
 
 let moduleSource: ReturnType<typeof mockModuleSource>;
 beforeEach(() => {
@@ -335,6 +335,7 @@ describe("profiles", () => {
           ...project.files.keys(),
           ...OSS_ASSETS,
           ...typescriptTemplates().keys(),
+          ...(kind === "agent-skill" ? [] : changelogTemplates().keys()),
         ].sort(),
       }).toMatchSnapshot(kind);
       if (kind === "agent-skill")

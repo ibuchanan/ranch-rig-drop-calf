@@ -92,9 +92,13 @@ The baseline lives in one place (`src/node.ts`) so generation and sync cannot dr
 repository already generated.
 
 ### `changelog`
-Add `git-cliff` dev dependency and the `changelog` script. Use a versioned `cliff.toml`
-seed (authored release policy). Validate via `git cliff --config cliff.toml --unreleased`
-when git history and tool availability permit.
+Add `git-cliff` dev dependency and the `changelog` script. Seed the release
+policy from `templates/changelog/cliff.toml` (authored content, never rebuilt by
+the capability) and seed it create-if-absent, so a policy a project has edited is
+left alone. Only kinds that ship the `changelog` script are offered it, so
+`agent-skill` gets no policy it cannot run. Validate a repository by rendering
+`git cliff --config cliff.toml --unreleased` in a container at the pinned version
+when it has git history, reporting a skip rather than failing otherwise.
 
 ### `secrets`
 Generate a minimal `secretspec.toml` (project name; default `FORGE_SITE`,

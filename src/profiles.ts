@@ -12,7 +12,7 @@ import {
   libraryBuild,
   noTesting,
 } from "./capabilities.ts";
-import { changelog } from "./changelog.ts";
+import { changelogToolchain } from "./changelog.ts";
 import { evals } from "./evals.ts";
 import { gitHooks } from "./git-hooks.ts";
 import { nodeBaseline } from "./node.ts";
@@ -24,7 +24,7 @@ import { typeScriptToolchain } from "./typescript.ts";
 export const PROFILES: Record<string, Capability[]> = {
   library: [
     nodeBaseline(),
-    changelog(),
+    changelogToolchain(),
     biomeLinting(),
     biomeFormatting(),
     typeScriptToolchain(),
@@ -37,7 +37,7 @@ export const PROFILES: Record<string, Capability[]> = {
   ],
   "forge-app": [
     nodeBaseline(),
-    changelog(),
+    changelogToolchain(),
     forgeSecrets(),
     forgeLinting(),
     biomeFormatting(),
@@ -51,7 +51,7 @@ export const PROFILES: Record<string, Capability[]> = {
   ],
   tool: [
     nodeBaseline(),
-    changelog(),
+    changelogToolchain(),
     biomeLinting(),
     biomeFormatting(),
     typeScriptToolchain(),

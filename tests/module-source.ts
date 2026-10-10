@@ -2,10 +2,15 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { spyOn } from "bun:test";
 import { dag } from "@dagger.io/dagger";
+import { CHANGELOG_TEMPLATE } from "../src/changelog.ts";
 import { PINNED_GITIGNORE } from "../src/gitignore.ts";
 import { OSS_ASSETS } from "../src/oss.ts";
 import { TYPESCRIPT_TEMPLATE } from "../src/typescript.ts";
-import { docsTemplates, typescriptTemplates } from "./templates-source.ts";
+import {
+  changelogTemplates,
+  docsTemplates,
+  typescriptTemplates,
+} from "./templates-source.ts";
 
 export const moduleTemplates = () =>
   new Map<string, string>(
@@ -21,6 +26,7 @@ export function mockModuleSource(
 ) {
   const docs = docsTemplates();
   const typeScript = typescriptTemplates();
+  const changelog = changelogTemplates();
   const gitignore = pinnedGitignore();
   const source = {
     file: (path: string) => ({
@@ -37,16 +43,14 @@ export function mockModuleSource(
       contents: async () => files.get(path),
     }),
   });
-  const docsSource = tree(docs);
-  const typescriptSource = tree(typeScript);
+  const trees = new Map<string, ReturnType<typeof tree>>([
+    ["templates/docs", tree(docs)],
+    [TYPESCRIPT_TEMPLATE, tree(typeScript)],
+    [CHANGELOG_TEMPLATE, tree(changelog)],
+  ]);
   return spyOn(dag, "currentModule").mockReturnValue({
     source: () => ({
-      directory: (path: string) =>
-        path === "templates/docs"
-          ? docsSource
-          : path === TYPESCRIPT_TEMPLATE
-            ? typescriptSource
-            : source,
+      directory: (path: string) => trees.get(path) ?? source,
       file: (path: string) => source.file(path),
     }),
   } as unknown as ReturnType<typeof dag.currentModule>);

@@ -1,6 +1,7 @@
 import { isDeepStrictEqual } from "node:util";
 import sortPackageJson from "sort-package-json";
 import YAML, { isMap } from "yaml";
+import { CHANGELOG_ASSETS } from "./changelog.ts";
 import { EVAL_ASSETS } from "./evals.ts";
 import { GITIGNORE_TEMPLATES, mergeGitignore } from "./gitignore.ts";
 import { OSS_ASSETS, OSS_LICENSE, transformOssTemplate } from "./oss.ts";
@@ -132,16 +133,18 @@ export function planSync(
   for (const path of [
     ...OSS_ASSETS,
     // `.gitignore` arrives in the same map but is line-merged below, never seeded.
-    // The TypeScript configs are seeded by their own loop, which also covers the
-    // kinds that carry a config in the blueprint rather than in `templates`.
+    // The TypeScript and changelog configs are seeded by their own loops, which
+    // also carry the per-kind conditions each tree needs.
     ...[...templates.keys()].filter(
       (path) =>
         !OSS_ASSETS.includes(path as (typeof OSS_ASSETS)[number]) &&
         path !== ".gitignore" &&
-        !TYPESCRIPT_ASSETS.includes(path as (typeof TYPESCRIPT_ASSETS)[number]),
+        !TYPESCRIPT_ASSETS.includes(
+          path as (typeof TYPESCRIPT_ASSETS)[number],
+        ) &&
+        !CHANGELOG_ASSETS.includes(path as (typeof CHANGELOG_ASSETS)[number]),
     ),
     "AGENTS.md",
-    "cliff.toml",
     ...(profile === "forge-app"
       ? ["secretspec.toml", "scripts/forge-vars-from-secretspec.sh"]
       : []),
@@ -321,6 +324,22 @@ export function planSync(
     operations.push({
       path,
       key: "config",
+      mode: "create-if-absent",
+      before: undefined,
+      after: template,
+    });
+  }
+  for (const path of CHANGELOG_ASSETS) {
+    // Seeded from `templates/changelog`, and only for the kinds that ship the
+    // `changelog` script: `agent-skill` releases nothing, so a release policy
+    // there would be a config with no command to read it. An existing policy
+    // belongs to the project and is never rewritten.
+    if (desiredProject.packageJson.scripts.changelog === undefined) break;
+    const template = templates.get(path);
+    if (template === undefined || files.has(path)) continue;
+    operations.push({
+      path,
+      key: "policy",
       mode: "create-if-absent",
       before: undefined,
       after: template,

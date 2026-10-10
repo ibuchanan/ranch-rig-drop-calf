@@ -17,6 +17,12 @@ import {
   func,
   object,
 } from "@dagger.io/dagger";
+import {
+  CHANGELOG_TEMPLATE,
+  changelogPaths,
+  copyChangelog,
+  validateChangelog,
+} from "./changelog.ts";
 import { copyDocs, docPaths } from "./docs.ts";
 import { EVAL_ASSETS } from "./evals.ts";
 import {
@@ -161,7 +167,9 @@ export class DropCalf {
     const rendered = renderToDirectory(project);
     return this.copyGitignore(
       await this.copyOss(
-        this.copyDocs(await this.copyTypeScript(rendered)),
+        this.copyDocs(
+          await this.copyChangelog(await this.copyTypeScript(rendered)),
+        ),
         name,
         owner,
       ),
@@ -182,6 +190,24 @@ export class DropCalf {
       directory,
       dag.currentModule().source().directory(TYPESCRIPT_TEMPLATE),
     );
+  }
+
+  @func()
+  copyChangelog(directory: Directory): Directory {
+    return copyChangelog(
+      directory,
+      dag.currentModule().source().directory(CHANGELOG_TEMPLATE),
+    );
+  }
+
+  /**
+   * Render an unreleased changelog for a repository to prove its release policy
+   * and its `changelog` script still agree. Reports `skipped` rather than
+   * failing when the repository has no history to render.
+   */
+  @func()
+  async validateChangelog(directory: Directory): Promise<string> {
+    return JSON.stringify(await validateChangelog(directory), null, 2);
   }
 
   @func()
@@ -317,6 +343,14 @@ export class DropCalf {
       .directory(TYPESCRIPT_TEMPLATE);
     for (const path of await typescriptPaths(typeScript))
       templates.set(path, await typeScript.file(path).contents());
+    // The release policy is seeded the same way. `sync` decides whether a kind
+    // wants it; this only makes the bytes available for that decision.
+    const changelog = dag
+      .currentModule()
+      .source()
+      .directory(CHANGELOG_TEMPLATE);
+    for (const path of await changelogPaths(changelog))
+      templates.set(path, await changelog.file(path).contents());
     return planSync(
       files,
       profile,

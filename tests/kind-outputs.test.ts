@@ -2,7 +2,11 @@ import { expect, test } from "bun:test";
 import { OSS_ASSETS } from "../src/oss.ts";
 import { buildProject } from "../src/profiles.ts";
 import { applySync, planSync } from "../src/sync.ts";
-import { docsTemplates, typescriptTemplates } from "./templates-source.ts";
+import {
+  changelogTemplates,
+  docsTemplates,
+  typescriptTemplates,
+} from "./templates-source.ts";
 test.each(["library", "forge-app", "tool", "agent-skill"])(
   "%s generated output has the selected functions and converges without losing user prose",
   (kind) => {
@@ -40,17 +44,18 @@ test.each(["library", "forge-app", "tool", "agent-skill"])(
     const files = new Map([...project.files, ...docsTemplates()]);
     files.set("package.json", `${JSON.stringify(project.packageJson)}\n`);
     files.set("README.md", "# My custom README\n");
-    // Every kind seeds its tsconfigs from `templates/typescript`; the snapshot
-    // above is blueprint-only, so exercise that path through sync instead.
-    const typeScript = typescriptTemplates();
+    // Every kind seeds its configs from `templates/typescript`, and the
+    // releasing kinds their release policy from `templates/changelog`; the
+    // snapshot above is blueprint-only, so exercise those paths through sync.
+    const seeded = new Map([...typescriptTemplates(), ...changelogTemplates()]);
     const first = applySync(
-      planSync(files, kind, "tester", undefined, [], [], undefined, typeScript),
+      planSync(files, kind, "tester", undefined, [], [], undefined, seeded),
     ).files;
     expect(first.get("README.md")).toBe("# My custom README\n");
-    for (const [path, template] of typeScript)
+    for (const [path, template] of typescriptTemplates())
       expect(first.get(path)).toBe(template);
     expect(
-      planSync(first, kind, "tester", undefined, [], [], undefined, typeScript)
+      planSync(first, kind, "tester", undefined, [], [], undefined, seeded)
         .operations,
     ).toEqual([]);
   },

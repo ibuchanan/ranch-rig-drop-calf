@@ -94,6 +94,11 @@ through that generated SDK, so if type checking reports a missing
   not.
 - `src/templates.ts`: `copyTemplate`/`templatePaths`, the shared overlay and
   glob used by every `templates/` tree.
+- `src/changelog.ts`: the release workflow — the `git-cliff` devDependency and
+  the `changelog` script, plus `copyChangelog`/`changelogPaths` for
+  `templates/changelog/`. `validateChangelog` renders an unreleased changelog
+  in a container built from the Node baseline image, so the verdict depends on
+  the policy under review rather than on whatever the host has installed.
 - `src/typescript.ts`: the TypeScript toolchain — the `typescript`
   devDependency, the `typecheck` and `build` scripts that invoke `tsc`, and
   `copyTypeScript`/`typescriptPaths` for `templates/typescript/`, the one config
@@ -158,6 +163,21 @@ capability writes a `tsconfig` and `buildProject` carries none for any profile.
 `sync` supplies the templates for every profile. Assert on
 `templates/typescript` rather than on the blueprint when testing what a kind
 generates.
+
+`templates/changelog/cliff.toml` is seeded the same way, with one condition the
+TypeScript tree does not need: only the kinds that ship a `changelog` script are
+offered the policy, so `agent-skill` never receives a config it has no command
+to read. Edit that file to change a release policy — its commit preprocessors
+assume Atlassian headers such as `feat(kinds): NONE …`, which is the format this
+repository writes, so a project that commits differently should replace the file
+rather than have it rewritten. `sync` seeds it create-if-absent, so a policy a
+project has already edited is left alone.
+
+`validateChangelog` is the one function here that reads a repository rather than
+the module source, so it needs a `Directory`, not a path, and it runs
+git-cliff inside a container at the version `changelogToolchain` pins. That
+means it needs a live engine, which is why its tests fake `dag.container()`
+rather than starting one.
 
 A capability cannot read the module source — that would break the pure blueprint
 layer the Bun tests rely on. So content that belongs to a function but is

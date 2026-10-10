@@ -9,7 +9,11 @@ import {
   planSync,
   ValidationError,
 } from "../src/sync.ts";
-import { docsTemplates, typescriptTemplates } from "./templates-source.ts";
+import {
+  changelogTemplates,
+  docsTemplates,
+  typescriptTemplates,
+} from "./templates-source.ts";
 import {
   mockModuleSource,
   moduleTemplates,
@@ -56,6 +60,7 @@ const planWithOss = (
       ...moduleTemplates(),
       ...docsTemplates(),
       ...typescriptTemplates(),
+      ...changelogTemplates(),
     ]),
   );
 
@@ -466,11 +471,11 @@ describe("repository sync", () => {
       ".nvmrc",
       ".npmrc",
       ...docsTemplates().keys(),
-      "cliff.toml",
       "lefthook.yml",
       "biome.json",
       "tsconfig.json",
       "tsconfig.typecheck.json",
+      "cliff.toml",
       ".gitignore",
       ".editorconfig",
     ]);

@@ -112,12 +112,18 @@ application**: it does not include source files or install dependencies. Its
 copied README is a placeholder template and must be completed before use.
 Unknown or ambiguous profile names fail before generation.
 
-To copy just the authored docs or OSS assets into a Dagger directory, use
-`copy-docs --directory ...` or `copy-oss --directory ... --name ... --owner ...`.
+To copy just the authored docs, TypeScript configs, OSS assets, or release
+policy into a Dagger directory, use `copy-docs --directory ...`,
+`copy-type-script --directory ...`, `copy-oss --directory ... --name ...
+--owner ...`, or `copy-changelog --directory ...`.
 `copy-gitignore --directory ...` writes the same generated `.gitignore` on its
 own, taking the same optional `--sets`. Review the resulting directory before
 exporting it over existing files; `copy-gitignore` replaces an existing
 `.gitignore`, whereas `sync` merges into it.
+
+To check that a repository's release policy and its `changelog` script still
+agree, run `validate-changelog --directory ...`. It renders an unreleased
+changelog in a container and reports `validated` or explains why it skipped.
 
 ### Remove Forge scaffold files
 
