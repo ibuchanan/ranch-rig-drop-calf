@@ -66,25 +66,30 @@ application**: it does not include source files or install dependencies. Its
 copied README is a placeholder template and must be completed before use.
 Unknown or ambiguous profile names fail before generation.
 
-### Preclean a Forge starter
+To copy just the authored docs or OSS assets into a Dagger directory, use
+`copy-docs --directory ...` or `copy-oss --directory ... --name ... --owner ...`.
+Review the resulting directory before exporting it over existing files.
 
-Before generating or syncing a Forge-created ESLint starter, preview its cleanup
-and apply the changeset from the target repo using a local checkout of this
-module (or replace the local module path with a published ref containing this
-function):
+### Remove Forge scaffold files
+
+Before generating or syncing a Forge-created starter, review the cleanup
+changeset and apply it from the target repo using a local checkout of this
+module (or replace the local module path with a published ref):
 
 ```bash
 cd /path/to/target-repo
-dagger call -m /path/to/drop-calf preview-preclean --directory . --package-name my-app
-dagger call -m /path/to/drop-calf preclean-changes --directory . --package-name my-app export --path .
+dagger call -m /path/to/drop-calf remove-scaffold-changes --directory .
+dagger call -m /path/to/drop-calf remove-scaffold-changes --directory . export --path .
 ```
 
-This backs up conflicting files as `.old` and removes scaffold `AGENTS.md` and
-ESLint configs such as `.eslintrc`; it does not delete unrelated files. Replace
-`my-app` with your package name. The plain `preclean ... export --path .`
-command is **not** equivalent: Dagger's directory export merges by default,
-leaving deleted files on disk. Do not use `--wipe` on an existing repo: it also
-removes unrelated files. If you do not want a new `AGENTS.md` afterward, pass
+`remove-scaffold` deletes existing paths from the fixed `UNWANTED` list in
+[`src/preclean.ts`](src/preclean.ts), without backing them up or renaming them.
+Review the changeset before exporting: the list can change over time. Keep
+`package.json` and app source, then regenerate lockfiles after updating
+dependencies. The plain `remove-scaffold ... export --path .` command is **not**
+equivalent: Dagger's directory export merges by default, leaving deleted files
+on disk. Do not use `--wipe` on an existing repo: it also removes unrelated
+files. If you do not want a new `AGENTS.md` afterward, pass
 `--without-functions aidev` to the subsequent `files` or `sync` call.
 
 ## Contributing

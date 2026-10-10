@@ -1,10 +1,11 @@
 import { expect, test } from "bun:test";
 import type { Directory } from "@dagger.io/dagger";
 import { copyDocs, docPaths } from "../src/docs.ts";
+import { DropCalf } from "../src/index.ts";
 import { OSS_ASSETS } from "../src/oss.ts";
 import { buildProject } from "../src/profiles.ts";
 import { applySync, planSync } from "../src/sync.ts";
-import { docsTemplates, ossTemplates } from "./oss-source.ts";
+import { docsTemplates, mockOssSource, ossTemplates } from "./oss-source.ts";
 
 test("Dagger copies nested docs verbatim and discovers only files", async () => {
   const paths = ["guides/", "guides/setup.md", "DEVELOPMENT.md"];
@@ -25,6 +26,50 @@ test("Dagger copies nested docs verbatim and discovers only files", async () => 
     },
   } as unknown as Directory;
   expect(copyDocs(destination, source)).toBe(destination);
+});
+
+test("copyDocs exposes the module's documentation templates through Dagger", () => {
+  const module = mockOssSource();
+  try {
+    const destination = {
+      withDirectory: (path: string, source: Directory) => {
+        expect(path).toBe(".");
+        expect(source).toBeDefined();
+        return destination;
+      },
+    } as unknown as Directory;
+    expect(new DropCalf().copyDocs(destination)).toBe(destination);
+  } finally {
+    module.mockRestore();
+  }
+});
+
+test("copyOss exposes the module's OSS templates through Dagger", async () => {
+  const module = mockOssSource();
+  try {
+    const writes = new Map<string, string>();
+    const destination = {
+      withNewFile: (path: string, contents: string) => {
+        writes.set(path, contents);
+        return destination;
+      },
+      withFile: (path: string, file: { text: string }) => {
+        writes.set(path, file.text);
+        return destination;
+      },
+    } as unknown as Directory;
+    expect(await new DropCalf().copyOss(destination, "sample", "tester")).toBe(
+      destination,
+    );
+    expect(writes.get("README.md")).toBe(
+      ossTemplates().get("README.md")?.replaceAll("[Project name]", "sample"),
+    );
+    expect(writes.get("CODE_OF_CONDUCT.md")).toBe(
+      ossTemplates().get("CODE_OF_CONDUCT.md"),
+    );
+  } finally {
+    module.mockRestore();
+  }
 });
 
 test("docs template paths do not overlap other generated files", () => {

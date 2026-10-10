@@ -1,8 +1,8 @@
 import { expect, test } from "bun:test";
-import { buildProject, InvalidOptionsError } from "../src/profiles.ts";
-import { applyPreclean, planPreclean } from "../src/preclean.ts";
-import { applySync, ConflictError, planSync } from "../src/sync.ts";
 import { DropCalf } from "../src/index.ts";
+import { applyPreclean } from "../src/preclean.ts";
+import { buildProject, InvalidOptionsError } from "../src/profiles.ts";
+import { applySync, ConflictError, planSync } from "../src/sync.ts";
 import { mockOssSource } from "./oss-source.ts";
 
 test("Forge generation includes authored agent guidance for Forge work", () => {
@@ -59,7 +59,7 @@ test("non-Forge kinds omit Forge-specific guidance", () => {
     );
 });
 
-test("explicit Forge preclean removes scaffold guidance before authored guidance is seeded", () => {
+test("explicit Forge preclean removes scaffold guidance before authored guidance is seeded", async () => {
   const scaffold = new Map([
     [
       "manifest.yml",
@@ -71,7 +71,20 @@ test("explicit Forge preclean removes scaffold guidance before authored guidance
     ],
     ["AGENTS.md", "# Forge starter guidance\n"],
   ]);
-  const cleaned = applyPreclean(planPreclean(scaffold, "example"));
+  const directory = (files: Map<string, string>) => ({
+    files,
+    exists: async (path: string) => files.has(path),
+    withoutFile: (path: string) => {
+      const next = new Map(files);
+      next.delete(path);
+      return directory(next);
+    },
+  });
+  const cleaned = (
+    (await applyPreclean(directory(scaffold) as never)) as unknown as {
+      files: Map<string, string>;
+    }
+  ).files;
   expect(cleaned.has("AGENTS.md")).toBe(false);
   cleaned.set(
     "package.json",

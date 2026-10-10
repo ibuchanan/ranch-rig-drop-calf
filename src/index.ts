@@ -19,7 +19,7 @@ import {
 import { copyDocs, docPaths } from "./docs.ts";
 import { EVAL_ASSETS } from "./evals.ts";
 import { copyOssAssets, OSS_ASSETS } from "./oss.ts";
-import { planPreclean, UNWANTED } from "./preclean.ts";
+import { applyPreclean } from "./preclean.ts";
 import { buildProject, resolveProfile } from "./profiles.ts";
 import { renderToDirectory } from "./project.ts";
 import { applySync, planSync } from "./sync.ts";
@@ -137,67 +137,39 @@ export class DropCalf {
     );
     const fallback = project.files.get("biome.json");
     if (fallback) project.files.set("biome.json", localBiomeConfig(fallback));
-    const source = dag.currentModule().source();
+    return this.copyOss(this.copyDocs(renderToDirectory(project)), name, owner);
+  }
+
+  @func()
+  copyDocs(directory: Directory): Directory {
+    return copyDocs(
+      directory,
+      dag.currentModule().source().directory("templates/docs"),
+    );
+  }
+
+  @func()
+  async copyOss(
+    directory: Directory,
+    name: string,
+    owner: string,
+  ): Promise<Directory> {
     return copyOssAssets(
-      copyDocs(renderToDirectory(project), source.directory("templates/docs")),
-      source.directory("vendor/oss-templates"),
+      directory,
+      dag.currentModule().source().directory("vendor/oss-templates"),
       name,
       owner,
     );
   }
 
-  private async precleanPlan(directory: Directory, packageName: string) {
-    const paths = [
-      "package.json",
-      "manifest.yml",
-      ...buildProject("forge-app", packageName, "preclean").files.keys(),
-      ...OSS_ASSETS,
-      ...UNWANTED,
-    ];
-    const files = new Map<string, string>();
-    for (const path of new Set(paths)) {
-      if (await directory.exists(path))
-        files.set(path, await directory.file(path).contents());
-      if (path !== "manifest.yml" && (await directory.exists(`${path}.old`)))
-        files.set(`${path}.old`, "");
-    }
-    return planPreclean(files, packageName);
+  @func()
+  async removeScaffold(directory: Directory): Promise<Directory> {
+    return applyPreclean(directory);
   }
 
   @func()
-  async previewPreclean(
-    directory: Directory,
-    packageName: string,
-  ): Promise<string> {
-    return JSON.stringify(
-      (await this.precleanPlan(directory, packageName)).operations,
-      null,
-      2,
-    );
-  }
-
-  @func()
-  async preclean(
-    directory: Directory,
-    packageName: string,
-  ): Promise<Directory> {
-    const plan = await this.precleanPlan(directory, packageName);
-    let result = directory;
-    for (const operation of plan.operations) {
-      if (operation.action === "rename") {
-        result = result.withFile(operation.to, directory.file(operation.path));
-      }
-      result = result.withoutFile(operation.path);
-    }
-    return result;
-  }
-
-  @func()
-  async precleanChanges(
-    directory: Directory,
-    packageName: string,
-  ): Promise<Changeset> {
-    return (await this.preclean(directory, packageName)).changes(directory);
+  async removeScaffoldChanges(directory: Directory): Promise<Changeset> {
+    return (await this.removeScaffold(directory)).changes(directory);
   }
 
   @func()
