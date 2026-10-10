@@ -79,6 +79,14 @@ test("explicit Forge preclean removes scaffold guidance before authored guidance
       next.delete(path);
       return directory(next);
     },
+    file: (path: string) => ({
+      contents: async () => files.get(path) as string,
+    }),
+    withNewFile: (path: string, contents: string) => {
+      const next = new Map(files);
+      next.set(path, contents);
+      return directory(next);
+    },
   });
   const cleaned = (
     (await applyPreclean(directory(scaffold) as never)) as unknown as {

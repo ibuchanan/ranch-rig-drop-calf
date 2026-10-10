@@ -1,4 +1,5 @@
 import { isDeepStrictEqual } from "node:util";
+import sortPackageJson from "sort-package-json";
 import YAML, { isMap } from "yaml";
 import { EVAL_ASSETS } from "./evals.ts";
 import { GITIGNORE_TEMPLATES, mergeGitignore } from "./gitignore.ts";
@@ -669,8 +670,13 @@ export function applySync(plan: SyncPlan): {
   }
   if (plan.operations.length === 0)
     return { files, journal: { outcome: "validated", operations: 0 } };
+  // Sorted for the same reason preclean sorts: a key appended in plan order
+  // would otherwise leave the file half-ordered after every sync.
   if (packageChanged)
-    files.set("package.json", `${JSON.stringify(pkg, null, 2)}\n`);
+    files.set(
+      "package.json",
+      sortPackageJson(`${JSON.stringify(pkg, null, 2)}\n`),
+    );
   try {
     if (
       planSync(
