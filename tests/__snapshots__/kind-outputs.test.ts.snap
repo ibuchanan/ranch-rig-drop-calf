@@ -6,9 +6,6 @@ exports[`library generated output has the selected functions and converges witho
     "name": "sample",
     "version": "0.1.0",
     "type": "module",
-    "engines": {
-      "node": "24.x"
-    },
     "license": "Apache-2.0",
     "scripts": {
       "changelog": "git cliff --config cliff.toml --unreleased",
@@ -28,6 +25,7 @@ exports[`library generated output has the selected functions and converges witho
       "check": "lefthook run pre-push --force"
     },
     "devDependencies": {
+      "@types/node": "24",
       "git-cliff": "^2.13",
       "@biomejs/biome": "^1.9.4",
       "typescript": "^5.4.0",
@@ -37,6 +35,9 @@ exports[`library generated output has the selected functions and converges witho
       "lefthook": "^1.11.0"
     },
     "description": "A sample project",
+    "engines": {
+      "node": "24.x"
+    },
     "main": "./dist/index.js",
     "types": "./dist/index.d.ts",
     "exports": {
@@ -54,9 +55,10 @@ exports[`library generated output has the selected functions and converges witho
     ]
   },
   "files": {
-    ".nvmrc": "24\\n",
     ".editorconfig": "root = true\\n\\n[*]\\ncharset = utf-8\\nend_of_line = lf\\ninsert_final_newline = true\\ntrim_trailing_whitespace = true\\nindent_style = space\\nindent_size = 2\\n\\n[*.md]\\ntrim_trailing_whitespace = false\\n",
     "tsconfig.json": "{\\n  \\"compilerOptions\\": {\\n    \\"target\\": \\"ES2022\\",\\n    \\"module\\": \\"NodeNext\\",\\n    \\"moduleResolution\\": \\"NodeNext\\",\\n    \\"strict\\": true,\\n    \\"esModuleInterop\\": true,\\n    \\"skipLibCheck\\": true,\\n    \\"forceConsistentCasingInFileNames\\": true,\\n    \\"declaration\\": true,\\n    \\"outDir\\": \\"dist\\",\\n    \\"rootDir\\": \\"src\\"\\n  },\\n  \\"include\\": [\\n    \\"src\\"\\n  ]\\n}\\n",
+    ".nvmrc": "24\\n",
+    ".npmrc": "# Use the public npm registry (not the default for internal Atlassians)\\nregistry=https://registry.npmjs.org/\\n",
     "cliff.toml": "# git-cliff release policy (v1)\\n[changelog]\\nbody = \\"\\"\\"\\n{% if version %}## [{{ version | trim_start_matches(pat=\\"v\\") }}] - {{ timestamp | date(format=\\"%Y-%m-%d\\") }}\\n{% else %}## [unreleased]\\n{% endif %}\\n{% for group, commits in commits | group_by(attribute=\\"group\\") %}\\n### {{ group | striptags | trim | upper_first }}\\n{% for commit in commits %}- {% if commit.scope %}*({{ commit.scope }})* {% endif %}{{ commit.message | upper_first }}\\n{% endfor %}\\n{% endfor %}\\n\\"\\"\\"\\ntrim = true\\nrender_always = true\\n\\n[git]\\nconventional_commits = true\\nfilter_unconventional = true\\ncommit_parsers = [\\n  { message = \\"^feat\\", group = \\"Features\\" },\\n  { message = \\"^fix\\", group = \\"Bug Fixes\\" },\\n  { message = \\"^doc\\", group = \\"Documentation\\" },\\n  { message = \\"^perf\\", group = \\"Performance\\" },\\n  { message = \\"^refactor\\", group = \\"Refactoring\\" },\\n  { message = \\"^test\\", group = \\"Testing\\" },\\n  { message = \\"^chore\\\\\\\\(release\\\\\\\\): prepare for\\", skip = true },\\n  { message = \\"^chore|^ci\\", group = \\"Maintenance\\" },\\n  { message = \\"^revert\\", group = \\"Reverts\\" },\\n]\\nfilter_commits = false\\nsort_commits = \\"oldest\\"\\n",
     "biome.json": "{\\n  \\"$schema\\": \\"https://biomejs.dev/schemas/1.9.4/schema.json\\",\\n  \\"organizeImports\\": {\\n    \\"enabled\\": true\\n  },\\n  \\"linter\\": {\\n    \\"enabled\\": true,\\n    \\"rules\\": {\\n      \\"recommended\\": true\\n    }\\n  },\\n  \\"formatter\\": {\\n    \\"enabled\\": true,\\n    \\"indentStyle\\": \\"space\\",\\n    \\"indentWidth\\": 2,\\n    \\"lineEnding\\": \\"lf\\"\\n  },\\n  \\"files\\": {\\n    \\"ignore\\": [\\n      \\"node_modules\\",\\n      \\"dist\\"\\n    ]\\n  }\\n}\\n",
     "tsdown.config.ts": "import { defineConfig } from \\"tsdown\\";\\n\\nexport default defineConfig({ entry: [\\"src/index.ts\\"], outDir: \\"dist\\", format: [\\"esm\\"], dts: true });\\n",
@@ -71,9 +73,6 @@ exports[`forge-app generated output has the selected functions and converges wit
     "name": "sample",
     "version": "0.1.0",
     "type": "module",
-    "engines": {
-      "node": "24.x"
-    },
     "license": "Apache-2.0",
     "scripts": {
       "changelog": "git cliff --config cliff.toml --unreleased",
@@ -103,6 +102,7 @@ exports[`forge-app generated output has the selected functions and converges wit
       "check": "lefthook run pre-push --force"
     },
     "devDependencies": {
+      "@types/node": "24",
       "git-cliff": "^2.13",
       "@ast-grep/cli": "^0.44",
       "tool-forge-prelint-ast-grep": "github:ibuchanan/tool-forge-prelint-ast-grep",
@@ -113,6 +113,9 @@ exports[`forge-app generated output has the selected functions and converges wit
       "lefthook": "^1.11.0"
     },
     "description": "A sample project",
+    "engines": {
+      "node": "24.x"
+    },
     "dependencies": {
       "@forge-ahead/atlassian-api-types": "github:ibuchanan/forge-ahead-atlassian-api-types",
       "@forge-ahead/errors": "github:ibuchanan/forge-ahead-errors",
@@ -127,9 +130,10 @@ exports[`forge-app generated output has the selected functions and converges wit
     ]
   },
   "files": {
-    ".nvmrc": "24\\n",
     ".editorconfig": "root = true\\n\\n[*]\\ncharset = utf-8\\nend_of_line = lf\\ninsert_final_newline = true\\ntrim_trailing_whitespace = true\\nindent_style = space\\nindent_size = 2\\n\\n[*.md]\\ntrim_trailing_whitespace = false\\n",
     "tsconfig.json": "{\\n  \\"compilerOptions\\": {\\n    \\"target\\": \\"ES2022\\",\\n    \\"module\\": \\"CommonJS\\",\\n    \\"moduleResolution\\": \\"Node\\",\\n    \\"jsx\\": \\"react-jsx\\",\\n    \\"sourceMap\\": true,\\n    \\"lib\\": [\\n      \\"ES2022\\"\\n    ],\\n    \\"strict\\": true,\\n    \\"esModuleInterop\\": true,\\n    \\"skipLibCheck\\": true,\\n    \\"forceConsistentCasingInFileNames\\": true,\\n    \\"rootDir\\": \\"src\\",\\n    \\"outDir\\": \\"dist\\"\\n  },\\n  \\"include\\": [\\n    \\"src\\"\\n  ]\\n}\\n",
+    ".nvmrc": "24\\n",
+    ".npmrc": "# Use the public npm registry (not the default for internal Atlassians)\\nregistry=https://registry.npmjs.org/\\n",
     "cliff.toml": "# git-cliff release policy (v1)\\n[changelog]\\nbody = \\"\\"\\"\\n{% if version %}## [{{ version | trim_start_matches(pat=\\"v\\") }}] - {{ timestamp | date(format=\\"%Y-%m-%d\\") }}\\n{% else %}## [unreleased]\\n{% endif %}\\n{% for group, commits in commits | group_by(attribute=\\"group\\") %}\\n### {{ group | striptags | trim | upper_first }}\\n{% for commit in commits %}- {% if commit.scope %}*({{ commit.scope }})* {% endif %}{{ commit.message | upper_first }}\\n{% endfor %}\\n{% endfor %}\\n\\"\\"\\"\\ntrim = true\\nrender_always = true\\n\\n[git]\\nconventional_commits = true\\nfilter_unconventional = true\\ncommit_parsers = [\\n  { message = \\"^feat\\", group = \\"Features\\" },\\n  { message = \\"^fix\\", group = \\"Bug Fixes\\" },\\n  { message = \\"^doc\\", group = \\"Documentation\\" },\\n  { message = \\"^perf\\", group = \\"Performance\\" },\\n  { message = \\"^refactor\\", group = \\"Refactoring\\" },\\n  { message = \\"^test\\", group = \\"Testing\\" },\\n  { message = \\"^chore\\\\\\\\(release\\\\\\\\): prepare for\\", skip = true },\\n  { message = \\"^chore|^ci\\", group = \\"Maintenance\\" },\\n  { message = \\"^revert\\", group = \\"Reverts\\" },\\n]\\nfilter_commits = false\\nsort_commits = \\"oldest\\"\\n",
     "secretspec.toml": "[project]\\nname = \\"sample\\"\\nrevision = \\"1.0\\"\\n\\n[profiles.default]\\nFORGE_SITE = { description = \\"Forge target site\\", default = \\"example.atlassian.net\\" }\\nFORGE_PRODUCT = { description = \\"Forge target product\\", default = \\"jira\\" }\\nFORGE_ENVIRONMENT = { description = \\"Forge target environment\\", default = \\"development\\" }\\n",
     "scripts/forge-vars-from-secretspec.sh": "#!/usr/bin/env bash\\nset -euo pipefail\\n\\n# Only configured uppercase keys in the default profile become Forge variables.\\nconfig=\\"$(cd \\"$(dirname \\"\${BASH_SOURCE[0]}\\")/..\\" && pwd)/secretspec.toml\\"\\nwhile IFS= read -r name; do\\n  [[ \\"$name\\" == FORGE* ]] && continue\\n  if ! value=\\"$(printenv \\"$name\\")\\"; then\\n    printf 'Missing configured variable: %s\\\\n' \\"$name\\" >&2\\n    exit 1\\n  fi\\n  set --\\n  [[ \\"$name\\" == *SECRET* ]] && set -- --encrypt\\n  if ! forge variables set --environment \\"$FORGE_ENVIRONMENT\\" \\"$@\\" \\"$name\\" \\"$value\\" >/dev/null 2>&1; then\\n    printf 'Failed to push variable: %s\\\\n' \\"$name\\" >&2\\n    exit 1\\n  fi\\ndone < <(awk '\\n  /^\\\\[profiles\\\\.default\\\\][[:space:]]*$/ { section=1; next }\\n  /^\\\\[/ { section=0 }\\n  section && /^[A-Z][A-Z0-9_]*[[:space:]]*=/ {\\n    key=$0; sub(/[[:space:]]*=.*/, \\"\\", key); print key\\n  }\\n' \\"$config\\")\\n",
@@ -147,9 +151,6 @@ exports[`tool generated output has the selected functions and converges without 
     "name": "sample",
     "version": "0.1.0",
     "type": "module",
-    "engines": {
-      "node": "24.x"
-    },
     "license": "Apache-2.0",
     "scripts": {
       "changelog": "git cliff --config cliff.toml --unreleased",
@@ -168,17 +169,22 @@ exports[`tool generated output has the selected functions and converges without 
       "check": "lefthook run pre-push --force"
     },
     "devDependencies": {
+      "@types/node": "24",
       "git-cliff": "^2.13",
       "@biomejs/biome": "^1.9.4",
       "typescript": "^5.4.0",
       "lefthook": "^1.11.0"
     },
-    "description": "A sample project"
+    "description": "A sample project",
+    "engines": {
+      "node": "24.x"
+    }
   },
   "files": {
-    ".nvmrc": "24\\n",
     ".editorconfig": "root = true\\n\\n[*]\\ncharset = utf-8\\nend_of_line = lf\\ninsert_final_newline = true\\ntrim_trailing_whitespace = true\\nindent_style = space\\nindent_size = 2\\n\\n[*.md]\\ntrim_trailing_whitespace = false\\n",
     "tsconfig.json": "{\\n  \\"compilerOptions\\": {\\n    \\"target\\": \\"ES2022\\",\\n    \\"module\\": \\"NodeNext\\",\\n    \\"moduleResolution\\": \\"NodeNext\\",\\n    \\"strict\\": true,\\n    \\"esModuleInterop\\": true,\\n    \\"skipLibCheck\\": true,\\n    \\"forceConsistentCasingInFileNames\\": true,\\n    \\"declaration\\": true,\\n    \\"outDir\\": \\"dist\\",\\n    \\"rootDir\\": \\"src\\"\\n  },\\n  \\"include\\": [\\n    \\"src\\"\\n  ]\\n}\\n",
+    ".nvmrc": "24\\n",
+    ".npmrc": "# Use the public npm registry (not the default for internal Atlassians)\\nregistry=https://registry.npmjs.org/\\n",
     "cliff.toml": "# git-cliff release policy (v1)\\n[changelog]\\nbody = \\"\\"\\"\\n{% if version %}## [{{ version | trim_start_matches(pat=\\"v\\") }}] - {{ timestamp | date(format=\\"%Y-%m-%d\\") }}\\n{% else %}## [unreleased]\\n{% endif %}\\n{% for group, commits in commits | group_by(attribute=\\"group\\") %}\\n### {{ group | striptags | trim | upper_first }}\\n{% for commit in commits %}- {% if commit.scope %}*({{ commit.scope }})* {% endif %}{{ commit.message | upper_first }}\\n{% endfor %}\\n{% endfor %}\\n\\"\\"\\"\\ntrim = true\\nrender_always = true\\n\\n[git]\\nconventional_commits = true\\nfilter_unconventional = true\\ncommit_parsers = [\\n  { message = \\"^feat\\", group = \\"Features\\" },\\n  { message = \\"^fix\\", group = \\"Bug Fixes\\" },\\n  { message = \\"^doc\\", group = \\"Documentation\\" },\\n  { message = \\"^perf\\", group = \\"Performance\\" },\\n  { message = \\"^refactor\\", group = \\"Refactoring\\" },\\n  { message = \\"^test\\", group = \\"Testing\\" },\\n  { message = \\"^chore\\\\\\\\(release\\\\\\\\): prepare for\\", skip = true },\\n  { message = \\"^chore|^ci\\", group = \\"Maintenance\\" },\\n  { message = \\"^revert\\", group = \\"Reverts\\" },\\n]\\nfilter_commits = false\\nsort_commits = \\"oldest\\"\\n",
     "biome.json": "{\\n  \\"$schema\\": \\"https://biomejs.dev/schemas/1.9.4/schema.json\\",\\n  \\"organizeImports\\": {\\n    \\"enabled\\": true\\n  },\\n  \\"linter\\": {\\n    \\"enabled\\": true,\\n    \\"rules\\": {\\n      \\"recommended\\": true\\n    }\\n  },\\n  \\"formatter\\": {\\n    \\"enabled\\": true,\\n    \\"indentStyle\\": \\"space\\",\\n    \\"indentWidth\\": 2,\\n    \\"lineEnding\\": \\"lf\\"\\n  },\\n  \\"files\\": {\\n    \\"ignore\\": [\\n      \\"node_modules\\",\\n      \\"dist\\"\\n    ]\\n  }\\n}\\n",
     "lefthook.yml": "colors: false\\noutput:\\n  - meta\\n  - summary\\n  - failure\\n\\nesa-lint:\\n  commands:\\n    esa-lint:\\n      run: npm run lint:check && npm run typecheck\\n\\npre-commit:\\n  parallel: true\\n  commands:\\n    esa-gitleaks:\\n      run: |\\n        command -v gitleaks >/dev/null 2>&1 || {\\n          echo \\"gitleaks not found on PATH. Install it with: brew install gitleaks\\" >&2\\n          exit 1\\n        }\\n        gitleaks git --pre-commit --staged\\n    esa-format:\\n      run: npm run format\\n      stage_fixed: true\\n\\npre-push:\\n  commands:\\n    esa-format-check:\\n      run: npm run format:check\\n    esa-lint:\\n      run: npm run lint\\n    esa-test:\\n      run: npm run test\\n"
@@ -192,9 +198,6 @@ exports[`agent-skill generated output has the selected functions and converges w
     "name": "sample",
     "version": "0.1.0",
     "type": "module",
-    "engines": {
-      "node": "24.x"
-    },
     "license": "Apache-2.0",
     "scripts": {
       "lint": "lefthook run esa-lint",
@@ -209,16 +212,21 @@ exports[`agent-skill generated output has the selected functions and converges w
       "check": "lefthook run pre-push --force"
     },
     "devDependencies": {
+      "@types/node": "24",
       "@biomejs/biome": "^1.9.4",
       "typescript": "^5.4.0",
       "lefthook": "^1.11.0"
     },
-    "description": "A sample project"
+    "description": "A sample project",
+    "engines": {
+      "node": "24.x"
+    }
   },
   "files": {
-    ".nvmrc": "24\\n",
     ".editorconfig": "root = true\\n\\n[*]\\ncharset = utf-8\\nend_of_line = lf\\ninsert_final_newline = true\\ntrim_trailing_whitespace = true\\nindent_style = space\\nindent_size = 2\\n\\n[*.md]\\ntrim_trailing_whitespace = false\\n",
     "tsconfig.json": "{\\n  \\"compilerOptions\\": {\\n    \\"target\\": \\"ES2022\\",\\n    \\"module\\": \\"NodeNext\\",\\n    \\"moduleResolution\\": \\"NodeNext\\",\\n    \\"strict\\": true,\\n    \\"esModuleInterop\\": true,\\n    \\"skipLibCheck\\": true,\\n    \\"forceConsistentCasingInFileNames\\": true,\\n    \\"declaration\\": true,\\n    \\"outDir\\": \\"dist\\",\\n    \\"rootDir\\": \\"src\\"\\n  },\\n  \\"include\\": [\\n    \\"src\\"\\n  ]\\n}\\n",
+    ".nvmrc": "24\\n",
+    ".npmrc": "# Use the public npm registry (not the default for internal Atlassians)\\nregistry=https://registry.npmjs.org/\\n",
     "biome.json": "{\\n  \\"$schema\\": \\"https://biomejs.dev/schemas/1.9.4/schema.json\\",\\n  \\"organizeImports\\": {\\n    \\"enabled\\": true\\n  },\\n  \\"linter\\": {\\n    \\"enabled\\": true,\\n    \\"rules\\": {\\n      \\"recommended\\": true\\n    }\\n  },\\n  \\"formatter\\": {\\n    \\"enabled\\": true,\\n    \\"indentStyle\\": \\"space\\",\\n    \\"indentWidth\\": 2,\\n    \\"lineEnding\\": \\"lf\\"\\n  },\\n  \\"files\\": {\\n    \\"ignore\\": [\\n      \\"node_modules\\",\\n      \\"dist\\"\\n    ]\\n  }\\n}\\n",
     "lefthook.yml": "colors: false\\noutput:\\n  - meta\\n  - summary\\n  - failure\\n\\nesa-lint:\\n  commands:\\n    esa-lint:\\n      run: npm run lint:check && npm run typecheck\\n\\npre-commit:\\n  parallel: true\\n  commands:\\n    esa-gitleaks:\\n      run: |\\n        command -v gitleaks >/dev/null 2>&1 || {\\n          echo \\"gitleaks not found on PATH. Install it with: brew install gitleaks\\" >&2\\n          exit 1\\n        }\\n        gitleaks git --pre-commit --staged\\n    esa-format:\\n      run: npm run format\\n      stage_fixed: true\\n\\npre-push:\\n  commands:\\n    esa-format-check:\\n      run: npm run format:check\\n    esa-lint:\\n      run: npm run lint\\n"
   }

@@ -4,6 +4,7 @@ import YAML, { isMap } from "yaml";
 import { EVAL_ASSETS } from "./evals.ts";
 import { GITIGNORE_TEMPLATES, mergeGitignore } from "./gitignore.ts";
 import { OSS_ASSETS, OSS_LICENSE, transformOssTemplate } from "./oss.ts";
+import { planNode } from "./node.ts";
 import { buildProject } from "./profiles.ts";
 import { buildReadme, createBlueprint } from "./project.ts";
 import { mergeTypeScriptConfig } from "./typescript-config.ts";
@@ -125,27 +126,9 @@ export function planSync(
       before: undefined,
       after: OSS_LICENSE,
     });
-  const nodePin = desiredProject.files.get(".nvmrc");
-  if (
-    nodePin !== undefined &&
-    files.has(".nvmrc") &&
-    files.get(".nvmrc")?.trim() !== nodePin.trim()
-  )
-    throw new ConflictError(
-      "node",
-      "major",
-      files.get(".nvmrc"),
-      nodePin.trim(),
-      ".nvmrc",
-    );
-  if (nodePin !== undefined && !files.has(".nvmrc"))
-    operations.push({
-      path: ".nvmrc",
-      key: "node",
-      mode: "create-if-absent",
-      before: undefined,
-      after: nodePin,
-    });
+  operations.push(
+    ...planNode(desiredProject, current, files, profile === "forge-app"),
+  );
   for (const path of [
     ...OSS_ASSETS,
     // `.gitignore` arrives in the same map but is line-merged below, never seeded.
@@ -200,22 +183,6 @@ export function planSync(
       guidance,
       "AGENTS.md",
     );
-  const engines = (current.engines ?? {}) as Record<string, unknown>;
-  if (engines.node !== undefined && engines.node !== desired.engines.node)
-    throw new ConflictError(
-      "engines",
-      "node",
-      engines.node,
-      desired.engines.node,
-    );
-  if (engines.node === undefined)
-    operations.push({
-      path: "package.json",
-      key: "engines.node",
-      mode: "structured-merge",
-      before: undefined,
-      after: desired.engines.node,
-    });
   for (const section of [
     "scripts",
     "devDependencies",

@@ -18,12 +18,14 @@ import {
 import { changelog } from "./changelog.ts";
 import { evals } from "./evals.ts";
 import { gitHooks } from "./git-hooks.ts";
+import { nodeBaseline } from "./node.ts";
 import { validateOssOwner } from "./oss.ts";
 import { createBlueprint, type ProjectBlueprint } from "./project.ts";
 import { forgeSecrets } from "./secrets.ts";
 
 export const PROFILES: Record<string, Capability[]> = {
   library: [
+    nodeBaseline(),
     changelog(),
     biomeLinting(),
     biomeFormatting(),
@@ -35,6 +37,7 @@ export const PROFILES: Record<string, Capability[]> = {
     gitHooks(true),
   ],
   "forge-app": [
+    nodeBaseline(),
     changelog(),
     forgeSecrets(),
     forgeLinting(),
@@ -48,6 +51,7 @@ export const PROFILES: Record<string, Capability[]> = {
     gitHooks(true),
   ],
   tool: [
+    nodeBaseline(),
     changelog(),
     biomeLinting(),
     biomeFormatting(),
@@ -58,6 +62,7 @@ export const PROFILES: Record<string, Capability[]> = {
     gitHooks(true),
   ],
   "agent-skill": [
+    nodeBaseline(),
     biomeLinting(),
     biomeFormatting(),
     tscTypecheck(),

@@ -71,6 +71,27 @@ all of them. Unlike the previous release, these are gitignore.io's names rather
 than local ones such as `build` or `editor`, and an unknown name fails before
 anything is written.
 
+### The Node baseline
+
+Every generated project pins one Node version in each place a tool reads it:
+`.nvmrc` (`24`), `package.json` `engines.node` (`24.x`), and `@types/node` (`24`).
+Generated projects also get an `.npmrc` pinning the public npm registry, which
+is not the default inside Atlassian:
+
+```ini
+registry=https://registry.npmjs.org/
+```
+
+`registry` is an owned key. If a `.npmrc` already exists, `sync` adds the key
+without disturbing your other lines, and a **different** registry is reported as
+a conflict rather than overwritten. A repository pinned to another Node major is
+a conflict too, on both `.nvmrc` and `engines.node`.
+
+On `forge-app`, `sync` also reconciles `app.runtime.name` (`nodejs24.x`) so a
+deployed Forge app runs the same Node as your local toolchain. Drop Calf never
+writes `manifest.yml` itself — if you have one, its runtime key is checked and
+filled in; if you do not, none is created.
+
 The available profiles are `library`, `forge-app`, `tool`, and `agent-skill`;
 `--profile` is required. On `forge-app`, `--with-functions evals` or
 `--preset all` enables evaluation scripts; `--without-functions evals`

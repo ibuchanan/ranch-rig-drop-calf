@@ -463,6 +463,7 @@ describe("repository sync", () => {
       ".atlassian/OWNER",
       "package.json",
       ".nvmrc",
+      ".npmrc",
       ...docsTemplates().keys(),
       "cliff.toml",
       "lefthook.yml",

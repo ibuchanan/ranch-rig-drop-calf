@@ -76,8 +76,20 @@ sets on generation and contributed to the merge on sync. Merge and generation
 share one builder, so the two paths cannot drift.
 
 ### `node`
-Pin the Node baseline: `.nvmrc` (`24`) and `engines.node` (`24.x`). A different pinned
-major is a conflict.
+Pin the Node baseline: `.nvmrc` (`24`), `engines.node` (`24.x`), and `@types/node`
+(`24`). A different pinned major is a conflict.
+
+Own the npm registry in `.npmrc`: seed `registry=https://registry.npmjs.org/`, add the
+key to an existing file without disturbing other lines, and treat a different registry as
+a conflict. Scoped keys (`@acme:registry=…`) are distinct and are preserved.
+
+On `forge-app`, reconcile `app.runtime.name` (`nodejs24.x`) against an existing
+`manifest.yml`. The manifest belongs to the user: this never creates it, only fills in or
+checks the runtime key, and a different runtime is a conflict. Other kinds leave it alone.
+
+The baseline lives in one place (`src/node.ts`) so generation and sync cannot drift;
+`.nvmrc` stays bare (`24`) because changing that format would conflict with every
+repository already generated.
 
 ### `changelog`
 Add `git-cliff` dev dependency and the `changelog` script. Use a versioned `cliff.toml`
@@ -105,8 +117,8 @@ Add `@ast-grep/cli` and the Forge prelint rules package. Add the `lint:prelint` 
 command and establish the direct `lint` chain (unless `git-hooks` later owns `lint`).
 
 ### `typescript`
-Add `typescript@^5` (Forge-bundler constraint) and `@types/node`; own `build`, `dev`,
-`typecheck` scripts. Two profiles:
+Add `typescript@^5` (Forge-bundler constraint); `@types/node` belongs to `node`. Own
+`build`, `dev`, `typecheck` scripts. Two profiles:
 - **forge-app**: JSONC `tsconfig.json` (JSX react-jsx, ES2022, CommonJS, Node resolution,
   strict, `src` root / `dist` out) plus a `tsconfig.typecheck.json` extending it with the
   stricter no-* / exact flags; `build`/`dev` run `tsc`.

@@ -258,6 +258,8 @@ export class DropCalf {
       "secretspec.toml",
       "scripts/forge-vars-from-secretspec.sh",
       ".nvmrc",
+      ".npmrc",
+      "manifest.yml",
       ".gitignore",
       ".editorconfig",
       ...OSS_ASSETS,

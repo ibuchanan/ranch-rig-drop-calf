@@ -93,6 +93,10 @@ through that generated SDK, so if type checking reports a missing
   by `copy-gitignore`; `mergeGitignore` is the line-set merge `sync` uses.
 - `src/capabilities.ts`: adapters that add scripts, development dependencies,
   and configuration to the blueprint.
+- `src/node.ts`: the Node baseline. `nodeBaseline()` seeds `.nvmrc`, `.npmrc`,
+  `engines.node`, and `@types/node`; `planNode` reconciles those keys on sync and
+  adds `app.runtime.name` to a `manifest.yml` that already exists on `forge-app`.
+  It never creates the manifest.
 - `src/profiles.ts`: ordered capability lists for the four supported profiles.
 - `tests/repo-init.test.ts`: Bun unit tests for the pure blueprint/capability
   layer.

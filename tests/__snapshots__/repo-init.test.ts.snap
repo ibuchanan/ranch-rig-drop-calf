@@ -5,6 +5,7 @@ exports[`profiles agent-skill contains no test scripts and all kinds keep a comp
   "files": [
     ".atlassian/OWNER",
     ".editorconfig",
+    ".npmrc",
     ".nvmrc",
     "CODE_OF_CONDUCT.md",
     "CONTRIBUTING.md",
@@ -21,6 +22,7 @@ exports[`profiles agent-skill contains no test scripts and all kinds keep a comp
     "devDependencies": {
       "@biomejs/biome": "^1.9.4",
       "@size-limit/file": "^5.0.0",
+      "@types/node": "24",
       "git-cliff": "^2.13",
       "lefthook": "^1.11.0",
       "size-limit": "^11.2.0",
@@ -75,6 +77,7 @@ exports[`profiles agent-skill contains no test scripts and all kinds keep a comp
   "files": [
     ".atlassian/OWNER",
     ".editorconfig",
+    ".npmrc",
     ".nvmrc",
     "AGENTS.md",
     "CODE_OF_CONDUCT.md",
@@ -100,6 +103,7 @@ exports[`profiles agent-skill contains no test scripts and all kinds keep a comp
       "@ast-grep/cli": "^0.44",
       "@biomejs/biome": "^1.9.4",
       "@size-limit/file": "^5.0.0",
+      "@types/node": "24",
       "git-cliff": "^2.13",
       "lefthook": "^1.11.0",
       "size-limit": "^11.2.0",
@@ -156,6 +160,7 @@ exports[`profiles agent-skill contains no test scripts and all kinds keep a comp
   "files": [
     ".atlassian/OWNER",
     ".editorconfig",
+    ".npmrc",
     ".nvmrc",
     "CODE_OF_CONDUCT.md",
     "CONTRIBUTING.md",
@@ -170,6 +175,7 @@ exports[`profiles agent-skill contains no test scripts and all kinds keep a comp
   "packageJson": {
     "devDependencies": {
       "@biomejs/biome": "^1.9.4",
+      "@types/node": "24",
       "git-cliff": "^2.13",
       "lefthook": "^1.11.0",
       "typescript": "^5.4.0",
@@ -206,6 +212,7 @@ exports[`profiles agent-skill contains no test scripts and all kinds keep a comp
   "files": [
     ".atlassian/OWNER",
     ".editorconfig",
+    ".npmrc",
     ".nvmrc",
     "CODE_OF_CONDUCT.md",
     "CONTRIBUTING.md",
@@ -219,6 +226,7 @@ exports[`profiles agent-skill contains no test scripts and all kinds keep a comp
   "packageJson": {
     "devDependencies": {
       "@biomejs/biome": "^1.9.4",
+      "@types/node": "24",
       "lefthook": "^1.11.0",
       "typescript": "^5.4.0",
     },

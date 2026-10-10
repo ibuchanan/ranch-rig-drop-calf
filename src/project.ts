@@ -1,12 +1,11 @@
 import { type Directory, dag } from "@dagger.io/dagger";
 import { OSS_LICENSE } from "./oss.ts";
-import { NODE_MAJOR } from "./versions.ts";
 
 export type PackageJson = {
   name: string;
   version: string;
   type: "module";
-  engines: { node: string };
+  engines?: { node: string };
   private?: boolean;
   main?: string;
   types?: string;
@@ -34,7 +33,6 @@ export function createBlueprint(
     name: packageName,
     version: "0.1.0",
     type: "module",
-    engines: { node: `${NODE_MAJOR}.x` },
     license: OSS_LICENSE,
     scripts: {},
     devDependencies: {},
@@ -43,7 +41,6 @@ export function createBlueprint(
   if (description) packageJson.description = description;
   if (author) packageJson.author = author;
   const files = new Map<string, string>([
-    [".nvmrc", `${NODE_MAJOR}\n`],
     [".editorconfig", buildEditorconfig()],
     [
       "tsconfig.json",
