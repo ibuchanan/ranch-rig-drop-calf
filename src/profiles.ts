@@ -6,6 +6,7 @@ import {
   bundleSize,
   bunTesting,
   cleanBuild,
+  docsLinting,
   forgeAhead,
   forgeLinting,
   libraryBuild,
@@ -31,6 +32,7 @@ export const PROFILES: Record<string, Capability[]> = {
     libraryBuild(),
     bundleSize("Library bundle", "dist/index.js"),
     cleanBuild(),
+    docsLinting(),
     gitHooks(true),
   ],
   "forge-app": [
@@ -44,6 +46,7 @@ export const PROFILES: Record<string, Capability[]> = {
     bunTesting(),
     bundleSize("Forge app bundle", "dist/**/*.js"),
     cleanBuild(),
+    docsLinting(),
     gitHooks(true),
   ],
   tool: [
@@ -54,6 +57,7 @@ export const PROFILES: Record<string, Capability[]> = {
     typeScriptToolchain(),
     bunTesting(),
     cleanBuild(),
+    docsLinting(),
     gitHooks(true),
   ],
   "agent-skill": [
@@ -63,6 +67,7 @@ export const PROFILES: Record<string, Capability[]> = {
     typeScriptToolchain(),
     noTesting(),
     cleanBuild(),
+    docsLinting(),
     gitHooks(false),
   ],
 };

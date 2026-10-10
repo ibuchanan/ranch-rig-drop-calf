@@ -14,6 +14,20 @@ test("Forge generation includes authored agent guidance for Forge work", () => {
   expect(guidance).toContain("npm run typecheck");
 });
 
+test("authored guidance stays inside the line length lint:docs enforces", () => {
+  // `lint:docs` globs `**/*.md`, so this Markdown is linted too and has to
+  // survive MD013 without being a seeded file the docs tree can wrap.
+  const guidance = buildProject("forge-app", "sample", "tester").files.get(
+    "AGENTS.md",
+  ) as string;
+  expect(
+    guidance
+      .split("\n")
+      .map((line, index) => [index + 1, line.length] as const)
+      .filter(([, length]) => length > 80),
+  ).toEqual([]);
+});
+
 test("excluding aidev prevents Forge guidance generation and sync seeding", () => {
   const without = ["aidev"];
   expect(

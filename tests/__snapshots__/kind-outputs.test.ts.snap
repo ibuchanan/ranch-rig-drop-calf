@@ -21,6 +21,7 @@ exports[`library generated output has the selected functions and converges witho
       "test:coverage": "bun test --coverage --pass-with-no-tests",
       "size": "npm run build && size-limit",
       "clean": "rm -rf dist",
+      "lint:docs": "markdownlint-cli2 \\"**/*.md\\" && cspell lint \\"**/*.md\\"",
       "prepare": "lefthook install",
       "check": "lefthook run pre-push --force"
     },
@@ -32,6 +33,8 @@ exports[`library generated output has the selected functions and converges witho
       "tsdown": "^0.15.0",
       "size-limit": "^11.2.0",
       "@size-limit/file": "^5.0.0",
+      "cspell": "^10.3",
+      "markdownlint-cli2": "^0.23",
       "lefthook": "^1.11.0"
     },
     "description": "A sample project",
@@ -97,6 +100,7 @@ exports[`forge-app generated output has the selected functions and converges wit
       "test:coverage": "bun test --coverage --pass-with-no-tests",
       "size": "npm run build && size-limit",
       "clean": "rm -rf dist",
+      "lint:docs": "markdownlint-cli2 \\"**/*.md\\" && cspell lint \\"**/*.md\\"",
       "prepare": "lefthook install",
       "check": "lefthook run pre-push --force"
     },
@@ -109,6 +113,8 @@ exports[`forge-app generated output has the selected functions and converges wit
       "typescript": "^5.9.3",
       "size-limit": "^11.2.0",
       "@size-limit/file": "^5.0.0",
+      "cspell": "^10.3",
+      "markdownlint-cli2": "^0.23",
       "lefthook": "^1.11.0"
     },
     "description": "A sample project",
@@ -137,7 +143,7 @@ exports[`forge-app generated output has the selected functions and converges wit
     "scripts/forge-vars-from-secretspec.sh": "#!/usr/bin/env bash\\nset -euo pipefail\\n\\n# Only configured uppercase keys in the default profile become Forge variables.\\nconfig=\\"$(cd \\"$(dirname \\"\${BASH_SOURCE[0]}\\")/..\\" && pwd)/secretspec.toml\\"\\nwhile IFS= read -r name; do\\n  [[ \\"$name\\" == FORGE* ]] && continue\\n  if ! value=\\"$(printenv \\"$name\\")\\"; then\\n    printf 'Missing configured variable: %s\\\\n' \\"$name\\" >&2\\n    exit 1\\n  fi\\n  set --\\n  [[ \\"$name\\" == *SECRET* ]] && set -- --encrypt\\n  if ! forge variables set --environment \\"$FORGE_ENVIRONMENT\\" \\"$@\\" \\"$name\\" \\"$value\\" >/dev/null 2>&1; then\\n    printf 'Failed to push variable: %s\\\\n' \\"$name\\" >&2\\n    exit 1\\n  fi\\ndone < <(awk '\\n  /^\\\\[profiles\\\\.default\\\\][[:space:]]*$/ { section=1; next }\\n  /^\\\\[/ { section=0 }\\n  section && /^[A-Z][A-Z0-9_]*[[:space:]]*=/ {\\n    key=$0; sub(/[[:space:]]*=.*/, \\"\\", key); print key\\n  }\\n' \\"$config\\")\\n",
     "biome.json": "{\\n  \\"$schema\\": \\"https://biomejs.dev/schemas/1.9.4/schema.json\\",\\n  \\"organizeImports\\": {\\n    \\"enabled\\": true\\n  },\\n  \\"linter\\": {\\n    \\"enabled\\": true,\\n    \\"rules\\": {\\n      \\"recommended\\": true\\n    }\\n  },\\n  \\"formatter\\": {\\n    \\"enabled\\": true,\\n    \\"indentStyle\\": \\"space\\",\\n    \\"indentWidth\\": 2,\\n    \\"lineEnding\\": \\"lf\\"\\n  },\\n  \\"files\\": {\\n    \\"ignore\\": [\\n      \\"node_modules\\",\\n      \\"dist\\"\\n    ]\\n  }\\n}\\n",
     "lefthook.yml": "colors: false\\noutput:\\n  - meta\\n  - summary\\n  - failure\\n\\nesa-lint:\\n  commands:\\n    esa-lint:\\n      run: npm run lint:prelint && npm run lint:check && npm run lint:forge && npm run typecheck\\n\\npre-commit:\\n  parallel: true\\n  commands:\\n    esa-gitleaks:\\n      run: |\\n        command -v gitleaks >/dev/null 2>&1 || {\\n          echo \\"gitleaks not found on PATH. Install it with: brew install gitleaks\\" >&2\\n          exit 1\\n        }\\n        gitleaks git --pre-commit --staged\\n    esa-format:\\n      run: npm run format\\n      stage_fixed: true\\n\\npre-push:\\n  commands:\\n    esa-format-check:\\n      run: npm run format:check\\n    esa-lint:\\n      run: npm run lint\\n    esa-test:\\n      run: npm run test\\n",
-    "AGENTS.md": "# Agent guidance\\n\\nThis repository is an Atlassian Forge app. Read \`manifest.yml\` before changing modules,\\nfunctions, scopes, or external permissions. Prefer Forge's built-in authentication and\\nstorage to custom services; check authorization when using app-level access.\\n\\nBefore submitting changes, run \`npm run lint\`, \`npm run format:check\`,\\n\`npm run typecheck\`, and \`npm run test\`. Review scope or egress changes before\\ndeploying; do not deploy or install without approval.\\n"
+    "AGENTS.md": "# Agent guidance\\n\\nThis repository is an Atlassian Forge app. Read \`manifest.yml\` before\\nchanging modules, functions, scopes, or external permissions. Prefer\\nForge's built-in authentication and storage to custom services; check\\nauthorization when using app-level access.\\n\\nBefore submitting changes, run \`npm run lint\`, \`npm run format:check\`,\\n\`npm run typecheck\`, and \`npm run test\`. Review scope or egress changes before\\ndeploying; do not deploy or install without approval.\\n"
   }
 }"
 `;
@@ -162,6 +168,7 @@ exports[`tool generated output has the selected functions and converges without 
       "test:watch": "bun test --watch --pass-with-no-tests",
       "test:coverage": "bun test --coverage --pass-with-no-tests",
       "clean": "rm -rf dist",
+      "lint:docs": "markdownlint-cli2 \\"**/*.md\\" && cspell lint \\"**/*.md\\"",
       "prepare": "lefthook install",
       "check": "lefthook run pre-push --force"
     },
@@ -170,6 +177,8 @@ exports[`tool generated output has the selected functions and converges without 
       "git-cliff": "^2.13",
       "@biomejs/biome": "^1.9.4",
       "typescript": "^5.9.3",
+      "cspell": "^10.3",
+      "markdownlint-cli2": "^0.23",
       "lefthook": "^1.11.0"
     },
     "description": "A sample project",
@@ -204,6 +213,7 @@ exports[`agent-skill generated output has the selected functions and converges w
       "build": "tsc --project tsconfig.json",
       "typecheck": "tsc --project tsconfig.typecheck.json --noEmit",
       "clean": "rm -rf dist",
+      "lint:docs": "markdownlint-cli2 \\"**/*.md\\" && cspell lint \\"**/*.md\\"",
       "prepare": "lefthook install",
       "check": "lefthook run pre-push --force"
     },
@@ -211,6 +221,8 @@ exports[`agent-skill generated output has the selected functions and converges w
       "@types/node": "24",
       "@biomejs/biome": "^1.9.4",
       "typescript": "^5.9.3",
+      "cspell": "^10.3",
+      "markdownlint-cli2": "^0.23",
       "lefthook": "^1.11.0"
     },
     "description": "A sample project",

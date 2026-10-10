@@ -87,6 +87,11 @@ through that generated SDK, so if type checking reports a missing
   documented owner, project name, and LICENSE year substitutions.
 - `src/docs.ts`: copies `templates/docs/` through Dagger for generation and
   discovers its relative paths for create-if-absent sync, separate from OSS.
+  The tree carries the generated `docs/` placeholders plus the pinned
+  `.cspell.jsonc` and `.markdownlint-cli2.jsonc` the `docsLinting()`
+  capability runs. Both are dotfiles, so they are worth knowing about when
+  extending the tree: Dagger's `glob` does match them, but a shell glob will
+  not.
 - `src/templates.ts`: `copyTemplate`/`templatePaths`, the shared overlay and
   glob used by every `templates/` tree.
 - `src/typescript.ts`: the TypeScript toolchain — the `typescript`
@@ -98,7 +103,9 @@ through that generated SDK, so if type checking reports a missing
   defaults. `copyGitignoreAssets` is the Dagger boundary used by generation and
   by `copy-gitignore`; `mergeGitignore` is the line-set merge `sync` uses.
 - `src/capabilities.ts`: adapters that add scripts, development dependencies,
-  and configuration to the blueprint.
+  and configuration to the blueprint. `docsLinting()` adds the `lint:docs`
+  script and the `cspell`/`markdownlint-cli2` devDependencies every kind gets;
+  the config those tools read stays pinned in `templates/docs`.
 - `src/node.ts`: the Node baseline. `nodeBaseline()` seeds `.nvmrc`, `.npmrc`,
   `engines.node`, and `@types/node`; `planNode` reconciles those keys on sync and
   adds `app.runtime.name` to a `manifest.yml` that already exists on `forge-app`.

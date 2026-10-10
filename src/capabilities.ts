@@ -100,6 +100,23 @@ export function cleanBuild(): Capability {
   };
 }
 
+/**
+ * Lint the seeded documentation tree. The tool config is pinned in
+ * `templates/docs` alongside the Markdown it checks; this only wires up the
+ * runner, so a project that replaces the configs still keeps one entry point.
+ */
+export function docsLinting(): Capability {
+  return {
+    addTo(project) {
+      project.packageJson.scripts["lint:docs"] =
+        'markdownlint-cli2 "**/*.md" && cspell lint "**/*.md"';
+      project.packageJson.devDependencies.cspell = TOOL_VERSIONS.cspell;
+      project.packageJson.devDependencies["markdownlint-cli2"] =
+        TOOL_VERSIONS.markdownlintCli2;
+    },
+  };
+}
+
 export function bunTesting(): Capability {
   return {
     addTo(project) {
