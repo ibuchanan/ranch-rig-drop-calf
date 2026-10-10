@@ -44,6 +44,11 @@ import {
   TYPESCRIPT_TEMPLATE,
   typescriptPaths,
 } from "./typescript.ts";
+import {
+  copyBiome,
+  BIOME_TEMPLATE,
+  biomePaths,
+} from "./biome.ts";
 import { TOOL_VERSIONS } from "./versions.ts";
 
 function localBiomeConfig(fallback: string): string {
@@ -175,8 +180,8 @@ export class DropCalf {
       withoutFunctions,
       preset,
     );
-    const fallback = project.files.get("biome.json");
-    if (fallback) project.files.set("biome.json", localBiomeConfig(fallback));
+    const fallback = project.files.get("biome.jsonc");
+    if (fallback) project.files.set("biome.jsonc", localBiomeConfig(fallback));
     const rendered = renderToDirectory(project);
     return this.copyGitignore(
       await this.copyOss(
@@ -202,6 +207,14 @@ export class DropCalf {
     return copyTypeScript(
       directory,
       dag.currentModule().source().directory(TYPESCRIPT_TEMPLATE),
+    );
+  }
+
+  @func()
+  copyBiome(directory: Directory): Directory {
+    return copyBiome(
+      directory,
+      dag.currentModule().source().directory(BIOME_TEMPLATE),
     );
   }
 
@@ -302,7 +315,7 @@ export class DropCalf {
     const files = new Map<string, string>();
     for (const path of [
       "package.json",
-      "biome.json",
+      "biome.jsonc",
       "lefthook.yml",
       "tsconfig.json",
       "tsconfig.typecheck.json",
@@ -359,6 +372,13 @@ export class DropCalf {
       .directory(TYPESCRIPT_TEMPLATE);
     for (const path of await typescriptPaths(typeScript))
       templates.set(path, await typeScript.file(path).contents());
+    // Every kind seeds its Biome config from `templates/biome` the same way.
+    const biome = dag
+      .currentModule()
+      .source()
+      .directory(BIOME_TEMPLATE);
+    for (const path of await biomePaths(biome))
+      templates.set(path, await biome.file(path).contents());
     // The release policy is seeded the same way. `sync` decides whether a kind
     // wants it; this only makes the bytes available for that decision.
     const changelog = dag

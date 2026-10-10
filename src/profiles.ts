@@ -1,8 +1,7 @@
 import { seedAgentGuidance } from "./aidev.ts";
 import type { Capability } from "./capabilities.ts";
 import {
-  biomeFormatting,
-  biomeLinting,
+  biomeToolchain,
   bundleSize,
   bunTesting,
   cleanBuild,
@@ -25,8 +24,7 @@ export const PROFILES: Record<string, Capability[]> = {
   library: [
     nodeBaseline(),
     changelogToolchain(),
-    biomeLinting(),
-    biomeFormatting(),
+    biomeToolchain(),
     typeScriptToolchain(),
     bunTesting(),
     libraryBuild(),
@@ -40,7 +38,7 @@ export const PROFILES: Record<string, Capability[]> = {
     changelogToolchain(),
     forgeSecrets(),
     forgeLinting(),
-    biomeFormatting(),
+    biomeToolchain(),
     typeScriptToolchain(),
     forgeAhead(),
     bunTesting(),
@@ -52,8 +50,7 @@ export const PROFILES: Record<string, Capability[]> = {
   tool: [
     nodeBaseline(),
     changelogToolchain(),
-    biomeLinting(),
-    biomeFormatting(),
+    biomeToolchain(),
     typeScriptToolchain(),
     bunTesting(),
     cleanBuild(),
@@ -62,8 +59,7 @@ export const PROFILES: Record<string, Capability[]> = {
   ],
   "agent-skill": [
     nodeBaseline(),
-    biomeLinting(),
-    biomeFormatting(),
+    biomeToolchain(),
     typeScriptToolchain(),
     noTesting(),
     cleanBuild(),

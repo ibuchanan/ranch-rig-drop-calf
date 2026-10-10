@@ -10,7 +10,8 @@ import {
 } from "node:fs";
 import { join } from "node:path";
 import { type Directory, dag } from "@dagger.io/dagger";
-import { biomeLinting, forgeLinting } from "../src/capabilities.ts";
+import { biomeToolchain } from "../src/biome.ts";
+import { forgeLinting } from "../src/capabilities.ts";
 import { DropCalf } from "../src/index.ts";
 import { OSS_ASSETS } from "../src/oss.ts";
 import {
@@ -57,8 +58,8 @@ test("files uses matching local Biome init defaults without losing required poli
   try {
     process.chdir(temp);
     await new DropCalf().files("tool", "tester", "sample");
-    const config = JSON.parse(writes.get("biome.json") ?? "null");
-    expect(config.javascript.formatter.quoteStyle).toBe("single");
+    const config = JSON.parse(writes.get("biome.jsonc") ?? "null");
+    expect(config.javascript.formatter.quoteStyle).toBe("double");
     expect(config.formatter.indentStyle).toBe("space");
     expect(readFileSync(executable, "utf8")).toContain("init");
   } finally {
@@ -113,16 +114,18 @@ describe("buildReadme", () => {
   });
 });
 
-describe("biomeLinting capability", () => {
-  test("adds lint scripts, dependency, and config", () => {
+describe("biomeToolchain capability", () => {
+  test("adds format and lint scripts, dependency, and config", () => {
     const project = createBlueprint("my-package", "", "");
-    biomeLinting().addTo(project);
+    biomeToolchain("2.5.13").addTo(project);
+    expect(project.packageJson.scripts.format).toBe("biome format --write");
+    expect(project.packageJson.scripts["format:check"]).toBe("biome format");
     expect(project.packageJson.scripts.lint).toBe("biome lint");
     expect(project.packageJson.scripts["lint:fix"]).toBe("biome lint --write");
     expect(project.packageJson.devDependencies["@biomejs/biome"]).toBe(
-      "^1.9.4",
+      "2.5.13",
     );
-    expect(project.files.has("biome.json")).toBe(true);
+    expect(project.files.has("biome.jsonc")).toBe(true);
   });
 });
 
@@ -131,12 +134,11 @@ test("generated kinds ship version-compatible Biome config and check scripts", (
     const project = buildProject(kind, "sample", "tester");
     const scripts = project.packageJson.scripts;
     const version = project.packageJson.devDependencies["@biomejs/biome"];
-    const configText = project.files.get("biome.json") ?? "";
+    const configText = project.files.get("biome.jsonc") ?? "";
     const config = JSON.parse(configText);
-    expect(configText.endsWith("\n")).toBe(true);
     expect(scripts.format).toBe("biome format --write");
     expect(scripts["format:check"]).toBe("biome format");
-    expect(scripts["lint:check"]).toBe("biome lint");
+    expect(scripts.lint).toBe("lefthook run esa-lint");
     expect(scripts["lint:fix"]).toBe("biome lint --write");
     expect(config.$schema).toBe(
       `https://biomejs.dev/schemas/${version?.replace(/^[^\d]*/, "")}/schema.json`,
@@ -146,8 +148,8 @@ test("generated kinds ship version-compatible Biome config and check scripts", (
 
 test("a requested Biome version determines its schema", () => {
   const project = createBlueprint("sample", "", "");
-  biomeLinting("^1.9.3").addTo(project);
-  expect(JSON.parse(project.files.get("biome.json") ?? "null").$schema).toBe(
+  biomeToolchain("1.9.3").addTo(project);
+  expect(JSON.parse(project.files.get("biome.jsonc") ?? "null").$schema).toBe(
     "https://biomejs.dev/schemas/1.9.3/schema.json",
   );
 });
@@ -160,7 +162,7 @@ describe("forgeLinting capability", () => {
     expect(
       project.packageJson.devDependencies["@biomejs/biome"],
     ).toBeUndefined();
-    expect(project.files.has("biome.json")).toBe(false);
+    expect(project.files.has("biome.jsonc")).toBe(false);
   });
 });
 

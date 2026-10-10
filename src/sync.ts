@@ -299,14 +299,14 @@ export function planSync(
         after,
       });
   }
-  const biome = desiredProject.files.get("biome.json");
+  const biome = desiredProject.files.get("biome.jsonc");
   if (biome !== undefined) {
-    const before = files.get("biome.json");
+    const before = files.get("biome.jsonc");
     const after =
       before === undefined ? biome : mergeBiomeConfig(before, biome);
     if (before !== after)
       operations.push({
-        path: "biome.json",
+        path: "biome.jsonc",
         key: "config",
         mode: before === undefined ? "create-if-absent" : "structured-merge",
         before,
@@ -460,7 +460,7 @@ function mergeBiomeConfig(existing: string, template: string): string {
     )
       throw new Error("expected an object");
   } catch (error) {
-    throw new ParseError("biome.json", String(error));
+    throw new ParseError("biome.jsonc", String(error));
   }
   const required = JSON.parse(template) as Record<string, unknown>;
   let changed = false;
@@ -485,7 +485,7 @@ function mergeBiomeConfig(existing: string, template: string): string {
           path,
           found,
           JSON.stringify(wanted),
-          "biome.json",
+          "biome.jsonc",
         );
       }
     }

@@ -21,4 +21,6 @@ export const docsTemplates = () => templatesIn("docs");
 
 export const typescriptTemplates = () => templatesIn("typescript");
 
+export const biomeTemplates = () => templatesIn("biome");
+
 export const changelogTemplates = () => templatesIn("changelog");

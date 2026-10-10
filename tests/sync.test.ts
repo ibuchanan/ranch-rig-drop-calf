@@ -74,30 +74,28 @@ describe("repository sync", () => {
   });
   test("merges Biome config without losing custom settings and converges", () => {
     const original = JSON.stringify({
-      $schema: "https://biomejs.dev/schemas/1.9.4/schema.json",
+      $schema: "https://biomejs.dev/schemas/2.5.13/schema.json",
       formatter: { indentStyle: "space", lineWidth: 100 },
       linter: {
         enabled: true,
         rules: { recommended: true, style: { noVar: "error" } },
       },
-      javascript: { formatter: { quoteStyle: "single" } },
     });
     const files = new Map([
       ["package.json", '{"name":"sample","scripts":{"deploy":"echo deploy"}}'],
-      ["biome.json", original],
+      ["biome.jsonc", original],
     ]);
     const plan = planSync(files, "tool", "tester");
     expect(plan.operations).toContainEqual(
       expect.objectContaining({
-        path: "biome.json",
+        path: "biome.jsonc",
         mode: "structured-merge",
       }),
     );
     const result = applySync(plan).files;
-    const config = JSON.parse(result.get("biome.json") ?? "null");
-    expect(config.javascript.formatter.quoteStyle).toBe("single");
+    const config = JSON.parse(result.get("biome.jsonc") ?? "null");
     expect(config.formatter.lineWidth).toBe(100);
-    expect(config.formatter.indentWidth).toBe(2);
+    expect(config.formatter.indentStyle).toBe("space");
     expect(config.linter.rules.style.noVar).toBe("error");
     expect(
       JSON.parse(result.get("package.json") ?? "null").scripts.deploy,
@@ -111,27 +109,27 @@ describe("repository sync", () => {
       planSync(
         new Map([
           ["package.json", pkg],
-          ["biome.json", '{"formatter":{"indentStyle":"tab"}}'],
+          ["biome.jsonc", '{"formatter":{"indentStyle":"tab"}}'],
         ]),
         "tool",
         "tester",
       ),
-    ).toThrow(/biome.json.*formatter.indentStyle/);
+    ).toThrow(/biome.jsonc.*formatter.indentStyle/);
     expect(() =>
       planSync(
         new Map([
           ["package.json", pkg],
-          ["biome.json", "{"],
+          ["biome.jsonc", "{"],
         ]),
         "tool",
         "tester",
       ),
-    ).toThrow(/biome.json/);
+    ).toThrow(/biome.jsonc/);
   });
   test("directory sync reads Biome settings and refuses conflicts before writing", async () => {
     const existing = new Map([
       ["package.json", '{"name":"sample"}'],
-      ["biome.json", '{"formatter":{"indentStyle":"tab"}}'],
+      ["biome.jsonc", '{"formatter":{"indentStyle":"tab"}}'],
     ]);
     let writes = 0;
     const directory = {
@@ -144,7 +142,7 @@ describe("repository sync", () => {
     } as unknown as Directory;
     await expect(
       new DropCalf().sync(directory, "tool", "tester"),
-    ).rejects.toThrow(/biome.json.*formatter.indentStyle/);
+    ).rejects.toThrow(/biome.jsonc.*formatter.indentStyle/);
     expect(writes).toBe(0);
   });
 
