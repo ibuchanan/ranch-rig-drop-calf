@@ -2,6 +2,7 @@ import { expect, test } from "bun:test";
 import ts from "typescript";
 import { DropCalf } from "../src/index.ts";
 import { applySync, ConflictError, ParseError, planSync } from "../src/sync.ts";
+import { mockOssSource } from "./oss-source.ts";
 
 const packageFile = '{"name":"sample"}';
 const parse = (text: string | undefined) =>
@@ -136,8 +137,13 @@ test("Dagger sync reads existing TypeScript config instead of overwriting it", a
       return source;
     },
   } as unknown as Parameters<DropCalf["sync"]>[0];
-  await expect(
-    new DropCalf().sync(source, "forge-app", "tester"),
-  ).rejects.toThrow(/tsconfig.json.*moduleResolution/);
-  expect(writes).toBe(0);
+  const module = mockOssSource();
+  try {
+    await expect(
+      new DropCalf().sync(source, "forge-app", "tester"),
+    ).rejects.toThrow(/tsconfig.json.*moduleResolution/);
+    expect(writes).toBe(0);
+  } finally {
+    module.mockRestore();
+  }
 });

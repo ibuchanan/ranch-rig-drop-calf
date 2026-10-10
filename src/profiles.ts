@@ -18,7 +18,7 @@ import {
 import { changelog } from "./changelog.ts";
 import { evals } from "./evals.ts";
 import { gitHooks } from "./git-hooks.ts";
-import { seedOssDocuments } from "./oss.ts";
+import { validateOssOwner } from "./oss.ts";
 import { createBlueprint, type ProjectBlueprint } from "./project.ts";
 import { forgeSecrets } from "./secrets.ts";
 
@@ -138,7 +138,7 @@ export function buildProject(
   );
   const project = createBlueprint(packageName, description, author);
   for (const capability of capabilities) capability.addTo(project);
-  seedOssDocuments(project, owner);
+  validateOssOwner(owner);
   if (!withoutFunctions.includes("aidev")) seedAgentGuidance(project, profile);
   if (
     profile === "forge-app" &&

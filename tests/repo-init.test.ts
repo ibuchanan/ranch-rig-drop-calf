@@ -51,6 +51,7 @@ test("files uses matching local Biome init defaults without losing required poli
       writes.set(path, file.text);
       return directory;
     },
+    withDirectory: () => directory,
   } as unknown as Directory;
   const stub = spyOn(dag, "directory").mockReturnValue(directory);
   try {
@@ -88,6 +89,7 @@ test("files skips a mismatched local Biome and uses the fallback", async () => {
       writes.set(path, file.text);
       return directory;
     },
+    withDirectory: () => directory,
   } as unknown as Directory;
   const stub = spyOn(dag, "directory").mockReturnValue(directory);
   try {
@@ -236,11 +238,6 @@ describe("OSS document seeds", () => {
         "Example Owner",
       );
       expect(project.packageJson.license).toBe("Apache-2.0");
-
-      // Verify DEVELOPMENT.md transformation via buildProject
-      expect(project.files.get("DEVELOPMENT.md")).toContain(
-        "npm run typecheck",
-      );
 
       for (const path of OSS_ASSETS) {
         const template = readFileSync(

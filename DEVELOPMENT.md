@@ -84,8 +84,9 @@ through that generated SDK, so if type checking reports a missing
 - `src/project.ts`: project blueprint, base package metadata and files,
   and Dagger directory rendering.
 - `src/oss.ts`: copies pinned `vendor/oss-templates` assets with only the
-  documented owner, project name, and LICENSE year substitutions;
-  generated `DEVELOPMENT.md` is separate from the official template.
+  documented owner, project name, and LICENSE year substitutions.
+- `src/docs.ts`: copies `templates/docs/` through Dagger for generation and
+  discovers its relative paths for create-if-absent sync, separate from OSS.
 - `src/capabilities.ts`: adapters that add scripts, development dependencies,
   and configuration to the blueprint.
 - `src/profiles.ts`: ordered capability lists for the four supported profiles.

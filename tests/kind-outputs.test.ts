@@ -4,7 +4,7 @@ import { DropCalf } from "../src/index.ts";
 import { OSS_ASSETS } from "../src/oss.ts";
 import { buildProject } from "../src/profiles.ts";
 import { applySync, planSync } from "../src/sync.ts";
-import { mockOssSource, ossTemplates } from "./oss-source.ts";
+import { docsTemplates, mockOssSource, ossTemplates } from "./oss-source.ts";
 
 test.each(["library", "forge-app", "tool", "agent-skill"])(
   "%s generated output has the selected functions and converges without losing user prose",
@@ -40,7 +40,7 @@ test.each(["library", "forge-app", "tool", "agent-skill"])(
       kind !== "agent-skill",
     );
 
-    const files = new Map(project.files);
+    const files = new Map([...project.files, ...docsTemplates()]);
     files.set("package.json", `${JSON.stringify(project.packageJson)}\n`);
     files.set("README.md", "# My custom README\n");
     const first = applySync(planSync(files, kind, "tester")).files;
@@ -60,6 +60,14 @@ test.each(["library", "forge-app", "tool", "agent-skill"])(
       },
       withFile(path: string, file: { text: string }) {
         writes.set(path, file.text);
+        return directory;
+      },
+      withDirectory(
+        _path: string,
+        source: { file(path: string): { text: string } },
+      ) {
+        for (const path of docsTemplates().keys())
+          writes.set(path, source.file(path).text);
         return directory;
       },
     } as unknown as Directory;
@@ -82,8 +90,16 @@ test.each(["library", "forge-app", "tool", "agent-skill"])(
       expect(writes.get("CODE_OF_CONDUCT.md")).toBe(
         ossTemplates().get("CODE_OF_CONDUCT.md"),
       );
+      expect(writes.get("DEVELOPMENT.md")).toBe(
+        docsTemplates().get("DEVELOPMENT.md"),
+      );
       expect([...writes.keys()].sort()).toEqual(
-        ["package.json", ...project.files.keys(), ...OSS_ASSETS].sort(),
+        [
+          "package.json",
+          ...project.files.keys(),
+          ...OSS_ASSETS,
+          ...docsTemplates().keys(),
+        ].sort(),
       );
     } finally {
       oss.mockRestore();

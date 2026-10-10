@@ -16,6 +16,7 @@ import {
   func,
   object,
 } from "@dagger.io/dagger";
+import { copyDocs, docPaths } from "./docs.ts";
 import { EVAL_ASSETS } from "./evals.ts";
 import { copyOssAssets, OSS_ASSETS } from "./oss.ts";
 import { planPreclean, UNWANTED } from "./preclean.ts";
@@ -136,9 +137,10 @@ export class DropCalf {
     );
     const fallback = project.files.get("biome.json");
     if (fallback) project.files.set("biome.json", localBiomeConfig(fallback));
+    const source = dag.currentModule().source();
     return copyOssAssets(
-      renderToDirectory(project),
-      dag.currentModule().source().directory("vendor/oss-templates"),
+      copyDocs(renderToDirectory(project), source.directory("templates/docs")),
+      source.directory("vendor/oss-templates"),
       name,
       owner,
     );
@@ -235,6 +237,8 @@ export class DropCalf {
     preset?: string,
   ) {
     resolveProfile(profile, withFunctions, withoutFunctions, preset);
+    const docs = dag.currentModule().source().directory("templates/docs");
+    const docsPaths = await docPaths(docs);
     const files = new Map<string, string>();
     for (const path of [
       "package.json",
@@ -250,7 +254,7 @@ export class DropCalf {
       ".gitignore",
       ".editorconfig",
       ...OSS_ASSETS,
-      "DEVELOPMENT.md",
+      ...docsPaths,
       "AGENTS.md",
       ...EVAL_ASSETS.keys(),
     ]) {
@@ -276,6 +280,10 @@ export class DropCalf {
         .directory("vendor/oss-templates");
       for (const path of missing)
         templates.set(path, await source.file(path).contents());
+    }
+    for (const path of docsPaths) {
+      if (!files.has(path))
+        templates.set(path, await docs.file(path).contents());
     }
     return planSync(
       files,

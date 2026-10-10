@@ -1,6 +1,4 @@
 import type { Directory } from "@dagger.io/dagger";
-import type { ProjectBlueprint } from "./project.ts";
-
 export const OSS_LICENSE = "Apache-2.0";
 
 export const OSS_ASSETS = [
@@ -11,20 +9,6 @@ export const OSS_ASSETS = [
   "SECURITY.md",
   ".atlassian/OWNER",
 ] as const;
-
-const DEVELOPMENT = `# Development
-
-Install dependencies with \`npm install\`. Run the checks before sending a pull request:
-
-\`\`\`sh
-npm run lint
-npm run format:check
-npm run typecheck
-{{test-command}}
-\`\`\`
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for the contribution process.
-`;
 
 export function transformOssTemplate(
   path: string,
@@ -61,21 +45,8 @@ export async function copyOssAssets(
   return result;
 }
 
-export function seedOssDocuments(
-  project: ProjectBlueprint,
-  owner: string,
-): void {
+export function validateOssOwner(owner: string): void {
   if (!/^[a-z][a-z0-9._-]*$/i.test(owner)) {
     throw new Error("OSS owner must be a nonempty staff ID");
   }
-  // The official template does not contain DEVELOPMENT.md; this guide is generated separately.
-  project.files.set(
-    "DEVELOPMENT.md",
-    DEVELOPMENT.replace(
-      "{{test-command}}",
-      project.packageJson.scripts.test
-        ? "npm run test"
-        : "# No test script for this project kind",
-    ),
-  );
 }

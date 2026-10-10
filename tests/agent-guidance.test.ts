@@ -3,6 +3,7 @@ import { buildProject, InvalidOptionsError } from "../src/profiles.ts";
 import { applyPreclean, planPreclean } from "../src/preclean.ts";
 import { applySync, ConflictError, planSync } from "../src/sync.ts";
 import { DropCalf } from "../src/index.ts";
+import { mockOssSource } from "./oss-source.ts";
 
 test("Forge generation includes authored agent guidance for Forge work", () => {
   const guidance = buildProject("forge-app", "sample", "tester").files.get(
@@ -117,12 +118,17 @@ test("routine sync reports edited guidance as a conflict without changing it", a
       return directory;
     },
   };
-  await expect(
-    new DropCalf().previewSync(directory as never, "forge-app", "tester"),
-  ).rejects.toThrow(/AGENTS\.md/);
-  await expect(
-    new DropCalf().sync(directory as never, "forge-app", "tester"),
-  ).rejects.toThrow(/AGENTS\.md/);
-  expect(writes).toEqual([]);
+  const module = mockOssSource();
+  try {
+    await expect(
+      new DropCalf().previewSync(directory as never, "forge-app", "tester"),
+    ).rejects.toThrow(/AGENTS\.md/);
+    await expect(
+      new DropCalf().sync(directory as never, "forge-app", "tester"),
+    ).rejects.toThrow(/AGENTS\.md/);
+    expect(writes).toEqual([]);
+  } finally {
+    module.mockRestore();
+  }
   expect(original.get("AGENTS.md")).toBe("# Our local instructions\n");
 });

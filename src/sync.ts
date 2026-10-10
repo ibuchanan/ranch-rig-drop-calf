@@ -152,20 +152,22 @@ export function planSync(
     });
   for (const path of [
     ...OSS_ASSETS,
-    "DEVELOPMENT.md",
+    ...[...templates.keys()].filter(
+      (path) => !OSS_ASSETS.includes(path as (typeof OSS_ASSETS)[number]),
+    ),
     "AGENTS.md",
     "cliff.toml",
     ...(profile === "forge-app"
       ? ["secretspec.toml", "scripts/forge-vars-from-secretspec.sh"]
       : []),
   ]) {
-    const template = OSS_ASSETS.includes(path as (typeof OSS_ASSETS)[number])
-      ? templates.get(path)
-      : undefined;
+    const template = templates.get(path);
     const after =
       template === undefined
         ? desiredProject.files.get(path)
-        : transformOssTemplate(path, template, current.name as string, owner);
+        : OSS_ASSETS.includes(path as (typeof OSS_ASSETS)[number])
+          ? transformOssTemplate(path, template, current.name as string, owner)
+          : template;
     if (after !== undefined && !files.has(path))
       operations.push({
         path,

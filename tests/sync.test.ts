@@ -8,7 +8,7 @@ import {
   planSync,
   ValidationError,
 } from "../src/sync.ts";
-import { mockOssSource, ossTemplates } from "./oss-source.ts";
+import { docsTemplates, mockOssSource, ossTemplates } from "./oss-source.ts";
 
 const planWithOss = (
   files: ReadonlyMap<string, string>,
@@ -27,7 +27,7 @@ const planWithOss = (
     withFunctions,
     withoutFunctions,
     preset,
-    ossTemplates(),
+    new Map([...ossTemplates(), ...docsTemplates()]),
   );
 
 describe("repository sync", () => {
@@ -430,7 +430,7 @@ describe("repository sync", () => {
       ".atlassian/OWNER",
       "package.json",
       ".nvmrc",
-      "DEVELOPMENT.md",
+      ...docsTemplates().keys(),
       "cliff.toml",
       "lefthook.yml",
       "biome.json",
