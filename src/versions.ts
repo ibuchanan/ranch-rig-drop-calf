@@ -12,7 +12,7 @@ export const TOOL_VERSIONS = {
   promptfoo: "^0.116.0",
   gitCliff: "^2.13",
   lefthook: "^2.1",
-  astGrep: "^0.44",
+  astGrep: "^0.45",
   forgePrelint: "github:ibuchanan/tool-forge-prelint-ast-grep",
   forgeAheadApiTypes: "github:ibuchanan/forge-ahead-atlassian-api-types",
   forgeAheadErrors: "github:ibuchanan/forge-ahead-errors",

@@ -20,22 +20,6 @@ export function forgeAhead(): Capability {
   };
 }
 
-export function forgeLinting(): Capability {
-  return {
-    addTo(project) {
-      project.packageJson.devDependencies["@ast-grep/cli"] =
-        TOOL_VERSIONS.astGrep;
-      project.packageJson.devDependencies["tool-forge-prelint-ast-grep"] =
-        TOOL_VERSIONS.forgePrelint;
-      project.packageJson.scripts["lint:prelint"] =
-        "ast-grep scan --config node_modules/tool-forge-prelint-ast-grep/sgconfig.ecosol.yml --globs '!node_modules/**'";
-      project.packageJson.scripts["lint:forge"] = "forge lint";
-      project.packageJson.scripts.lint =
-        "npm run lint:prelint && npm run lint:check && npm run lint:forge";
-    },
-  };
-}
-
 export function libraryBuild(version = TOOL_VERSIONS.tsdown): Capability {
   return {
     addTo(project) {

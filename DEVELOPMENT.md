@@ -118,6 +118,11 @@ through that generated SDK, so if type checking reports a missing
   a hook with nothing to run is a no-op rather than a failure. `sync` merges
   the named commands into an existing config and never replaces a repository's
   own `lint` or `check` scripts.
+- `src/prelint.ts`: the Forge prelint workflow — the `@ast-grep/cli` and
+  `@forge-ahead/prelint` devDependencies, the `lint:prelint`/`lint:forge`
+  scripts and the `lint` chain, plus `validatePrelint`, which installs the
+  pinned rules in a container and scans a repository without changing it. The
+  rules ship inside the package, so there is no config to seed.
 - `src/gitignore.ts`: assembles `.gitignore` from the pinned gitignore.io
   response, de-duplicating rules on first occurrence and appending the personal
   defaults. `copyGitignoreAssets` is the Dagger boundary used by generation and

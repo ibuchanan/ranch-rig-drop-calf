@@ -41,6 +41,7 @@ import {
 } from "./gitignore.ts";
 import { copyOssAssets, OSS_ASSETS } from "./oss.ts";
 import { applyPreclean } from "./preclean.ts";
+import { validatePrelint } from "./prelint.ts";
 import { buildProject, resolveProfile } from "./profiles.ts";
 import { renderToDirectory } from "./project.ts";
 import { applySync, planSync } from "./sync.ts";
@@ -246,6 +247,15 @@ export class DropCalf {
   @func()
   async validateChangelog(directory: Directory): Promise<string> {
     return JSON.stringify(await validateChangelog(directory), null, 2);
+  }
+
+  /**
+   * Run a repository through the pinned Forge prelint rules. Reports `skipped`
+   * rather than failing when the repository never opted into `lint:prelint`.
+   */
+  @func()
+  async validatePrelint(directory: Directory): Promise<string> {
+    return JSON.stringify(await validatePrelint(directory), null, 2);
   }
 
   @func()

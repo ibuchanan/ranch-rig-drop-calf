@@ -6,7 +6,6 @@ import {
   cleanBuild,
   docsLinting,
   forgeAhead,
-  forgeLinting,
   libraryBuild,
   noTesting,
 } from "./capabilities.ts";
@@ -15,6 +14,7 @@ import { evals } from "./evals.ts";
 import { gitHooks } from "./git-hooks.ts";
 import { nodeBaseline } from "./node.ts";
 import { validateOssOwner } from "./oss.ts";
+import { prelint } from "./prelint.ts";
 import { createBlueprint, type ProjectBlueprint } from "./project.ts";
 import { forgeSecrets } from "./secrets.ts";
 import { bundleSize } from "./size-limit.ts";
@@ -37,7 +37,7 @@ export const PROFILES: Record<string, Capability[]> = {
     nodeBaseline(),
     changelogToolchain(),
     forgeSecrets(),
-    forgeLinting(),
+    prelint(),
     biomeToolchain(),
     typeScriptToolchain(),
     forgeAhead(),

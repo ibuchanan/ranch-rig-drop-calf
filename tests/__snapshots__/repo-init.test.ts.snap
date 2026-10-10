@@ -104,8 +104,9 @@ exports[`profiles agent-skill contains no test scripts and all kinds keep a comp
       "@forge-ahead/logging": "github:ibuchanan/forge-ahead-logging",
     },
     "devDependencies": {
-      "@ast-grep/cli": "^0.44",
+      "@ast-grep/cli": "^0.45",
       "@biomejs/biome": "2.5.13",
+      "@forge-ahead/prelint": "github:ibuchanan/tool-forge-prelint-ast-grep",
       "@size-limit/file": "^5.0.0",
       "@types/node": "24",
       "cspell": "^10.3",
@@ -113,7 +114,6 @@ exports[`profiles agent-skill contains no test scripts and all kinds keep a comp
       "lefthook": "^2.1",
       "markdownlint-cli2": "^0.23",
       "size-limit": "^11.2.0",
-      "tool-forge-prelint-ast-grep": "github:ibuchanan/tool-forge-prelint-ast-grep",
       "typescript": "^5.9.3",
     },
     "engines": {
@@ -141,7 +141,7 @@ exports[`profiles agent-skill contains no test scripts and all kinds keep a comp
       "lint:docs": "markdownlint-cli2 "**/*.md" && cspell lint "**/*.md"",
       "lint:fix": "biome lint --write",
       "lint:forge": "forge lint",
-      "lint:prelint": "ast-grep scan --config node_modules/tool-forge-prelint-ast-grep/sgconfig.ecosol.yml --globs '!node_modules/**'",
+      "lint:prelint": "ast-grep scan --globs '!specs/**' --globs '!node_modules/**' --config ./node_modules/@forge-ahead/prelint/sgconfig.ecosol.yml",
       "prepare": "lefthook install || true",
       "size": "npm run build && size-limit",
       "test": "bun test --pass-with-no-tests",

@@ -11,9 +11,9 @@ import {
 import { join } from "node:path";
 import { type Directory, dag } from "@dagger.io/dagger";
 import { biomeToolchain } from "../src/biome.ts";
-import { forgeLinting } from "../src/capabilities.ts";
 import { DropCalf } from "../src/index.ts";
 import { OSS_ASSETS, ossLicense } from "../src/oss.ts";
+import { prelint } from "../src/prelint.ts";
 import {
   buildProject,
   InvalidOptionsError,
@@ -156,10 +156,10 @@ test("a requested Biome version determines its schema", () => {
   );
 });
 
-describe("forgeLinting capability", () => {
+describe("prelint capability", () => {
   test("uses forge lint without adding biome", () => {
     const project = createBlueprint("my-package", "", "");
-    forgeLinting().addTo(project);
+    prelint().addTo(project);
     expect(project.packageJson.scripts["lint:forge"]).toBe("forge lint");
     expect(
       project.packageJson.devDependencies["@biomejs/biome"],

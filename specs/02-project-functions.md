@@ -124,8 +124,14 @@ version). Create `.editorconfig` as a small deterministic text asset. Owns
 `format`, `format:check`, `lint:check`, `lint:fix` scripts.
 
 ### `forge-prelint`
-Add `@ast-grep/cli` and the Forge prelint rules package. Add the `lint:prelint` scan
-command and establish the direct `lint` chain (unless `git-hooks` later owns `lint`).
+Add `@ast-grep/cli` and the Forge rules package, aliased `@forge-ahead/prelint`
+(`github:ibuchanan/tool-forge-prelint-ast-grep`). The rules ship inside the package, so
+there is no config to author: `lint:prelint` runs `ast-grep scan --globs '!specs/**'
+--globs '!node_modules/**' --config ./node_modules/@forge-ahead/prelint/sgconfig.ecosol.yml`.
+Add `lint:forge` (`forge lint`) and establish the direct `lint` chain unless `git-hooks`
+later owns `lint`. Validate a repository by installing the pinned rules in a container and
+running the same scan against it, reporting a skip when the repository never opted into
+`lint:prelint`.
 
 ### `typescript`
 The TypeScript toolchain: the `typescript` devDependency, the `build` and `typecheck`
