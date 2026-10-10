@@ -9,6 +9,7 @@ import { OSS_ASSETS, planOssLicense, transformOssTemplate } from "./oss.ts";
 import { buildProject } from "./profiles.ts";
 import { planNode } from "./node.ts";
 import { buildReadme, createBlueprint } from "./project.ts";
+import { SECRETS_ASSETS, transformSecretsTemplate } from "./secrets.ts";
 import { SIZE_LIMIT_FIELD } from "./size-limit.ts";
 import { TYPESCRIPT_ASSETS } from "./typescript.ts";
 
@@ -136,12 +137,10 @@ export function planSync(
           path as (typeof TYPESCRIPT_ASSETS)[number],
         ) &&
         !CHANGELOG_ASSETS.includes(path as (typeof CHANGELOG_ASSETS)[number]) &&
-        !GIT_HOOKS_ASSETS.includes(path as (typeof GIT_HOOKS_ASSETS)[number]),
+        !GIT_HOOKS_ASSETS.includes(path as (typeof GIT_HOOKS_ASSETS)[number]) &&
+        !SECRETS_ASSETS.includes(path as (typeof SECRETS_ASSETS)[number]),
     ),
     "AGENTS.md",
-    ...(profile === "forge-app"
-      ? ["secretspec.toml", "scripts/forge-vars-from-secretspec.sh"]
-      : []),
   ]) {
     const template = templates.get(path);
     const after =
@@ -158,6 +157,22 @@ export function planSync(
         before: undefined,
         after,
       });
+  }
+  if (profile === "forge-app") {
+    // SecretSpec is seeded from `templates/secretspec`, create-if-absent, and
+    // only the project name is substituted: the config and helpers belong to
+    // the project once written, so an edited copy is left alone.
+    for (const path of SECRETS_ASSETS) {
+      const template = templates.get(path);
+      if (template === undefined || files.has(path)) continue;
+      operations.push({
+        path,
+        key: "secrets",
+        mode: "create-if-absent",
+        before: undefined,
+        after: transformSecretsTemplate(path, template, current.name as string),
+      });
+    }
   }
   for (const path of EVAL_ASSETS.keys()) {
     const after = desiredProject.files.get(path);

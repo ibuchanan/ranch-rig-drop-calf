@@ -108,13 +108,19 @@ pinned version when it has git history, reporting a skip rather than failing
 otherwise.
 
 ### `secrets`
-Generate a minimal `secretspec.toml` (project name; default `FORGE_SITE`,
-`FORGE_PRODUCT`, `FORGE_ENVIRONMENT`) and an executable helper that derives variable
-names from the TOML, runs under `secretspec run`, skips `FORGE*` names, pushes `SECRET`-
-containing names as encrypted Forge variables and others as normal variables, and never
-prints secret values. Add/merge Forge scripts that wrap `forge` through
-`secretspec run -- ...` (this quoting is functional). `doctor` reports Secretspec and
-Gitleaks as external prerequisites; never installed, never injected.
+Seed `secretspec.toml`, `scripts/env-var.sh` and
+`scripts/forge-vars-from-secretspec.js` from `templates/secretspec` (authored content,
+never rebuilt by the capability), substituting only the project name. `FORGE_SITE` is
+`required` — no site is assumed — and the TOML documents the split between CLI-targeting
+`FORGE_*` values and app-level runtime secrets.
+
+`env-var.sh` runs any command through `secretspec --file … run --provider dotenv --reason
+… --profile … --` so `$FORGE_*` expand only after injection and every read is recorded;
+the `forge:*` scripts wrap `forge` through it. The app-variable helper pushes only the
+keys in its `APP_VARIABLE_KEYS` allowlist, always `--encrypt`, and never prints values;
+the seeded list is empty. `sync` seeds the tree create-if-absent for `forge-app` only, so
+an edited config or helper is left alone. `doctor` reports Secretspec and Gitleaks as
+external prerequisites; never installed, never injected.
 
 ### `format`
 Add `@biomejs/biome`. Invoke `biome init` when config is absent and the tool is locally

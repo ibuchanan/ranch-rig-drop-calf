@@ -123,6 +123,12 @@ through that generated SDK, so if type checking reports a missing
   scripts and the `lint` chain, plus `validatePrelint`, which installs the
   pinned rules in a container and scans a repository without changing it. The
   rules ship inside the package, so there is no config to seed.
+- `src/secrets.ts`: the SecretSpec workflow — the `forge:*` scripts and
+  `copySecretsAssets`/`secretsPaths` for `templates/secretspec/`. The TOML and
+  the two helpers are authored content seeded create-if-absent for `forge-app`
+  only, with just the project name substituted. `FORGE_SITE` is required,
+  `env-var.sh` runs each command through `secretspec` with a recorded reason,
+  and the app-variable helper pushes only its `APP_VARIABLE_KEYS` allowlist.
 - `src/gitignore.ts`: assembles `.gitignore` from the pinned gitignore.io
   response, de-duplicating rules on first occurrence and appending the personal
   defaults. `copyGitignoreAssets` is the Dagger boundary used by generation and

@@ -14,6 +14,7 @@ import {
   changelogTemplates,
   docsTemplates,
   gitHooksTemplates,
+  secretsTemplates,
   typescriptTemplates,
 } from "./templates-source.ts";
 import {
@@ -65,6 +66,7 @@ const planWithOss = (
       ...biomeTemplates(),
       ...gitHooksTemplates(),
       ...changelogTemplates(),
+      ...secretsTemplates(),
     ]),
   );
 

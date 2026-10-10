@@ -61,13 +61,7 @@ export function renderToDirectory(project: ProjectBlueprint): Directory {
     `${JSON.stringify(project.packageJson, null, 2)}\n`,
   );
   for (const [path, contents] of project.files) {
-    dir = dir.withNewFile(
-      path,
-      contents,
-      path === "scripts/forge-vars-from-secretspec.sh"
-        ? { permissions: 0o755 }
-        : {},
-    );
+    dir = dir.withNewFile(path, contents);
   }
   return dir;
 }

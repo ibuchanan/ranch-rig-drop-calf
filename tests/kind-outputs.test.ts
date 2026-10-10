@@ -7,6 +7,7 @@ import {
   changelogTemplates,
   docsTemplates,
   gitHooksTemplates,
+  secretsTemplates,
   typescriptTemplates,
 } from "./templates-source.ts";
 test.each(["library", "forge-app", "tool", "agent-skill"])(
@@ -39,20 +40,24 @@ test.each(["library", "forge-app", "tool", "agent-skill"])(
     expect(Boolean(scripts["lint:check"])).toBe(true);
     expect(Boolean(scripts["forge:deploy"])).toBe(kind === "forge-app");
     expect(Boolean(project.packageJson.exports)).toBe(kind === "library");
-    expect(project.files.has("secretspec.toml")).toBe(kind === "forge-app");
+    // SecretSpec lives in `templates/secretspec`, not the blueprint, so no kind
+    // carries it until sync seeds it for forge-app.
+    expect(project.files.has("secretspec.toml")).toBe(false);
 
     const files = new Map([...project.files, ...docsTemplates()]);
     files.set("package.json", `${JSON.stringify(project.packageJson)}\n`);
     files.set("README.md", "# My custom README\n");
     // Every kind seeds its configs from `templates/typescript`, `templates/biome`
-    // and `templates/git-hooks`, and the releasing kinds their release policy from
-    // `templates/changelog`; the snapshot above is blueprint-only, so exercise
+    // and `templates/git-hooks`, the releasing kinds their release policy from
+    // `templates/changelog`, and forge-app its SecretSpec tree from
+    // `templates/secretspec`; the snapshot above is blueprint-only, so exercise
     // those paths through sync.
     const seeded = new Map([
       ...typescriptTemplates(),
       ...biomeTemplates(),
       ...gitHooksTemplates(),
       ...changelogTemplates(),
+      ...secretsTemplates(),
     ]);
     const first = applySync(
       planSync(files, kind, "tester", undefined, [], [], undefined, seeded),
@@ -68,6 +73,10 @@ test.each(["library", "forge-app", "tool", "agent-skill"])(
     for (const [path, template] of gitHooksTemplates())
       expect(first.get(path)).toBe(template);
     expect(first.has("cliff.toml")).toBe(kind !== "agent-skill");
+    for (const [path, template] of secretsTemplates())
+      expect(first.has(path)).toBe(
+        kind === "forge-app" && template !== undefined,
+      );
     expect(
       planSync(first, kind, "tester", undefined, [], [], undefined, seeded)
         .operations,

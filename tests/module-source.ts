@@ -7,12 +7,14 @@ import { CHANGELOG_TEMPLATE } from "../src/changelog.ts";
 import { GIT_HOOKS_TEMPLATE } from "../src/git-hooks.ts";
 import { PINNED_GITIGNORE } from "../src/gitignore.ts";
 import { OSS_ASSETS } from "../src/oss.ts";
+import { SECRETS_TEMPLATE } from "../src/secrets.ts";
 import { TYPESCRIPT_TEMPLATE } from "../src/typescript.ts";
 import {
   biomeTemplates,
   changelogTemplates,
   docsTemplates,
   gitHooksTemplates,
+  secretsTemplates,
   typescriptTemplates,
 } from "./templates-source.ts";
 
@@ -33,6 +35,7 @@ export function mockModuleSource(
   const changelog = changelogTemplates();
   const biome = biomeTemplates();
   const gitHooks = gitHooksTemplates();
+  const secrets = secretsTemplates();
   const gitignore = pinnedGitignore();
   const source = {
     file: (path: string) => ({
@@ -55,6 +58,7 @@ export function mockModuleSource(
     [BIOME_TEMPLATE, tree(biome)],
     [CHANGELOG_TEMPLATE, tree(changelog)],
     [GIT_HOOKS_TEMPLATE, tree(gitHooks)],
+    [SECRETS_TEMPLATE, tree(secrets)],
   ]);
   return spyOn(dag, "currentModule").mockReturnValue({
     source: () => ({

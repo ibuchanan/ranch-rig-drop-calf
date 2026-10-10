@@ -44,6 +44,13 @@ import { applyPreclean } from "./preclean.ts";
 import { validatePrelint } from "./prelint.ts";
 import { buildProject, resolveProfile } from "./profiles.ts";
 import { renderToDirectory } from "./project.ts";
+import {
+  copySecretsAssets,
+  SECRETS_ASSETS,
+  SECRETS_EXECUTABLES,
+  SECRETS_TEMPLATE,
+  secretsPaths,
+} from "./secrets.ts";
 import { applySync, planSync } from "./sync.ts";
 import { nodeContainer as buildNodeContainer } from "./node.ts";
 import {
@@ -186,17 +193,13 @@ export class DropCalf {
     const fallback = project.files.get("biome.jsonc");
     if (fallback) project.files.set("biome.jsonc", localBiomeConfig(fallback));
     const rendered = renderToDirectory(project);
-    return this.copyGitignore(
-      await this.copyOss(
-        this.copyDocs(
-          await this.copyChangelog(
-            this.copyGitHooks(await this.copyTypeScript(rendered)),
-          ),
-        ),
-        name,
-        owner,
-      ),
-    );
+    let directory = this.copyGitHooks(this.copyTypeScript(rendered));
+    directory = this.copyChangelog(directory);
+    directory = this.copyDocs(directory);
+    // SecretSpec is Forge-app only: no other kind has `forge:*` scripts.
+    if (profile === "forge-app")
+      directory = await this.copySecrets(directory, name);
+    return this.copyGitignore(await this.copyOss(directory, name, owner));
   }
 
   @func()
@@ -236,6 +239,15 @@ export class DropCalf {
     return copyGitHooks(
       directory,
       dag.currentModule().source().directory(GIT_HOOKS_TEMPLATE),
+    );
+  }
+
+  @func()
+  async copySecrets(directory: Directory, name: string): Promise<Directory> {
+    return copySecretsAssets(
+      directory,
+      dag.currentModule().source().directory(SECRETS_TEMPLATE),
+      name,
     );
   }
 
@@ -346,8 +358,7 @@ export class DropCalf {
       // and is never reseeded over. Deriving the list keeps the reader and the
       // seeder from drifting apart.
       ...CHANGELOG_ASSETS,
-      "secretspec.toml",
-      "scripts/forge-vars-from-secretspec.sh",
+      ...SECRETS_ASSETS,
       ".nvmrc",
       ".npmrc",
       "manifest.yml",
@@ -411,6 +422,10 @@ export class DropCalf {
     const gitHooks = dag.currentModule().source().directory(GIT_HOOKS_TEMPLATE);
     for (const path of await gitHooksPaths(gitHooks))
       templates.set(path, await gitHooks.file(path).contents());
+    // SecretSpec is seeded the same way; `sync` decides whether a kind wants it.
+    const secrets = dag.currentModule().source().directory(SECRETS_TEMPLATE);
+    for (const path of await secretsPaths(secrets))
+      templates.set(path, await secrets.file(path).contents());
     return planSync(
       files,
       profile,
@@ -471,7 +486,9 @@ export class DropCalf {
       result = result.withNewFile(
         path,
         contents,
-        path === "scripts/forge-vars-from-secretspec.sh"
+        SECRETS_EXECUTABLES.includes(
+          path as (typeof SECRETS_EXECUTABLES)[number],
+        )
           ? { permissions: 0o755 }
           : {},
       );
