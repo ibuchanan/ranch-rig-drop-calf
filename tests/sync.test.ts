@@ -8,7 +8,8 @@ import {
   planSync,
   ValidationError,
 } from "../src/sync.ts";
-import { docsTemplates, mockOssSource, ossTemplates } from "./oss-source.ts";
+import { docsTemplates } from "./docs-source.ts";
+import { mockModuleSource, moduleTemplates } from "./module-source.ts";
 
 const planWithOss = (
   files: ReadonlyMap<string, string>,
@@ -27,13 +28,13 @@ const planWithOss = (
     withFunctions,
     withoutFunctions,
     preset,
-    new Map([...ossTemplates(), ...docsTemplates()]),
+    new Map([...moduleTemplates(), ...docsTemplates()]),
   );
 
 describe("repository sync", () => {
-  let sourceMock: ReturnType<typeof mockOssSource>;
+  let sourceMock: ReturnType<typeof mockModuleSource>;
   beforeEach(() => {
-    sourceMock = mockOssSource();
+    sourceMock = mockModuleSource();
   });
   afterEach(() => {
     sourceMock.mockRestore();
@@ -226,13 +227,15 @@ describe("repository sync", () => {
       expect.objectContaining({ path: "README.md", mode: "create-if-absent" }),
     );
     expect(result.get("CODE_OF_CONDUCT.md")).toBe(
-      ossTemplates().get("CODE_OF_CONDUCT.md"),
+      moduleTemplates().get("CODE_OF_CONDUCT.md"),
     );
     expect(result.get(".atlassian/OWNER")).toBe("existing-owner\n");
     expect(withoutReadme.operations).toContainEqual(
       expect.objectContaining({ path: ".atlassian/OWNER", after: "tester" }),
     );
-    expect(result.get("SECURITY.md")).toBe(ossTemplates().get("SECURITY.md"));
+    expect(result.get("SECURITY.md")).toBe(
+      moduleTemplates().get("SECURITY.md"),
+    );
     expect(planWithOss(result, "tool", "tester").operations).toEqual([]);
   });
   test("adds missing ignore rules without disturbing custom entries or comments", () => {

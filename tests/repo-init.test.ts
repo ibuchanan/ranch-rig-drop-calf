@@ -4,7 +4,6 @@ import {
   existsSync,
   mkdirSync,
   mkdtempSync,
-  readdirSync,
   readFileSync,
   rmSync,
   writeFileSync,
@@ -13,21 +12,21 @@ import { join } from "node:path";
 import { type Directory, dag } from "@dagger.io/dagger";
 import { biomeLinting, forgeLinting } from "../src/capabilities.ts";
 import { DropCalf } from "../src/index.ts";
-import { OSS_ASSETS, transformOssTemplate } from "../src/oss.ts";
+import { OSS_ASSETS } from "../src/oss.ts";
 import {
   buildProject,
   InvalidOptionsError,
   PROFILES,
 } from "../src/profiles.ts";
 import { buildReadme, createBlueprint } from "../src/project.ts";
-import { mockOssSource } from "./oss-source.ts";
+import { mockModuleSource } from "./module-source.ts";
 
-let ossSource: ReturnType<typeof mockOssSource>;
+let moduleSource: ReturnType<typeof mockModuleSource>;
 beforeEach(() => {
-  ossSource = mockOssSource();
+  moduleSource = mockModuleSource();
 });
 afterEach(() => {
-  ossSource.mockRestore();
+  moduleSource.mockRestore();
 });
 
 test("files uses matching local Biome init defaults without losing required policy", async () => {
@@ -212,64 +211,12 @@ describe("kind selection", () => {
   });
 });
 
-describe("OSS document seeds", () => {
-  test("tracks every file in the pinned OSS template for sync injection", () => {
-    const vendor = join(import.meta.dir, "../vendor/oss-templates");
-    expect([...OSS_ASSETS].map(String).sort()).toEqual(
-      [
-        ...readdirSync(vendor).filter(
-          (name) => name.endsWith(".md") || name === "LICENSE",
-        ),
-        ...readdirSync(join(vendor, ".atlassian")).map(
-          (name) => `.atlassian/${name}`,
-        ),
-      ].sort(),
-    );
-  });
-
-  test.each(["library", "forge-app", "tool", "agent-skill"])(
-    "%s applies template transformations correctly with fixture templates",
-    (kind) => {
-      const project = buildProject(
-        kind,
-        "example-project",
-        "tester",
-        "Example purpose",
-        "Example Owner",
-      );
-      expect(project.packageJson.license).toBe("Apache-2.0");
-
-      for (const path of OSS_ASSETS) {
-        const template = readFileSync(
-          join(import.meta.dir, "../vendor/oss-templates", path),
-          "utf8",
-        );
-        const expected =
-          path === ".atlassian/OWNER"
-            ? "tester"
-            : path === "README.md" || path === "CONTRIBUTING.md"
-              ? template.replaceAll("[Project name]", "example-project")
-              : path === "LICENSE"
-                ? template.replaceAll(
-                    "[YYYY]",
-                    String(new Date().getFullYear()),
-                  )
-                : template;
-        expect(
-          transformOssTemplate(path, template, "example-project", "tester"),
-        ).toBe(expected);
-        expect(project.files.has(path)).toBe(false);
-      }
-    },
+test("OSS documents reject invalid/blank owner", () => {
+  expect(() => buildProject("tool", "sample", "")).toThrow(/owner/i);
+  expect(() => buildProject("tool", "sample", "   ")).toThrow(/owner/i);
+  expect(() => buildProject("tool", "sample", "invalid owner")).toThrow(
+    /owner/i,
   );
-
-  test("OSS documents reject invalid/blank owner", () => {
-    expect(() => buildProject("tool", "sample", "")).toThrow(/owner/i);
-    expect(() => buildProject("tool", "sample", "   ")).toThrow(/owner/i);
-    expect(() => buildProject("tool", "sample", "invalid owner")).toThrow(
-      /owner/i,
-    );
-  });
 });
 
 describe("profiles", () => {

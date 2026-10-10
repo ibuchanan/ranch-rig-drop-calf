@@ -3,7 +3,7 @@ import { DropCalf } from "../src/index.ts";
 import { applyPreclean } from "../src/preclean.ts";
 import { buildProject, InvalidOptionsError } from "../src/profiles.ts";
 import { applySync, ConflictError, planSync } from "../src/sync.ts";
-import { mockOssSource } from "./oss-source.ts";
+import { mockModuleSource } from "./module-source.ts";
 
 test("Forge generation includes authored agent guidance for Forge work", () => {
   const guidance = buildProject("forge-app", "sample", "tester").files.get(
@@ -131,7 +131,7 @@ test("routine sync reports edited guidance as a conflict without changing it", a
       return directory;
     },
   };
-  const module = mockOssSource();
+  const module = mockModuleSource();
   try {
     await expect(
       new DropCalf().previewSync(directory as never, "forge-app", "tester"),

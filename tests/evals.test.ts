@@ -3,14 +3,14 @@ import type { Directory } from "@dagger.io/dagger";
 import { DropCalf } from "../src/index.ts";
 import { buildProject } from "../src/profiles.ts";
 import { applySync, ConflictError, planSync } from "../src/sync.ts";
-import { mockOssSource } from "./oss-source.ts";
+import { mockModuleSource } from "./module-source.ts";
 
-let ossSource: ReturnType<typeof mockOssSource>;
+let moduleSource: ReturnType<typeof mockModuleSource>;
 beforeEach(() => {
-  ossSource = mockOssSource();
+  moduleSource = mockModuleSource();
 });
 afterEach(() => {
-  ossSource.mockRestore();
+  moduleSource.mockRestore();
 });
 
 const suitePaths = [
