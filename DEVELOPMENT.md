@@ -111,6 +111,13 @@ through that generated SDK, so if type checking reports a missing
   `package.json` rather than a config file, so the capability owns the section
   outright and there is no template to seed. `sync` structured-merges one entry
   by name, keyed by `SIZE_LIMIT_FIELD` so the field name lives in one place.
+- `src/git-hooks.ts`: the Git hook workflow — the `lefthook` devDependency,
+  the `prepare`/`lint`/`check` scripts, and `copyGitHooks`/`gitHooksPaths`
+  for `templates/git-hooks/lefthook.yml`. One config serves every kind: the
+  scripts a kind omits are reached through `npm run <script> --if-present`, so
+  a hook with nothing to run is a no-op rather than a failure. `sync` merges
+  the named commands into an existing config and never replaces a repository's
+  own `lint` or `check` scripts.
 - `src/gitignore.ts`: assembles `.gitignore` from the pinned gitignore.io
   response, de-duplicating rules on first occurrence and appending the personal
   defaults. `copyGitignoreAssets` is the Dagger boundary used by generation and

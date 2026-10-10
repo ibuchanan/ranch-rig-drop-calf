@@ -6,6 +6,7 @@ import {
   biomeTemplates,
   changelogTemplates,
   docsTemplates,
+  gitHooksTemplates,
   typescriptTemplates,
 } from "./templates-source.ts";
 test.each(["library", "forge-app", "tool", "agent-skill"])(
@@ -35,22 +36,22 @@ test.each(["library", "forge-app", "tool", "agent-skill"])(
     expect(Boolean(scripts.changelog)).toBe(kind !== "agent-skill");
     expect(Boolean(scripts["lint:forge"])).toBe(kind === "forge-app");
     expect(Boolean(scripts["lint:prelint"])).toBe(kind === "forge-app");
+    expect(Boolean(scripts["lint:check"])).toBe(true);
     expect(Boolean(scripts["forge:deploy"])).toBe(kind === "forge-app");
     expect(Boolean(project.packageJson.exports)).toBe(kind === "library");
     expect(project.files.has("secretspec.toml")).toBe(kind === "forge-app");
-    expect(project.files.get("lefthook.yml")?.includes("esa-test:")).toBe(
-      kind !== "agent-skill",
-    );
 
     const files = new Map([...project.files, ...docsTemplates()]);
     files.set("package.json", `${JSON.stringify(project.packageJson)}\n`);
     files.set("README.md", "# My custom README\n");
-    // Every kind seeds its configs from `templates/typescript` and `templates/biome`,
-    // and the releasing kinds their release policy from `templates/changelog`; the
-    // snapshot above is blueprint-only, so exercise those paths through sync.
+    // Every kind seeds its configs from `templates/typescript`, `templates/biome`
+    // and `templates/git-hooks`, and the releasing kinds their release policy from
+    // `templates/changelog`; the snapshot above is blueprint-only, so exercise
+    // those paths through sync.
     const seeded = new Map([
       ...typescriptTemplates(),
       ...biomeTemplates(),
+      ...gitHooksTemplates(),
       ...changelogTemplates(),
     ]);
     const first = applySync(
@@ -59,7 +60,12 @@ test.each(["library", "forge-app", "tool", "agent-skill"])(
     expect(first.get("README.md")).toBe("# My custom README\n");
     for (const [path, template] of typescriptTemplates())
       expect(first.get(path)).toBe(template);
+    // `.editorconfig` lives in `templates/biome` for sync seeding, but
+    // generation still builds it in `project.ts`; assert only the config
+    // biome actually generates until that ownership moves.
     for (const [path, template] of biomeTemplates())
+      if (path !== ".editorconfig") expect(first.get(path)).toBe(template);
+    for (const [path, template] of gitHooksTemplates())
       expect(first.get(path)).toBe(template);
     expect(first.has("cliff.toml")).toBe(kind !== "agent-skill");
     expect(

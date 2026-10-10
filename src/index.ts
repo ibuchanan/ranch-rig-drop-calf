@@ -28,6 +28,12 @@ import {
 import { copyDocs, docPaths } from "./docs.ts";
 import { EVAL_ASSETS } from "./evals.ts";
 import {
+  copyGitHooks,
+  GIT_HOOKS_ASSETS,
+  GIT_HOOKS_TEMPLATE,
+  gitHooksPaths,
+} from "./git-hooks.ts";
+import {
   buildGitignore,
   copyGitignoreAssets,
   PINNED_GITIGNORE,
@@ -44,11 +50,7 @@ import {
   TYPESCRIPT_TEMPLATE,
   typescriptPaths,
 } from "./typescript.ts";
-import {
-  copyBiome,
-  BIOME_TEMPLATE,
-  biomePaths,
-} from "./biome.ts";
+import { copyBiome, BIOME_TEMPLATE, biomePaths } from "./biome.ts";
 import { TOOL_VERSIONS } from "./versions.ts";
 
 function localBiomeConfig(fallback: string): string {
@@ -186,7 +188,9 @@ export class DropCalf {
     return this.copyGitignore(
       await this.copyOss(
         this.copyDocs(
-          await this.copyChangelog(await this.copyTypeScript(rendered)),
+          await this.copyChangelog(
+            this.copyGitHooks(await this.copyTypeScript(rendered)),
+          ),
         ),
         name,
         owner,
@@ -223,6 +227,14 @@ export class DropCalf {
     return copyChangelog(
       directory,
       dag.currentModule().source().directory(CHANGELOG_TEMPLATE),
+    );
+  }
+
+  @func()
+  copyGitHooks(directory: Directory): Directory {
+    return copyGitHooks(
+      directory,
+      dag.currentModule().source().directory(GIT_HOOKS_TEMPLATE),
     );
   }
 
@@ -316,7 +328,7 @@ export class DropCalf {
     for (const path of [
       "package.json",
       "biome.jsonc",
-      "lefthook.yml",
+      ...GIT_HOOKS_ASSETS,
       "tsconfig.json",
       "tsconfig.typecheck.json",
       "tsdown.config.ts",
@@ -373,10 +385,7 @@ export class DropCalf {
     for (const path of await typescriptPaths(typeScript))
       templates.set(path, await typeScript.file(path).contents());
     // Every kind seeds its Biome config from `templates/biome` the same way.
-    const biome = dag
-      .currentModule()
-      .source()
-      .directory(BIOME_TEMPLATE);
+    const biome = dag.currentModule().source().directory(BIOME_TEMPLATE);
     for (const path of await biomePaths(biome))
       templates.set(path, await biome.file(path).contents());
     // The release policy is seeded the same way. `sync` decides whether a kind
@@ -387,6 +396,11 @@ export class DropCalf {
       .directory(CHANGELOG_TEMPLATE);
     for (const path of await changelogPaths(changelog))
       templates.set(path, await changelog.file(path).contents());
+    // The hook config is seeded the same way: every kind takes it, and `sync`
+    // merges the named commands into whatever the repository already has.
+    const gitHooks = dag.currentModule().source().directory(GIT_HOOKS_TEMPLATE);
+    for (const path of await gitHooksPaths(gitHooks))
+      templates.set(path, await gitHooks.file(path).contents());
     return planSync(
       files,
       profile,

@@ -2,13 +2,17 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { spyOn } from "bun:test";
 import { dag } from "@dagger.io/dagger";
+import { BIOME_TEMPLATE } from "../src/biome.ts";
 import { CHANGELOG_TEMPLATE } from "../src/changelog.ts";
+import { GIT_HOOKS_TEMPLATE } from "../src/git-hooks.ts";
 import { PINNED_GITIGNORE } from "../src/gitignore.ts";
 import { OSS_ASSETS } from "../src/oss.ts";
 import { TYPESCRIPT_TEMPLATE } from "../src/typescript.ts";
 import {
+  biomeTemplates,
   changelogTemplates,
   docsTemplates,
+  gitHooksTemplates,
   typescriptTemplates,
 } from "./templates-source.ts";
 
@@ -27,6 +31,8 @@ export function mockModuleSource(
   const docs = docsTemplates();
   const typeScript = typescriptTemplates();
   const changelog = changelogTemplates();
+  const biome = biomeTemplates();
+  const gitHooks = gitHooksTemplates();
   const gitignore = pinnedGitignore();
   const source = {
     file: (path: string) => ({
@@ -46,7 +52,9 @@ export function mockModuleSource(
   const trees = new Map<string, ReturnType<typeof tree>>([
     ["templates/docs", tree(docs)],
     [TYPESCRIPT_TEMPLATE, tree(typeScript)],
+    [BIOME_TEMPLATE, tree(biome)],
     [CHANGELOG_TEMPLATE, tree(changelog)],
+    [GIT_HOOKS_TEMPLATE, tree(gitHooks)],
   ]);
   return spyOn(dag, "currentModule").mockReturnValue({
     source: () => ({

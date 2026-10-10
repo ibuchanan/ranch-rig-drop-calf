@@ -120,7 +120,8 @@ describe("biomeToolchain capability", () => {
     biomeToolchain("2.5.13").addTo(project);
     expect(project.packageJson.scripts.format).toBe("biome format --write");
     expect(project.packageJson.scripts["format:check"]).toBe("biome format");
-    expect(project.packageJson.scripts.lint).toBe("biome lint");
+    expect(project.packageJson.scripts["lint:check"]).toBe("biome lint");
+    expect(project.packageJson.scripts.lint).toBeUndefined();
     expect(project.packageJson.scripts["lint:fix"]).toBe("biome lint --write");
     expect(project.packageJson.devDependencies["@biomejs/biome"]).toBe(
       "2.5.13",
@@ -138,7 +139,8 @@ test("generated kinds ship version-compatible Biome config and check scripts", (
     const config = JSON.parse(configText);
     expect(scripts.format).toBe("biome format --write");
     expect(scripts["format:check"]).toBe("biome format");
-    expect(scripts.lint).toBe("lefthook run esa-lint");
+    expect(scripts["lint:check"]).toBe("biome lint");
+    expect(scripts.lint).toBe("lefthook run lint");
     expect(scripts["lint:fix"]).toBe("biome lint --write");
     expect(config.$schema).toBe(
       `https://biomejs.dev/schemas/${version?.replace(/^[^\d]*/, "")}/schema.json`,
@@ -240,27 +242,22 @@ describe("profiles", () => {
   });
 
   test.each([
-    [
-      "library",
-      "lefthook run esa-lint",
-      "tsdown",
-      "bun test --pass-with-no-tests",
-    ],
+    ["library", "lefthook run lint", "tsdown", "bun test --pass-with-no-tests"],
     [
       "forge-app",
-      "lefthook run esa-lint",
+      "lefthook run lint",
       "tsc --project tsconfig.json",
       "bun test --pass-with-no-tests",
     ],
     [
       "tool",
-      "lefthook run esa-lint",
+      "lefthook run lint",
       "tsc --project tsconfig.json",
       "bun test --pass-with-no-tests",
     ],
     [
       "agent-skill",
-      "lefthook run esa-lint",
+      "lefthook run lint",
       "tsc --project tsconfig.json",
       undefined,
     ],

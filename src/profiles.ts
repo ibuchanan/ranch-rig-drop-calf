@@ -31,7 +31,7 @@ export const PROFILES: Record<string, Capability[]> = {
     bundleSize("Library bundle", "dist/index.js"),
     cleanBuild(),
     docsLinting(),
-    gitHooks(true),
+    gitHooks(),
   ],
   "forge-app": [
     nodeBaseline(),
@@ -45,7 +45,7 @@ export const PROFILES: Record<string, Capability[]> = {
     bundleSize("Forge app bundle", "dist/**/*.js"),
     cleanBuild(),
     docsLinting(),
-    gitHooks(true),
+    gitHooks(),
   ],
   tool: [
     nodeBaseline(),
@@ -55,7 +55,7 @@ export const PROFILES: Record<string, Capability[]> = {
     bunTesting(),
     cleanBuild(),
     docsLinting(),
-    gitHooks(true),
+    gitHooks(),
   ],
   "agent-skill": [
     nodeBaseline(),
@@ -64,7 +64,7 @@ export const PROFILES: Record<string, Capability[]> = {
     noTesting(),
     cleanBuild(),
     docsLinting(),
-    gitHooks(false),
+    gitHooks(),
   ],
 };
 

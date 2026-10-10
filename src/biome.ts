@@ -18,7 +18,10 @@ export const BIOME_TEMPLATE = "templates/biome";
 
 export const BIOME_ASSETS = ["biome.jsonc"] as const;
 
-export function copyBiome(destination: Directory, source: Directory): Directory {
+export function copyBiome(
+  destination: Directory,
+  source: Directory,
+): Directory {
   return copyTemplate(destination, source);
 }
 
@@ -35,7 +38,7 @@ export function biomeToolchain(
       project.packageJson.devDependencies["@biomejs/biome"] = biomeVersion;
       project.packageJson.scripts.format = "biome format --write";
       project.packageJson.scripts["format:check"] = "biome format";
-      project.packageJson.scripts.lint = "biome lint";
+      project.packageJson.scripts["lint:check"] = "biome lint";
       project.packageJson.scripts["lint:fix"] = "biome lint --write";
       project.files.set("biome.jsonc", buildBiomeConfig(biomeVersion));
     },

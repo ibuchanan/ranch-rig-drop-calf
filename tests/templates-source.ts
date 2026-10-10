@@ -24,3 +24,5 @@ export const typescriptTemplates = () => templatesIn("typescript");
 export const biomeTemplates = () => templatesIn("biome");
 
 export const changelogTemplates = () => templatesIn("changelog");
+
+export const gitHooksTemplates = () => templatesIn("git-hooks");

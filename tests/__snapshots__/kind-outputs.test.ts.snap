@@ -11,7 +11,7 @@ exports[`library generated output has the selected functions and converges witho
       "changelog": "git cliff --config cliff.toml --unreleased -o CHANGELOG.md",
       "format": "biome format --write",
       "format:check": "biome format",
-      "lint": "lefthook run esa-lint",
+      "lint:check": "biome lint",
       "lint:fix": "biome lint --write",
       "build": "tsdown",
       "typecheck": "tsc --project tsconfig.typecheck.json --noEmit",
@@ -21,7 +21,8 @@ exports[`library generated output has the selected functions and converges witho
       "size": "npm run build && size-limit",
       "clean": "rm -rf dist",
       "lint:docs": "markdownlint-cli2 \\"**/*.md\\" && cspell lint \\"**/*.md\\"",
-      "prepare": "lefthook install",
+      "prepare": "lefthook install || true",
+      "lint": "lefthook run lint",
       "check": "lefthook run pre-push --force"
     },
     "devDependencies": {
@@ -34,7 +35,7 @@ exports[`library generated output has the selected functions and converges witho
       "@size-limit/file": "^5.0.0",
       "cspell": "^10.3",
       "markdownlint-cli2": "^0.23",
-      "lefthook": "^1.11.0"
+      "lefthook": "^2.1"
     },
     "description": "A sample project",
     "engines": {
@@ -61,8 +62,7 @@ exports[`library generated output has the selected functions and converges witho
     ".nvmrc": "24\\n",
     ".npmrc": "# Use the public npm registry (not the default for internal Atlassians)\\nregistry=https://registry.npmjs.org/\\n",
     "biome.jsonc": "{\\n  \\"$schema\\": \\"https://biomejs.dev/schemas/2.5.13/schema.json\\",\\n  \\"vcs\\": {\\n    \\"enabled\\": true,\\n    \\"clientKind\\": \\"git\\",\\n    \\"useIgnoreFile\\": true,\\n    \\"defaultBranch\\": \\"main\\"\\n  },\\n  \\"files\\": {\\n    \\"ignoreUnknown\\": false\\n  },\\n  \\"formatter\\": {\\n    \\"enabled\\": true,\\n    \\"indentStyle\\": \\"space\\"\\n  },\\n  \\"linter\\": {\\n    \\"enabled\\": true,\\n    \\"rules\\": {\\n      \\"preset\\": \\"recommended\\"\\n    }\\n  },\\n  \\"javascript\\": {\\n    \\"formatter\\": {\\n      \\"quoteStyle\\": \\"double\\"\\n    }\\n  },\\n  \\"assist\\": {\\n    \\"enabled\\": true,\\n    \\"actions\\": {\\n      \\"source\\": {\\n        \\"organizeImports\\": \\"on\\"\\n      }\\n    }\\n  }\\n}",
-    "tsdown.config.ts": "import { defineConfig } from \\"tsdown\\";\\n\\nexport default defineConfig({ entry: [\\"src/index.ts\\"], outDir: \\"dist\\", format: [\\"esm\\"], dts: true });\\n",
-    "lefthook.yml": "colors: false\\noutput:\\n  - meta\\n  - summary\\n  - failure\\n\\nesa-lint:\\n  commands:\\n    esa-lint:\\n      run: npm run lint:check && npm run typecheck\\n\\npre-commit:\\n  parallel: true\\n  commands:\\n    esa-gitleaks:\\n      run: |\\n        command -v gitleaks >/dev/null 2>&1 || {\\n          echo \\"gitleaks not found on PATH. Install it with: brew install gitleaks\\" >&2\\n          exit 1\\n        }\\n        gitleaks git --pre-commit --staged\\n    esa-format:\\n      run: npm run format\\n      stage_fixed: true\\n\\npre-push:\\n  commands:\\n    esa-format-check:\\n      run: npm run format:check\\n    esa-lint:\\n      run: npm run lint\\n    esa-test:\\n      run: npm run test\\n"
+    "tsdown.config.ts": "import { defineConfig } from \\"tsdown\\";\\n\\nexport default defineConfig({ entry: [\\"src/index.ts\\"], outDir: \\"dist\\", format: [\\"esm\\"], dts: true });\\n"
   }
 }"
 `;
@@ -86,9 +86,10 @@ exports[`forge-app generated output has the selected functions and converges wit
       "forge:variables:set:secretspec": "secretspec run -- bash scripts/forge-vars-from-secretspec.sh",
       "lint:prelint": "ast-grep scan --config node_modules/tool-forge-prelint-ast-grep/sgconfig.ecosol.yml --globs '!node_modules/**'",
       "lint:forge": "forge lint",
-      "lint": "lefthook run esa-lint",
+      "lint": "lefthook run lint",
       "format": "biome format --write",
       "format:check": "biome format",
+      "lint:check": "biome lint",
       "lint:fix": "biome lint --write",
       "build": "tsc --project tsconfig.json",
       "typecheck": "tsc --project tsconfig.typecheck.json --noEmit",
@@ -98,7 +99,7 @@ exports[`forge-app generated output has the selected functions and converges wit
       "size": "npm run build && size-limit",
       "clean": "rm -rf dist",
       "lint:docs": "markdownlint-cli2 \\"**/*.md\\" && cspell lint \\"**/*.md\\"",
-      "prepare": "lefthook install",
+      "prepare": "lefthook install || true",
       "check": "lefthook run pre-push --force"
     },
     "devDependencies": {
@@ -112,7 +113,7 @@ exports[`forge-app generated output has the selected functions and converges wit
       "@size-limit/file": "^5.0.0",
       "cspell": "^10.3",
       "markdownlint-cli2": "^0.23",
-      "lefthook": "^1.11.0"
+      "lefthook": "^2.1"
     },
     "description": "A sample project",
     "engines": {
@@ -138,7 +139,6 @@ exports[`forge-app generated output has the selected functions and converges wit
     "secretspec.toml": "[project]\\nname = \\"sample\\"\\nrevision = \\"1.0\\"\\n\\n[profiles.default]\\nFORGE_SITE = { description = \\"Forge target site\\", default = \\"example.atlassian.net\\" }\\nFORGE_PRODUCT = { description = \\"Forge target product\\", default = \\"jira\\" }\\nFORGE_ENVIRONMENT = { description = \\"Forge target environment\\", default = \\"development\\" }\\n",
     "scripts/forge-vars-from-secretspec.sh": "#!/usr/bin/env bash\\nset -euo pipefail\\n\\n# Only configured uppercase keys in the default profile become Forge variables.\\nconfig=\\"$(cd \\"$(dirname \\"\${BASH_SOURCE[0]}\\")/..\\" && pwd)/secretspec.toml\\"\\nwhile IFS= read -r name; do\\n  [[ \\"$name\\" == FORGE* ]] && continue\\n  if ! value=\\"$(printenv \\"$name\\")\\"; then\\n    printf 'Missing configured variable: %s\\\\n' \\"$name\\" >&2\\n    exit 1\\n  fi\\n  set --\\n  [[ \\"$name\\" == *SECRET* ]] && set -- --encrypt\\n  if ! forge variables set --environment \\"$FORGE_ENVIRONMENT\\" \\"$@\\" \\"$name\\" \\"$value\\" >/dev/null 2>&1; then\\n    printf 'Failed to push variable: %s\\\\n' \\"$name\\" >&2\\n    exit 1\\n  fi\\ndone < <(awk '\\n  /^\\\\[profiles\\\\.default\\\\][[:space:]]*$/ { section=1; next }\\n  /^\\\\[/ { section=0 }\\n  section && /^[A-Z][A-Z0-9_]*[[:space:]]*=/ {\\n    key=$0; sub(/[[:space:]]*=.*/, \\"\\", key); print key\\n  }\\n' \\"$config\\")\\n",
     "biome.jsonc": "{\\n  \\"$schema\\": \\"https://biomejs.dev/schemas/2.5.13/schema.json\\",\\n  \\"vcs\\": {\\n    \\"enabled\\": true,\\n    \\"clientKind\\": \\"git\\",\\n    \\"useIgnoreFile\\": true,\\n    \\"defaultBranch\\": \\"main\\"\\n  },\\n  \\"files\\": {\\n    \\"ignoreUnknown\\": false\\n  },\\n  \\"formatter\\": {\\n    \\"enabled\\": true,\\n    \\"indentStyle\\": \\"space\\"\\n  },\\n  \\"linter\\": {\\n    \\"enabled\\": true,\\n    \\"rules\\": {\\n      \\"preset\\": \\"recommended\\"\\n    }\\n  },\\n  \\"javascript\\": {\\n    \\"formatter\\": {\\n      \\"quoteStyle\\": \\"double\\"\\n    }\\n  },\\n  \\"assist\\": {\\n    \\"enabled\\": true,\\n    \\"actions\\": {\\n      \\"source\\": {\\n        \\"organizeImports\\": \\"on\\"\\n      }\\n    }\\n  }\\n}",
-    "lefthook.yml": "colors: false\\noutput:\\n  - meta\\n  - summary\\n  - failure\\n\\nesa-lint:\\n  commands:\\n    esa-lint:\\n      run: npm run lint:prelint && npm run lint:check && npm run lint:forge && npm run typecheck\\n\\npre-commit:\\n  parallel: true\\n  commands:\\n    esa-gitleaks:\\n      run: |\\n        command -v gitleaks >/dev/null 2>&1 || {\\n          echo \\"gitleaks not found on PATH. Install it with: brew install gitleaks\\" >&2\\n          exit 1\\n        }\\n        gitleaks git --pre-commit --staged\\n    esa-format:\\n      run: npm run format\\n      stage_fixed: true\\n\\npre-push:\\n  commands:\\n    esa-format-check:\\n      run: npm run format:check\\n    esa-lint:\\n      run: npm run lint\\n    esa-test:\\n      run: npm run test\\n",
     "AGENTS.md": "# Agent guidance\\n\\nThis repository is an Atlassian Forge app. Read \`manifest.yml\` before\\nchanging modules, functions, scopes, or external permissions. Prefer\\nForge's built-in authentication and storage to custom services; check\\nauthorization when using app-level access.\\n\\nBefore submitting changes, run \`npm run lint\`, \`npm run format:check\`,\\n\`npm run typecheck\`, and \`npm run test\`. Review scope or egress changes before\\ndeploying; do not deploy or install without approval.\\n"
   }
 }"
@@ -155,7 +155,7 @@ exports[`tool generated output has the selected functions and converges without 
       "changelog": "git cliff --config cliff.toml --unreleased -o CHANGELOG.md",
       "format": "biome format --write",
       "format:check": "biome format",
-      "lint": "lefthook run esa-lint",
+      "lint:check": "biome lint",
       "lint:fix": "biome lint --write",
       "build": "tsc --project tsconfig.json",
       "typecheck": "tsc --project tsconfig.typecheck.json --noEmit",
@@ -164,7 +164,8 @@ exports[`tool generated output has the selected functions and converges without 
       "test:coverage": "bun test --coverage --pass-with-no-tests",
       "clean": "rm -rf dist",
       "lint:docs": "markdownlint-cli2 \\"**/*.md\\" && cspell lint \\"**/*.md\\"",
-      "prepare": "lefthook install",
+      "prepare": "lefthook install || true",
+      "lint": "lefthook run lint",
       "check": "lefthook run pre-push --force"
     },
     "devDependencies": {
@@ -174,7 +175,7 @@ exports[`tool generated output has the selected functions and converges without 
       "typescript": "^5.9.3",
       "cspell": "^10.3",
       "markdownlint-cli2": "^0.23",
-      "lefthook": "^1.11.0"
+      "lefthook": "^2.1"
     },
     "description": "A sample project",
     "engines": {
@@ -185,8 +186,7 @@ exports[`tool generated output has the selected functions and converges without 
     ".editorconfig": "root = true\\n\\n[*]\\ncharset = utf-8\\nend_of_line = lf\\ninsert_final_newline = true\\ntrim_trailing_whitespace = true\\nindent_style = space\\nindent_size = 2\\n\\n[*.md]\\ntrim_trailing_whitespace = false\\n",
     ".nvmrc": "24\\n",
     ".npmrc": "# Use the public npm registry (not the default for internal Atlassians)\\nregistry=https://registry.npmjs.org/\\n",
-    "biome.jsonc": "{\\n  \\"$schema\\": \\"https://biomejs.dev/schemas/2.5.13/schema.json\\",\\n  \\"vcs\\": {\\n    \\"enabled\\": true,\\n    \\"clientKind\\": \\"git\\",\\n    \\"useIgnoreFile\\": true,\\n    \\"defaultBranch\\": \\"main\\"\\n  },\\n  \\"files\\": {\\n    \\"ignoreUnknown\\": false\\n  },\\n  \\"formatter\\": {\\n    \\"enabled\\": true,\\n    \\"indentStyle\\": \\"space\\"\\n  },\\n  \\"linter\\": {\\n    \\"enabled\\": true,\\n    \\"rules\\": {\\n      \\"preset\\": \\"recommended\\"\\n    }\\n  },\\n  \\"javascript\\": {\\n    \\"formatter\\": {\\n      \\"quoteStyle\\": \\"double\\"\\n    }\\n  },\\n  \\"assist\\": {\\n    \\"enabled\\": true,\\n    \\"actions\\": {\\n      \\"source\\": {\\n        \\"organizeImports\\": \\"on\\"\\n      }\\n    }\\n  }\\n}",
-    "lefthook.yml": "colors: false\\noutput:\\n  - meta\\n  - summary\\n  - failure\\n\\nesa-lint:\\n  commands:\\n    esa-lint:\\n      run: npm run lint:check && npm run typecheck\\n\\npre-commit:\\n  parallel: true\\n  commands:\\n    esa-gitleaks:\\n      run: |\\n        command -v gitleaks >/dev/null 2>&1 || {\\n          echo \\"gitleaks not found on PATH. Install it with: brew install gitleaks\\" >&2\\n          exit 1\\n        }\\n        gitleaks git --pre-commit --staged\\n    esa-format:\\n      run: npm run format\\n      stage_fixed: true\\n\\npre-push:\\n  commands:\\n    esa-format-check:\\n      run: npm run format:check\\n    esa-lint:\\n      run: npm run lint\\n    esa-test:\\n      run: npm run test\\n"
+    "biome.jsonc": "{\\n  \\"$schema\\": \\"https://biomejs.dev/schemas/2.5.13/schema.json\\",\\n  \\"vcs\\": {\\n    \\"enabled\\": true,\\n    \\"clientKind\\": \\"git\\",\\n    \\"useIgnoreFile\\": true,\\n    \\"defaultBranch\\": \\"main\\"\\n  },\\n  \\"files\\": {\\n    \\"ignoreUnknown\\": false\\n  },\\n  \\"formatter\\": {\\n    \\"enabled\\": true,\\n    \\"indentStyle\\": \\"space\\"\\n  },\\n  \\"linter\\": {\\n    \\"enabled\\": true,\\n    \\"rules\\": {\\n      \\"preset\\": \\"recommended\\"\\n    }\\n  },\\n  \\"javascript\\": {\\n    \\"formatter\\": {\\n      \\"quoteStyle\\": \\"double\\"\\n    }\\n  },\\n  \\"assist\\": {\\n    \\"enabled\\": true,\\n    \\"actions\\": {\\n      \\"source\\": {\\n        \\"organizeImports\\": \\"on\\"\\n      }\\n    }\\n  }\\n}"
   }
 }"
 `;
@@ -201,13 +201,14 @@ exports[`agent-skill generated output has the selected functions and converges w
     "scripts": {
       "format": "biome format --write",
       "format:check": "biome format",
-      "lint": "lefthook run esa-lint",
+      "lint:check": "biome lint",
       "lint:fix": "biome lint --write",
       "build": "tsc --project tsconfig.json",
       "typecheck": "tsc --project tsconfig.typecheck.json --noEmit",
       "clean": "rm -rf dist",
       "lint:docs": "markdownlint-cli2 \\"**/*.md\\" && cspell lint \\"**/*.md\\"",
-      "prepare": "lefthook install",
+      "prepare": "lefthook install || true",
+      "lint": "lefthook run lint",
       "check": "lefthook run pre-push --force"
     },
     "devDependencies": {
@@ -216,7 +217,7 @@ exports[`agent-skill generated output has the selected functions and converges w
       "typescript": "^5.9.3",
       "cspell": "^10.3",
       "markdownlint-cli2": "^0.23",
-      "lefthook": "^1.11.0"
+      "lefthook": "^2.1"
     },
     "description": "A sample project",
     "engines": {
@@ -227,8 +228,7 @@ exports[`agent-skill generated output has the selected functions and converges w
     ".editorconfig": "root = true\\n\\n[*]\\ncharset = utf-8\\nend_of_line = lf\\ninsert_final_newline = true\\ntrim_trailing_whitespace = true\\nindent_style = space\\nindent_size = 2\\n\\n[*.md]\\ntrim_trailing_whitespace = false\\n",
     ".nvmrc": "24\\n",
     ".npmrc": "# Use the public npm registry (not the default for internal Atlassians)\\nregistry=https://registry.npmjs.org/\\n",
-    "biome.jsonc": "{\\n  \\"$schema\\": \\"https://biomejs.dev/schemas/2.5.13/schema.json\\",\\n  \\"vcs\\": {\\n    \\"enabled\\": true,\\n    \\"clientKind\\": \\"git\\",\\n    \\"useIgnoreFile\\": true,\\n    \\"defaultBranch\\": \\"main\\"\\n  },\\n  \\"files\\": {\\n    \\"ignoreUnknown\\": false\\n  },\\n  \\"formatter\\": {\\n    \\"enabled\\": true,\\n    \\"indentStyle\\": \\"space\\"\\n  },\\n  \\"linter\\": {\\n    \\"enabled\\": true,\\n    \\"rules\\": {\\n      \\"preset\\": \\"recommended\\"\\n    }\\n  },\\n  \\"javascript\\": {\\n    \\"formatter\\": {\\n      \\"quoteStyle\\": \\"double\\"\\n    }\\n  },\\n  \\"assist\\": {\\n    \\"enabled\\": true,\\n    \\"actions\\": {\\n      \\"source\\": {\\n        \\"organizeImports\\": \\"on\\"\\n      }\\n    }\\n  }\\n}",
-    "lefthook.yml": "colors: false\\noutput:\\n  - meta\\n  - summary\\n  - failure\\n\\nesa-lint:\\n  commands:\\n    esa-lint:\\n      run: npm run lint:check && npm run typecheck\\n\\npre-commit:\\n  parallel: true\\n  commands:\\n    esa-gitleaks:\\n      run: |\\n        command -v gitleaks >/dev/null 2>&1 || {\\n          echo \\"gitleaks not found on PATH. Install it with: brew install gitleaks\\" >&2\\n          exit 1\\n        }\\n        gitleaks git --pre-commit --staged\\n    esa-format:\\n      run: npm run format\\n      stage_fixed: true\\n\\npre-push:\\n  commands:\\n    esa-format-check:\\n      run: npm run format:check\\n    esa-lint:\\n      run: npm run lint\\n"
+    "biome.jsonc": "{\\n  \\"$schema\\": \\"https://biomejs.dev/schemas/2.5.13/schema.json\\",\\n  \\"vcs\\": {\\n    \\"enabled\\": true,\\n    \\"clientKind\\": \\"git\\",\\n    \\"useIgnoreFile\\": true,\\n    \\"defaultBranch\\": \\"main\\"\\n  },\\n  \\"files\\": {\\n    \\"ignoreUnknown\\": false\\n  },\\n  \\"formatter\\": {\\n    \\"enabled\\": true,\\n    \\"indentStyle\\": \\"space\\"\\n  },\\n  \\"linter\\": {\\n    \\"enabled\\": true,\\n    \\"rules\\": {\\n      \\"preset\\": \\"recommended\\"\\n    }\\n  },\\n  \\"javascript\\": {\\n    \\"formatter\\": {\\n      \\"quoteStyle\\": \\"double\\"\\n    }\\n  },\\n  \\"assist\\": {\\n    \\"enabled\\": true,\\n    \\"actions\\": {\\n      \\"source\\": {\\n        \\"organizeImports\\": \\"on\\"\\n      }\\n    }\\n  }\\n}"
   }
 }"
 `;

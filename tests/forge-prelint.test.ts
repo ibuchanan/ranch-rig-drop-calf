@@ -11,7 +11,7 @@ test("Forge projects run prelint, Biome and Forge lint through the direct lint s
     "ast-grep scan --config node_modules/tool-forge-prelint-ast-grep/sgconfig.ecosol.yml --globs '!node_modules/**'",
   );
   expect(pkg.scripts["lint:forge"]).toBe("forge lint");
-  expect(pkg.scripts.lint).toBe("lefthook run esa-lint");
+  expect(pkg.scripts.lint).toBe("lefthook run lint");
 });
 
 test("Forge projects include only the three Forge Ahead runtime dependencies", () => {

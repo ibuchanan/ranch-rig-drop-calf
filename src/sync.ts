@@ -3,6 +3,7 @@ import sortPackageJson from "sort-package-json";
 import YAML, { isMap } from "yaml";
 import { CHANGELOG_ASSETS } from "./changelog.ts";
 import { EVAL_ASSETS } from "./evals.ts";
+import { GIT_HOOKS_ASSETS } from "./git-hooks.ts";
 import { GITIGNORE_TEMPLATES, mergeGitignore } from "./gitignore.ts";
 import { OSS_ASSETS, planOssLicense, transformOssTemplate } from "./oss.ts";
 import { buildProject } from "./profiles.ts";
@@ -134,7 +135,8 @@ export function planSync(
         !TYPESCRIPT_ASSETS.includes(
           path as (typeof TYPESCRIPT_ASSETS)[number],
         ) &&
-        !CHANGELOG_ASSETS.includes(path as (typeof CHANGELOG_ASSETS)[number]),
+        !CHANGELOG_ASSETS.includes(path as (typeof CHANGELOG_ASSETS)[number]) &&
+        !GIT_HOOKS_ASSETS.includes(path as (typeof GIT_HOOKS_ASSETS)[number]),
     ),
     "AGENTS.md",
     ...(profile === "forge-app"
@@ -275,7 +277,7 @@ export function planSync(
         });
     }
   }
-  const hookTemplate = desiredProject.files.get("lefthook.yml");
+  const hookTemplate = templates.get("lefthook.yml");
   if (hookTemplate !== undefined) {
     const before = files.get("lefthook.yml");
     const after =
@@ -552,7 +554,7 @@ function mergeHookConfig(existing: string, template: string): string {
     );
   const desired = YAML.parseDocument(template);
   let changed = false;
-  for (const group of ["esa-lint", "pre-commit", "pre-push"]) {
+  for (const group of ["lint", "pre-commit", "pre-push"]) {
     const wanted = desired.getIn([group, "commands"], true);
     if (!isMap(wanted)) throw new Error(`invalid hook template: ${group}`);
     const section = doc.get(group, true);

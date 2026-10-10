@@ -177,16 +177,25 @@ Add `size-limit` and `@size-limit/file`; own the `size` script. Structured-merge
 incompatible values is a conflict.
 
 ### `git-hooks`
-Add `lefthook`. Two deliberately different modes:
-- **Managed baseline** (no existing `lefthook.yml`): create the full config (`esa-lint`
-  command group; `esa-gitleaks` + `esa-format` pre-commit; `esa-format-check`/`esa-lint`/
-  `esa-test` pre-push) and own `prepare`, `lint`, `check` (`lint`/`check` become
-  `lefthook run` commands).
+Add `lefthook`. The config is authored content seeded from
+`templates/git-hooks/lefthook.yml` (never rebuilt by the capability), so the group
+names, commands and gitleaks guard stay reviewable in a diff. One config serves
+every kind: `lint` groups the `prelint`/`biome`/`forge`/`typecheck`/`format`
+steps, `pre-commit` runs `gitleaks` and `format`, and `pre-push` runs
+`lint`/`test`/`size`. The scripts a kind omits (`test` on `agent-skill`, `size`
+on `tool`, the Forge lint steps outside `forge-app`) are reached through
+`npm run <script> --if-present`, so a hook with nothing to run is a no-op rather
+than a failure. Own `prepare` (`lefthook install || true`), `lint`
+(`lefthook run lint`) and `check` (`lefthook run pre-push --force`).
+
+Two deliberately different modes:
+- **Managed baseline** (no existing `lefthook.yml`): seed the full config and own
+  `prepare`, `lint`, `check`.
 - **Additive adoption** (existing config): parse the YAML document and merge only a
-  compatible named `commands` map — add absent `esa-*` commands, preserve unrelated
-  commands and settings, no-op on semantically equivalent `esa-*` commands, conflict on
-  semantic mismatch or non-command-map hook structure. Never replace existing `lint` and
-  `check` scripts.
+  compatible named `commands` map — add absent commands, preserve unrelated
+  commands and settings, no-op on semantically equivalent commands, conflict on
+  semantic mismatch or non-command-map hook structure. Never replace existing
+  `lint` and `check` scripts.
 
 ## 5. Composition into project kinds
 

@@ -10,8 +10,10 @@ import {
   ValidationError,
 } from "../src/sync.ts";
 import {
+  biomeTemplates,
   changelogTemplates,
   docsTemplates,
+  gitHooksTemplates,
   typescriptTemplates,
 } from "./templates-source.ts";
 import {
@@ -60,6 +62,8 @@ const planWithOss = (
       ...moduleTemplates(),
       ...docsTemplates(),
       ...typescriptTemplates(),
+      ...biomeTemplates(),
+      ...gitHooksTemplates(),
       ...changelogTemplates(),
     ]),
   );
@@ -386,7 +390,7 @@ describe("repository sync", () => {
       key: "scripts.lint",
       mode: "structured-merge",
       before: undefined,
-      after: "lefthook run esa-lint",
+      after: "lefthook run lint",
     });
     const result = applySync(plan);
     expect(result.files.get("src/index.ts")).toBe(
@@ -396,7 +400,7 @@ describe("repository sync", () => {
       name: "sample",
       version: "2.0.0",
       custom: { keep: true },
-      scripts: { deploy: "echo deploy", lint: "lefthook run esa-lint" },
+      scripts: { deploy: "echo deploy", lint: "lefthook run lint" },
       devDependencies: { custom: "1.0.0" },
     });
     expect(result.journal).toEqual({
@@ -469,19 +473,19 @@ describe("repository sync", () => {
       ".nvmrc",
       ".npmrc",
       ...docsTemplates().keys(),
+      ".editorconfig",
+      "biome.jsonc",
       "lefthook.yml",
-      "biome.json",
       "tsconfig.json",
       "tsconfig.typecheck.json",
       "CHANGELOG.md",
       "cliff.toml",
       ".gitignore",
-      ".editorconfig",
     ]);
     const packageWrite = writes.find(([path]) => path === "package.json");
     expect(JSON.parse(packageWrite?.[1] ?? "").scripts).toMatchObject({
       deploy: "echo deploy",
-      lint: "lefthook run esa-lint",
+      lint: "lefthook run lint",
     });
   });
 
