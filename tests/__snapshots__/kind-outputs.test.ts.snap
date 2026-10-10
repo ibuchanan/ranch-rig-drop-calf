@@ -8,7 +8,7 @@ exports[`library generated output has the selected functions and converges witho
     "type": "module",
     "license": "Apache-2.0",
     "scripts": {
-      "changelog": "git cliff --config cliff.toml --unreleased",
+      "changelog": "git cliff --config cliff.toml --unreleased -o CHANGELOG.md",
       "lint": "lefthook run esa-lint",
       "lint:fix": "biome lint --write",
       "format": "biome format --write",
@@ -76,7 +76,7 @@ exports[`forge-app generated output has the selected functions and converges wit
     "type": "module",
     "license": "Apache-2.0",
     "scripts": {
-      "changelog": "git cliff --config cliff.toml --unreleased",
+      "changelog": "git cliff --config cliff.toml --unreleased -o CHANGELOG.md",
       "forge:register": "secretspec run -- forge register",
       "forge:deploy": "secretspec run -- sh -c 'forge deploy --environment \\"$FORGE_ENVIRONMENT\\"'",
       "forge:install": "secretspec run -- sh -c 'forge install --site \\"$FORGE_SITE\\" --product \\"$FORGE_PRODUCT\\" --environment \\"$FORGE_ENVIRONMENT\\"'",
@@ -154,7 +154,7 @@ exports[`tool generated output has the selected functions and converges without 
     "type": "module",
     "license": "Apache-2.0",
     "scripts": {
-      "changelog": "git cliff --config cliff.toml --unreleased",
+      "changelog": "git cliff --config cliff.toml --unreleased -o CHANGELOG.md",
       "lint": "lefthook run esa-lint",
       "lint:fix": "biome lint --write",
       "format": "biome format --write",

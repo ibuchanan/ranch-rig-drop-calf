@@ -96,9 +96,16 @@ Add `git-cliff` dev dependency and the `changelog` script. Seed the release
 policy from `templates/changelog/cliff.toml` (authored content, never rebuilt by
 the capability) and seed it create-if-absent, so a policy a project has edited is
 left alone. Only kinds that ship the `changelog` script are offered it, so
-`agent-skill` gets no policy it cannot run. Validate a repository by rendering
-`git cliff --config cliff.toml --unreleased` in a container at the pinned version
-when it has git history, reporting a skip rather than failing otherwise.
+`agent-skill` gets no policy it cannot run.
+
+The script writes `CHANGELOG.md` (`git cliff … -o CHANGELOG.md`), which is seeded
+alongside the policy and is regenerated whole, never prepended. The changelog's
+prose therefore lives in the policy's `header` key: anything written into the
+Markdown by hand would be erased on the next run. The seed is byte-identical to
+what the command renders before any release, so a project's first run is a
+no-op. Validate a repository by rendering that same command in a container at the
+pinned version when it has git history, reporting a skip rather than failing
+otherwise.
 
 ### `secrets`
 Generate a minimal `secretspec.toml` (project name; default `FORGE_SITE`,

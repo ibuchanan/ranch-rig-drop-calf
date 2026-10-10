@@ -7,22 +7,38 @@ import { NODE_MAJOR, TOOL_VERSIONS } from "./versions.ts";
  * The release workflow: the `git-cliff` devDependency, the command that renders
  * an unreleased changelog, and the release policy that command reads.
  *
- * The policy is authored content rather than derived settings. Its Tera body,
+ * The policy is authored content rather than derived settings. Its Tera header,
  * its commit groups and the preprocessor that strips an Atlassian ticket
  * suffix are decisions someone has to be able to read in a diff, so the file
  * is seeded from `templates/changelog` instead of being rebuilt by the
  * capability — the same rule the docs and TypeScript trees follow, which is
- * why `buildProject` carries no `cliff.toml` for any profile.
+ * why `buildProject` carries neither of these files for any profile.
+ *
+ * `CHANGELOG.md` is seeded too, but it is the one file here that is *output*
+ * rather than input: the command regenerates it whole from `cliff.toml` and
+ * the commit history. That is why the prose lives in the policy's `header` and
+ * not in the Markdown — a sentence written into the seed would be erased by
+ * the next run. The seed exists so a project starts with a changelog on disk
+ * rather than an empty one, and it is byte-identical to what the command
+ * renders before any new commits, so that first run is a no-op.
  */
 export const CHANGELOG_TEMPLATE = "templates/changelog";
 
-export const CHANGELOG_ASSETS = ["cliff.toml"] as const;
+/** The policy the command reads; also what "has a release workflow" means. */
+export const CHANGELOG_CONFIG = "cliff.toml";
+
+/**
+ * The seeded changelog, and the policy. `--output` rather than `--prepend`:
+ * git-cliff stacks prepended entries above the file's title and duplicates
+ * them on every run, whereas regenerating is idempotent.
+ */
+export const CHANGELOG_ASSETS = ["CHANGELOG.md", CHANGELOG_CONFIG] as const;
 
 /**
  * The command `changelogToolchain` scripts and `validateChangelog` runs.
  * Validation splits it rather than repeating it, so the two cannot drift.
  */
-export const CHANGELOG_COMMAND = "git cliff --config cliff.toml --unreleased";
+export const CHANGELOG_COMMAND = `git cliff --config ${CHANGELOG_CONFIG} --unreleased -o CHANGELOG.md`;
 
 /** The marker `validateChangelog` looks for after the command it ran. */
 const EXIT_MARKER = "git-cliff exit=";
@@ -61,13 +77,15 @@ export type ChangelogValidation =
  *
  * git-cliff is installed in a container at the version `changelogToolchain`
  * pins, so the verdict depends on the policy under review rather than on
- * whatever the host happens to have installed.
+ * whatever the host happens to have installed. The command writes
+ * `CHANGELOG.md`, but only inside that throwaway container: the `Directory`
+ * passed in is immutable, so the caller's repository is never touched.
  */
 export async function validateChangelog(
   directory: Directory,
 ): Promise<ChangelogValidation> {
-  if (!(await directory.exists("cliff.toml")))
-    return { status: "skipped", reason: "cliff.toml is missing" };
+  if (!(await directory.exists(CHANGELOG_CONFIG)))
+    return { status: "skipped", reason: `${CHANGELOG_CONFIG} is missing` };
   const container = dag
     .container()
     // The Node baseline image carries git, which `git cliff` dispatches through.

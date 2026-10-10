@@ -475,6 +475,7 @@ describe("repository sync", () => {
       "biome.json",
       "tsconfig.json",
       "tsconfig.typecheck.json",
+      "CHANGELOG.md",
       "cliff.toml",
       ".gitignore",
       ".editorconfig",

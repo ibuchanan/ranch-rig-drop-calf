@@ -330,7 +330,8 @@ describe("profiles", () => {
       expect({
         packageJson: project.packageJson,
         // Seeded trees are not in the blueprint, so add the ones this kind
-        // actually receives.
+        // actually receives. `agent-skill` ships no `changelog` script, so it
+        // is not offered a release policy.
         files: [
           ...project.files.keys(),
           ...OSS_ASSETS,

@@ -125,6 +125,12 @@ To check that a repository's release policy and its `changelog` script still
 agree, run `validate-changelog --directory ...`. It renders an unreleased
 changelog in a container and reports `validated` or explains why it skipped.
 
+`npm run changelog` rewrites `CHANGELOG.md` in full. The title and preamble come
+from the `header` key in `cliff.toml`, not from the Markdown file, so anything
+written into `CHANGELOG.md` by hand is lost on the next run — put it in the
+policy instead. The seeded `CHANGELOG.md` matches what the command renders, so
+the first run produces no diff.
+
 ### Remove Forge scaffold files
 
 Before generating or syncing a Forge-created starter, review the cleanup

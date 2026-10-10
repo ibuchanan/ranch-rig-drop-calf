@@ -54,6 +54,7 @@ test.each(["library", "forge-app", "tool", "agent-skill"])(
     expect(first.get("README.md")).toBe("# My custom README\n");
     for (const [path, template] of typescriptTemplates())
       expect(first.get(path)).toBe(template);
+    expect(first.has("cliff.toml")).toBe(kind !== "agent-skill");
     expect(
       planSync(first, kind, "tester", undefined, [], [], undefined, seeded)
         .operations,

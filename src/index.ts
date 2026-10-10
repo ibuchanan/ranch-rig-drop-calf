@@ -18,6 +18,7 @@ import {
   object,
 } from "@dagger.io/dagger";
 import {
+  CHANGELOG_ASSETS,
   CHANGELOG_TEMPLATE,
   changelogPaths,
   copyChangelog,
@@ -294,7 +295,10 @@ export class DropCalf {
       "tsconfig.json",
       "tsconfig.typecheck.json",
       "tsdown.config.ts",
-      "cliff.toml",
+      // The whole release tree, so an edited `CHANGELOG.md` counts as present
+      // and is never reseeded over. Deriving the list keeps the reader and the
+      // seeder from drifting apart.
+      ...CHANGELOG_ASSETS,
       "secretspec.toml",
       "scripts/forge-vars-from-secretspec.sh",
       ".nvmrc",

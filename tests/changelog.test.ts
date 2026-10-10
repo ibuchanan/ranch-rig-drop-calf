@@ -5,9 +5,11 @@ import {
   CHANGELOG_TEMPLATE,
   validateChangelog,
 } from "../src/changelog.ts";
+import { DropCalf } from "../src/index.ts";
 import { buildProject } from "../src/profiles.ts";
 import { applySync, ConflictError, planSync } from "../src/sync.ts";
 import { TOOL_VERSIONS } from "../src/versions.ts";
+import { mockModuleSource } from "./module-source.ts";
 import { changelogTemplates } from "./templates-source.ts";
 
 /** `planSync` seeds the release policy from a template map, like the OSS and docs trees. */
@@ -67,19 +69,74 @@ test("changelog kinds install a pinned tool and script without authoring a polic
   expect(skill.files.has("cliff.toml")).toBe(false);
 });
 
-test("sync seeds the release policy verbatim and converges without changing a custom one", () => {
+test("sync seeds the release tree verbatim and converges without changing custom files", () => {
   const templates = changelogTemplates();
   const first = applySync(
     toolPlan(new Map([["package.json", '{"name":"sample"}']])),
   ).files;
   expect(first.get("cliff.toml")).toBe(templates.get("cliff.toml"));
+  expect(first.get("CHANGELOG.md")).toBe(templates.get("CHANGELOG.md"));
   expect(toolPlan(first).operations).toEqual([]);
 
-  const custom = "# team's own release policy\n[changelog]\nbody = 'custom'\n";
-  const customized = new Map(first);
-  customized.set("cliff.toml", custom);
-  expect(toolPlan(customized).operations).toEqual([]);
-  expect(applySync(toolPlan(customized)).files.get("cliff.toml")).toBe(custom);
+  const customized: [string, string][] = [
+    [
+      "cliff.toml",
+      "# team's own release policy\n[changelog]\nbody = 'custom'\n",
+    ],
+    ["CHANGELOG.md", "# Our changelog\n\nHand-written, do not clobber.\n"],
+  ];
+  for (const [path, custom] of customized) {
+    const customized = new Map(first);
+    customized.set(path, custom);
+    expect(toolPlan(customized).operations).toEqual([]);
+    expect(applySync(toolPlan(customized)).files.get(path)).toBe(custom);
+  }
+});
+
+test("Dagger sync reads an existing CHANGELOG.md instead of reseeding over it", async () => {
+  // The seed is create-if-absent, which only holds if sync *reads* the file
+  // first: a changelog the repository already has was never in the read list,
+  // so it looked absent and got overwritten.
+  const mine = "# Our changelog\n\nHand-written, do not clobber.\n";
+  const writes: string[] = [];
+  const source = {
+    exists: async (path: string) =>
+      path === "package.json" || path === "CHANGELOG.md",
+    file: (path: string) => ({
+      contents: async () =>
+        path === "package.json" ? '{"name":"sample"}' : mine,
+    }),
+    withNewFile: (path: string) => {
+      writes.push(path);
+      return source;
+    },
+    withFile: (path: string) => {
+      writes.push(path);
+      return source;
+    },
+  } as unknown as Parameters<DropCalf["sync"]>[0];
+  const module = mockModuleSource();
+  try {
+    await new DropCalf().sync(source, "tool", "tester");
+    expect(writes).not.toContain("CHANGELOG.md");
+  } finally {
+    module.mockRestore();
+  }
+});
+
+test("the seeded CHANGELOG.md is what the command renders before any release", () => {
+  const seed = changelogTemplates().get("CHANGELOG.md") ?? "";
+  // The policy's `header` is the prose, because `CHANGELOG.md` is regenerated
+  // whole and would lose anything written into the Markdown by hand.
+  const policy = changelogTemplates().get("cliff.toml") ?? "";
+  expect(policy).toContain('header = """');
+  expect(policy).toContain("# Changelog");
+  // So the seed must be exactly the header plus an empty unreleased section,
+  // or the first `npm run changelog` produces a spurious diff.
+  expect(seed).toBe(
+    `# Changelog\n\nAll notable changes to this project are documented here.\n\n## [unreleased]\n`,
+  );
+  expect(CHANGELOG_COMMAND).toEndWith("-o CHANGELOG.md");
 });
 
 test("sync leaves agent-skill without a release policy it cannot run", () => {

@@ -173,6 +173,23 @@ repository writes, so a project that commits differently should replace the file
 rather than have it rewritten. `sync` seeds it create-if-absent, so a policy a
 project has already edited is left alone.
 
+`templates/changelog/CHANGELOG.md` is seeded alongside it, and it is the one
+seeded file here that is output rather than input: the `changelog` script
+regenerates it whole with `git cliff … -o CHANGELOG.md`. Two consequences.
+First, the prose lives in the policy's `header` key, not in the Markdown —
+anything written into the file by hand is erased by the next run. Second, the
+seed is byte-identical to what the command renders before any release, so the
+first run is a no-op rather than a surprise diff. Neither `-o` nor `--prepend`
+is interchangeable here: `--prepend` stacks entries above the file's title and
+duplicates them on every run, whereas `-o` is idempotent.
+
+`sync` reads `CHANGELOG.md` before deciding to seed it, so an edited one is
+preserved. That read list in `syncPlan` is built from `CHANGELOG_ASSETS` on
+purpose — when it was a hand-written `"cliff.toml"` entry, adding a second file
+to the tree silently stopped reading it, and create-if-absent overwrote the
+repository's changelog. If you add a file to `templates/changelog`, add it to
+`CHANGELOG_ASSETS` and let the list follow.
+
 `validateChangelog` is the one function here that reads a repository rather than
 the module source, so it needs a `Directory`, not a path, and it runs
 git-cliff inside a container at the version `changelogToolchain` pins. That
