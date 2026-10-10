@@ -60,9 +60,20 @@ generated separately because it is not in that template. Seed files are
 create-if-absent on sync, preserving existing user content.
 
 ### `gitignore`
-Build an ordered `.gitignore` from named sets (`visualstudiocode`, `linux`, `macos`,
-`windows`, `node`, `turbo`, `atlassian`), first-occurrence de-duplication. Merge into an
-existing file by adding absent lines only; preserve user lines. Set selection is exposed.
+Build an ordered `.gitignore` from named sets (`visualstudiocode`, `linux`,
+`macos`, `windows`, `node`, `turbo`, `yarn`), first-occurrence de-duplication.
+Merge into an existing file by adding absent lines only; preserve user lines.
+Set selection is exposed.
+
+The templates are not fetched at generation time: the gitignore.io response is
+pinned to `vendor/gitignore` and refreshed deliberately, so output is
+deterministic, reviewable, and available offline. The pinned bytes carry a
+macOS rule that only matches with literal CR characters, so the file is pinned to
+`-text` in `.gitattributes` and refreshed only through
+`scripts/refresh-gitignore.ts`. A personal block (`.fallow/`, `.scratch/`,
+`.session/`, `vendor/`, `/.cocoindex_code/`) is appended after the selected
+sets on generation and contributed to the merge on sync. Merge and generation
+share one builder, so the two paths cannot drift.
 
 ### `node`
 Pin the Node baseline: `.nvmrc` (`24`) and `engines.node` (`24.x`). A different pinned

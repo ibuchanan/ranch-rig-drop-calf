@@ -8,6 +8,7 @@
     "format:check": "biome format",
     "lint": "biome lint",
     "lint:fix": "biome lint --write",
+    "refresh:gitignore": "bun run scripts/refresh-gitignore.ts",
     "test": "bun test",
     "typecheck": "tsc --noEmit"
   },

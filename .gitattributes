@@ -1,1 +1,5 @@
 /sdk/** linguist-generated
+
+# The pinned gitignore.io response carries a macOS rule that only matches with
+# its literal CR bytes. Never let Git normalise line endings in it.
+vendor/gitignore -text

@@ -44,7 +44,6 @@ export function createBlueprint(
   if (author) packageJson.author = author;
   const files = new Map<string, string>([
     [".nvmrc", `${NODE_MAJOR}\n`],
-    [".gitignore", buildGitignore()],
     [".editorconfig", buildEditorconfig()],
     [
       "tsconfig.json",
@@ -70,6 +69,9 @@ export function createBlueprint(
     ],
   ]);
 
+  // `.gitignore` is deliberately absent: it is a pinned, seeded asset like the
+  // OSS and docs trees, so the Dagger layer copies it in after rendering. See
+  // src/gitignore.ts.
   return { packageJson, files };
 }
 
@@ -133,33 +135,6 @@ npm run format:check
 npm run format
 \`\`\`
 <!-- drop-calf:usage end -->
-`;
-}
-
-function buildGitignore(): string {
-  return `# dependencies
-node_modules
-
-# build output
-dist
-out
-*.tsbuildinfo
-
-# test coverage
-coverage
-
-# logs
-logs
-*.log
-
-# environment
-.env
-.env.*
-
-# editor and OS
-.DS_Store
-.idea
-.vscode
 `;
 }
 

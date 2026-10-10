@@ -1,8 +1,9 @@
 import { isDeepStrictEqual } from "node:util";
 import YAML, { isMap } from "yaml";
 import { EVAL_ASSETS } from "./evals.ts";
+import { GITIGNORE_TEMPLATES, mergeGitignore } from "./gitignore.ts";
 import { OSS_ASSETS, OSS_LICENSE, transformOssTemplate } from "./oss.ts";
-import { buildProject, InvalidOptionsError } from "./profiles.ts";
+import { buildProject } from "./profiles.ts";
 import { buildReadme, createBlueprint } from "./project.ts";
 import { mergeTypeScriptConfig } from "./typescript-config.ts";
 
@@ -66,18 +67,12 @@ export function planSync(
   files: ReadonlyMap<string, string>,
   profile: string,
   owner: string,
-  ignoreSets: string[] = ["node", "build", "coverage", "logs", "env", "editor"],
+  ignoreSets: string[] = [...GITIGNORE_TEMPLATES],
   withFunctions: string[] = [],
   withoutFunctions: string[] = [],
   preset?: string,
   templates: ReadonlyMap<string, string> = new Map(),
 ): SyncPlan {
-  const allowed = ["node", "build", "coverage", "logs", "env", "editor"];
-  for (const set of ignoreSets)
-    if (!allowed.includes(set))
-      throw new InvalidOptionsError(
-        `Unknown ignore set ${JSON.stringify(set)}; choose ${allowed.join(", ")}.`,
-      );
   const raw = files.get("package.json");
   if (raw === undefined) throw new ValidationError("is missing");
   let current: Record<string, unknown>;
@@ -152,8 +147,11 @@ export function planSync(
     });
   for (const path of [
     ...OSS_ASSETS,
+    // `.gitignore` arrives in the same map but is line-merged below, never seeded.
     ...[...templates.keys()].filter(
-      (path) => !OSS_ASSETS.includes(path as (typeof OSS_ASSETS)[number]),
+      (path) =>
+        !OSS_ASSETS.includes(path as (typeof OSS_ASSETS)[number]) &&
+        path !== ".gitignore",
     ),
     "AGENTS.md",
     "cliff.toml",
@@ -378,34 +376,20 @@ export function planSync(
         after: tsdown,
       });
   }
-  const allRules =
-    createBlueprint(current.name, "", "").files.get(".gitignore") ?? "";
-  const groups = allRules.split(/(?=^# )/m).filter(Boolean);
-  const headings: Record<string, string> = {
-    dependencies: "node",
-    "build output": "build",
-    "test coverage": "coverage",
-    logs: "logs",
-    environment: "env",
-    "editor and OS": "editor",
-  };
-  const rules = groups
-    .filter((group) =>
-      ignoreSets.includes(headings[group.split("\n")[0]?.slice(2) ?? ""] ?? ""),
-    )
-    .join("");
   const existing = files.get(".gitignore") ?? "";
-  const present = new Set(existing.split(/\r?\n/).map((line) => line.trim()));
-  const additions = rules
-    .split("\n")
-    .filter((line) => line && !line.startsWith("#") && !present.has(line));
-  if (additions.length)
+  // The built template arrives in `templates` rather than being read from the
+  // blueprint, so sync and generation always agree on content.
+  const mergedIgnore = mergeGitignore(
+    existing,
+    templates.get(".gitignore") ?? "",
+  );
+  if (mergedIgnore !== existing)
     operations.push({
       path: ".gitignore",
       key: "rules",
       mode: "line-set",
       before: files.get(".gitignore"),
-      after: `${existing}${existing && !existing.endsWith("\n") ? "\n" : ""}${additions.join("\n")}\n`,
+      after: mergedIgnore,
     });
   const editorTemplate =
     createBlueprint(current.name, "", "").files.get(".editorconfig") ?? "";

@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import type { Directory } from "@dagger.io/dagger";
+import { buildGitignore } from "../src/gitignore.ts";
 import { DropCalf } from "../src/index.ts";
 import {
   applySync,
@@ -9,7 +10,29 @@ import {
   ValidationError,
 } from "../src/sync.ts";
 import { docsTemplates } from "./docs-source.ts";
-import { mockModuleSource, moduleTemplates } from "./module-source.ts";
+import {
+  mockModuleSource,
+  moduleTemplates,
+  pinnedGitignore,
+} from "./module-source.ts";
+
+const ignoreTemplates = (ignoreSets?: string[]) =>
+  new Map([[".gitignore", buildGitignore(pinnedGitignore(), ignoreSets)]]);
+
+const planIgnore = (
+  files: ReadonlyMap<string, string>,
+  ignoreSets?: string[],
+) =>
+  planSync(
+    files,
+    "tool",
+    "tester",
+    ignoreSets,
+    [],
+    [],
+    undefined,
+    ignoreTemplates(ignoreSets),
+  );
 
 const planWithOss = (
   files: ReadonlyMap<string, string>,
@@ -28,7 +51,11 @@ const planWithOss = (
     withFunctions,
     withoutFunctions,
     preset,
-    new Map([...moduleTemplates(), ...docsTemplates()]),
+    new Map([
+      ...ignoreTemplates(ignoreSets),
+      ...moduleTemplates(),
+      ...docsTemplates(),
+    ]),
   );
 
 describe("repository sync", () => {
@@ -244,7 +271,7 @@ describe("repository sync", () => {
       ["package.json", '{"name":"sample"}'],
       [".gitignore", original],
     ]);
-    const plan = planSync(files, "tool", "tester");
+    const plan = planIgnore(files);
     expect(plan.operations).toContainEqual(
       expect.objectContaining({ path: ".gitignore", mode: "line-set" }),
     );
@@ -252,17 +279,20 @@ describe("repository sync", () => {
     const result = applySync(plan).files;
     const ignore = result.get(".gitignore") ?? "";
     expect(ignore).toStartWith(original);
-    expect(ignore.match(/^node_modules$/gm)).toHaveLength(1);
+    // The template spells the dependency directory `node_modules/`; the user's
+    // bare `node_modules` still matches it, so only the template form is added.
+    expect(ignore.match(/^node_modules\/$/gm)).toHaveLength(1);
     expect(ignore).toContain("dist\n");
-    expect(planSync(result, "tool", "tester").operations).toEqual([]);
+    expect(planIgnore(result).operations).toEqual([]);
   });
 
   test("selects named ignore sets and rejects unknown names before applying", () => {
     const files = new Map([["package.json", '{"name":"sample"}']]);
-    const result = applySync(planSync(files, "tool", "tester", ["node"])).files;
-    expect(result.get(".gitignore")).toContain("node_modules");
+    const result = applySync(planIgnore(files, ["node"])).files;
+    expect(result.get(".gitignore")).toContain("node_modules/");
     expect(result.get(".gitignore")).not.toContain(".DS_Store");
-    expect(() => planSync(files, "tool", "tester", ["unknown"])).toThrow(
+    expect(result.get(".gitignore")).toContain("/.cocoindex_code/");
+    expect(() => buildGitignore(pinnedGitignore(), ["unknown"])).toThrow(
       /unknown/,
     );
     expect(files.has(".gitignore")).toBe(false);

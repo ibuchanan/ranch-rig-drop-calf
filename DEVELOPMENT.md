@@ -87,6 +87,10 @@ through that generated SDK, so if type checking reports a missing
   documented owner, project name, and LICENSE year substitutions.
 - `src/docs.ts`: copies `templates/docs/` through Dagger for generation and
   discovers its relative paths for create-if-absent sync, separate from OSS.
+- `src/gitignore.ts`: assembles `.gitignore` from the pinned gitignore.io
+  response, de-duplicating rules on first occurrence and appending the personal
+  defaults. `copyGitignoreAssets` is the Dagger boundary used by generation and
+  by `copy-gitignore`; `mergeGitignore` is the line-set merge `sync` uses.
 - `src/capabilities.ts`: adapters that add scripts, development dependencies,
   and configuration to the blueprint.
 - `src/profiles.ts`: ordered capability lists for the four supported profiles.
@@ -101,7 +105,31 @@ a focused test of the resulting blueprint and run the checks above.
 `renderToDirectory` is the Dagger boundary; keep ordinary project assembly
 testable without the engine.
 
+## Refreshing the pinned `.gitignore`
+
+`vendor/gitignore` holds the gitignore.io response that `src/gitignore.ts`
+assembles from, so generation never depends on the network. Refresh it
+deliberately and read the diff, because upstream templates change without
+notice:
+
+```bash
+bun run refresh:gitignore
+```
+
+Edit `GITIGNORE_TEMPLATES` in `src/gitignore.ts` to change which templates are
+pinned, then refresh. Two things will bite you if you skip the script: the macOS
+template contains a rule that only matches with its literal CR bytes, so an
+editor that normalises line endings silently breaks it, and `.gitattributes` pins
+the file to `-text` to stop Git doing the same. Tests read the real pin, so a
+refresh that changes output shows up in the `kind-outputs` snapshot.
+
 The current generator does not read or merge an existing repository. Generated
 projects have scripts and configs but no source tree, and the copied OSS README
 is an unfilled template. The `agent-skill` profile intentionally omits a test
 script. Use the specs as a roadmap, not as a description of current CLI behavior.
+
+`.gitignore` is a seeded asset, not a blueprint file: like the OSS and docs
+trees, it is pinned outside `ProjectBlueprint` and copied into the rendered
+`Directory` by `copyGitignore`. That keeps assembly pure and testable, and means
+`buildProject` does not produce `.gitignore` — a unit test asserting on generated
+`.gitignore` content should assert on `buildGitignore` instead.

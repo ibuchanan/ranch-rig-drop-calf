@@ -46,6 +46,31 @@ replace `entries` with `export --path /path/to/preview` and review the output
 before exporting into an existing repository: files with the same names can be
 replaced.
 
+### The generated `.gitignore`
+
+`.gitignore` is assembled from the
+[gitignore.io](https://www.gitignore.io) templates `visualstudiocode`, `linux`,
+`macos`, `windows`, `node`, `turbo`, and `yarn`, with duplicate rules removed on
+first occurrence. A personal block is appended to every generated file:
+`.fallow/`, `.scratch/`, `.session/`, `vendor/`, and `/.cocoindex_code/`.
+
+Generation does not call gitignore.io. The API response is pinned to
+[`vendor/gitignore`](vendor/gitignore) so output stays deterministic, reviewable
+in a diff, and offline. The pin contains a macOS rule that only matches with its
+literal CR bytes, so refresh it through the script rather than by hand, and never
+let an editor normalise it:
+
+```bash
+bun run refresh:gitignore
+```
+
+`sync` merges into an existing `.gitignore` by appending only rules that are
+absent, keeping your lines and comments untouched. Pass `--ignore-sets` to select
+a subset of the templates by name (`--ignore-sets node,turbo`); the default is
+all of them. Unlike the previous release, these are gitignore.io's names rather
+than local ones such as `build` or `editor`, and an unknown name fails before
+anything is written.
+
 The available profiles are `library`, `forge-app`, `tool`, and `agent-skill`;
 `--profile` is required. On `forge-app`, `--with-functions evals` or
 `--preset all` enables evaluation scripts; `--without-functions evals`
@@ -68,7 +93,10 @@ Unknown or ambiguous profile names fail before generation.
 
 To copy just the authored docs or OSS assets into a Dagger directory, use
 `copy-docs --directory ...` or `copy-oss --directory ... --name ... --owner ...`.
-Review the resulting directory before exporting it over existing files.
+`copy-gitignore --directory ...` writes the same generated `.gitignore` on its
+own, taking the same optional `--sets`. Review the resulting directory before
+exporting it over existing files; `copy-gitignore` replaces an existing
+`.gitignore`, whereas `sync` merges into it.
 
 ### Remove Forge scaffold files
 

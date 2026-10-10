@@ -12,12 +12,19 @@ import { fileURLToPath } from "node:url";
 import {
   type Changeset,
   type Directory,
+  type File,
   dag,
   func,
   object,
 } from "@dagger.io/dagger";
 import { copyDocs, docPaths } from "./docs.ts";
 import { EVAL_ASSETS } from "./evals.ts";
+import {
+  buildGitignore,
+  copyGitignoreAssets,
+  PINNED_GITIGNORE,
+  readPinnedTemplate,
+} from "./gitignore.ts";
 import { copyOssAssets, OSS_ASSETS } from "./oss.ts";
 import { applyPreclean } from "./preclean.ts";
 import { buildProject, resolveProfile } from "./profiles.ts";
@@ -110,6 +117,15 @@ export class DropCalf {
     );
   }
 
+  /**
+   * The pinned gitignore.io response. Reading it through the module source keeps
+   * generation deterministic and offline; refresh it with
+   * `bun run refresh:gitignore` and review the diff.
+   */
+  private gitignoreSource(): File {
+    return dag.currentModule().source().file(PINNED_GITIGNORE);
+  }
+
   @func()
   async files(
     profile: string,
@@ -137,7 +153,13 @@ export class DropCalf {
     );
     const fallback = project.files.get("biome.json");
     if (fallback) project.files.set("biome.json", localBiomeConfig(fallback));
-    return this.copyOss(this.copyDocs(renderToDirectory(project)), name, owner);
+    return this.copyGitignore(
+      await this.copyOss(
+        this.copyDocs(renderToDirectory(project)),
+        name,
+        owner,
+      ),
+    );
   }
 
   @func()
@@ -146,6 +168,14 @@ export class DropCalf {
       directory,
       dag.currentModule().source().directory("templates/docs"),
     );
+  }
+
+  @func()
+  async copyGitignore(
+    directory: Directory,
+    sets?: string[],
+  ): Promise<Directory> {
+    return copyGitignoreAssets(directory, this.gitignoreSource(), sets);
   }
 
   @func()
@@ -209,6 +239,11 @@ export class DropCalf {
     preset?: string,
   ) {
     resolveProfile(profile, withFunctions, withoutFunctions, preset);
+    // Built before the conflict pass so an unknown set fails before any work.
+    const gitignore = buildGitignore(
+      await readPinnedTemplate(this.gitignoreSource()),
+      ignoreSets,
+    );
     const docs = dag.currentModule().source().directory("templates/docs");
     const docsPaths = await docPaths(docs);
     const files = new Map<string, string>();
@@ -243,7 +278,7 @@ export class DropCalf {
       withoutFunctions,
       preset,
     );
-    const templates = new Map<string, string>();
+    const templates = new Map<string, string>([[".gitignore", gitignore]]);
     const missing = OSS_ASSETS.filter((path) => !files.has(path));
     if (missing.length) {
       const source = dag
