@@ -22,143 +22,104 @@ conflict-aware merging,
 and the broader project functions in the [specifications](specs/00-drop-calf-overview.md)
 are not implemented.
 
-## Try it
+## Set up a new Forge app
 
-From a target repository,
-with the [Dagger CLI](https://docs.dagger.io/install/)
-and a working Dagger engine installed, call the hosted module:
+You need the [Forge CLI](https://developer.atlassian.com/platform/forge/getting-started/),
+the [Dagger CLI](https://docs.dagger.io/install/) with a running engine, and
+npm. Dagger fetches Drop Calf from GitHub, so you do not need a checkout of
+this repository.
 
-```bash
-cd /path/to/target-repo
-dagger call -m github.com/ibuchanan/ranch-rig-drop-calf files --profile forge-app --owner your-staff-id entries
-```
+1. Create the app. `forge create` registers it in your developer space and
+   supplies `manifest.yml` and `src/`:
 
-Dagger fetches the module from GitHub, so you do not need a local checkout of
-Drop Calf. This lists the generated files, including `package.json`, `README.md`,
-`tsconfig.json`, `.gitignore`, and `.editorconfig`. The command inspects a
-Dagger `Directory`; it does not write the files to your working tree. Run
-`dagger call -m github.com/ibuchanan/ranch-rig-drop-calf files --help` for the
-available arguments and directory operations.
+   ```bash
+   forge create my-app
+   cd my-app
+   ```
 
-The generated package name defaults to the target directory name; set
-`--package-name` to override it. `entries` only lists files. To write them,
-replace `entries` with `export --path /path/to/preview` and review the output
-before exporting into an existing repository: files with the same names can be
-replaced.
+2. Preview the changes. Pass your Atlassian staff ID as `--owner`:
 
-### The generated `.gitignore`
+   ```bash
+   dagger call -m github.com/ibuchanan/ranch-rig-drop-calf init-changes \
+     --directory . --profile forge-app --owner your-staff-id
+   ```
 
-`.gitignore` is assembled from the
-[gitignore.io](https://www.gitignore.io) templates `visualstudiocode`, `linux`,
-`macos`, `windows`, `node`, `turbo`, and `yarn`, with duplicate rules removed on
-first occurrence. A personal block is appended to every generated file:
-`.fallow/`, `.scratch/`, `.session/`, `vendor/`, and `/.cocoindex_code/`.
+   `init-changes` removes the scaffold files Drop Calf replaces, generates
+   the `forge-app` files over what is left, and keeps the app's own
+   `dependencies`, `main`, `private`, and package name. Generated keys win on
+   conflict. `manifest.yml` and `src/` are never touched.
 
-Generation does not call gitignore.io. The API response is pinned to
-[`vendor/gitignore`](vendor/gitignore) so output stays deterministic, reviewable
-in a diff, and offline. The pin contains a macOS rule that only matches with its
-literal CR bytes, so refresh it through the script rather than by hand, and never
-let an editor normalise it:
+3. Apply the same changes to the working tree, then install:
 
-```bash
-bun run refresh:gitignore
-```
+   ```bash
+   dagger call -m github.com/ibuchanan/ranch-rig-drop-calf init-changes \
+     --directory . --profile forge-app --owner your-staff-id export --path .
+   npm install
+   ```
 
-`sync` merges into an existing `.gitignore` by appending only rules that are
-absent, keeping your lines and comments untouched. Pass `--ignore-sets` to select
-a subset of the templates by name (`--ignore-sets node,turbo`); the default is
-all of them. Unlike the previous release, these are gitignore.io's names rather
-than local ones such as `build` or `editor`, and an unknown name fails before
-anything is written.
+4. Fill in the generated `README.md` and review `CONTRIBUTING.md`; both are
+   templates.
 
-### The Node baseline
+Dagger uploads the directory you pass, including the `node_modules` that
+`forge create` installed. Delete it first if the upload is slow.
 
-Every generated project pins one Node version in each place a tool reads it:
-`.nvmrc` (`24`), `package.json` `engines.node` (`24.x`), and `@types/node` (`24`).
-Generated projects also get an `.npmrc` pinning the public npm registry, which
-is not the default inside Atlassian:
+Use `init-changes`, not `init ... export`: `init` returns a plain directory,
+and Dagger's export merges by default, so the removed scaffold files would
+stay on disk. Do not add `--wipe` in an existing repository; it also deletes
+unrelated files.
 
-```ini
-registry=https://registry.npmjs.org/
-```
+## What you get
 
-`registry` is an owned key. If a `.npmrc` already exists, `sync` adds the key
-without disturbing your other lines, and a **different** registry is reported as
-a conflict rather than overwritten. A repository pinned to another Node major is
-a conflict too, on both `.nvmrc` and `engines.node`.
+The result is a starter configuration, **not a complete runnable
+application**: scripts, checks, and configuration, without source files or
+installed dependencies.
 
-On `forge-app`, `sync` also reconciles `app.runtime.name` (`nodejs24.x`) so a
-deployed Forge app runs the same Node as your local toolchain. Drop Calf never
-writes `manifest.yml` itself — if you have one, its runtime key is checked and
-filled in; if you do not, none is created.
+- **Profiles:** `library`, `forge-app`, `tool`, and `agent-skill`.
+  `--profile` is required; an unknown or ambiguous name fails before anything
+  is generated.
+- **OSS files:** `LICENSE` (Apache-2.0), `README.md`, `CONTRIBUTING.md`,
+  `CODE_OF_CONDUCT.md`, `SECURITY.md`, and `.atlassian/OWNER`, copied from a
+  pinned copy of Atlassian's OSS templates. `--owner` fills `OWNER`, the
+  project name fills `[Project name]`, and the current year fills `[YYYY]`.
+- **Node baseline:** Node 24 in `.nvmrc`, `engines.node`, and `@types/node`,
+  plus an `.npmrc` pinning the public npm registry, which is not the default
+  inside Atlassian.
+- **`.gitignore`:** assembled from pinned gitignore.io templates, so output is
+  deterministic and generation works offline.
 
-The available profiles are `library`, `forge-app`, `tool`, and `agent-skill`;
-`--profile` is required. On `forge-app`, `--with-functions evals` or
-`--preset all` enables evaluation scripts; `--without-functions evals`
-excludes them from `--preset all`. Use `--without-functions aidev` on
-`files` or `sync` to omit the `AGENTS.md` guidance seed. Core kind slots
-cannot be removed.
-Pass `--description` and `--author` to customize package metadata. OSS output
-uses the pinned [`vendor/oss-templates`](vendor/oss-templates) Bitbucket
-submodule: `LICENSE`, `README.md`, `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`,
-`SECURITY.md`, and `.atlassian/OWNER` are copied from that source. Pass your
-Atlassian staff ID via required `--owner`: it replaces the OWNER
-placeholder. The project name replaces `[Project name]` in README and
-CONTRIBUTING; the current year replaces `[YYYY]` in LICENSE. The license is
-fixed to Apache-2.0. Review remaining template guidance before publishing.
+Common options:
 
-The generated output is a starter configuration, **not a complete runnable
-application**: it does not include source files or install dependencies. Its
-copied README is a placeholder template and must be completed before use.
-Unknown or ambiguous profile names fail before generation.
+- `--package-name` overrides the package name; `init-changes` defaults to the
+  scaffold's.
+- `--description` and `--author` set package metadata.
+- `--with-functions evals` or `--preset all` adds evaluation scripts on
+  `forge-app`; `--without-functions evals` excludes them from `--preset all`.
+- `--without-functions aidev` omits the `AGENTS.md` guidance seed.
 
-To copy just the authored docs, TypeScript configs, OSS assets, or release
-policy into a Dagger directory, use `copy-docs --directory ...`,
-`copy-type-script --directory ...`, `copy-oss --directory ... --name ...
---owner ...`, or `copy-changelog --directory ...`.
-`copy-gitignore --directory ...` writes the same generated `.gitignore` on its
-own, taking the same optional `--sets`. Review the resulting directory before
-exporting it over existing files; `copy-gitignore` replaces an existing
-`.gitignore`, whereas `sync` merges into it.
+Core profile capabilities cannot be removed.
 
-To check that a repository's release policy and its `changelog` script still
-agree, run `validate-changelog --directory ...`. It renders an unreleased
-changelog in a container and reports `validated` or explains why it skipped.
+## Other entry points
 
-`npm run changelog` rewrites `CHANGELOG.md` in full. The title and preamble come
-from the `header` key in `cliff.toml`, not from the Markdown file, so anything
-written into `CHANGELOG.md` by hand is lost on the next run — put it in the
-policy instead. The seeded `CHANGELOG.md` matches what the command renders, so
-the first run produces no diff.
+- `files --profile <name> --owner <id>` generates a profile's files without a
+  scaffold, for a repository that `forge create` did not start. Add `entries`
+  to list them, or `export --path <dir>` to write them; exporting over an
+  existing repository replaces files with the same names.
+- `remove-scaffold-changes --directory .` is the cleanup step of
+  `init-changes` on its own. It deletes the fixed list in
+  [`src/preclean.ts`](src/preclean.ts) without backups.
+- `copy-*` functions copy one asset set (docs, TypeScript, OSS, changelog,
+  `.gitignore`, and more), and `validate-changelog` and `validate-prelint`
+  check an existing repository.
 
-### Remove Forge scaffold files
-
-Before generating or syncing a Forge-created starter, review the cleanup
-changeset and apply it from the target repo using a local checkout of this
-module (or replace the local module path with a published ref):
-
-```bash
-cd /path/to/target-repo
-dagger call -m /path/to/drop-calf remove-scaffold-changes --directory .
-dagger call -m /path/to/drop-calf remove-scaffold-changes --directory . export --path .
-```
-
-`remove-scaffold` deletes existing paths from the fixed `UNWANTED` list in
-[`src/preclean.ts`](src/preclean.ts), without backing them up or renaming them.
-Review the changeset before exporting: the list can change over time. Keep
-`package.json` and app source, then regenerate lockfiles after updating
-dependencies. The plain `remove-scaffold ... export --path .` command is **not**
-equivalent: Dagger's directory export merges by default, leaving deleted files
-on disk. Do not use `--wipe` on an existing repo: it also removes unrelated
-files. If you do not want a new `AGENTS.md` afterward, pass
-`--without-functions aidev` to the subsequent `files` or `sync` call.
+Run `dagger call -m github.com/ibuchanan/ranch-rig-drop-calf --help` to list
+every function, and add `--help` after a function name for its arguments.
 
 ## Contributing
 
 See [DEVELOPMENT.md](DEVELOPMENT.md) for local setup, tests, code layout, and
-how to change profiles. The [specifications](specs/00-drop-calf-overview.md)
-describe the intended design; they include features not yet present in the
-module.
+how to change profiles or refresh the pinned templates. The
+[specifications](specs/00-drop-calf-overview.md) describe the intended design;
+they include features not yet present in the module.
 
 ## License
 
