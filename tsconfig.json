@@ -28,5 +28,5 @@
     },
     "experimentalDecorators": true
   },
-  "exclude": ["vendor", "node_modules"]
+  "exclude": ["vendor", "node_modules", "templates", ".scratch"]
 }

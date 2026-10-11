@@ -185,7 +185,27 @@ two files copied verbatim from
 capability writes a `tsconfig` and `buildProject` carries none for any profile.
 Assert on
 `templates/typescript` rather than on the blueprint when testing what a kind
-generates.
+generates. For `forge-app`, the later `templates/vitest` tree replaces only
+`tsconfig.typecheck.json`; the deploy-time `tsconfig.json` remains shared.
+
+Forge runs on Node, not Bun. Vitest matches that runtime, provides `vi.mock` for
+`@forge/*` modules, and matches the vendored Forge examples and architecture
+tests. `library` and `tool` keep Bun's runner; `agent-skill` has no test scripts.
+Both Vitest packages are pinned together through `TOOL_VERSIONS.vitest`.
+
+The Vitest config starts from the OKF producer example's discovery exclusions.
+It deliberately uses explicit imports instead of globals so app code does not
+acquire implicit test APIs. The current prelint rule
+`manifest-tests-use-vitest-globals` warns about this deliberate choice; explicit
+imports are supported by Vitest and the integration tests verify them.
+The typecheck overlay includes tests and the Vitest
+config, with modern module resolution confined to local checks. Tests and test
+config stay outside the Forge handler build. The existing pre-push lint group
+includes `typecheck`, so broken tests block pushing as broken source does.
+
+`DROP_CALF_TESTING_E2E=1 bun test tests/e2e/testing.e2e.test.ts` verifies real
+Dagger-generated and initialized scaffolds. It needs an engine and network for
+test-tool installation, but never registers or deploys an app.
 
 `templates/changelog/cliff.toml` is seeded the same way, with one condition the
 TypeScript tree does not need: only the kinds that ship a `changelog` script are

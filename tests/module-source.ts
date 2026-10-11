@@ -16,6 +16,7 @@ import {
   gitHooksTemplates,
   secretsTemplates,
   typescriptTemplates,
+  vitestTemplates,
 } from "./templates-source.ts";
 
 export const moduleTemplates = () =>
@@ -62,6 +63,7 @@ export function mockModuleSource(
     [CHANGELOG_TEMPLATE, tree(changelog)],
     [GIT_HOOKS_TEMPLATE, tree(gitHooks)],
     [SECRETS_TEMPLATE, tree(secrets)],
+    ["templates/vitest", tree(vitestTemplates())],
   ]);
   return spyOn(dag, "currentModule").mockReturnValue({
     source: () => ({

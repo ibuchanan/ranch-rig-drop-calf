@@ -30,7 +30,7 @@ test.each(kinds)("%s declares only its selected template trees", (kind) => {
         ...(kind === "agent-skill" ? [] : [CHANGELOG_TEMPLATE]),
         DOCS_TEMPLATE,
         GIT_HOOKS_TEMPLATE,
-        ...(kind === "forge-app" ? [SECRETS_TEMPLATE] : []),
+        ...(kind === "forge-app" ? [SECRETS_TEMPLATE, "templates/vitest"] : []),
         TYPESCRIPT_TEMPLATE,
       ].sort(),
     );

@@ -8,6 +8,7 @@ import {
   forgeAhead,
   libraryBuild,
   noTesting,
+  vitestTesting,
 } from "./capabilities.ts";
 import { changelogToolchain } from "./changelog.ts";
 import { evals } from "./evals.ts";
@@ -41,7 +42,7 @@ export const PROFILES: Record<string, Capability[]> = {
     biomeToolchain(),
     typeScriptToolchain(),
     forgeAhead(),
-    bunTesting(),
+    vitestTesting(),
     bundleSize("Forge app bundle", "dist/**/*.js"),
     cleanBuild(),
     docsLinting(),

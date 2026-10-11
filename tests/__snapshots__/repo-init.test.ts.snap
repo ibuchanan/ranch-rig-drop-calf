@@ -92,6 +92,7 @@ exports[`profiles agent-skill contains no test scripts and all kinds keep a comp
     "cliff.toml",
     "tsconfig.json",
     "tsconfig.typecheck.json",
+    "vitest.config.ts",
   ],
   "packageJson": {
     "dependencies": {
@@ -105,12 +106,14 @@ exports[`profiles agent-skill contains no test scripts and all kinds keep a comp
       "@forge-ahead/prelint": "github:ibuchanan/tool-forge-prelint-ast-grep",
       "@size-limit/file": "^5.0.0",
       "@types/node": "24",
+      "@vitest/coverage-v8": "5.0.3",
       "cspell": "^10.3",
       "git-cliff": "^2.13",
       "lefthook": "^2.1",
       "markdownlint-cli2": "^0.23",
       "size-limit": "^11.2.0",
       "typescript": "^5.9.3",
+      "vitest": "5.0.3",
     },
     "engines": {
       "node": "24.x",
@@ -138,9 +141,9 @@ exports[`profiles agent-skill contains no test scripts and all kinds keep a comp
       "lint:prelint": "ast-grep scan --globs '!specs/**' --globs '!node_modules/**' --config ./node_modules/@forge-ahead/prelint/sgconfig.ecosol.yml",
       "prepare": "lefthook install || true",
       "size": "npm run build && size-limit",
-      "test": "bun test --pass-with-no-tests",
-      "test:coverage": "bun test --coverage --pass-with-no-tests",
-      "test:watch": "bun test --watch --pass-with-no-tests",
+      "test": "vitest run --passWithNoTests",
+      "test:coverage": "vitest run --coverage --passWithNoTests",
+      "test:watch": "vitest watch --passWithNoTests",
       "typecheck": "tsc --project tsconfig.typecheck.json --noEmit",
     },
     "size-limit": [

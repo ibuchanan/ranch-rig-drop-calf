@@ -19,6 +19,7 @@ import {
   docsTemplates,
   gitHooksTemplates,
   typescriptTemplates,
+  vitestTemplates,
 } from "./templates-source.ts";
 
 const root = join(import.meta.dir, "..");
@@ -181,6 +182,7 @@ describe("pinned OSS templates", () => {
         const seeded = new Map([
           ...biomeTemplates(),
           ...typescriptTemplates(),
+          ...(kind === "forge-app" ? vitestTemplates() : []),
           ...gitHooksTemplates(),
           ...docsTemplates(),
           ...(kind === "agent-skill" ? [] : changelogTemplates()),

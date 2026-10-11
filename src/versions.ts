@@ -8,7 +8,7 @@ export const TOOL_VERSIONS = {
   sizeLimitFile: "^5.0.0",
   cspell: "^10.3",
   markdownlintCli2: "^0.23",
-  vitest: "^2.1.0",
+  vitest: "5.0.3",
   promptfoo: "^0.116.0",
   gitCliff: "^2.13",
   lefthook: "^2.1",

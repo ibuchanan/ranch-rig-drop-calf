@@ -26,7 +26,7 @@ test("Forge evals selection and all preset generate the same complete starter su
   expect(selected.packageJson.scripts).toMatchObject({
     eval: "promptfoo eval",
     view: "promptfoo view",
-    test: "bun test --pass-with-no-tests",
+    test: "vitest run --passWithNoTests",
   });
   expect(selected.packageJson.devDependencies.promptfoo).toBeDefined();
   for (const path of suitePaths) expect(selected.files.get(path)).toBeTruthy();

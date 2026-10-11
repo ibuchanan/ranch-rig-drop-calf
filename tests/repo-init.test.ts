@@ -19,6 +19,7 @@ import {
   biomeTemplates,
   changelogTemplates,
   typescriptTemplates,
+  vitestTemplates,
 } from "./templates-source.ts";
 
 let moduleSource: ReturnType<typeof mockModuleSource>;
@@ -74,6 +75,17 @@ test.each(["library", "forge-app", "tool", "agent-skill"])(
           biomeTemplates().get("biome.jsonc"),
         );
         expect(writes.has("biome.json")).toBe(false);
+        expect(writes.get("vitest.config.ts")).toBe(
+          kind === "forge-app"
+            ? vitestTemplates().get("vitest.config.ts")
+            : undefined,
+        );
+        expect(writes.get("tsconfig.typecheck.json")).toBe(
+          (kind === "forge-app"
+            ? vitestTemplates()
+            : typescriptTemplates()
+          ).get("tsconfig.typecheck.json"),
+        );
         expect(writes.get(".editorconfig")).toBe(
           biomeTemplates().get(".editorconfig"),
         );
@@ -260,7 +272,7 @@ describe("profiles", () => {
       "forge-app",
       "lefthook run lint",
       "tsc --project tsconfig.json",
-      "bun test --pass-with-no-tests",
+      "vitest run --passWithNoTests",
     ],
     [
       "tool",
@@ -307,7 +319,7 @@ describe("profiles", () => {
     ]);
     expect(selected.packageJson.scripts.eval).toBeDefined();
     expect(selected.packageJson.scripts.test).toBe(
-      "bun test --pass-with-no-tests",
+      "vitest run --passWithNoTests",
     );
     expect(selected.packageJson.devDependencies.promptfoo).toBeDefined();
     const all = buildProject(
@@ -333,7 +345,7 @@ describe("profiles", () => {
     );
     expect(excluded.packageJson.scripts.eval).toBeUndefined();
     expect(excluded.packageJson.scripts.test).toBe(
-      "bun test --pass-with-no-tests",
+      "vitest run --passWithNoTests",
     );
     expect(() =>
       buildProject("forge-app", "sample", "tester", "", "", [], [], "unknown"),
@@ -358,6 +370,7 @@ describe("profiles", () => {
           "biome.jsonc",
           ...typescriptTemplates().keys(),
           ...(kind === "agent-skill" ? [] : changelogTemplates().keys()),
+          ...(kind === "forge-app" ? ["vitest.config.ts"] : []),
         ].sort(),
       }).toMatchSnapshot(kind);
       if (kind === "agent-skill")

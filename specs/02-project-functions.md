@@ -150,7 +150,7 @@ running the same scan against it, reporting a skip when the repository never opt
 The TypeScript toolchain: the `typescript` devDependency, the `build` and `typecheck`
 scripts that invoke it, and the config it reads. `@types/node` belongs to `node`.
 
-Every kind uses one config, seeded verbatim from `templates/typescript` (copied from the
+Every kind uses the base config, seeded verbatim from `templates/typescript` (copied from the
 vendored Forge example) so the JSONC comments explaining which options the bundler forces
 survive. `build` and `typecheck` are the only two `tsc` scripts the example uses — a Forge
 app is a static resource bundle plus resolvers rather than a running server, so there is no
@@ -176,15 +176,27 @@ Copy a versioned, Forge-focused `AGENTS.md` seed. Create-if-absent; guidance con
 not machine configuration.
 
 ### `test`
-Use Bun's built-in runner for `library`, `forge-app`, and `tool`, following the
-project-kind contract in §01; `agent-skill` has no test scripts. Own `test`,
-`test:watch`, and `test:coverage` with `bun test --pass-with-no-tests`,
-`bun test --watch --pass-with-no-tests`, and
-`bun test --coverage --pass-with-no-tests` respectively. The no-tests flag lets
-newly generated repositories run the commands before tests are added. Bun needs
-no Vitest dependency, config, or Forge architecture-test seed. Existing Bun
-configuration and test sources are user-owned and survive sync; conflicting owned
-scripts are reported before any changes.
+The testing slot selects Bun's built-in runner for `library` and `tool`, Vitest
+for `forge-app`, and no test scripts for `agent-skill`.
+
+- Bun owns `test`, `test:watch`, and `test:coverage` with
+  `bun test --pass-with-no-tests`, `bun test --watch --pass-with-no-tests`, and
+  `bun test --coverage --pass-with-no-tests`. It needs no test-runner dependency
+  or config.
+- Vitest owns the same scripts with `vitest run --passWithNoTests`,
+  `vitest watch --passWithNoTests`, and
+  `vitest run --coverage --passWithNoTests`. `vitest` and `@vitest/coverage-v8`
+  are devDependencies at the same exact version (`5.0.3`), both supplied by
+  `TOOL_VERSIONS.vitest` so coverage never prompts to install a provider.
+- The Vitest capability declares `templates/vitest`. Its config excludes
+  `node_modules`, `dist`, `coverage`, and `specs/**`, disables globals in favor of
+  explicit imports, and selects the V8 coverage provider. Its typecheck config
+  includes `src`, `test`, `tests`, and `vitest.config.ts`, excludes vendored and
+  output trees, and uses modern module resolution only for local typechecking.
+  The Forge deploy-time `tsconfig.json` remains unchanged.
+
+Both runners accept a scaffold with no tests. Test sources remain user-owned;
+Forge architecture-test seeds are a separate, optional concern.
 
 ### `evals` (optional; `--preset all` or `--with evals`)
 Add `promptfoo`; own `eval`/`view` scripts. Copy versioned Promptfoo config and example
