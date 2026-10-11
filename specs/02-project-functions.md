@@ -119,8 +119,10 @@ never rebuilt by the capability), substituting only the project name. `FORGE_SIT
 the `forge:*` scripts wrap `forge` through it. The app-variable helper pushes only the
 keys in its `APP_VARIABLE_KEYS` allowlist, always `--encrypt`, and never prints values;
 the seeded list is empty. `sync` seeds the tree create-if-absent for `forge-app` only, so
-an edited config or helper is left alone. `doctor` reports Secretspec and Gitleaks as
-external prerequisites; never installed, never injected.
+an edited config or helper is left alone. Secretspec and Gitleaks are external
+prerequisites; never installed, never injected. A prerequisite check is deferred: it
+must run where the tools are used (the developer's machine or CI), not inside the
+module's runtime container, which never has them.
 
 ### `format`
 Add `@biomejs/biome`. Invoke `biome init` when config is absent and the tool is locally

@@ -1,12 +1,5 @@
 import { execFileSync } from "node:child_process";
-import {
-  accessSync,
-  constants,
-  existsSync,
-  mkdtempSync,
-  readFileSync,
-  rmSync,
-} from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { basename, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
@@ -96,33 +89,6 @@ function localBiomeConfig(fallback: string): string {
 
 @object()
 export class DropCalf {
-  @func()
-  doctor(profile: string): string {
-    resolveProfile(profile);
-    const found = (tool: string) => {
-      for (const directory of (process.env.PATH ?? "").split(
-        process.platform === "win32" ? ";" : ":",
-      )) {
-        try {
-          accessSync(join(directory, tool), constants.X_OK);
-          return true;
-        } catch {
-          /* keep searching */
-        }
-      }
-      return false;
-    };
-    return JSON.stringify(
-      (profile === "forge-app"
-        ? ["forge", "secretspec", "gitleaks", "git"]
-        : ["git"]
-      ).map((tool) => ({
-        tool,
-        status: found(tool) ? "available" : "missing",
-      })),
-    );
-  }
-
   /**
    * The Node baseline as a native Dagger container. Containerized tools run the
    * same major the file pins promise rather than whatever the host has

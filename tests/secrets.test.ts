@@ -1,8 +1,5 @@
 import { expect, test } from "bun:test";
-import { chmodSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
 import type { Directory } from "@dagger.io/dagger";
-import { DropCalf } from "../src/index.ts";
 import { buildProject } from "../src/profiles.ts";
 import {
   copySecretsAssets,
@@ -75,30 +72,5 @@ test("Forge app scripts target the CLI through SecretSpec and one allowlist help
     const other = buildProject(kind, "sample", "tester").packageJson.scripts;
     expect(other["forge:deploy"]).toBeUndefined();
     expect(other["forge:variables:set"]).toBeUndefined();
-  }
-});
-
-test("doctor reports missing Secretspec and Gitleaks separately without installing", () => {
-  const root = mkdtempSync(join(process.cwd(), "tmp_rovo_doctor_"));
-  const path = process.env.PATH;
-  try {
-    process.env.PATH = root;
-    const report = JSON.parse(new DropCalf().doctor("forge-app"));
-    expect(report).toContainEqual({ tool: "secretspec", status: "missing" });
-    expect(report).toContainEqual({ tool: "gitleaks", status: "missing" });
-    writeFileSync(join(root, "secretspec"), "#!/bin/sh\nexit 0\n");
-    chmodSync(join(root, "secretspec"), 0o755);
-    expect(JSON.parse(new DropCalf().doctor("forge-app"))).toContainEqual({
-      tool: "secretspec",
-      status: "available",
-    });
-    expect(JSON.parse(new DropCalf().doctor("tool"))).not.toContainEqual({
-      tool: "secretspec",
-      status: "missing",
-    });
-  } finally {
-    if (path === undefined) delete process.env.PATH;
-    else process.env.PATH = path;
-    rmSync(root, { recursive: true, force: true });
   }
 });
