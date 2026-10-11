@@ -71,6 +71,9 @@ Each kind additionally selects project-functions (see
 
 Notes:
 
+- Forge testing (Vitest) runs before TypeScript in the ordered composition: its
+  dependency update must be visible to compiler-policy reconciliation on the first pass.
+  The function table is an inventory, not an execution-order override.
 - `evals` is enabled by `--preset all` or `--with evals`, never by default.
 - `tool` and `agent-skill` are **new kinds** with no vendor parity target; their
   compositions above are provisional and should be revisited after first use.

@@ -74,20 +74,7 @@ export function bunTesting(): Capability {
   });
 }
 
-export function vitestTesting(version = TOOL_VERSIONS.vitest): Capability {
-  return expandCapability("test", "10-vitest", {
-    templates: ["templates/vitest"],
-    addTo(project) {
-      project.packageJson.scripts.test = "vitest run --passWithNoTests";
-      project.packageJson.scripts["test:watch"] =
-        "vitest watch --passWithNoTests";
-      project.packageJson.scripts["test:coverage"] =
-        "vitest run --coverage --passWithNoTests";
-      project.packageJson.devDependencies.vitest = version;
-      project.packageJson.devDependencies["@vitest/coverage-v8"] = version;
-    },
-  });
-}
+export { vitestTesting } from "./vitest.ts";
 
 export function noTesting(): Capability {
   return {

@@ -144,7 +144,8 @@ test.each(kinds)(
               "node",
               "biome",
               "typescript",
-            ].includes(capability.name)
+            ].includes(capability.name) ||
+            (kind === "forge-app" && capability.name === "test")
           )
             expect(typeof capability.update).toBe("function");
           else expect(typeof capability.update).not.toBe("function");

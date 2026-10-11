@@ -12,6 +12,9 @@ export function mockBiomeContainer(
   let input: Directory;
   const container = {
     from: () => container,
+    withFile: () => container,
+    withNewFile: () => container,
+    directory: () => ({ files: new Map<string, string>() }),
     withExec: (args: string[]) => {
       commands.push(args);
       return container;

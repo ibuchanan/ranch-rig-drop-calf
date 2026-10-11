@@ -14,6 +14,7 @@ import { ParseError } from "../src/preclean.ts";
 import { buildProject } from "../src/profiles.ts";
 import { TYPESCRIPT_SCRIPTS } from "../src/typescript.ts";
 import { TOOL_VERSIONS } from "../src/versions.ts";
+import { VITEST_SCRIPTS } from "../src/vitest.ts";
 import { mockDirectory, mockModuleSource } from "./module-source.ts";
 import { catalogTemplates } from "./templates-source.ts";
 
@@ -110,10 +111,17 @@ test.each(kinds)(
           ...BIOME_SCRIPTS,
           typecheck: TYPESCRIPT_SCRIPTS.typecheck,
           ...(kind === "library" ? {} : { build: TYPESCRIPT_SCRIPTS.build }),
+          ...(kind === "forge-app" ? VITEST_SCRIPTS : {}),
         },
         devDependencies: {
           "@biomejs/biome": TOOL_VERSIONS.biome,
           typescript: TOOL_VERSIONS.typescript,
+          ...(kind === "forge-app"
+            ? {
+                vitest: TOOL_VERSIONS.vitest,
+                "@vitest/coverage-v8": TOOL_VERSIONS.vitest,
+              }
+            : {}),
         },
         name: "@scope/sample",
         description: "Catalog description",

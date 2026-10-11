@@ -78,6 +78,8 @@ catalog → package-metadata → oss → gitignore → node → changelog → se
 ```
 
 **Note:** Init sequence stages catalog init before OSS; within the init pass, capabilities run in listed order. The OSS capability depends on catalog being initialized first to read metadata.
+Forge's Vitest `test` capability precedes `typescript` in `src/profiles.ts` so its
+updated dependency declaration is visible to compiler policy in the same pass.
 
 ### `catalog`
 
@@ -505,14 +507,47 @@ for `forge-app`, and no test scripts for `agent-skill`.
   `vitest run --coverage --passWithNoTests`. `vitest` and `@vitest/coverage-v8`
   are devDependencies at the same exact version (`5.0.3`), both supplied by
   `TOOL_VERSIONS.vitest` so coverage never prompts to install a provider.
-- The Vitest capability declares `templates/vitest`. Its config excludes
-  `node_modules`, `dist`, `coverage`, and `specs/**`, disables globals in favor of
-  explicit imports, and selects the V8 coverage provider. Vitest owns only its runner
-  config, scripts, and dependencies, not either tsconfig. Declaring `vitest` in
-  devDependencies triggers TypeScript's typecheck policy: include source, test trees,
-  and `vitest.config.ts`, exclude specs/output trees, and use modern module resolution.
-  Vitest alone does not change the base Forge compiler settings. Ticket 10 resolves
-  the remaining Vitest update and validation policy.
+
+#### Vitest verbs (`forge-app`)
+
+- **init** declares `templates/vitest`, seeding `vitest.config.ts`, the three scripts,
+  and both development dependency pins. The seed excludes `node_modules`, `dist`,
+  `coverage`, and `specs/**`, disables globals in favor of explicit imports, and selects
+  V8 coverage. All config settings are starting values, not continuing policy.
+- **update** enforces the three scripts and bumps `vitest` and `@vitest/coverage-v8`
+  together to `TOOL_VERSIONS.vitest` in an existing package. Missing sections and owned
+  keys are created; a missing package is not. Malformed/non-object JSON or non-object
+  scripts/devDependencies fail before writes. Other package values survive. Matching
+  owned values preserve package bytes; changes use sorted, two-space JSON with a trailing
+  newline. A second update changes nothing. Update never reads, rewrites, migrates, or
+  recreates `vitest.config.ts`; owner edits and deletion survive. It does not install
+  repository dependencies or refresh lockfiles.
+- **validate** loads `vitest.config.ts` using the capability-selected Vitest pin and
+  discovers test files with `globTestSpecifications()` (the file-only listing API).
+  An empty suite passes. Test modules, assertions, setup files, and global setup are not
+  executed. Configuration and its plugins/providers are executable and are evaluated.
+  The selected coverage provider is loaded, initialized, and its options resolved, without
+  coverage collection, cleanup, reports, or threshold checks. Built-in V8 and Istanbul
+  providers must expose the same version as the runner; custom providers must load and
+  initialize but have no Vitest-version equality requirement. Owner choices of globals,
+  exclusions, and provider are not compared to the seed. Missing config reports skipped;
+  failed loading/discovery or provider compatibility reports failure with diagnostics.
+
+Validation installs the pinned runner and V8 provider only in an isolated Dagger tool
+container, using the centralized Bun runtime pin on the Node-baseline image. The supplied
+repository is mounted read-only, with the selected runner overlaid separately; installed
+owner dependencies remain available and isolated tool dependencies provide a fallback.
+Owner-installed coverage providers take precedence over the fallback, so mismatched
+versions fail instead of being hidden by the bundled V8 pin. Istanbul, custom providers,
+plugins, and other config dependencies must be available in the supplied tree. The Vite
+runner config loader avoids bundled temporary config files. No container changes are
+exported. Setup/download failures are execution failures, not invalid-config evidence.
+
+Vitest never writes either tsconfig. Declaring `vitest` in devDependencies triggers
+TypeScript's typecheck policy: include source, test trees, and `vitest.config.ts`, exclude
+specs/output trees, and use modern module resolution. Vitest alone does not change the
+base Forge compiler settings. In the Forge composition, Vitest precedes TypeScript so
+new dependency declarations affect config policy in the same update pass.
 
 Both runners accept a scaffold with no tests. Test sources remain user-owned;
 Forge architecture-test seeds are a separate, optional concern.
