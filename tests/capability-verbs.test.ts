@@ -136,7 +136,11 @@ test.each(kinds)(
           expect(capability.init).toBeDefined();
           expect(capability.update).toBeDefined();
           expect(capability.validate).toBeDefined();
-          if (["package-metadata", "oss", "node"].includes(capability.name))
+          if (
+            ["package-metadata", "oss", "gitignore", "node"].includes(
+              capability.name,
+            )
+          )
             expect(typeof capability.update).toBe("function");
           else expect(typeof capability.update).not.toBe("function");
         }

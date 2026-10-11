@@ -14,7 +14,9 @@ import { catalog } from "./catalog.ts";
 import { changelogToolchain } from "./changelog.ts";
 import { evals } from "./evals.ts";
 import { gitHooks } from "./git-hooks.ts";
+import { gitignore } from "./gitignore.ts";
 import { nodeBaseline } from "./node.ts";
+import { InvalidOptionsError } from "./options.ts";
 import { oss, validateOssOwner } from "./oss.ts";
 import { packageMetadata } from "./package-metadata.ts";
 import { prelint } from "./prelint.ts";
@@ -28,6 +30,7 @@ export const PROFILES: Record<string, Capability[]> = {
     catalog(),
     packageMetadata("library"),
     oss(),
+    gitignore(),
     nodeBaseline("library"),
     changelogToolchain(),
     biomeToolchain(),
@@ -43,6 +46,7 @@ export const PROFILES: Record<string, Capability[]> = {
     catalog(),
     packageMetadata("forge-app"),
     oss(),
+    gitignore(),
     nodeBaseline("forge-app"),
     changelogToolchain(),
     forgeSecrets(),
@@ -60,6 +64,7 @@ export const PROFILES: Record<string, Capability[]> = {
     catalog(),
     packageMetadata("tool"),
     oss(),
+    gitignore(),
     nodeBaseline("tool"),
     changelogToolchain(),
     biomeToolchain(),
@@ -73,6 +78,7 @@ export const PROFILES: Record<string, Capability[]> = {
     catalog(),
     packageMetadata("agent-skill"),
     oss(),
+    gitignore(),
     nodeBaseline("agent-skill"),
     biomeToolchain(),
     typeScriptToolchain(),
@@ -85,12 +91,7 @@ export const PROFILES: Record<string, Capability[]> = {
 
 export type ProjectProfile = keyof typeof PROFILES;
 
-export class InvalidOptionsError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = "InvalidOptionsError";
-  }
-}
+export { InvalidOptionsError } from "./options.ts";
 
 export function resolveProfile(
   profile: string | undefined,

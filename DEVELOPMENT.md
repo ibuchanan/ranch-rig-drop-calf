@@ -153,10 +153,11 @@ DROP_CALF_E2E=1 bun test tests/e2e
   only, with just the project name substituted. `FORGE_SITE` is required,
   `env-var.sh` runs each command through `secretspec` with a recorded reason,
   and the app-variable helper pushes only its `APP_VARIABLE_KEYS` allowlist.
-- `src/gitignore.ts`: assembles `.gitignore` from the pinned gitignore.io
-  response, de-duplicating rules on first occurrence and appending the personal
-  defaults. `copyGitignoreAssets` is the Dagger boundary used by generation and
-  by `copy-gitignore`.
+- `src/gitignore.ts`: seeds and updates complete `.gitignore` blocks from the
+  pinned gitignore.io response and additional defaults, preserving bytes outside
+  those blocks. `gitignore()` declares the pin at init and recovers topic selections
+  from block URLs during update; validation is an explicit no-op.
+  `copyGitignoreAssets` also backs standalone `copy-gitignore`.
 - `src/capabilities.ts`: adapters that add scripts, development dependencies,
   and configuration to the blueprint. A capability's optional `templates`
   array names zero or more module-source trees; `buildProject` collects those
@@ -215,8 +216,9 @@ behavior.
 ## Seeded assets
 
 `.gitignore` is a seeded asset, not a blueprint file: like the OSS and docs
-trees, it is pinned outside `ProjectBlueprint` and copied into the rendered
-`Directory` by `copyGitignore`. That keeps assembly pure and testable, and means
+trees, it is pinned outside `ProjectBlueprint`. Its capability declares
+`vendor/gitignore` for `seedTemplates` to assemble into the rendered `Directory`.
+That keeps assembly pure and testable, and means
 `buildProject` does not produce `.gitignore` — a unit test asserting on generated
 `.gitignore` content should assert on `buildGitignore` instead.
 
@@ -312,7 +314,22 @@ Editors therefore preserve meaningful spaces, and `lint:docs` checks their use.
 `ADDITIONAL_IGNORES`: `.fallow/`, `.scratch/`, `.session/`, and
 `/.cocoindex_code/`. `copy-gitignore --sets node,turbo` selects a subset by
 gitignore.io name; the default is all of them, and an unknown name fails before
-anything is written.
+anything is written. The generated URLs record the selected subset, not every
+available topic in the pin.
+
+The topic block uses Toptal's `# Created by <URL>` / `# End of <URL>` markers.
+Additional defaults use a separate `# Created by drop-calf additional ignores` /
+`# End of drop-calf additional ignores` block. Init and explicit copy seed missing
+blocks while preserving existing owner content. Update regenerates complete
+recognized blocks using their URL topics; everything outside is preserved
+byte-for-byte, including rule order and `!` exceptions. Missing files or blocks
+remain absent on update. Incomplete or mismatched markers fail before writing;
+legacy generated files without an end marker need that boundary marked explicitly.
+
+The standalone `yarn` topic is retired and removed from recorded selections on
+update; Yarn-related rules included in upstream's Node topic remain. No blanket
+`vendor/` ignore is generated. Validation explicitly skips: testing whether chosen
+paths are ignored would enforce policy, not check Git's acceptance.
 
 ### Refreshing the pin
 
@@ -330,7 +347,7 @@ pinned, then refresh. Two things will bite you if you skip the script: the macOS
 template contains a rule that only matches with its literal CR bytes, so an
 editor that normalises line endings silently breaks it, and `.gitattributes` pins
 the file to `-text` to stop Git doing the same. Tests read the real pin, so a
-refresh that changes output shows up in the `kind-outputs` snapshot.
+refresh that changes output shows up in the `gitignore.test.ts` snapshot.
 
 ## Refreshing the pinned OSS templates
 

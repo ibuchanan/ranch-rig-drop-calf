@@ -1,7 +1,8 @@
 import type { Directory } from "@dagger.io/dagger";
 import { CATALOG_TEMPLATE, type CatalogSeed, copyCatalog } from "./catalog.ts";
-import { copySecretsAssets, SECRETS_TEMPLATE } from "./secrets.ts";
+import { copyGitignoreAssets, PINNED_GITIGNORE } from "./gitignore.ts";
 import { copyOssAssets, PINNED_OSS } from "./oss.ts";
+import { copySecretsAssets, SECRETS_TEMPLATE } from "./secrets.ts";
 
 /**
  * Seed a template tree over a rendered directory.
@@ -27,6 +28,10 @@ export async function seedTemplates(
 ): Promise<Directory> {
   let result = destination;
   for (const path of paths) {
+    if (path === PINNED_GITIGNORE) {
+      result = await copyGitignoreAssets(result, moduleSource.file(path));
+      continue;
+    }
     const source = moduleSource.directory(path);
     if (path === CATALOG_TEMPLATE) {
       if (!catalogSeed)

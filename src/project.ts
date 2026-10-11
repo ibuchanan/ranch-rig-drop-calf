@@ -41,7 +41,7 @@ export function createBlueprint(
   const files = new Map<string, string>();
 
   // `.gitignore` is deliberately absent: it is a pinned, seeded asset like the
-  // OSS and docs trees, so the Dagger layer copies it in after rendering. See
+  // OSS and docs trees, so its capability declares the pin for seeding. See
   // src/gitignore.ts. The node baseline (`.nvmrc`, `.npmrc`, `@types/node`)
   // is absent for a different reason: it belongs to the `node` capability, not
   // to every blueprint. See src/node.ts. Authored config trees belong to their

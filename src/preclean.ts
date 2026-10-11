@@ -13,7 +13,6 @@ export const UNWANTED = [
   "AGENTS.md",
   ".eslintrc",
   "README.md",
-  ".gitignore",
   "package-lock.json",
   "yarn.lock",
   "tsconfig.json",

@@ -7,8 +7,9 @@ import { CHANGELOG_TEMPLATE } from "../src/changelog.ts";
 import { DOCS_TEMPLATE } from "../src/docs.ts";
 import { EVALS_TEMPLATE } from "../src/evals.ts";
 import { GIT_HOOKS_TEMPLATE } from "../src/git-hooks.ts";
-import { buildProject, PROFILES } from "../src/profiles.ts";
+import { PINNED_GITIGNORE } from "../src/gitignore.ts";
 import { PINNED_OSS } from "../src/oss.ts";
+import { buildProject, PROFILES } from "../src/profiles.ts";
 import { SECRETS_TEMPLATE } from "../src/secrets.ts";
 import { seedTemplates } from "../src/templates.ts";
 import { TYPESCRIPT_TEMPLATE } from "../src/typescript.ts";
@@ -32,6 +33,7 @@ test.each(kinds)("%s declares only its selected template trees", (kind) => {
         BIOME_TEMPLATE,
         CATALOG_TEMPLATE,
         PINNED_OSS,
+        PINNED_GITIGNORE,
         ...(kind === "agent-skill" ? [] : [CHANGELOG_TEMPLATE]),
         DOCS_TEMPLATE,
         GIT_HOOKS_TEMPLATE,

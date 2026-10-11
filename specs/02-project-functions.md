@@ -231,20 +231,39 @@ changes reach repositories through a deliberate `bun run refresh:oss`, followed
 by update using that new pin; OSS never fetches upstream during init or update.
 
 ### `gitignore`
-Build an ordered `.gitignore` from named sets (`visualstudiocode`, `linux`,
-`macos`, `windows`, `node`, `turbo`, `yarn`), first-occurrence de-duplication.
-Merge into an existing file by adding absent lines only; preserve user lines.
-Set selection is exposed.
 
-The templates are not fetched at generation time: the gitignore.io response is
-pinned to `vendor/gitignore` and refreshed deliberately, so output is
-deterministic, reviewable, and available offline. The pinned bytes carry a
-macOS rule that only matches with literal CR characters, so the file is pinned to
-`-text` in `.gitattributes` and refreshed only through
-`scripts/refresh-gitignore.ts`. A personal block (`.fallow/`, `.scratch/`,
-`.session/`, `vendor/`, `/.cocoindex_code/`) is appended after the selected
-sets on initialization and contributed to the merge on update. Initialization
-and update share one builder, so the two paths cannot drift.
+Build an ordered `.gitignore` from named sets (`visualstudiocode`, `linux`,
+`macos`, `windows`, `node`, `turbo`), first-occurrence de-duplication. The
+gitignore.io response is pinned to `vendor/gitignore` and refreshed deliberately
+with `bun run refresh:gitignore`, so output is deterministic, reviewable, and
+available offline. The pinned bytes carry a macOS rule that only matches with
+literal CR characters, so the file is preserved `-text` in `.gitattributes`.
+
+Under ticket 07's agreed policy:
+
+- **init** builds `.gitignore` from selected sets with two owned blocks:
+  - A topic block with `# Created by <URL>` / `# End of <URL>` markers recording the
+    actual selected topics and a generated `# Edit at` URL for regeneration.
+  - An additional-ignore block with `# Created by drop-calf additional ignores` /
+    `# End of drop-calf additional ignores` markers, containing `.fallow/`, `.scratch/`,
+    `.session/`, `/.cocoindex_code/` (no `vendor/`). URLs preserve the normalized,
+    de-duplicated selection order; rule sections follow the pinned upstream order.
+- **update** replaces complete owned blocks only, recovering topic selections from
+  existing `# Created by https://...` markers in the file:
+  - Inline owner edits outside marked blocks are preserved byte-exact.
+  - The retired `yarn` topic is silently filtered from recovered selections; other
+    unknown topics in the selection cause a precondition failure.
+  - Missing files and missing blocks are left absent;
+    an explicit init/copy seeds missing blocks without removing owner content.
+  - Marked blocks with missing, mismatched, or nested/unmatched end markers fail
+    before writing; legacy unclosed output is not adopted by guessing line ownership.
+  - Markers use `https://www.toptal.com/developers/gitignore/api/<topics>`;
+    complete legacy `gitignore.io/api/<topics>` blocks are also recognized.
+  - The retired standalone Yarn section is absent from the refreshed pin, while
+    Yarn-related rules shipped as part of upstream's Node section remain.
+  - Unchanged owned content preserves original bytes; a second update changes nothing.
+- **validate** is an explicit no-op: Git treats ineffective patterns as nonmatching,
+  so checking which paths are ignored would enforce policy, not tool acceptance.
 
 ### `node`
 

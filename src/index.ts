@@ -212,24 +212,29 @@ export class DropCalf {
       withoutFunctions,
       preset,
     );
+    let rendered = renderToDirectory(project);
+    if (await cleaned.exists(".gitignore"))
+      rendered = rendered.withNewFile(
+        ".gitignore",
+        await cleaned.file(".gitignore").contents(),
+      );
     const seeded = await seedTemplates(
-      renderToDirectory(project),
+      rendered,
       dag.currentModule().source(),
       project.templates,
       name,
       { name, owner, type: profile, description },
     );
-    const generated = await this.copyGitignore(seeded);
     const kept = (await cleaned.exists("package.json"))
       ? await cleaned.file("package.json").contents()
       : undefined;
     const initialized = cleaned
-      .withDirectory(".", generated)
+      .withDirectory(".", seeded)
       .withNewFile(
         "package.json",
         mergeScaffoldPackage(
           kept,
-          await generated.file("package.json").contents(),
+          await seeded.file("package.json").contents(),
         ),
       );
     return this.update(
