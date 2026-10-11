@@ -107,7 +107,7 @@ test("validation installs the pinned rules and runs the scan", async () => {
     expect(commands.at(-1)).toEqual([
       "sh",
       "-c",
-      `${PRELINT_SCAN} 2>&1; echo "ast-grep exit=$?"`,
+      "/prelint-tools/node_modules/.bin/ast-grep scan --globs '!specs/**' --globs '!node_modules/**' --config /prelint-tools/node_modules/@forge-ahead/prelint/sgconfig.ecosol.yml 2>&1; echo \"ast-grep exit=$?\"",
     ]);
   } finally {
     spy.mockRestore();

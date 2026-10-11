@@ -27,9 +27,9 @@ export const PRELINT_GLOBS = ["!specs/**", "!node_modules/**"] as const;
 /** The rule set the scan reads; it ships inside `@forge-ahead/prelint`. */
 export const PRELINT_CONFIG = `./node_modules/${PRELINT_PACKAGE}/sgconfig.ecosol.yml`;
 
-function scanCommand(config: string): string {
+function scanCommand(config: string, executable = "ast-grep"): string {
   const globs = PRELINT_GLOBS.map((glob) => `--globs '${glob}'`).join(" ");
-  return `ast-grep scan ${globs} --config ${config}`;
+  return `${executable} scan ${globs} --config ${config}`;
 }
 
 /** The repo-facing command `prelint()` writes into `lint:prelint`. */
@@ -62,6 +62,7 @@ const EXIT_MARKER = "ast-grep exit=";
 /** The scan `validatePrelint` runs, resolved against the container's tool tree. */
 export const PRELINT_SCAN = scanCommand(
   `${TOOLS}/node_modules/${PRELINT_PACKAGE}/sgconfig.ecosol.yml`,
+  `${TOOLS}/node_modules/.bin/ast-grep`,
 );
 
 /**
