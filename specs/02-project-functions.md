@@ -362,16 +362,48 @@ must run where the tools are used (the developer's machine or CI), not inside th
 module's runtime container, which never has them.
 
 ### `format`
-Add `@biomejs/biome` at the version pinned in `TOOL_VERSIONS.biome` and declare
-`templates/biome`. Seed its authored `biome.jsonc` verbatim for every kind; the
-schema version must match the registry pin, enforced by a test. Generation does
-not invoke a local Biome binary, create temporary directories, or build and merge
-a config in code. Seed `.editorconfig` from the same tree, with no blueprint
-copy or generation exclusion. It contains only `[*]` defaults and a Markdown
-`trim_trailing_whitespace = false` override, preserving two-space hard line breaks
-allowed by the docs template's default MD009 rule. Standalone `copy-biome` seeds
-the same bytes. Owns `format`, `format:check`, `lint:check`,
-`lint:fix` scripts.
+
+The `biome` capability owns `@biomejs/biome` at `TOOL_VERSIONS.biome` and four
+scripts: `format` (`biome format --write`), `format:check` (`biome format`),
+`lint:check` (`biome lint`), and `lint:fix` (`biome lint --write`). It never owns
+`lint`, hook dispatch, or unrelated package fields.
+
+- **init** seeds the dependency and scripts, and overlays `templates/biome` for
+  every kind. Its authored `biome.jsonc` schema matches the registry pin, enforced
+  by a test. `.editorconfig` contains `[*]` defaults and a Markdown
+  `trim_trailing_whitespace = false` override, preserving two-space hard line breaks.
+  Standalone `copy-biome` deliberately seeds the same template bytes; it is not update.
+- **update** enforces the dependency and four scripts in an existing `package.json`,
+  creating missing sections and owned keys while preserving unrelated field values.
+  Malformed/non-object JSON and non-object scripts/devDependencies fail before writes.
+  Unchanged owned fields preserve package bytes; changes use sorted, two-space JSON
+  with a trailing newline. Missing `package.json` is not created.
+  Existing root `biome.json` (preferred) or `biome.jsonc` is migrated with the pinned
+  tool's `biome migrate --write --config-path=<file>` in an isolated Node container.
+  Only that root config is copied back; owner rules, exclusions, formatting settings,
+  and comments follow Biome's migration rather than being reset to the template.
+  Migration may reformat the config and rename/remove obsolete options. JSONC syntax
+  and object-root checks are mutation preconditions because migration alone can accept
+  malformed input. Missing configs remain absent. A removed `$schema` is not re-added
+  when Biome considers migration unnecessary. Referenced and nested configs are not
+  migrated or copied back. `.editorconfig` is init-only: owner edits and absence survive.
+  Matching files retain their bytes; a second update changes nothing.
+- **validate** loads the existing root config and its references with the capability's
+  pinned Biome in a Node container, without requiring prior init or package installation.
+  `biome check --config-path=<file> --formatter-enabled=false --linter-enabled=false
+  --assist-enabled=false --no-errors-on-unmatched <file>` checks configuration acceptance
+  without scanning project source or enforcing formatting/lint/assist results. It does
+  not compare settings or schema with policy and does not invoke migration or autofix.
+  Both root configs missing reports skipped with a reason; tool errors retain Biome's
+  diagnostic. Missing/invalid referenced configs or required ignore files can fail
+  loading. Setup/download errors are execution failures, not evidence of invalid config.
+  The repository is mounted read-only and no container changes are exported.
+  EditorConfig has no separate validator in this capability.
+
+Neither operation invokes a host Biome binary or creates host temporary directories.
+Tool installation may require network access on a cold container run. Update does not
+install repository dependencies or refresh package-manager lockfiles; those remain the
+owner's package-manager workflow.
 
 ### `forge-prelint`
 Add `@ast-grep/cli` and the Forge rules package, aliased `@forge-ahead/prelint`

@@ -292,7 +292,24 @@ Every kind's `biomeToolchain()` declares `templates/biome`. Generation seeds its
 `biome.jsonc` verbatim, without invoking a local Biome binary or creating a
 host temporary directory. The template's `$schema` must match
 `TOOL_VERSIONS.biome`; the test suite checks for drift. Edit the pinned template
-to change the configuration rather than rebuilding it in code.
+to change the initialization baseline rather than rebuilding it in code.
+After init, the config is owner-managed. Update enforces only the Biome dependency
+and four owned scripts, and runs the pinned `biome migrate --write` inside a
+container for an existing root `biome.json` or `biome.jsonc`. Only that config is
+copied back; Biome preserves settings/comments while migrating obsolete options.
+Missing configs stay absent, referenced/nested configs are not migrated, and
+`.editorconfig` stays owner-managed after init. Lockfiles are not refreshed.
+
+Validation loads the root config and its references using pinned Biome with a
+read-only repository mount. Formatting, linting, and assists are disabled, so
+source-code failures do not become configuration failures. Missing config is
+skipped; invalid config or unavailable references retain Biome's diagnostic.
+To exercise migration, owner preservation, idempotence, and read-only acceptance
+against real Dagger containers without registering or deploying an app:
+
+```bash
+DROP_CALF_BIOME_E2E=1 bun test tests/e2e/biome.e2e.test.ts
+```
 
 `templates/biome/.editorconfig` is the only EditorConfig source for generated
 repositories. Both generation and standalone `copy-biome` seed it verbatim. The

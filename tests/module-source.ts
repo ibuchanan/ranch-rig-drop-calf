@@ -11,6 +11,7 @@ import { PINNED_GITIGNORE } from "../src/gitignore.ts";
 import { OSS_ASSETS } from "../src/oss.ts";
 import { SECRETS_TEMPLATE } from "../src/secrets.ts";
 import { TYPESCRIPT_TEMPLATE } from "../src/typescript.ts";
+import { mockBiomeContainer } from "./biome-source.ts";
 import {
   biomeTemplates,
   catalogTemplates,
@@ -91,10 +92,17 @@ export function mockModuleSource(
     ["templates/vitest", tree(vitestTemplates())],
     [EVALS_TEMPLATE, tree(promptfooTemplates())],
   ]);
-  return spyOn(dag, "currentModule").mockReturnValue({
+  const container = mockBiomeContainer();
+  const module = spyOn(dag, "currentModule").mockReturnValue({
     source: () => ({
       directory: (path: string) => trees.get(path) ?? source,
       file: (path: string) => source.file(path),
     }),
   } as unknown as ReturnType<typeof dag.currentModule>);
+  return {
+    mockRestore() {
+      module.mockRestore();
+      container.spy.mockRestore();
+    },
+  };
 }

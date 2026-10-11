@@ -1,5 +1,7 @@
 import { expect, spyOn, test } from "bun:test";
 import { dag } from "@dagger.io/dagger";
+import { BIOME_SCRIPTS } from "../src/biome.ts";
+import { TOOL_VERSIONS } from "../src/versions.ts";
 import { parseDocument } from "yaml";
 import { validateCapabilities } from "../src/capability.ts";
 import { CATALOG_FILE, PACKAGE_NAME, renderCatalog } from "../src/catalog.ts";
@@ -102,6 +104,8 @@ test.each(kinds)(
       const output = await new DropCalf().update(input, kind);
       expect(await manifest(output)).toEqual({
         ...pkg,
+        scripts: { ...pkg.scripts, ...BIOME_SCRIPTS },
+        devDependencies: { "@biomejs/biome": TOOL_VERSIONS.biome },
         name: "@scope/sample",
         description: "Catalog description",
         author: "tester",

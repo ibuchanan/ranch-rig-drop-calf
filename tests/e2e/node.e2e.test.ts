@@ -10,7 +10,9 @@ import {
   writeFileSync,
 } from "node:fs";
 import { join } from "node:path";
+import { BIOME_SCRIPTS } from "../../src/biome.ts";
 import { NODE_FORGE_RUNTIME, NODE_NVMRC, NPMRC } from "../../src/node.ts";
+import { TOOL_VERSIONS } from "../../src/versions.ts";
 
 // Requires a Dagger engine, but never registers or deploys a Forge app.
 const enabled = process.env.DROP_CALF_NODE_E2E === "1";
@@ -115,7 +117,14 @@ for (const kind of ["library", "forge-app"]) {
         const { engines: _engines, ...withoutEngines } = pkg;
         expect(
           JSON.parse(readFileSync(join(output, "package.json"), "utf8")),
-        ).toEqual(kind === "forge-app" ? withoutEngines : pkg);
+        ).toEqual({
+          ...(kind === "forge-app" ? withoutEngines : pkg),
+          devDependencies: {
+            ...pkg.devDependencies,
+            "@biomejs/biome": TOOL_VERSIONS.biome,
+          },
+          scripts: { ...pkg.scripts, ...BIOME_SCRIPTS },
+        });
         expect(readFileSync(join(output, ".atlassian/OWNER"), "utf8")).toBe(
           "tester",
         );
