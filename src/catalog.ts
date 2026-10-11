@@ -8,6 +8,26 @@ export const CATALOG_FILE = "catalog-info.yaml";
 export const CATALOG_TEMPLATE = "templates/catalog";
 export const COPYRIGHT_DATE = "forge-ranch/copyright-date";
 export const PACKAGE_NAME = "forge-ranch/package-name";
+export const LICENSE = "forge-ranch/license";
+
+/** Consumers require the catalog before deriving their owned outputs. */
+export async function readCatalog(directory: Directory, consumer: string) {
+  if (!(await directory.exists(CATALOG_FILE)))
+    throw new Error(
+      `${consumer}: ${CATALOG_FILE} is missing; initialize the catalog before updating.`,
+    );
+  return catalogDocument(await directory.file(CATALOG_FILE).contents());
+}
+
+export function catalogCopyrightDate(date: unknown): string {
+  const match =
+    typeof date === "string" ? /^(\d{4})(?:-(\d{4}))?$/.exec(date) : null;
+  if (!match || (match[2] !== undefined && match[2] < (match[1] ?? "")))
+    throw new Error(
+      `${CATALOG_FILE}: ${COPYRIGHT_DATE} must be YYYY or YYYY-YYYY with an ordered range`,
+    );
+  return match[0];
+}
 
 export type CatalogSeed = {
   name: string;
@@ -112,14 +132,7 @@ export async function validateCatalog(
     throw new Error(`${CATALOG_FILE}: expected a Component entity`);
   catalogOwnerId(document.getIn(["spec", "owner"]));
   const date = document.getIn(["metadata", "annotations", COPYRIGHT_DATE]);
-  if (date !== undefined) {
-    const match =
-      typeof date === "string" ? /^(\d{4})(?:-(\d{4}))?$/.exec(date) : null;
-    if (!match || (match[2] !== undefined && match[2] < (match[1] ?? "")))
-      throw new Error(
-        `${CATALOG_FILE}: ${COPYRIGHT_DATE} must be YYYY or YYYY-YYYY with an ordered range`,
-      );
-  }
+  if (date !== undefined) catalogCopyrightDate(date);
   return { status: "validated" };
 }
 

@@ -77,6 +77,7 @@ test("the file seed defines defaults and optional external-system examples", () 
       description: "A project",
       annotations: {
         [PACKAGE_NAME]: "@Scope/My.Project",
+        "forge-ranch/license": "Apache-2.0",
         [COPYRIGHT_DATE]: "2024",
       },
     },

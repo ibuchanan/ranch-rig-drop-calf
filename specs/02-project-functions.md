@@ -77,6 +77,8 @@ catalog → package-metadata → oss → gitignore → node → changelog → se
 → typescript → forge-ahead → aidev → test → evals (optional) → size → git-hooks
 ```
 
+**Note:** Init sequence stages catalog init before OSS; within the init pass, capabilities run in listed order. The OSS capability depends on catalog being initialized first to read metadata.
+
 ### `catalog`
 
 Seed a single root `catalog-info.yaml` Backstage Component entity with project metadata.
@@ -94,6 +96,7 @@ Under [ADR 0001](../docs/adr/0001-capability-verbs-by-intent.md):
   - `[Owner]` → `spec.owner`: `user:default/{staff-id}`, validated as entity reference format.
   - `[Project kind]` → `spec.type`: the selected profile kind (`library`, `forge-app`, `tool`, `agent-skill`).
   - `[Copyright date]` → annotation `forge-ranch/copyright-date`: YYYY or YYYY-YYYY (ordered range), captured once at init, never auto-incremented.
+  - The template seeds `forge-ranch/license: Apache-2.0` as a literal annotation.
 - **update** is an explicit no-op: the catalog module owns the whole file, but no update policy is currently defined. Update neither creates nor rewrites it.
 - **validate** checks structural acceptance without policy compliance or remote reference lookup:
   - YAML syntax and duplicate-key detection.
@@ -102,6 +105,8 @@ Under [ADR 0001](../docs/adr/0001-capability-verbs-by-intent.md):
   - `spec.owner` must be a valid user entity reference.
   - `forge-ranch/copyright-date` annotation (if present): YYYY or YYYY-YYYY with ordered range.
   - Missing `catalog-info.yaml` → skipped with reason.
+  - License annotations are structurally checked as strings, not required or
+    compared to Apache-2.0; consumer mutation preconditions enforce their needs.
 
 #### Shared metadata contract
 
@@ -114,9 +119,10 @@ records the field contract; scratch tickets only track deferred wiring.
 | Catalog identifier | `metadata.name` | Backstage; not a package or display name |
 | Project display name | `metadata.title` | OSS README/CONTRIBUTING (ticket 06) |
 | Description | `metadata.description` | Package metadata (ticket 04) |
-| Responsible user | `spec.owner` | Package author; OSS OWNER (ticket 06) |
+| Responsible user | `spec.owner` | Package metadata author; OSS OWNER |
 | Package name | `metadata.annotations["forge-ranch/package-name"]` | Package metadata (ticket 04) |
 | Copyright year/range | `metadata.annotations["forge-ranch/copyright-date"]` | OSS LICENSE (ticket 06) |
+| License | `metadata.annotations["forge-ranch/license"]` | Node package.json license; OSS template validation (ticket 06) |
 | External-system pointers | Integration annotations and `metadata.links` | Jira/GitHub integrations |
 
 Additional module-specific metadata belongs under `metadata.annotations` with
@@ -129,17 +135,20 @@ accepted by structural validation. No catalog update policy is defined yet.
 
 Annotations for Jira/GitHub links (examples in template) are not auto-populated; they
 remain manual additions to the catalog entry. Copyright year is captured once at init;
-update does not increment it. Standalone `copy-catalog` and `validate-catalog`
-functions do not require `package.json`; `copy-catalog` accepts a component type
-independently of the currently supported project kinds. Future OSS migration
-reads `metadata.title`, the copyright-date annotation, and `spec.owner`, but that
-consumer wiring is deferred to ticket 06.
+update does not increment it. The `forge-ranch/license` annotation is seeded as a literal
+string `Apache-2.0` at init and is consumed by `node` (for `package.json`) and
+`oss` (for template validation); Apache-only templates fail if the catalog license does
+not match. Standalone `copy-catalog` and `validate-catalog` functions do not require
+`package.json`; `copy-catalog` accepts a component type independently of the currently
+supported project kinds. Standalone `copy-oss` takes a directory only and requires the
+catalog to be present and valid.
 
 ### `package-metadata`
 
 Own the base package fields `name`, `version`, `type`, `description`, `author`,
-and `private`. The `license` field belongs to OSS; scripts, dependencies, publishing
-entry points, and all other package fields remain outside this capability's scope.
+and `private`. Node pulls `license` from the catalog; scripts, dependencies,
+publishing entry points, and all other package fields remain outside this
+capability's scope.
 
 | Field | Init | Update |
 |---|---|---|
@@ -155,18 +164,18 @@ Catalog is the source of truth for shared identity on both init and update. Dire
 package edits to `name`, `description`, and `author` are overwritten. Package names
 are never inferred from `metadata.name` or `metadata.title`. The legacy `author`
 argument is retained during expansion but ignored: author, OWNER, and catalog owner
-refer to the same staff ID. OWNER synchronization itself remains in OSS ticket 06.
+refer to the same staff ID. OSS synchronizes OWNER independently.
 Template rendering and scaffold merging finish before the update pass derives the
 final package fields from the actual catalog bytes.
 
 Update does not create a missing `package.json`. For an existing package it rejects
 malformed/non-object JSON, missing or malformed catalog YAML, a missing/non-string/
-blank package-name annotation, a non-string description, and an invalid user owner
-reference before writing. It does not run full catalog validation as a mutation
-precondition. Valid syntax with values rejected by npm is left to standalone
-validation. With unchanged owned fields, update preserves the original file bytes.
-Otherwise it writes sorted, two-space JSON with a trailing newline, preserving all
-unrelated field values. A second update changes nothing.
+blank package-name annotation, a non-string description, an invalid user owner
+reference before writing. It does not
+run full catalog validation as a mutation precondition. Valid syntax with values rejected
+by npm is left to standalone validation. With unchanged owned fields, update preserves the
+original file bytes. Otherwise it writes sorted, two-space JSON with a trailing newline,
+preserving all unrelated field values. A second update changes nothing.
 
 **validate** reads `package.json` through `npm-package-json-lint` using explicit
 structural rules: name type/format, version type/SemVer format, description type,
@@ -180,25 +189,46 @@ and does not enforce policy (`module`, private packages, catalog identity, or
 This is a metadata acceptance check, not proof that npm install or publish succeeds.
 
 ### `oss`
-Copy `LICENSE`, `CODE_OF_CONDUCT.md`, `CONTRIBUTING.md`, `README.md`,
-`SECURITY.md`, and `.atlassian/OWNER` from the pinned Bitbucket
-`vendor/oss-templates` submodule. Substitute only the required staff ID in OWNER,
-`[Project name]` in CONTRIBUTING and README, and `[YYYY]` in LICENSE; preserve
-all other template bytes. The Apache-2.0 license is fixed. `DEVELOPMENT.md` is
-generated separately because it is not in that template.
 
-README remains init-only and survives update. The catalog decision supersedes
-ADR 0001's original init-only OWNER example: OWNER is to be derived from the
-catalog user owner on both init and update. LICENSE, CODE_OF_CONDUCT, CONTRIBUTING,
-and SECURITY are updated authoritatively from the pinned upstream, replacing
-owner edits without explicit opt-in. Name substitution uses catalog
-`metadata.title`; LICENSE uses `forge-ranch/copyright-date` without advancing
-the year. Catalog consumer wiring and the `license` field's verb assignment
-remain for the OSS policy slice (ticket 06); introducing catalog does not change
-OSS generation yet.
-Validate is an explicit no-op: these documents have no consuming tool whose
-acceptance OSS checks. Checking owner input is input validation, not repository
-validation.
+Copy `LICENSE`, `CODE_OF_CONDUCT.md`, `CONTRIBUTING.md`, `README.md`,
+`SECURITY.md`, and `.atlassian/OWNER` from the pinned `vendor/oss-templates` tree,
+substituting only the required staff ID in OWNER, `[Project name]` in CONTRIBUTING
+and README, and `[YYYY]` in LICENSE; preserve all other template bytes. `DEVELOPMENT.md`
+is generated separately because it is not in that template. The OSS capability
+declares a `PINNED_OSS` template source and is selected after `package-metadata`
+and before `node` in the initialization order.
+
+Under ticket 06's agreed policy:
+
+- **init** seeds all six files (`LICENSE`, `CODE_OF_CONDUCT.md`, `CONTRIBUTING.md`,
+  `README.md`, `SECURITY.md`, `.atlassian/OWNER`) from templates
+  with catalog-driven substitution:
+  - `metadata.title` → project name in README and CONTRIBUTING
+  - `metadata.annotations["forge-ranch/copyright-date"]` → `[YYYY]` in LICENSE (not
+    auto-incremented; capture once and preserve)
+  - `spec.owner` → staff ID in `.atlassian/OWNER` (extract staff ID from
+    `user:default/{staff-id}` format)
+  - `metadata.annotations["forge-ranch/license"]` must equal `Apache-2.0` or init fails
+  - All six files are rendered over the fresh seed directory. README remains
+    init-only after initialization; update creates missing authoritative files.
+- **update** is authoritative for `LICENSE`, `CODE_OF_CONDUCT.md`, `CONTRIBUTING.md`,
+  `SECURITY.md`, and `.atlassian/OWNER`, replacing owner edits whole-file without
+  opt-in. README survives update (init-only). Update uses the same catalog-driven
+  substitutions as init. Missing required catalog fields (`metadata.title`,
+  `forge-ranch/copyright-date`, `spec.owner`, `forge-ranch/license`) cause update
+  to fail. Mismatched or missing `forge-ranch/license` (not `Apache-2.0`) also fails.
+  With unchanged content, update preserves bytes. A second update changes nothing.
+- **validate** is an explicit no-op: these documents require manual inspection;
+  no consuming validator checks their acceptance. Mutation preconditions check
+  consumed catalog values without running full catalog validation.
+
+OSS never changes catalog or package metadata. Missing or malformed consumed
+values fail before asset writes. Owner references accepted by catalog, including
+`user:tester` and `user:other-namespace/tester`, yield the same staff ID. Standalone
+`copy-oss` takes only a directory containing catalog and deliberately re-seeds all
+six files, including README; it is not the maintenance update operation. Upstream
+changes reach repositories through a deliberate `bun run refresh:oss`, followed
+by update using that new pin; OSS never fetches upstream during init or update.
 
 ### `gitignore`
 Build an ordered `.gitignore` from named sets (`visualstudiocode`, `linux`,
@@ -229,6 +259,13 @@ forgo an automatically generated npm install-time engine warning.
   replaces the whole file with the baseline.
 - **`.npmrc`:** Init seeds the public npm registry and explanatory comment.
   Update creates or replaces the whole file.
+- **`package.json.license`:** Init's update pass and every update pull
+  `metadata.annotations["forge-ranch/license"]` from catalog. A missing catalog,
+  malformed YAML, or missing/non-string/blank license fails for an existing package.
+  Direct package license edits are replaced; unrelated fields are preserved.
+  A missing package is not created and does not require catalog for Node's update.
+  Matching values preserve original bytes; changes use sorted, two-space JSON with
+  a trailing newline. OSS separately requires `Apache-2.0` for its pinned template.
 - **`devDependencies["@types/node"]`:** Init seeds `24`, overriding the scaffold.
   Update preserves owner edits and absence; the dependency is init-only.
 - **Forge `app.runtime.name`:** Init and update set `nodejs24.x` in an existing
@@ -250,7 +287,7 @@ scalar styles, indentation, and siblings such as `memoryMB`, `architecture`, and
 `id`. Matching runtime values preserve the original bytes. Malformed YAML or
 non-mapping parents raise `ParseError`; Forge engine removal also rejects malformed
 or non-object package JSON. Changes to package JSON preserve unrelated fields and
-use sorted, two-space JSON with a trailing newline only when removing `engines`.
+use sorted, two-space JSON with a trailing newline when changing `license` or removing `engines`.
 Unchanged owned content retains its bytes. A second update produces no changes.
 Neither init nor update creates a manifest or registers an app.
 

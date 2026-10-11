@@ -15,6 +15,8 @@ import { TOOL_VERSIONS } from "../src/versions.ts";
 import { mockDirectory } from "./module-source.ts";
 
 const kinds = ["library", "forge-app", "tool", "agent-skill"];
+const licenseCatalog =
+  "metadata:\n  annotations:\n    forge-ranch/license: Apache-2.0\n";
 
 test.each(kinds)(
   "%s Node verbs are active and initialized pins need no update",
@@ -27,7 +29,11 @@ test.each(kinds)(
     const input = mockDirectory(
       new Map([
         ...project.files,
-        ["package.json", JSON.stringify(project.packageJson)],
+        ["catalog-info.yaml", licenseCatalog],
+        [
+          "package.json",
+          JSON.stringify({ ...project.packageJson, license: "Apache-2.0" }),
+        ],
       ]),
     );
     expect(await updateNode(input, kind)).toBe(input);
@@ -39,6 +45,7 @@ test.each(kinds)(
   async (kind) => {
     const pkg = {
       name: "sample",
+      license: "Apache-2.0",
       engines: { node: ">=20", npm: ">=10" },
       devDependencies: { "@types/node": "^22.0.0", unrelated: "1" },
       dependencies: { kept: "2" },
@@ -48,6 +55,7 @@ test.each(kinds)(
       "app:\n  id: 'example'\n  runtime:\n    name: 'nodejs22.x' # pin\n    memoryMB: 512\n";
     const input = mockDirectory(
       new Map([
+        ["catalog-info.yaml", licenseCatalog],
         ["package.json", JSON.stringify(pkg)],
         ["manifest.yml", manifest],
         [".nvmrc", "22\n"],
@@ -89,17 +97,30 @@ test.each(kinds)(
 );
 
 test("update never adds a missing types dependency or rewrites an unowned package", async () => {
-  const contents = '{"devDependencies":{},"engines":{"node":">=18"}}';
+  const contents =
+    '{"license":"Apache-2.0","devDependencies":{},"engines":{"node":">=18"}}';
   const output = await updateNode(
-    mockDirectory(new Map([["package.json", contents]])),
+    mockDirectory(
+      new Map([
+        ["package.json", contents],
+        ["catalog-info.yaml", licenseCatalog],
+      ]),
+    ),
     "library",
   );
   expect(await output.file("package.json").contents()).toBe(contents);
   const forge = await updateNode(
-    mockDirectory(new Map([["package.json", "{}"]])),
+    mockDirectory(
+      new Map([
+        ["package.json", '{"license":"Apache-2.0"}'],
+        ["catalog-info.yaml", licenseCatalog],
+      ]),
+    ),
     "forge-app",
   );
-  expect(await forge.file("package.json").contents()).toBe("{}");
+  expect(await forge.file("package.json").contents()).toBe(
+    '{"license":"Apache-2.0"}',
+  );
 });
 
 test.each(["{", "[]", "null"])(

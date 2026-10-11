@@ -136,7 +136,7 @@ test.each(kinds)(
           expect(capability.init).toBeDefined();
           expect(capability.update).toBeDefined();
           expect(capability.validate).toBeDefined();
-          if (["package-metadata", "node"].includes(capability.name))
+          if (["package-metadata", "oss", "node"].includes(capability.name))
             expect(typeof capability.update).toBe("function");
           else expect(typeof capability.update).not.toBe("function");
         }
@@ -153,8 +153,12 @@ test.each(kinds)(
             description: "A sample project",
           },
         );
-        const generated = await module.copyGitignore(
-          await module.copyOss(seeded, "sample", "tester"),
+        const generated = await module.update(
+          await module.copyGitignore(seeded),
+          kind,
+          withFunctions,
+          withoutFunctions,
+          preset,
         );
         const initialized = await module.init(
           tree(),

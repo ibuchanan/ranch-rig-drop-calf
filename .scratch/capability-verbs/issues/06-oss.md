@@ -1,41 +1,68 @@
 # 06: OSS — init, update, validate
 
-**What to build:** The OSS files and the `license` field have deliberate verbs.
-LICENSE, CODE_OF_CONDUCT, CONTRIBUTING and SECURITY are updated authoritatively
-from the pinned upstream. README remains init-only. OWNER becomes catalog-derived
-on both init and update, superseding its previous init-only policy. Validate is
-an explicit no-op because these documents have no consuming validator.
+**Status:** implemented
 
-**Catalog dependency (consumer wiring belongs to this ticket):** Read
-`catalog-info.yaml` rather than duplicating project metadata inputs. Derive the
-staff ID for `.atlassian/OWNER` from `spec.owner` (`user:default/{staff-id}`), use
-`metadata.title` for project-name substitution in README/CONTRIBUTING, and use
-`forge-ranch/copyright-date` for LICENSE's copyright substitution. The date is
-a single year or ordered range captured in the catalog; do not advance it using
-the current clock. Catalog owns the whole catalog file; OSS reads but never
-modifies it. Direct OWNER edits are non-authoritative and replaced on update.
-This migration is not part of introducing the catalog module.
+## Agreed policy
 
-**Today:** all six files are overwritten from the pinned upstream at
-generation. The project name is substituted in README and CONTRIBUTING, the
-year in LICENSE, and the owner in OWNER. A separate README generator exists but
-is never used (it's dead code, removed in the contract ticket).
+Catalog is the source of truth; consumers pull metadata rather than push competing defaults.
+The catalog template seeds `forge-ranch/license: Apache-2.0` as a literal annotation.
+Node pulls it into an existing `package.json.license` during update, including init's
+final update pass. Node preserves unrelated fields and does not create a missing package.
+OSS no longer contributes package license metadata to the blueprint.
 
-**Policy questions to work through:**
+OSS owns these six files: `LICENSE`, `CODE_OF_CONDUCT.md`, `CONTRIBUTING.md`,
+`README.md`, `SECURITY.md`, and `.atlassian/OWNER`. Docs owns `DEVELOPMENT.md` separately.
 
-- LICENSE `[YYYY]`: substitute the catalog copyright date, including an ordered range; never read the current clock during OSS update.
-- CONTRIBUTING carries the project name: substitute catalog `metadata.title` during authoritative update.
-- Refreshing the pinned upstream is how upstream changes reach repositories through update. Is that the intended flow?
-- Validate is a no-op. Record why. Note that checking the owner input format is input validation, not repository validation.
+| Catalog field | OSS use |
+|---|---|
+| `metadata.title` | Project name in README and CONTRIBUTING |
+| `spec.owner` | User reference's staff ID in OWNER |
+| `metadata.annotations["forge-ranch/copyright-date"]` | LICENSE copyright year or ordered range |
+| `metadata.annotations["forge-ranch/license"]` | Must equal Apache-2.0 for the pinned LICENSE template |
 
-**Blocked by:** 02 (Expand — every capability has init, update and validate),
-and the new catalog module (00-catalog).
+All consumed OSS values are required. Missing catalog, malformed YAML, missing/invalid
+values, or a license other than Apache-2.0 fail clearly before asset writes. OSS reads
+but never modifies catalog; direct OWNER edits are non-authoritative.
 
-**Status:** ready-for-agent
+- **init:** Declare the pinned OSS seed tree after catalog; render all six files
+  from the actual catalog bytes, not duplicate name/owner arguments.
+- **update:** Create or authoritatively replace the five files other than README.
+  Preserve README, including absence; regenerate OWNER from catalog. Matching
+  content retains its bytes; a second update changes nothing.
+- **validate:** Explicit no-op: "These documents require manual inspection; no
+  consuming validator checks their acceptance." Checks on catalog inputs are
+  mutation preconditions, not repository validation or full catalog validation.
 
-- [ ] init, update and validate are each implemented or a no-op with a reason that answers "why is there no …?".
-- [ ] Each policy question is answered and recorded in the module's spec section.
-- [ ] Update is idempotent: a second run changes nothing. It's tested on a freshly initialised repository and on one with owner edits.
-- [ ] A filled-in README survives update; OWNER is regenerated from the catalog user owner.
-- [ ] Catalog edits drive OSS name/date/owner substitutions; the catalog is not modified by OSS and copyright does not advance with the clock.
-- [ ] Snapshots are updated, and the diff is reviewed as intentional.
+## Policy answers
+
+- LICENSE `[YYYY]` uses the recorded catalog date, including ordered ranges;
+  OSS never reads the current clock. Catalog captures its default once at init.
+- CONTRIBUTING uses current catalog `metadata.title` on authoritative update.
+- `bun run refresh:oss` deliberately refreshes the vendor pin; subsequent repository
+  updates consume that pin. OSS never fetches upstream during init/update.
+- Standalone `copy-oss` now takes only a directory containing catalog and deliberately
+  re-seeds all six files, including README. It is not the maintenance operation.
+- OWNER accepts the same user references as catalog, including namespaced and
+  shorthand forms, and extracts the staff ID.
+
+## Acceptance
+
+- [x] init, update, and validate are implemented or explicit reasoned no-ops.
+- [x] Policies are recorded in specs/02-project-functions.md and DEVELOPMENT.md.
+- [x] Node pulls package license from catalog; OSS requires the matching Apache template.
+- [x] Catalog edits drive title/date/owner substitutions without modifying catalog.
+- [x] Tests reject clock use during OSS copying/update.
+- [x] README survives update; all five authoritative files replace owner edits.
+- [x] OWNER is regenerated from catalog on init and update.
+- [x] Updates are idempotent on fresh and owner-edited repositories.
+- [x] Snapshots updated and reviewed: package-key ordering only, unchanged values/files.
+
+## Verification
+
+- Latest full unit/snapshot run: 321 passed, 18 opt-in E2E tests skipped, no failures.
+- Typecheck, lint, formatting, and git diff whitespace checks passed.
+- Eight real Dagger empty-directory init cases passed (all kinds, default/all presets).
+- Two real Dagger edited-repository updates passed (library and forge-app), checking
+  README/catalog preservation, pinned document replacement, catalog OWNER, input
+  immutability, and empty second-update diffs.
+- Upstream pin was not refreshed; no dependencies were added; no commit was made.

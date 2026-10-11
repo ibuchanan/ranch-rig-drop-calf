@@ -96,22 +96,28 @@ test.each(kinds)(
       publishConfig: { access: "public" },
       custom: [1, 2],
     };
-    const input = repository(pkg);
-    const output = await new DropCalf().update(input, kind);
-    expect(await manifest(output)).toEqual({
-      ...pkg,
-      name: "@scope/sample",
-      description: "Catalog description",
-      author: "tester",
-      type: "module",
-      private: kind === "forge-app" || kind === "agent-skill",
-    });
-    expect(await output.file(CATALOG_FILE).contents()).toBe(
-      await input.file(CATALOG_FILE).contents(),
-    );
-    expect(await output.file("owner.txt").contents()).toBe("untouched");
-    expect(await manifest(input)).toEqual(pkg);
-    expect(await new DropCalf().update(output, kind)).toBe(output);
+    const source = mockModuleSource();
+    try {
+      const input = repository(pkg);
+      const output = await new DropCalf().update(input, kind);
+      expect(await manifest(output)).toEqual({
+        ...pkg,
+        name: "@scope/sample",
+        description: "Catalog description",
+        author: "tester",
+        license: "Apache-2.0",
+        type: "module",
+        private: kind === "forge-app" || kind === "agent-skill",
+      });
+      expect(await output.file(CATALOG_FILE).contents()).toBe(
+        await input.file(CATALOG_FILE).contents(),
+      );
+      expect(await output.file("owner.txt").contents()).toBe("untouched");
+      expect(await manifest(input)).toEqual(pkg);
+      expect(await new DropCalf().update(output, kind)).toBe(output);
+    } finally {
+      source.mockRestore();
+    }
   },
 );
 

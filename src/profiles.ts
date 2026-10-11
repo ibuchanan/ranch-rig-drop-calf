@@ -15,7 +15,7 @@ import { changelogToolchain } from "./changelog.ts";
 import { evals } from "./evals.ts";
 import { gitHooks } from "./git-hooks.ts";
 import { nodeBaseline } from "./node.ts";
-import { validateOssOwner } from "./oss.ts";
+import { oss, validateOssOwner } from "./oss.ts";
 import { packageMetadata } from "./package-metadata.ts";
 import { prelint } from "./prelint.ts";
 import { createBlueprint, type ProjectBlueprint } from "./project.ts";
@@ -27,6 +27,7 @@ export const PROFILES: Record<string, Capability[]> = {
   library: [
     catalog(),
     packageMetadata("library"),
+    oss(),
     nodeBaseline("library"),
     changelogToolchain(),
     biomeToolchain(),
@@ -41,6 +42,7 @@ export const PROFILES: Record<string, Capability[]> = {
   "forge-app": [
     catalog(),
     packageMetadata("forge-app"),
+    oss(),
     nodeBaseline("forge-app"),
     changelogToolchain(),
     forgeSecrets(),
@@ -57,6 +59,7 @@ export const PROFILES: Record<string, Capability[]> = {
   tool: [
     catalog(),
     packageMetadata("tool"),
+    oss(),
     nodeBaseline("tool"),
     changelogToolchain(),
     biomeToolchain(),
@@ -69,6 +72,7 @@ export const PROFILES: Record<string, Capability[]> = {
   "agent-skill": [
     catalog(),
     packageMetadata("agent-skill"),
+    oss(),
     nodeBaseline("agent-skill"),
     biomeToolchain(),
     typeScriptToolchain(),

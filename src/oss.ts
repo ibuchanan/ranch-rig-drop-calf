@@ -1,4 +1,13 @@
-import type { Directory } from "@dagger.io/dagger";
+import { type Directory, dag } from "@dagger.io/dagger";
+import { type Capability, noOp } from "./capability.ts";
+import {
+  CATALOG_FILE,
+  COPYRIGHT_DATE,
+  LICENSE,
+  catalogCopyrightDate,
+  catalogOwnerId,
+  readCatalog,
+} from "./catalog.ts";
 
 export const OSS_LICENSE = "Apache-2.0";
 
@@ -9,11 +18,7 @@ export const OSS_LICENSE = "Apache-2.0";
  */
 export const OSS_UPSTREAM = "https://bitbucket.org/atlassian/oss-templates.git";
 
-/**
- * Pinned copy of `OSS_ASSETS` from `OSS_UPSTREAM`. Generation reads this so
- * output stays deterministic and the module loads without credentials; refresh
- * it deliberately with `bun run refresh:oss` and read the diff.
- */
+/** Deterministic, credential-free source; refresh deliberately with bun run refresh:oss. */
 export const PINNED_OSS = "vendor/oss-templates";
 
 /** Records the upstream commit the pin was taken from. Not an OSS asset. */
@@ -28,48 +33,81 @@ export const OSS_ASSETS = [
   ".atlassian/OWNER",
 ] as const;
 
-/**
- * The `license` field is OSS metadata, so the OSS module owns it: the blueprint
- * spreads this into `package.json` beside the other base metadata. The value is
- * fixed.
- */
-export function ossLicense(): { license: typeof OSS_LICENSE } {
-  return { license: OSS_LICENSE };
-}
+const OSS_UPDATE_ASSETS = OSS_ASSETS.filter((path) => path !== "README.md");
+
+type OssMetadata = { name: string; owner: string; copyrightDate: string };
 
 export function transformOssTemplate(
   path: string,
   contents: string,
-  name: string,
-  owner: string,
+  metadata: OssMetadata,
 ): string {
-  if (path === ".atlassian/OWNER") return owner;
+  if (path === ".atlassian/OWNER") return metadata.owner;
   if (path === "CONTRIBUTING.md" || path === "README.md")
-    return contents.replaceAll("[Project name]", name);
+    return contents.replaceAll("[Project name]", metadata.name);
   if (path === "LICENSE")
-    return contents.replaceAll("[YYYY]", String(new Date().getFullYear()));
+    return contents.replaceAll("[YYYY]", metadata.copyrightDate);
   return contents;
 }
 
+/** Catalog is read-only; malformed inputs fail before any asset is written. */
 export async function copyOssAssets(
   destination: Directory,
   source: Directory,
-  name: string,
-  owner: string,
   paths: readonly string[] = OSS_ASSETS,
 ): Promise<Directory> {
+  const catalog = await readCatalog(destination, "oss");
+  const name = catalog.getIn(["metadata", "title"]);
+  if (typeof name !== "string" || !name.trim())
+    throw new Error(
+      `oss: ${CATALOG_FILE} metadata.title must be a nonempty string.`,
+    );
+  const license = catalog.getIn(["metadata", "annotations", LICENSE]);
+  if (license !== OSS_LICENSE)
+    throw new Error(
+      `oss: ${CATALOG_FILE} ${LICENSE} must be ${OSS_LICENSE}; the pinned LICENSE template supports only ${OSS_LICENSE}.`,
+    );
+  const metadata = {
+    name,
+    owner: catalogOwnerId(catalog.getIn(["spec", "owner"])),
+    copyrightDate: catalogCopyrightDate(
+      catalog.getIn(["metadata", "annotations", COPYRIGHT_DATE]),
+    ),
+  };
   let result = destination;
   for (const path of paths) {
-    const file = source.file(path);
-    if (path === "CODE_OF_CONDUCT.md" || path === "SECURITY.md")
-      result = result.withFile(path, file);
-    else
-      result = result.withNewFile(
-        path,
-        transformOssTemplate(path, await file.contents(), name, owner),
-      );
+    const wanted = transformOssTemplate(
+      path,
+      await source.file(path).contents(),
+      metadata,
+    );
+    if (
+      !(await result.exists(path)) ||
+      (await result.file(path).contents()) !== wanted
+    )
+      result = result.withNewFile(path, wanted);
   }
   return result;
+}
+
+export function oss(): Capability {
+  return {
+    name: "oss",
+    templates: [PINNED_OSS],
+    addTo() {},
+    init(project) {
+      project.templates.push(PINNED_OSS);
+    },
+    update: (directory) =>
+      copyOssAssets(
+        directory,
+        dag.currentModule().source().directory(PINNED_OSS),
+        OSS_UPDATE_ASSETS,
+      ),
+    validate: noOp(
+      "These documents require manual inspection; no consuming validator checks their acceptance.",
+    ),
+  };
 }
 
 export function validateOssOwner(owner: string): void {

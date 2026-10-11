@@ -102,12 +102,13 @@ DROP_CALF_E2E=1 bun test tests/e2e
   `export` writes a supplied `Directory` to a path.
 - `src/project.ts`: project blueprint, base package metadata and files,
   and Dagger directory rendering.
-- `src/oss.ts`: owns the fixed Apache-2.0 `license` field, written into the
-  blueprint by `ossLicense()`; and
-  copies pinned `vendor/oss-templates` assets (see
-  [Refreshing the pinned OSS templates](#refreshing-the-pinned-oss-templates))
-  with only the documented owner,
-  project name, and LICENSE year substitutions.
+- `src/oss.ts`: seeds pinned `vendor/oss-templates` assets and authoritatively
+  updates all except README. It reads catalog title, owner, copyright date, and
+  Apache-2.0 license without editing the catalog or reading the clock. Missing
+  required values fail; document validation is a manual-inspection no-op. See
+  [Refreshing the pinned OSS templates](#refreshing-the-pinned-oss-templates).
+  Standalone `copy-oss --directory ...` reads the same catalog and re-seeds all
+  six files, including README.
 - `src/docs.ts`: copies `templates/docs/` through Dagger, separate from OSS.
   The tree carries the generated `docs/` placeholders plus the pinned
   `.cspell.jsonc` and `.markdownlint-cli2.jsonc` the `docsLinting()`
@@ -163,7 +164,11 @@ DROP_CALF_E2E=1 bun test tests/e2e
   `docsLinting()` declares `templates/docs` beside the `lint:docs` script and
   the `cspell`/`markdownlint-cli2` devDependencies every kind gets.
 - `src/node.ts`: the Node baseline. `nodeBaseline(kind)` seeds `.nvmrc`, `.npmrc`,
-  and `@types/node`; the dependency is init-only. `updateNode()` owns the whole
+  and `@types/node`; the dependency is init-only. Node also pulls catalog
+  `forge-ranch/license` into an existing package's `license` field during update
+  (including init's final update pass), preserving unrelated fields. Missing or
+  malformed license metadata fails; no missing package is created.
+  `updateNode()` owns the whole
   `.nvmrc` and `.npmrc` files in every kind, including replacing owner-added
   scoped registries and auth settings. Forge updates remove the entire `engines`
   field; other kinds preserve owner engine declarations. No kind generates
@@ -267,12 +272,14 @@ git-cliff inside a container at the version `changelogToolchain` pins. That
 means it needs a live engine, which is why its tests fake `dag.container()`
 rather than starting one.
 
-A capability cannot read the module source — that would break the pure blueprint
-layer the Bun tests rely on. It declares template paths as data instead.
+A capability's blueprint init cannot read the module source. It declares
+seed template paths as data instead; update may read pinned templates through
+Dagger when its authoritative policy needs them.
 `init` seeds those selected trees through `seedTemplates`, with no profile
 checks in the seeding entry point. Changelog templates belong to
 `changelogToolchain()`, and SecretSpec templates belong to `forgeSecrets()`.
-OSS and gitignore remain base assets rather than optional capabilities.
+OSS declares its seed tree after catalog and has its own update policy.
+Gitignore remains a base asset pending its policy migration.
 
 The standalone `copy-docs`, `copy-typescript`, `copy-changelog`, `copy-git-hooks`,
 `copy-secrets`, and `copy-biome` Dagger functions remain available for deliberate
@@ -326,6 +333,11 @@ the file to `-text` to stop Git doing the same. Tests read the real pin, so a
 refresh that changes output shows up in the `kind-outputs` snapshot.
 
 ## Refreshing the pinned OSS templates
+
+OSS files are updated authoritatively from the pinned `vendor/oss-templates` tree. Refresh
+the pin with `bun run refresh:oss`; OSS never fetches upstream during init or update.
+The refresh script is explicit and manual, not part of `dagger call init` or
+`dagger call update`.
 
 `vendor/oss-templates` holds the `OSS_ASSETS` from Atlassian's private
 `oss-templates` Bitbucket repository, and `.upstream` records the commit they

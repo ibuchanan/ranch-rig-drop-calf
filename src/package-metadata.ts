@@ -4,7 +4,7 @@ import sortPackageJson from "sort-package-json";
 import type { Capability, Validation } from "./capability.ts";
 import {
   CATALOG_FILE,
-  catalogDocument,
+  readCatalog,
   catalogOwnerId,
   PACKAGE_NAME,
 } from "./catalog.ts";
@@ -18,13 +18,7 @@ export async function updatePackageMetadata(
   if (!(await directory.exists("package.json"))) return directory;
   const contents = await directory.file("package.json").contents();
   const pkg = parseObject("package.json", contents);
-  if (!(await directory.exists(CATALOG_FILE)))
-    throw new Error(
-      `package-metadata: ${CATALOG_FILE} is missing; initialize the catalog before updating package.json.`,
-    );
-  const catalog = catalogDocument(
-    await directory.file(CATALOG_FILE).contents(),
-  );
+  const catalog = await readCatalog(directory, "package-metadata");
   const name = catalog.getIn(["metadata", "annotations", PACKAGE_NAME]);
   if (typeof name !== "string" || !name.trim())
     throw new Error(

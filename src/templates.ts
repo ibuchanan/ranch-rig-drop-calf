@@ -1,6 +1,7 @@
 import type { Directory } from "@dagger.io/dagger";
 import { CATALOG_TEMPLATE, type CatalogSeed, copyCatalog } from "./catalog.ts";
 import { copySecretsAssets, SECRETS_TEMPLATE } from "./secrets.ts";
+import { copyOssAssets, PINNED_OSS } from "./oss.ts";
 
 /**
  * Seed a template tree over a rendered directory.
@@ -31,6 +32,8 @@ export async function seedTemplates(
       if (!catalogSeed)
         throw new Error("Catalog template requires seed inputs");
       result = await copyCatalog(result, source, catalogSeed);
+    } else if (path === PINNED_OSS) {
+      result = await copyOssAssets(result, source);
     } else {
       result =
         path === SECRETS_TEMPLATE

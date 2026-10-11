@@ -6,6 +6,7 @@ import {
   readdirSync,
   readFileSync,
   rmSync,
+  statSync,
   writeFileSync,
 } from "node:fs";
 import { join } from "node:path";
@@ -29,11 +30,26 @@ function daggerCall(...args: string[]): string {
   );
 }
 
-// Fixtures are flat; compare every filename and byte before/after read-only calls.
-const snapshot = (directory: string) =>
-  readdirSync(directory)
-    .sort()
-    .map((name) => [name, readFileSync(join(directory, name), "utf8")]);
+// Recursively snapshot directory, handling nested .atlassian subdirectories.
+const snapshot = (directory: string): [string, string][] => {
+  const result: [string, string][] = [];
+  const walk = (dir: string, prefix = "") => {
+    readdirSync(dir)
+      .sort()
+      .forEach((name) => {
+        const path = join(dir, name);
+        const relPath = prefix ? `${prefix}/${name}` : name;
+        const stat = statSync(path);
+        if (stat.isDirectory()) {
+          walk(path, relPath);
+        } else {
+          result.push([relPath, readFileSync(path, "utf8")]);
+        }
+      });
+  };
+  walk(directory);
+  return result;
+};
 
 for (const kind of ["library", "forge-app"]) {
   test.skipIf(!enabled)(
@@ -61,7 +77,7 @@ for (const kind of ["library", "forge-app"]) {
         writeFileSync(join(input, "package.json"), JSON.stringify(pkg));
         writeFileSync(
           join(input, "catalog-info.yaml"),
-          "apiVersion: backstage.io/v1alpha1\nkind: Component\nmetadata:\n  name: sample\n  annotations:\n    forge-ranch/package-name: sample\nspec:\n  type: " +
+          "apiVersion: backstage.io/v1alpha1\nkind: Component\nmetadata:\n  name: sample\n  title: Sample Project\n  annotations:\n    forge-ranch/package-name: sample\n    forge-ranch/license: Apache-2.0\n    forge-ranch/copyright-date: '2025'\nspec:\n  type: " +
             kind +
             "\n  lifecycle: experimental\n  owner: user:default/tester\n",
         );
@@ -72,6 +88,19 @@ for (const kind of ["library", "forge-app"]) {
           "@acme:registry=https://example.invalid/\n",
         );
         writeFileSync(join(input, "owner.txt"), "kept\n");
+        writeFileSync(
+          join(input, "README.md"),
+          "# An authored project README\n",
+        );
+        mkdirSync(join(input, ".atlassian"));
+        writeFileSync(join(input, ".atlassian/OWNER"), "direct-owner-edit");
+        for (const path of [
+          "LICENSE",
+          "CONTRIBUTING.md",
+          "CODE_OF_CONDUCT.md",
+          "SECURITY.md",
+        ])
+          writeFileSync(join(input, path), `owner-edited ${path}\n`);
         const before = snapshot(input);
         daggerCall(
           "update",
@@ -87,6 +116,31 @@ for (const kind of ["library", "forge-app"]) {
         expect(
           JSON.parse(readFileSync(join(output, "package.json"), "utf8")),
         ).toEqual(kind === "forge-app" ? withoutEngines : pkg);
+        expect(readFileSync(join(output, ".atlassian/OWNER"), "utf8")).toBe(
+          "tester",
+        );
+        expect(readFileSync(join(output, "README.md"), "utf8")).toBe(
+          "# An authored project README\n",
+        );
+        expect(readFileSync(join(output, "catalog-info.yaml"), "utf8")).toBe(
+          readFileSync(join(input, "catalog-info.yaml"), "utf8"),
+        );
+        for (const path of [
+          "LICENSE",
+          "CONTRIBUTING.md",
+          "CODE_OF_CONDUCT.md",
+          "SECURITY.md",
+        ]) {
+          const template = readFileSync(
+            join(repo, "vendor/oss-templates", path),
+            "utf8",
+          );
+          expect(readFileSync(join(output, path), "utf8")).toBe(
+            template
+              .replaceAll("[YYYY]", "2025")
+              .replaceAll("[Project name]", "Sample Project"),
+          );
+        }
         expect(readFileSync(join(output, ".nvmrc"), "utf8")).toBe(NODE_NVMRC);
         expect(readFileSync(join(output, ".npmrc"), "utf8")).toBe(NPMRC);
         expect(readFileSync(join(output, "manifest.yml"), "utf8")).toBe(

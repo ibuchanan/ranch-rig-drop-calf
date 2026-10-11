@@ -5,7 +5,7 @@ import { type Directory, dag } from "@dagger.io/dagger";
 import ts from "typescript";
 import { biomeToolchain } from "../src/biome.ts";
 import { DropCalf } from "../src/index.ts";
-import { OSS_ASSETS, ossLicense } from "../src/oss.ts";
+import { OSS_ASSETS } from "../src/oss.ts";
 import { prelint } from "../src/prelint.ts";
 import {
   buildProject,
@@ -249,12 +249,11 @@ test("OSS documents reject invalid/blank owner", () => {
   );
 });
 
-test("the OSS module writes the fixed Apache-2.0 license into package.json", () => {
-  expect(ossLicense()).toEqual({ license: "Apache-2.0" });
+test("the blueprint leaves license metadata to catalog consumers", () => {
   for (const kind of ["library", "forge-app", "tool", "agent-skill"])
-    expect(buildProject(kind, "sample", "tester").packageJson.license).toBe(
-      "Apache-2.0",
-    );
+    expect(
+      buildProject(kind, "sample", "tester").packageJson.license,
+    ).toBeUndefined();
 });
 
 describe("profiles", () => {

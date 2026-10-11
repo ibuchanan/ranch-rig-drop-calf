@@ -1,6 +1,4 @@
 import { type Directory, dag } from "@dagger.io/dagger";
-import { ossLicense } from "./oss.ts";
-
 export type PackageJson = {
   name: string;
   version: string;
@@ -16,7 +14,7 @@ export type PackageJson = {
   dependencies?: Record<string, string>;
   description?: string;
   author?: string;
-  license: string;
+  license?: string;
 };
 
 export type ProjectBlueprint = {
@@ -34,7 +32,6 @@ export function createBlueprint(
     name: packageName,
     version: "0.1.0",
     type: "module",
-    ...ossLicense(),
     scripts: {},
     devDependencies: {},
   };

@@ -152,16 +152,10 @@ export class DropCalf {
   }
 
   @func()
-  async copyOss(
-    directory: Directory,
-    name: string,
-    owner: string,
-  ): Promise<Directory> {
+  async copyOss(directory: Directory): Promise<Directory> {
     return copyOssAssets(
       directory,
       dag.currentModule().source().directory(PINNED_OSS),
-      name,
-      owner,
     );
   }
 
@@ -225,9 +219,7 @@ export class DropCalf {
       name,
       { name, owner, type: profile, description },
     );
-    const generated = await this.copyGitignore(
-      await this.copyOss(seeded, name, owner),
-    );
+    const generated = await this.copyGitignore(seeded);
     const kept = (await cleaned.exists("package.json"))
       ? await cleaned.file("package.json").contents()
       : undefined;

@@ -2,6 +2,7 @@ import { type Container, type Directory, dag } from "@dagger.io/dagger";
 import sortPackageJson from "sort-package-json";
 import { isCollection, isMap, isScalar, parseDocument, visit } from "yaml";
 import type { Capability, Validation } from "./capability.ts";
+import { CATALOG_FILE, LICENSE, readCatalog } from "./catalog.ts";
 import { parseObject } from "./init.ts";
 import { ParseError } from "./preclean.ts";
 import { NODE_MAJOR, TOOL_VERSIONS } from "./versions.ts";
@@ -93,17 +94,25 @@ export async function applyForgeRuntime(
     : directory.withNewFile("manifest.yml", reconciled);
 }
 
-/** Whole-file pins are policy; package dependencies remain owner-managed after init. */
+/** Whole-file pins and catalog license are policy; dependencies remain owner-managed. */
 export async function updateNode(
   directory: Directory,
   kind: string,
 ): Promise<Directory> {
   let result = await applyForgeRuntime(directory, kind);
-  if (kind === "forge-app" && (await result.exists("package.json"))) {
+  if (await result.exists("package.json")) {
     const contents = await result.file("package.json").contents();
     const pkg = parseObject("package.json", contents);
-    if (Object.hasOwn(pkg, "engines")) {
-      delete pkg.engines;
+    const catalog = await readCatalog(result, "node");
+    const license = catalog.getIn(["metadata", "annotations", LICENSE]);
+    if (typeof license !== "string" || !license.trim())
+      throw new Error(
+        `node: ${CATALOG_FILE} ${LICENSE} must be a nonempty string; set the license annotation before updating.`,
+      );
+    const removeEngines = kind === "forge-app" && Object.hasOwn(pkg, "engines");
+    if (pkg.license !== license || removeEngines) {
+      pkg.license = license;
+      if (removeEngines) delete pkg.engines;
       result = result.withNewFile(
         "package.json",
         sortPackageJson(`${JSON.stringify(pkg, null, 2)}\n`),

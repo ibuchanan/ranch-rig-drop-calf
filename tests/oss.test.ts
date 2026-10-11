@@ -57,7 +57,7 @@ describe("pinned OSS templates", () => {
         "Example purpose",
         "Example Owner",
       );
-      expect(project.packageJson.license).toBe("Apache-2.0");
+      expect(project.packageJson.license).toBeUndefined();
 
       for (const path of OSS_ASSETS) {
         const template = readFileSync(join(vendor, path), "utf8");
@@ -67,13 +67,14 @@ describe("pinned OSS templates", () => {
             : path === "README.md" || path === "CONTRIBUTING.md"
               ? template.replaceAll("[Project name]", "example-project")
               : path === "LICENSE"
-                ? template.replaceAll(
-                    "[YYYY]",
-                    String(new Date().getFullYear()),
-                  )
+                ? template.replaceAll("[YYYY]", "2020-2024")
                 : template;
         expect(
-          transformOssTemplate(path, template, "example-project", "tester"),
+          transformOssTemplate(path, template, {
+            name: "example-project",
+            owner: "tester",
+            copyrightDate: "2020-2024",
+          }),
         ).toBe(expected);
         expect(project.files.has(path)).toBe(false);
       }
@@ -84,19 +85,19 @@ describe("pinned OSS templates", () => {
     const module = mockOssSource();
     try {
       const writes = new Map<string, string>();
-      const destination = {
-        withNewFile: (path: string, contents: string) => {
-          writes.set(path, contents);
-          return destination;
-        },
-        withFile: (path: string, file: { text: string }) => {
-          writes.set(path, file.text);
-          return destination;
-        },
-      } as unknown as Directory;
-      expect(
-        await new DropCalf().copyOss(destination, "sample", "tester"),
-      ).toBe(destination);
+      const destination = mockDirectory(
+        new Map([
+          [
+            "catalog-info.yaml",
+            "metadata:\n  title: sample\n  annotations:\n    forge-ranch/license: Apache-2.0\n    forge-ranch/copyright-date: '2024'\nspec:\n  owner: user:default/tester\n",
+          ],
+        ]),
+      );
+      const output = await new DropCalf().copyOss(destination);
+      for (const [path, contents] of (
+        output as ReturnType<typeof mockDirectory>
+      ).files)
+        writes.set(path, contents);
       expect(writes.get("README.md")).toBe(
         ossTemplates().get("README.md")?.replaceAll("[Project name]", "sample"),
       );
@@ -150,7 +151,7 @@ describe("pinned OSS templates", () => {
       const stub = spyOn(dag, "directory").mockReturnValue(directory);
       const oss = mockOssSource();
       try {
-        await new DropCalf().init(
+        const output = await new DropCalf().init(
           mockDirectory(),
           kind,
           "tester",
@@ -160,6 +161,10 @@ describe("pinned OSS templates", () => {
           [],
           [],
           preset,
+        );
+        writes.set(
+          "package.json",
+          await output.file("package.json").contents(),
         );
         const project = buildProject(
           kind,
@@ -171,9 +176,10 @@ describe("pinned OSS templates", () => {
           [],
           preset,
         );
-        expect(JSON.parse(writes.get("package.json") ?? "null")).toEqual(
-          project.packageJson,
-        );
+        expect(JSON.parse(writes.get("package.json") ?? "null")).toEqual({
+          ...project.packageJson,
+          license: "Apache-2.0",
+        });
         expect(writes.get("README.md")).toBe(
           ossTemplates()
             .get("README.md")
