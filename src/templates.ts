@@ -1,5 +1,4 @@
 import type { Directory } from "@dagger.io/dagger";
-import { BIOME_TEMPLATE } from "./biome.ts";
 import { copySecretsAssets, SECRETS_TEMPLATE } from "./secrets.ts";
 
 /**
@@ -25,9 +24,7 @@ export async function seedTemplates(
 ): Promise<Directory> {
   let result = destination;
   for (const path of paths) {
-    let source = moduleSource.directory(path);
-    // EditorConfig remains blueprint-authored until its sources are consolidated.
-    if (path === BIOME_TEMPLATE) source = source.withoutFile(".editorconfig");
+    const source = moduleSource.directory(path);
     result =
       path === SECRETS_TEMPLATE
         ? await copySecretsAssets(result, source, name)

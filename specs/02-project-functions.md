@@ -129,9 +129,11 @@ Add `@biomejs/biome` at the version pinned in `TOOL_VERSIONS.biome` and declare
 `templates/biome`. Seed its authored `biome.jsonc` verbatim for every kind; the
 schema version must match the registry pin, enforced by a test. Generation does
 not invoke a local Biome binary, create temporary directories, or build and merge
-a config in code. Keep `.editorconfig` as the blueprint's small deterministic
-text asset, excluding the tree's `.editorconfig` during normal generation until
-its sources are consolidated. Owns `format`, `format:check`, `lint:check`,
+a config in code. Seed `.editorconfig` from the same tree, with no blueprint
+copy or generation exclusion. It contains only `[*]` defaults and a Markdown
+`trim_trailing_whitespace = false` override, preserving two-space hard line breaks
+allowed by the docs template's default MD009 rule. Standalone `copy-biome` seeds
+the same bytes. Owns `format`, `format:check`, `lint:check`,
 `lint:fix` scripts.
 
 ### `forge-prelint`

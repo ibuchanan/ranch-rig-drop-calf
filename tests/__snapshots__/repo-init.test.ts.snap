@@ -4,7 +4,6 @@ exports[`profiles agent-skill contains no test scripts and all kinds keep a comp
 {
   "files": [
     ".atlassian/OWNER",
-    ".editorconfig",
     ".npmrc",
     ".nvmrc",
     "CHANGELOG.md",
@@ -80,7 +79,6 @@ exports[`profiles agent-skill contains no test scripts and all kinds keep a comp
 {
   "files": [
     ".atlassian/OWNER",
-    ".editorconfig",
     ".npmrc",
     ".nvmrc",
     "AGENTS.md",
@@ -162,7 +160,6 @@ exports[`profiles agent-skill contains no test scripts and all kinds keep a comp
 {
   "files": [
     ".atlassian/OWNER",
-    ".editorconfig",
     ".npmrc",
     ".nvmrc",
     "CHANGELOG.md",
@@ -218,7 +215,6 @@ exports[`profiles agent-skill contains no test scripts and all kinds keep a comp
 {
   "files": [
     ".atlassian/OWNER",
-    ".editorconfig",
     ".npmrc",
     ".nvmrc",
     "CODE_OF_CONDUCT.md",

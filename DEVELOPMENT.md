@@ -229,9 +229,17 @@ host temporary directory. The template's `$schema` must match
 `TOOL_VERSIONS.biome`; the test suite checks for drift. Edit the pinned template
 to change the configuration rather than rebuilding it in code.
 
-Generation excludes `.editorconfig` from that tree so the blueprint's existing
-Markdown whitespace policy stays unchanged. The standalone `copy-biome` still
-copies the whole tree; consolidating the EditorConfig sources is separate work.
+`templates/biome/.editorconfig` is the only EditorConfig source for generated
+repositories. Both generation and standalone `copy-biome` seed it verbatim. The
+seeded source survives rather than the generated text so editor settings remain
+reviewable beside the formatter config, without a second definition or a seeding
+exception. Only `[*]` defaults and the Markdown override remain; file-specific
+sections that repeated those defaults were removed.
+
+Markdown keeps trailing whitespace because two trailing spaces encode a hard
+line break. The docs template leaves markdownlint's MD009 at its default, which
+allows two-space hard breaks while rejecting other excess trailing whitespace.
+Editors therefore preserve meaningful spaces, and `lint:docs` checks their use.
 
 ## The generated `.gitignore`
 

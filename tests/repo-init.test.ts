@@ -30,7 +30,7 @@ afterEach(() => {
 });
 
 test.each(["library", "forge-app", "tool", "agent-skill"])(
-  "%s files seeds the pinned Biome bytes without changing EditorConfig",
+  "%s files seeds the pinned Biome and EditorConfig bytes",
   async (kind) => {
     const writes = new Map<string, string>();
     const directory = {
@@ -75,7 +75,7 @@ test.each(["library", "forge-app", "tool", "agent-skill"])(
         );
         expect(writes.has("biome.json")).toBe(false);
         expect(writes.get(".editorconfig")).toBe(
-          "root = true\n\n[*]\ncharset = utf-8\nend_of_line = lf\ninsert_final_newline = true\ntrim_trailing_whitespace = true\nindent_style = space\nindent_size = 2\n\n[*.md]\ntrim_trailing_whitespace = false\n",
+          biomeTemplates().get(".editorconfig"),
         );
       }
       expect(exec).not.toHaveBeenCalled();
@@ -87,6 +87,39 @@ test.each(["library", "forge-app", "tool", "agent-skill"])(
     }
   },
 );
+
+test("copyBiome seeds only EditorConfig defaults and the Markdown hard-break override", () => {
+  const writes = new Map<string, string>();
+  const directory = {
+    withDirectory: (_path: string, source: { files: Map<string, string> }) => {
+      for (const [path, content] of source.files) writes.set(path, content);
+      return directory;
+    },
+  } as unknown as Directory;
+
+  new DropCalf().copyBiome(directory);
+
+  const editorconfig = writes.get(".editorconfig");
+  expect(editorconfig).toBe(biomeTemplates().get(".editorconfig"));
+  expect(
+    editorconfig
+      ?.split("\n")
+      .filter((line) => !line.startsWith("#"))
+      .join("\n")
+      .trim(),
+  ).toBe(`root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 2
+
+[*.md]
+trim_trailing_whitespace = false`);
+});
 
 describe("buildReadme", () => {
   test("uses the package name as the title", () => {

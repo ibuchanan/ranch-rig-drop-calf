@@ -38,11 +38,12 @@ test.each(kinds)("%s declares only its selected template trees", (kind) => {
 });
 
 test.each(kinds)(
-  "%s leaves Biome config authorship to the pinned template",
+  "%s leaves Biome and EditorConfig authorship to the pinned template",
   (kind) => {
     const project = buildProject(kind, "sample", "tester");
     expect(project.files.has("biome.jsonc")).toBe(false);
     expect(project.files.has("biome.json")).toBe(false);
+    expect(project.files.has(".editorconfig")).toBe(false);
   },
 );
 

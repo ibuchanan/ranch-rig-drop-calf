@@ -179,7 +179,7 @@ describe("pinned OSS templates", () => {
           docsTemplates().get("DEVELOPMENT.md"),
         );
         const seeded = new Map([
-          ...[...biomeTemplates()].filter(([path]) => path !== ".editorconfig"),
+          ...biomeTemplates(),
           ...typescriptTemplates(),
           ...gitHooksTemplates(),
           ...docsTemplates(),

@@ -41,9 +41,7 @@ export function createBlueprint(
 
   if (description) packageJson.description = description;
   if (author) packageJson.author = author;
-  const files = new Map<string, string>([
-    [".editorconfig", buildEditorconfig()],
-  ]);
+  const files = new Map<string, string>();
 
   // `.gitignore` is deliberately absent: it is a pinned, seeded asset like the
   // OSS and docs trees, so the Dagger layer copies it in after rendering. See
@@ -109,21 +107,5 @@ npm run format:check
 npm run format
 \`\`\`
 <!-- drop-calf:usage end -->
-`;
-}
-
-function buildEditorconfig(): string {
-  return `root = true
-
-[*]
-charset = utf-8
-end_of_line = lf
-insert_final_newline = true
-trim_trailing_whitespace = true
-indent_style = space
-indent_size = 2
-
-[*.md]
-trim_trailing_whitespace = false
 `;
 }
