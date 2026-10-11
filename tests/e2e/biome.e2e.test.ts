@@ -10,6 +10,7 @@ import {
 import { join } from "node:path";
 import ts from "typescript";
 import { BIOME_SCRIPTS } from "../../src/biome.ts";
+import { GIT_HOOKS_SCRIPTS } from "../../src/git-hooks.ts";
 import { TOOL_VERSIONS } from "../../src/versions.ts";
 
 const enabled = process.env.DROP_CALF_BIOME_E2E === "1";
@@ -126,6 +127,7 @@ for (const kind of ["library", "tool", "forge-app", "agent-skill"]) {
         expect(updatedPackage.scripts).toEqual({
           ...pkg.scripts,
           ...BIOME_SCRIPTS,
+          ...GIT_HOOKS_SCRIPTS,
         });
         expect(updatedPackage.devDependencies).toEqual({
           ...pkg.devDependencies,

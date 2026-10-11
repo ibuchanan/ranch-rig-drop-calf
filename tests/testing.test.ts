@@ -23,9 +23,11 @@ test("Forge pre-push checks reach the typecheck command through lint", () => {
     "pre-push": { commands: { lint: { run: string } } };
     lint: { commands: { typecheck: { run: string } } };
   };
-  expect(hooks["pre-push"].commands.lint.run).toBe("npm run lint");
+  expect(hooks["pre-push"].commands.lint.run).toBe("npm run lint --if-present");
   expect(scripts.lint).toBe("lefthook run lint");
-  expect(hooks.lint.commands.typecheck.run).toBe("npm run typecheck");
+  expect(hooks.lint.commands.typecheck.run).toBe(
+    "npm run typecheck --if-present",
+  );
   expect(scripts.typecheck).toBe(
     "tsc --project tsconfig.typecheck.json --noEmit",
   );

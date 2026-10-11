@@ -46,8 +46,8 @@ Every function:
   owner edits without explicit opt-in or `--force`. A conflict is raised where
   the capability's policy requires one, not merely because content differs.
 - **Script ownership is stable.** Only the owning function may replace its canonical npm
-  script. Exception: `git-hooks` adoption on existing repositories never claims
-  `lint`/`check`.
+  script. Git-hooks alone owns `prepare`, `lint`, and `check`; prelint contributes
+  only named lint subtasks.
 - **Shared-resource scope is explicit.** Preserve content outside the capability's
   declared scope; preservation within it follows that capability's policy.
   Never create `package.json.orig`.
@@ -432,9 +432,10 @@ Add `@ast-grep/cli` and the Forge rules package, aliased `@forge-ahead/prelint`
 (`github:ibuchanan/tool-forge-prelint-ast-grep`). The rules ship inside the package, so
 there is no config to author: `lint:prelint` runs `ast-grep scan --globs '!specs/**'
 --globs '!node_modules/**' --config ./node_modules/@forge-ahead/prelint/sgconfig.ecosol.yml`.
-Add `lint:forge` (`forge lint`) and establish the direct `lint` chain unless `git-hooks`
-later owns `lint`. Validate a repository by installing the pinned rules in a container and
-running the same scan against it, reporting a skip when the repository never opted into
+Add `lint:forge` (`forge lint`); never write `lint`. Git-hooks alone owns
+that script and its seeded config dispatches both subtasks with `--if-present`.
+Validate a repository by installing the pinned rules in a container and running
+the same scan against it, reporting a skip when the repository never opted into
 `lint:prelint`.
 
 ### `typescript`
@@ -590,25 +591,51 @@ Add `size-limit` and `@size-limit/file`; own the `size` script. Structured-merge
 incompatible values is a conflict.
 
 ### `git-hooks`
-Add `lefthook`. The config is authored content seeded from
-`templates/git-hooks/lefthook.yml` (never rebuilt by the capability), so the group
-names, commands and gitleaks guard stay reviewable in a diff. One config serves
-every kind: `lint` groups the `prelint`/`biome`/`forge`/`typecheck`/`format`
-steps, `pre-commit` runs `gitleaks` and `format`, and `pre-push` runs
-`lint`/`test`/`size`. The scripts a kind omits (`test` on `agent-skill`, `size`
-on `tool`, the Forge lint steps outside `forge-app`) are reached through
-`npm run <script> --if-present`, so a hook with nothing to run is a no-op rather
-than a failure. Own `prepare` (`lefthook install || true`), `lint`
-(`lefthook run lint`) and `check` (`lefthook run pre-push --force`).
 
-Two deliberately different modes:
-- **Managed baseline** (no existing `lefthook.yml`): seed the full config and own
-  `prepare`, `lint`, `check`.
-- **Additive adoption** (existing config): parse the YAML document and merge only a
-  compatible named `commands` map — add absent commands, preserve unrelated
-  commands and settings, no-op on semantically equivalent commands, conflict on
-  semantic mismatch or non-command-map hook structure. Never replace existing
-  `lint` and `check` scripts.
+Git-hooks alone owns `devDependencies.lefthook` at `TOOL_VERSIONS.lefthook` and
+three scripts: `prepare` (`lefthook install || true`), `lint` (`lefthook run lint`),
+and `check` (`lefthook run pre-push --force`). Prelint contributes `lint:prelint`
+and `lint:forge` without writing `lint`; ownership does not depend on pass order.
+
+- **init** seeds the pin, scripts, and authored `templates/git-hooks/lefthook.yml`
+  for every kind. The shared seed groups prelint, Biome, Forge, typecheck, and
+  formatting under `lint`; pre-commit runs gitleaks and formatting; pre-push runs
+  lint, tests, and size checks. npm script calls use `--if-present` so omitted
+  subtasks are no-ops. Init is fresh-repository setup, not maintenance adoption.
+  Standalone `copy-git-hooks` deliberately overlays the seed without changing
+  package metadata; it is not update.
+- **update** enforces only the runner pin and three canonical scripts in an
+  existing package, replacing owner edits and creating missing sections/keys.
+  Missing `package.json` is not created. Malformed/non-object JSON and non-object
+  scripts/devDependencies fail before writes. Unrelated values and lockfiles survive.
+  Matching values preserve original bytes; changes use sorted, two-space JSON with
+  a trailing newline. A second update changes nothing. No dependency install,
+  hook installation, or lockfile refresh runs.
+- **`lefthook.yml` is owner-managed after init.** Update never reads, rewrites,
+  merges, migrates, or recreates it; edits and deletion survive. The gitleaks guard
+  and pre-push checks are starting defaults, not continuing enforced policy.
+- **validate** runs the capability-selected Lefthook's `lefthook validate` in an
+  isolated Node-baseline container. Lefthook checks its resolved configuration
+  against its bundled JSON schema, including supported extends/local overrides.
+  No hook commands or package scripts are executed; validation neither compares
+  config/scripts with the baseline nor audits npm script references. An owner
+  config that Lefthook accepts passes without prior init/update. Missing root
+  `lefthook.yml` reports skipped with a reason; failures retain tool diagnostics.
+  Lefthook tolerates missing relative extends files; validation follows that
+  acceptance rather than adding a stricter reference-existence check.
+
+Lefthook requires Git metadata for configuration loading. Validation initializes
+throwaway Git metadata outside the read-only repository mount and uses it instead
+of the caller's `.git`, including worktree pointers and installed hooks. No Git
+history is required. Tool installation and configured remote loading may require
+network access; any remote cache writes stay in the isolated container. Neither
+source files nor hooks are installed/modified in the caller's repository, and no
+container changes are exported. Setup/download errors are execution failures, not
+evidence of invalid configuration.
+
+Ticket 15 supersedes the older managed-baseline/additive-adoption split: update
+always owns the package pin/scripts, including existing `lint`/`check`, and never
+adopts or merges existing hook configuration.
 
 ## 5. Composition into project kinds
 

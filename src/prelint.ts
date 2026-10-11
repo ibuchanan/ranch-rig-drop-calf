@@ -5,7 +5,7 @@ import { TOOL_VERSIONS } from "./versions.ts";
 
 /**
  * The Forge prelint workflow: ast-grep plus the Forge rule set, the scan
- * command that runs them, and the `lint` chain the hooks dispatch through.
+ * named scan commands that git-hooks dispatches through its owned `lint` script.
  *
  * `vendor/explore-forge-confluence-okf-producer` keeps the rules in the
  * `@forge-ahead/prelint` package (`github:ibuchanan/tool-forge-prelint-ast-grep`)
@@ -15,8 +15,8 @@ import { TOOL_VERSIONS } from "./versions.ts";
  * inside the package — so the capability only pins the two devDependencies and
  * the command that reads them.
  *
- * `forge lint` shares this module because the two run together in the `lint`
- * chain; `git-hooks` later replaces that chain with `lefthook run lint`.
+ * `forge lint` shares this module as `lint:forge`. Only git-hooks owns `lint`;
+ * its seeded config dispatches both subtasks with `--if-present`.
  */
 export const AST_GREP_PACKAGE = "@ast-grep/cli";
 export const PRELINT_PACKAGE = "@forge-ahead/prelint";
@@ -48,8 +48,6 @@ export function prelint(
         project.packageJson.devDependencies[PRELINT_PACKAGE] = rulesPackage;
         project.packageJson.scripts["lint:prelint"] = PRELINT_COMMAND;
         project.packageJson.scripts["lint:forge"] = "forge lint";
-        project.packageJson.scripts.lint =
-          "npm run lint:prelint && npm run lint:check && npm run lint:forge";
       },
     },
     validatePrelint,

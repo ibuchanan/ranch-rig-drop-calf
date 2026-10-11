@@ -143,6 +143,7 @@ test.each(kinds)(
               "gitignore",
               "node",
               "changelog",
+              "git-hooks",
               "biome",
               "typescript",
             ].includes(capability.name) ||

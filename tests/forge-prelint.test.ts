@@ -8,7 +8,7 @@ import {
 } from "../src/prelint.ts";
 import { buildProject } from "../src/profiles.ts";
 
-test("Forge projects run prelint, Biome and Forge lint through the direct lint script", () => {
+test("Forge projects contribute named prelint and Forge lint subtasks to git-hooks", () => {
   const pkg = buildProject("forge-app", "sample", "tester").packageJson;
   expect(pkg.devDependencies["@ast-grep/cli"]).toBe("^0.45");
   expect(pkg.devDependencies["@forge-ahead/prelint"]).toBe(
@@ -42,8 +42,10 @@ test("Forge projects include only the three Forge Ahead runtime dependencies", (
 test("the prelint capability is a no-op until it is composed into a kind", () => {
   const project = buildProject("tool", "sample", "tester");
   expect(project.packageJson.scripts["lint:prelint"]).toBeUndefined();
+  project.packageJson.scripts.lint = "owner lint";
   prelint().addTo(project);
   expect(project.packageJson.scripts["lint:prelint"]).toBe(PRELINT_COMMAND);
+  expect(project.packageJson.scripts.lint).toBe("owner lint");
 });
 
 /**
