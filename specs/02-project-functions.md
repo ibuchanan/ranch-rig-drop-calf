@@ -73,9 +73,67 @@ Every function:
 Default order (dependency/precedence graph may encode it via `before`/`after`):
 
 ```text
-oss → gitignore → node → changelog → secrets → format → forge-prelint
+catalog → oss → gitignore → node → changelog → secrets → format → forge-prelint
 → typescript → forge-ahead → aidev → test → evals (optional) → size → git-hooks
 ```
+
+### `catalog`
+
+Seed a single root `catalog-info.yaml` Backstage Component entity with project metadata.
+The file is initialized once from `templates/catalog/catalog-info.yaml`, with seed tokens
+replaced by name, description, owner staff ID, and copyright year. The entity carries
+optional annotations for package names and GitHub/Jira links (examples in template).
+
+Under [ADR 0001](../docs/adr/0001-capability-verbs-by-intent.md):
+
+- **init** replaces seed tokens:
+  - `[Catalog name]` → `metadata.name`: sanitized lowercase ASCII letters, digits, `.`, `_`, `-`; max 63 chars, alphanumeric start and end.
+  - `[Project name]` → `metadata.title`: original project name, no sanitization.
+  - `[Package name]` → annotation `forge-ranch/package-name`: original package name (e.g., `@scope/package`).
+  - `[Description]` → `metadata.description`: project description or empty string.
+  - `[Owner]` → `spec.owner`: `user:default/{staff-id}`, validated as entity reference format.
+  - `[Project kind]` → `spec.type`: the selected profile kind (`library`, `forge-app`, `tool`, `agent-skill`).
+  - `[Copyright date]` → annotation `forge-ranch/copyright-date`: YYYY or YYYY-YYYY (ordered range), captured once at init, never auto-incremented.
+- **update** is an explicit no-op: the catalog module owns the whole file, but no update policy is currently defined. Update neither creates nor rewrites it.
+- **validate** checks structural acceptance without policy compliance or remote reference lookup:
+  - YAML syntax and duplicate-key detection.
+  - Roadie schema validation via `@roadiehq/roadie-backstage-entity-validator`.
+  - `kind` must be `Component`.
+  - `spec.owner` must be a valid user entity reference.
+  - `forge-ranch/copyright-date` annotation (if present): YYYY or YYYY-YYYY with ordered range.
+  - Missing `catalog-info.yaml` → skipped with reason.
+
+#### Shared metadata contract
+
+The root `catalog-info.yaml` is the permanent source for metadata consumed by
+other modules, independent of language or package manager. This tracked section
+records the field contract; scratch tickets only track deferred wiring.
+
+| Value | Catalog field | Consumer |
+|---|---|---|
+| Catalog identifier | `metadata.name` | Backstage; not a package or display name |
+| Project display name | `metadata.title` | OSS README/CONTRIBUTING (ticket 06) |
+| Description | `metadata.description` | Package metadata (ticket 04) |
+| Responsible user | `spec.owner` | OSS OWNER (ticket 06) |
+| Package name | `metadata.annotations["forge-ranch/package-name"]` | Package metadata (ticket 04) |
+| Copyright year/range | `metadata.annotations["forge-ranch/copyright-date"]` | OSS LICENSE (ticket 06) |
+| External-system pointers | Integration annotations and `metadata.links` | Jira/GitHub integrations |
+
+Additional module-specific metadata belongs under `metadata.annotations` with
+`forge-ranch/{key}` names and string values unless a standard Backstage field or
+integration annotation already represents it. Add each new shared key and its
+meaning here when a consumer needs it; do not invent unused metadata fields.
+The catalog module owns the file; other modules read these values rather than
+maintaining competing sources. Unrecognized annotations remain intact and are
+accepted by structural validation. No catalog update policy is defined yet.
+
+Annotations for Jira/GitHub links (examples in template) are not auto-populated; they
+remain manual additions to the catalog entry. Copyright year is captured once at init;
+update does not increment it. Standalone `copy-catalog` and `validate-catalog`
+functions do not require `package.json`; `copy-catalog` accepts a component type
+independently of the currently supported project kinds. Future OSS migration
+reads `metadata.title`, the copyright-date annotation, and `spec.owner`, but that
+consumer wiring is deferred to ticket 06.
 
 ### `oss`
 Copy `LICENSE`, `CODE_OF_CONDUCT.md`, `CONTRIBUTING.md`, `README.md`,
@@ -85,12 +143,15 @@ Copy `LICENSE`, `CODE_OF_CONDUCT.md`, `CONTRIBUTING.md`, `README.md`,
 all other template bytes. The Apache-2.0 license is fixed. `DEVELOPMENT.md` is
 generated separately because it is not in that template.
 
-Under [ADR 0001](../docs/adr/0001-capability-verbs-by-intent.md), README and OWNER
-are init-only and survive update. LICENSE, CODE_OF_CONDUCT, CONTRIBUTING, and
-SECURITY are updated authoritatively from the pinned upstream, replacing owner
-edits without explicit opt-in. This supersedes the former create-if-absent policy
-for every OSS file. Copyright-year handling, project-name substitution during
-update, and the `license` field's verb assignment remain for the OSS policy slice.
+README remains init-only and survives update. The catalog decision supersedes
+ADR 0001's original init-only OWNER example: OWNER is to be derived from the
+catalog user owner on both init and update. LICENSE, CODE_OF_CONDUCT, CONTRIBUTING,
+and SECURITY are updated authoritatively from the pinned upstream, replacing
+owner edits without explicit opt-in. Name substitution uses catalog
+`metadata.title`; LICENSE uses `forge-ranch/copyright-date` without advancing
+the year. Catalog consumer wiring and the `license` field's verb assignment
+remain for the OSS policy slice (ticket 06); introducing catalog does not change
+OSS generation yet.
 Validate is an explicit no-op: these documents have no consuming tool whose
 acceptance OSS checks. Checking owner input is input validation, not repository
 validation.

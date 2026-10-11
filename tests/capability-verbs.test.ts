@@ -144,6 +144,12 @@ test.each(kinds)(
           dag.currentModule().source(),
           legacy.templates,
           "sample",
+          {
+            name: "sample",
+            owner: "tester",
+            type: kind,
+            description: "A sample project",
+          },
         );
         const generated = await module.copyGitignore(
           await module.copyOss(seeded, "sample", "tester"),

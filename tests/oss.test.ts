@@ -218,6 +218,7 @@ describe("pinned OSS templates", () => {
           [
             ...new Set([
               "package.json",
+              "catalog-info.yaml",
               ".gitignore",
               ...(kind === "forge-app" ? SECRETS_ASSETS : []),
               ...project.files.keys(),

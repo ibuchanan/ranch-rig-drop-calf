@@ -61,10 +61,10 @@ Each kind additionally selects project-functions (see
 
 | Kind | Functions |
 |---|---|
-| `library` | oss, gitignore, node, changelog, format, typescript, aidev, test, size, git-hooks |
-| `forge-app` | oss, gitignore, node, changelog, secrets, format, forge-prelint, typescript, forge-ahead, aidev, test, size, git-hooks (+ optional `evals`) |
-| `tool` | oss, gitignore, node, changelog, format, typescript, aidev, test, git-hooks |
-| `agent-skill` | oss, gitignore, node, format, typescript, aidev, git-hooks |
+| `library` | catalog, oss, gitignore, node, changelog, format, typescript, aidev, test, size, git-hooks |
+| `forge-app` | catalog, oss, gitignore, node, changelog, secrets, format, forge-prelint, typescript, forge-ahead, aidev, test, size, git-hooks (+ optional `evals`) |
+| `tool` | catalog, oss, gitignore, node, changelog, format, typescript, aidev, test, git-hooks |
+| `agent-skill` | catalog, oss, gitignore, node, format, typescript, aidev, git-hooks |
 
 Notes:
 

@@ -85,7 +85,9 @@ Additional profiles may be added without changing existing capability implementa
 
 The former merge-strategy table is superseded by [ADR 0001](../docs/adr/0001-capability-verbs-by-intent.md). File type does not decide whether an output is seeded, preserved, merged, or replaced.
 
-A capability may use line-set, section-map, structured-key, managed-region, or whole-file operations to implement its documented policy. None is a universal default. For example, OSS updates LICENSE, CODE_OF_CONDUCT, CONTRIBUTING, and SECURITY authoritatively, while README and OWNER are init-only. Their common document format does not imply a common lifecycle.
+A capability may use line-set, section-map, structured-key, managed-region, or whole-file operations to implement its documented policy. None is a universal default. For example, OSS updates LICENSE, CODE_OF_CONDUCT, CONTRIBUTING, and SECURITY authoritatively, while README is init-only. The catalog decision supersedes the former init-only OWNER policy: ticket 06 will derive OWNER from catalog metadata on init and update. Their common document format does not imply a common lifecycle.
+
+The catalog capability owns a single root `catalog-info.yaml` as the language-independent project metadata source. Initialization seeds it from an authored template; update is an explicit no-op until a policy is defined. Package metadata and OSS consumption are deferred to tickets 04 and 06.
 
 Detailed policies and substitutions belong to the owning capability's specification.
 

@@ -1,4 +1,5 @@
 import type { Directory } from "@dagger.io/dagger";
+import { CATALOG_TEMPLATE, type CatalogSeed, copyCatalog } from "./catalog.ts";
 import { copySecretsAssets, SECRETS_TEMPLATE } from "./secrets.ts";
 
 /**
@@ -21,14 +22,21 @@ export async function seedTemplates(
   moduleSource: Directory,
   paths: readonly string[],
   name: string,
+  catalogSeed?: CatalogSeed,
 ): Promise<Directory> {
   let result = destination;
   for (const path of paths) {
     const source = moduleSource.directory(path);
-    result =
-      path === SECRETS_TEMPLATE
-        ? await copySecretsAssets(result, source, name)
-        : copyTemplate(result, source);
+    if (path === CATALOG_TEMPLATE) {
+      if (!catalogSeed)
+        throw new Error("Catalog template requires seed inputs");
+      result = await copyCatalog(result, source, catalogSeed);
+    } else {
+      result =
+        path === SECRETS_TEMPLATE
+          ? await copySecretsAssets(result, source, name)
+          : copyTemplate(result, source);
+    }
   }
   return result;
 }

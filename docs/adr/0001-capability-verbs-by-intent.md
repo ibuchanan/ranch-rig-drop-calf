@@ -113,3 +113,14 @@ Drop Calf policy.
 - [Overview and domain terms](../../specs/00-drop-calf-overview.md)
 - [Project kinds and composition](../../specs/01-project-kinds.md)
 - [Project-function contract and policies](../../specs/02-project-functions.md)
+
+## Annotated decisions
+
+### Catalog ownership policy
+
+The original OSS capability seeded `.atlassian/OWNER` as init-only, preserving it on update.
+The **catalog** capability (added after this ADR) captures the owner staff ID at init in
+`catalog-info.yaml` `spec.owner`. On future OSS policy migration, the OWNER file's ownership
+model will be **superseded**: catalog-derived on init + update, replacing the prior init-only
+model. This decision is recorded here to avoid rewriting the ADR core; the capability-specific
+policy migration belongs to the OSS ticket (ticket 06).

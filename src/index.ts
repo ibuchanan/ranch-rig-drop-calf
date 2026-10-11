@@ -11,6 +11,7 @@ import {
 } from "@dagger.io/dagger";
 import { BIOME_TEMPLATE, copyBiome } from "./biome.ts";
 import { updateCapabilities, validateCapabilities } from "./capability.ts";
+import { CATALOG_TEMPLATE, copyCatalog, validateCatalog } from "./catalog.ts";
 import {
   CHANGELOG_TEMPLATE,
   copyChangelog,
@@ -91,6 +92,27 @@ export class DropCalf {
       directory,
       dag.currentModule().source().directory(GIT_HOOKS_TEMPLATE),
     );
+  }
+
+  @func()
+  async copyCatalog(
+    directory: Directory,
+    name: string,
+    owner: string,
+    type: string,
+    description = "",
+    copyrightDate?: string,
+  ): Promise<Directory> {
+    return copyCatalog(
+      directory,
+      dag.currentModule().source().directory(CATALOG_TEMPLATE),
+      { name, owner, type, description, copyrightDate },
+    );
+  }
+
+  @func()
+  async validateCatalog(directory: Directory): Promise<string> {
+    return JSON.stringify(await validateCatalog(directory), null, 2);
   }
 
   @func()
@@ -200,6 +222,7 @@ export class DropCalf {
       dag.currentModule().source(),
       project.templates,
       name,
+      { name, owner, type: profile, description },
     );
     const generated = await this.copyGitignore(
       await this.copyOss(seeded, name, owner),

@@ -1,0 +1,23 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: "[Catalog name]"
+  title: "[Project name]"
+  description: "[Description]"
+  annotations:
+    # Shared metadata for other modules lives here under forge-ranch/*.
+    # Package names may contain characters that catalog identifiers cannot.
+    forge-ranch/package-name: "[Package name]"
+    # A single year or inclusive range; never advanced automatically by update.
+    forge-ranch/copyright-date: "[Copyright date]"
+    # github.com/project-slug: organization/repository
+    # jira/project-key: PROJECT
+  # links:
+  #   - url: https://example.atlassian.net/browse/PROJECT
+  #     title: Jira
+  #   - url: https://github.com/organization/repository
+  #     title: GitHub
+spec:
+  type: "[Project kind]"
+  lifecycle: experimental
+  owner: "[Owner]"

@@ -2,6 +2,7 @@ import { expect, test } from "bun:test";
 import type { Directory } from "@dagger.io/dagger";
 import { BIOME_TEMPLATE } from "../src/biome.ts";
 import { type Capability, expandCapability } from "../src/capability.ts";
+import { CATALOG_TEMPLATE } from "../src/catalog.ts";
 import { CHANGELOG_TEMPLATE } from "../src/changelog.ts";
 import { DOCS_TEMPLATE } from "../src/docs.ts";
 import { EVALS_TEMPLATE } from "../src/evals.ts";
@@ -28,6 +29,7 @@ test.each(kinds)("%s declares only its selected template trees", (kind) => {
     expect([...project.templates].sort()).toEqual(
       [
         BIOME_TEMPLATE,
+        CATALOG_TEMPLATE,
         ...(kind === "agent-skill" ? [] : [CHANGELOG_TEMPLATE]),
         DOCS_TEMPLATE,
         GIT_HOOKS_TEMPLATE,

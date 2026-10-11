@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { type Directory, dag } from "@dagger.io/dagger";
 import { BIOME_TEMPLATE } from "../src/biome.ts";
+import { CATALOG_TEMPLATE } from "../src/catalog.ts";
 import { CHANGELOG_TEMPLATE } from "../src/changelog.ts";
 import { EVALS_TEMPLATE } from "../src/evals.ts";
 import { GIT_HOOKS_TEMPLATE } from "../src/git-hooks.ts";
@@ -12,6 +13,7 @@ import { SECRETS_TEMPLATE } from "../src/secrets.ts";
 import { TYPESCRIPT_TEMPLATE } from "../src/typescript.ts";
 import {
   biomeTemplates,
+  catalogTemplates,
   changelogTemplates,
   docsTemplates,
   gitHooksTemplates,
@@ -79,6 +81,7 @@ export function mockModuleSource(
     }),
   });
   const trees = new Map<string, ReturnType<typeof tree>>([
+    [CATALOG_TEMPLATE, tree(catalogTemplates())],
     ["templates/docs", tree(docs)],
     [TYPESCRIPT_TEMPLATE, tree(typeScript)],
     [BIOME_TEMPLATE, tree(biome)],

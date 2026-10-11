@@ -65,6 +65,7 @@ test.skipIf(!enabled).each(cases)(
       );
       for (const path of [
         "LICENSE",
+        "catalog-info.yaml",
         "README.md",
         ".gitignore",
         "biome.jsonc",

@@ -17,6 +17,8 @@ const templatesIn = (tree: string) => {
   );
 };
 
+export const catalogTemplates = () => templatesIn("catalog");
+
 export const docsTemplates = () => templatesIn("docs");
 
 export const typescriptTemplates = () => templatesIn("typescript");

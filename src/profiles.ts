@@ -10,6 +10,7 @@ import {
   noTesting,
   vitestTesting,
 } from "./capabilities.ts";
+import { catalog } from "./catalog.ts";
 import { changelogToolchain } from "./changelog.ts";
 import { evals } from "./evals.ts";
 import { gitHooks } from "./git-hooks.ts";
@@ -23,6 +24,7 @@ import { typeScriptToolchain } from "./typescript.ts";
 
 export const PROFILES: Record<string, Capability[]> = {
   library: [
+    catalog(),
     nodeBaseline(),
     changelogToolchain(),
     biomeToolchain(),
@@ -35,6 +37,7 @@ export const PROFILES: Record<string, Capability[]> = {
     gitHooks(),
   ],
   "forge-app": [
+    catalog(),
     nodeBaseline(),
     changelogToolchain(),
     forgeSecrets(),
@@ -49,6 +52,7 @@ export const PROFILES: Record<string, Capability[]> = {
     gitHooks(),
   ],
   tool: [
+    catalog(),
     nodeBaseline(),
     changelogToolchain(),
     biomeToolchain(),
@@ -59,6 +63,7 @@ export const PROFILES: Record<string, Capability[]> = {
     gitHooks(),
   ],
   "agent-skill": [
+    catalog(),
     nodeBaseline(),
     biomeToolchain(),
     typeScriptToolchain(),
