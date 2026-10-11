@@ -8,8 +8,8 @@ import {
   GITIGNORE_QUERY,
   GITIGNORE_TEMPLATES,
   normalizeSet,
-  parseTemplate,
   PINNED_GITIGNORE,
+  parseTemplate,
   readPinnedTemplate,
 } from "../src/gitignore.ts";
 import { InvalidOptionsError } from "../src/profiles.ts";

@@ -1,6 +1,6 @@
+import { spyOn } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { spyOn } from "bun:test";
 import { dag } from "@dagger.io/dagger";
 import { BIOME_TEMPLATE } from "../src/biome.ts";
 import { CHANGELOG_TEMPLATE } from "../src/changelog.ts";

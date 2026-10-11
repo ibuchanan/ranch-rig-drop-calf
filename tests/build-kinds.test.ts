@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test";
-import ts from "typescript";
-import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import ts from "typescript";
 import { buildProject } from "../src/profiles.ts";
 import { typescriptTemplates } from "./templates-source.ts";
 

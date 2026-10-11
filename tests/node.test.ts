@@ -1,7 +1,7 @@
 import { describe, expect, spyOn, test } from "bun:test";
 import { dag } from "@dagger.io/dagger";
-import { buildProject } from "../src/profiles.ts";
 import { NPMRC, nodeContainer } from "../src/node.ts";
+import { buildProject } from "../src/profiles.ts";
 
 describe("node baseline", () => {
   test.each(["library", "forge-app", "tool", "agent-skill"])(

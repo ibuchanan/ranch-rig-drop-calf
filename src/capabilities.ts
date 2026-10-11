@@ -1,6 +1,6 @@
+import { biomeToolchain } from "./biome.ts";
 import type { ProjectBlueprint } from "./project.ts";
 import { TOOL_VERSIONS } from "./versions.ts";
-import { biomeToolchain } from "./biome.ts";
 
 export type Capability = {
   addTo(project: ProjectBlueprint): void;

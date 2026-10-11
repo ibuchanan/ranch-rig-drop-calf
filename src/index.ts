@@ -13,11 +13,12 @@ import {
   type Changeset,
   type Container,
   type Directory,
-  type File,
   dag,
+  type File,
   func,
   object,
 } from "@dagger.io/dagger";
+import { BIOME_TEMPLATE, copyBiome } from "./biome.ts";
 import {
   CHANGELOG_TEMPLATE,
   copyChangelog,
@@ -27,15 +28,14 @@ import { copyDocs } from "./docs.ts";
 import { copyGitHooks, GIT_HOOKS_TEMPLATE } from "./git-hooks.ts";
 import { copyGitignoreAssets, PINNED_GITIGNORE } from "./gitignore.ts";
 import { mergeScaffoldPackage, scaffoldName } from "./init.ts";
+import { nodeContainer as buildNodeContainer } from "./node.ts";
 import { copyOssAssets, PINNED_OSS } from "./oss.ts";
 import { applyPreclean } from "./preclean.ts";
 import { validatePrelint } from "./prelint.ts";
 import { buildProject, resolveProfile } from "./profiles.ts";
 import { renderToDirectory } from "./project.ts";
 import { copySecretsAssets, SECRETS_TEMPLATE } from "./secrets.ts";
-import { nodeContainer as buildNodeContainer } from "./node.ts";
 import { copyTypeScript, TYPESCRIPT_TEMPLATE } from "./typescript.ts";
-import { copyBiome, BIOME_TEMPLATE } from "./biome.ts";
 import { TOOL_VERSIONS } from "./versions.ts";
 
 function localBiomeConfig(fallback: string): string {

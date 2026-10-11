@@ -10,10 +10,10 @@ import {
   PINNED_OSS_UPSTREAM,
   transformOssTemplate,
 } from "../src/oss.ts";
-import { SECRETS_ASSETS } from "../src/secrets.ts";
 import { buildProject } from "../src/profiles.ts";
-import { docsTemplates } from "./templates-source.ts";
+import { SECRETS_ASSETS } from "../src/secrets.ts";
 import { mockOssSource, ossTemplates } from "./oss-source.ts";
+import { docsTemplates } from "./templates-source.ts";
 
 const root = join(import.meta.dir, "..");
 const vendor = join(root, PINNED_OSS);
