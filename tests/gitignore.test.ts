@@ -7,7 +7,6 @@ import {
   copyGitignoreAssets,
   GITIGNORE_QUERY,
   GITIGNORE_TEMPLATES,
-  mergeGitignore,
   normalizeSet,
   parseTemplate,
   PINNED_GITIGNORE,
@@ -172,38 +171,5 @@ describe("copyGitignoreAssets", () => {
       copyGitignoreAssets(fakeDirectory(writes), fakeFile("")),
     ).rejects.toThrow(/missing or malformed/);
     expect(writes.size).toBe(0);
-  });
-});
-
-describe("mergeGitignore", () => {
-  test("appends only absent rules and converges", () => {
-    const existing = "# mine\ncustom-cache\nnode_modules\n";
-    const merged = mergeGitignore(existing, buildGitignore(template));
-    expect(merged).toStartWith(existing);
-    expect(merged).toContain("custom-cache");
-    expect(merged).toContain("node_modules/");
-    expect(mergeGitignore(merged, buildGitignore(template))).toBe(merged);
-  });
-
-  test("never injects provenance or section comments into a user file", () => {
-    const merged = mergeGitignore("custom-cache\n", buildGitignore(template));
-    expect(merged).not.toContain("# Created by ");
-    expect(merged).not.toContain("### Node ###");
-    expect(merged).not.toContain("# Additional ignores");
-  });
-
-  test("keeps negations, which only matter if they survive the merge", () => {
-    const merged = mergeGitignore("", buildGitignore(template));
-    expect(merged).toContain("!.vscode/settings.json");
-  });
-
-  test("is a no-op when the file already carries every rule", () => {
-    const built = buildGitignore(template);
-    expect(mergeGitignore(built, built)).toBe(built);
-  });
-
-  test("repairs a missing trailing newline before appending", () => {
-    const merged = mergeGitignore("custom-cache", buildGitignore(template));
-    expect(merged).toStartWith("custom-cache\n");
   });
 });

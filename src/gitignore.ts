@@ -137,24 +137,6 @@ export function buildGitignore(
 }
 
 /**
- * Line-set merge for `sync`: existing lines, comments, and ordering are the
- * user's and are never rewritten. Only rules absent from the existing file are
- * appended, so repeated runs converge. Provenance and section comments are
- * deliberately not injected into a file the user already owns.
- */
-export function mergeGitignore(existing: string, wanted: string): string {
-  const present = new Set(existing.split(/\r?\n/u).map((line) => line.trim()));
-  const additions = wanted.split("\n").filter((line) => {
-    const rule = line.trim();
-    return rule !== "" && !rule.startsWith("#") && !present.has(rule);
-  });
-  if (!additions.length) return existing;
-  return `${existing}${
-    existing && !existing.endsWith("\n") ? "\n" : ""
-  }${additions.join("\n")}\n`;
-}
-
-/**
  * Read the pinned response through Dagger, rejecting a checkout or published
  * module where the pin did not ship. A bare `.gitignore` of personal extras
  * would otherwise look like success.
@@ -170,8 +152,7 @@ export async function readPinnedTemplate(source: File): Promise<string> {
 
 /**
  * Copy a generated `.gitignore` built from `source` into `destination`.
- * Unlike sync, an explicit copy replaces any existing `.gitignore`; callers that
- * must preserve user lines should merge with `mergeGitignore` instead.
+ * An explicit copy replaces any existing `.gitignore`.
  */
 export async function copyGitignoreAssets(
   destination: Directory,

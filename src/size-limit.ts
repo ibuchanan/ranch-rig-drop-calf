@@ -9,8 +9,7 @@ import { TOOL_VERSIONS } from "./versions.ts";
  * tree to seed: `size-limit` reads its budgets from a `size-limit` array in
  * `package.json` rather than from a config file of its own. So the capability
  * owns that section outright — there is no separate file for authored content
- * to live in — and `sync` structured-merges a single entry by name, so a
- * project's other budgets survive while the one named here is reconciled.
+ * to live in.
  */
 export const SIZE_LIMIT_FIELD = "size-limit";
 

@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { type Directory, dag } from "@dagger.io/dagger";
 import { DropCalf } from "../src/index.ts";
 import { OSS_ASSETS, transformOssTemplate } from "../src/oss.ts";
+import { SECRETS_ASSETS } from "../src/secrets.ts";
 import { buildProject } from "../src/profiles.ts";
 import { docsTemplates } from "./templates-source.ts";
 import { mockOssSource, ossTemplates } from "./oss-source.ts";
@@ -15,7 +16,7 @@ const pinnedSuite = OSS_ASSETS.some((path) => existsSync(join(vendor, path)))
   : describe.skip;
 
 pinnedSuite("pinned OSS templates", () => {
-  test("tracks every file in the pinned OSS template for sync injection", () => {
+  test("tracks every file in the pinned OSS template", () => {
     expect([...OSS_ASSETS].map(String).sort()).toEqual(
       [
         ...readdirSync(vendor).filter(
@@ -143,6 +144,9 @@ pinnedSuite("pinned OSS templates", () => {
         expect([...writes.keys()].sort()).toEqual(
           [
             "package.json",
+            // Seeded by `copyGitignore`, so the blueprint carries none.
+            ".gitignore",
+            ...(kind === "forge-app" ? SECRETS_ASSETS : []),
             ...project.files.keys(),
             ...OSS_ASSETS,
             ...docsTemplates().keys(),

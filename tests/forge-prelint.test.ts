@@ -7,7 +7,6 @@ import {
   validatePrelint,
 } from "../src/prelint.ts";
 import { buildProject } from "../src/profiles.ts";
-import { applySync, ConflictError, planSync } from "../src/sync.ts";
 
 test("Forge projects run prelint, Biome and Forge lint through the direct lint script", () => {
   const pkg = buildProject("forge-app", "sample", "tester").packageJson;
@@ -45,49 +44,6 @@ test("the prelint capability is a no-op until it is composed into a kind", () =>
   expect(project.packageJson.scripts["lint:prelint"]).toBeUndefined();
   prelint().addTo(project);
   expect(project.packageJson.scripts["lint:prelint"]).toBe(PRELINT_COMMAND);
-});
-
-test("Forge sync adds owned runtime dependencies and converges without losing unrelated ones", () => {
-  const files = new Map([
-    [
-      "package.json",
-      JSON.stringify({
-        name: "sample",
-        dependencies: { "@forge/api": "^7.0.0" },
-      }),
-    ],
-  ]);
-  const output = applySync(planSync(files, "forge-app", "tester")).files;
-  const pkg = JSON.parse(output.get("package.json") ?? "null");
-  expect(pkg.dependencies).toMatchObject({
-    "@forge/api": "^7.0.0",
-    "@forge-ahead/errors": "github:ibuchanan/forge-ahead-errors",
-    "@forge-ahead/logging": "github:ibuchanan/forge-ahead-logging",
-    "@forge-ahead/atlassian-api-types":
-      "github:ibuchanan/forge-ahead-atlassian-api-types",
-  });
-  expect(planSync(output, "forge-app", "tester").operations).toEqual([]);
-});
-
-test("Forge sync rejects conflicting owned scripts and packages without changing input", () => {
-  for (const section of ["scripts", "devDependencies", "dependencies"]) {
-    const key =
-      section === "scripts"
-        ? "lint:prelint"
-        : section === "devDependencies"
-          ? "@ast-grep/cli"
-          : "@forge-ahead/errors";
-    const original = JSON.stringify({
-      name: "sample",
-      [section]: { [key]: "custom" },
-    });
-    const files = new Map([["package.json", original]]);
-    expect(() => planSync(files, "forge-app", "tester")).toThrow(ConflictError);
-    expect(() => planSync(files, "forge-app", "tester")).toThrow(
-      `${section}.${key}`,
-    );
-    expect(files.get("package.json")).toBe(original);
-  }
 });
 
 /**

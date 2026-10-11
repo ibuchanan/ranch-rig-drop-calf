@@ -1,6 +1,6 @@
 import type { Directory } from "@dagger.io/dagger";
 import type { Capability } from "./capabilities.ts";
-import { copyTemplate, templatePaths } from "./templates.ts";
+import { copyTemplate } from "./templates.ts";
 import { TOOL_VERSIONS } from "./versions.ts";
 
 /**
@@ -16,17 +16,11 @@ import { TOOL_VERSIONS } from "./versions.ts";
  */
 export const BIOME_TEMPLATE = "templates/biome";
 
-export const BIOME_ASSETS = ["biome.jsonc"] as const;
-
 export function copyBiome(
   destination: Directory,
   source: Directory,
 ): Directory {
   return copyTemplate(destination, source);
-}
-
-export async function biomePaths(source: Directory): Promise<string[]> {
-  return templatePaths(source);
 }
 
 /** Every kind installs this same formatter/linter and runs it through these same scripts. */

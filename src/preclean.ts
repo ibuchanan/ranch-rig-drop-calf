@@ -1,6 +1,12 @@
 import type { Directory } from "@dagger.io/dagger";
 import sortPackageJson from "sort-package-json";
-import { ParseError } from "./sync.ts";
+
+export class ParseError extends Error {
+  constructor(path: string, reason: string) {
+    super(`cannot parse ${path}: ${reason}; fix the file before continuing.`);
+    this.name = "ParseError";
+  }
+}
 
 // Files supplied by forge create that Drop Calf replaces or regenerates.
 export const UNWANTED = [
@@ -24,7 +30,7 @@ export const SCAFFOLD_FIELDS = [
 
 // Sections Drop Calf regenerates from capabilities. The scaffold's entries are
 // its own scaffolding commands, not the project's, so they are emptied rather
-// than kept; sync then fills them from the profile.
+// than kept; generation then fills them from the profile.
 export const EMPTY_SECTIONS = ["scripts", "devDependencies"] as const;
 
 function isEmptyObject(value: unknown): boolean {
@@ -43,7 +49,7 @@ function isEmptyObject(value: unknown): boolean {
  * When the file already matches, the input string is returned untouched so a
  * second preclean over an already-clean tree is a true no-op. Otherwise the
  * result is rewritten in the same two-space, trailing-newline form
- * `sync` and `project` emit, then handed to `sortPackageJson` for canonical key
+ * `project` emits, then handed to `sortPackageJson` for canonical key
  * order. `sortPackageJson` preserves detected indentation and newline style, so
  * serializing first is what pins the formatting rather than sort-package-json.
  */

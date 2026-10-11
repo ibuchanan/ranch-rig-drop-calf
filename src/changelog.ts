@@ -1,7 +1,7 @@
 import type { Directory } from "@dagger.io/dagger";
 import type { Capability } from "./capabilities.ts";
 import { nodeContainer } from "./node.ts";
-import { copyTemplate, templatePaths } from "./templates.ts";
+import { copyTemplate } from "./templates.ts";
 import { TOOL_VERSIONS } from "./versions.ts";
 
 /**
@@ -33,8 +33,6 @@ export const CHANGELOG_CONFIG = "cliff.toml";
  * git-cliff stacks prepended entries above the file's title and duplicates
  * them on every run, whereas regenerating is idempotent.
  */
-export const CHANGELOG_ASSETS = ["CHANGELOG.md", CHANGELOG_CONFIG] as const;
-
 /**
  * The command `changelogToolchain` scripts and `validateChangelog` runs.
  * Validation splits it rather than repeating it, so the two cannot drift.
@@ -51,10 +49,6 @@ export function copyChangelog(
   source: Directory,
 ): Directory {
   return copyTemplate(destination, source);
-}
-
-export async function changelogPaths(source: Directory): Promise<string[]> {
-  return templatePaths(source);
 }
 
 /** Every kind that releases installs this tool and renders through this command. */

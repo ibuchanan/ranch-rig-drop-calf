@@ -1,6 +1,6 @@
 import type { Directory } from "@dagger.io/dagger";
 import type { Capability } from "./capabilities.ts";
-import { copyTemplate, templatePaths } from "./templates.ts";
+import { copyTemplate } from "./templates.ts";
 import { TOOL_VERSIONS } from "./versions.ts";
 
 /**
@@ -19,20 +19,11 @@ import { TOOL_VERSIONS } from "./versions.ts";
  */
 export const TYPESCRIPT_TEMPLATE = "templates/typescript";
 
-export const TYPESCRIPT_ASSETS = [
-  "tsconfig.json",
-  "tsconfig.typecheck.json",
-] as const;
-
 export function copyTypeScript(
   destination: Directory,
   source: Directory,
 ): Directory {
   return copyTemplate(destination, source);
-}
-
-export async function typescriptPaths(source: Directory): Promise<string[]> {
-  return templatePaths(source);
 }
 
 /** Every kind installs this same compiler and runs it through these same scripts. */

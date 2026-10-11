@@ -1,6 +1,6 @@
 import type { Directory } from "@dagger.io/dagger";
 import type { Capability } from "./capabilities.ts";
-import { copyTemplate, templatePaths } from "./templates.ts";
+import { copyTemplate } from "./templates.ts";
 import { TOOL_VERSIONS } from "./versions.ts";
 
 /**
@@ -21,18 +21,11 @@ import { TOOL_VERSIONS } from "./versions.ts";
  */
 export const GIT_HOOKS_TEMPLATE = "templates/git-hooks";
 
-/** The hook config; also what "has Git hooks" means. */
-export const GIT_HOOKS_ASSETS = ["lefthook.yml"] as const;
-
 export function copyGitHooks(
   destination: Directory,
   source: Directory,
 ): Directory {
   return copyTemplate(destination, source);
-}
-
-export async function gitHooksPaths(source: Directory): Promise<string[]> {
-  return templatePaths(source);
 }
 
 /** Every kind installs this runner and drives it through these same scripts. */

@@ -1,6 +1,6 @@
 // Bun Snapshot v1, https://bun.sh/docs/test/snapshots
 
-exports[`library generated output has the selected functions and converges without losing user prose: library 1`] = `
+exports[`library generated output has the selected functions: library 1`] = `
 "{
   "packageJson": {
     "name": "sample",
@@ -67,7 +67,7 @@ exports[`library generated output has the selected functions and converges witho
 }"
 `;
 
-exports[`forge-app generated output has the selected functions and converges without losing user prose: forge-app 1`] = `
+exports[`forge-app generated output has the selected functions: forge-app 1`] = `
 "{
   "packageJson": {
     "name": "sample",
@@ -140,7 +140,7 @@ exports[`forge-app generated output has the selected functions and converges wit
 }"
 `;
 
-exports[`tool generated output has the selected functions and converges without losing user prose: tool 1`] = `
+exports[`tool generated output has the selected functions: tool 1`] = `
 "{
   "packageJson": {
     "name": "sample",
@@ -187,7 +187,7 @@ exports[`tool generated output has the selected functions and converges without 
 }"
 `;
 
-exports[`agent-skill generated output has the selected functions and converges without losing user prose: agent-skill 1`] = `
+exports[`agent-skill generated output has the selected functions: agent-skill 1`] = `
 "{
   "packageJson": {
     "name": "sample",

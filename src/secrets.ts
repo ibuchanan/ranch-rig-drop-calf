@@ -1,6 +1,5 @@
 import type { Directory } from "@dagger.io/dagger";
 import type { Capability } from "./capabilities.ts";
-import { templatePaths } from "./templates.ts";
 
 /**
  * The SecretSpec workflow: the `forge:*` scripts every Forge app drives through
@@ -63,10 +62,6 @@ export async function copySecretsAssets(
     );
   }
   return result;
-}
-
-export async function secretsPaths(source: Directory): Promise<string[]> {
-  return templatePaths(source);
 }
 
 /** The command a `forge:*` script runs is passed through `env-var.sh` so its

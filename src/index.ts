@@ -19,46 +19,23 @@ import {
   object,
 } from "@dagger.io/dagger";
 import {
-  CHANGELOG_ASSETS,
   CHANGELOG_TEMPLATE,
-  changelogPaths,
   copyChangelog,
   validateChangelog,
 } from "./changelog.ts";
-import { copyDocs, docPaths } from "./docs.ts";
-import { EVAL_ASSETS } from "./evals.ts";
-import {
-  copyGitHooks,
-  GIT_HOOKS_ASSETS,
-  GIT_HOOKS_TEMPLATE,
-  gitHooksPaths,
-} from "./git-hooks.ts";
-import {
-  buildGitignore,
-  copyGitignoreAssets,
-  PINNED_GITIGNORE,
-  readPinnedTemplate,
-} from "./gitignore.ts";
-import { copyOssAssets, OSS_ASSETS } from "./oss.ts";
+import { copyDocs } from "./docs.ts";
+import { copyGitHooks, GIT_HOOKS_TEMPLATE } from "./git-hooks.ts";
+import { copyGitignoreAssets, PINNED_GITIGNORE } from "./gitignore.ts";
+import { mergeScaffoldPackage, scaffoldName } from "./init.ts";
+import { copyOssAssets } from "./oss.ts";
 import { applyPreclean } from "./preclean.ts";
 import { validatePrelint } from "./prelint.ts";
 import { buildProject, resolveProfile } from "./profiles.ts";
 import { renderToDirectory } from "./project.ts";
-import {
-  copySecretsAssets,
-  SECRETS_ASSETS,
-  SECRETS_EXECUTABLES,
-  SECRETS_TEMPLATE,
-  secretsPaths,
-} from "./secrets.ts";
-import { applySync, planSync } from "./sync.ts";
+import { copySecretsAssets, SECRETS_TEMPLATE } from "./secrets.ts";
 import { nodeContainer as buildNodeContainer } from "./node.ts";
-import {
-  copyTypeScript,
-  TYPESCRIPT_TEMPLATE,
-  typescriptPaths,
-} from "./typescript.ts";
-import { copyBiome, BIOME_TEMPLATE, biomePaths } from "./biome.ts";
+import { copyTypeScript, TYPESCRIPT_TEMPLATE } from "./typescript.ts";
+import { copyBiome, BIOME_TEMPLATE } from "./biome.ts";
 import { TOOL_VERSIONS } from "./versions.ts";
 
 function localBiomeConfig(fallback: string): string {
@@ -302,198 +279,79 @@ export class DropCalf {
     return (await this.removeScaffold(directory)).changes(directory);
   }
 
+  /**
+   * First-time setup of a `forge create` repository: remove the scaffold files
+   * Drop Calf replaces, generate the profile's files over what is left, and
+   * keep the scaffold's runtime dependencies. The package name defaults to the
+   * scaffold's own.
+   */
   @func()
-  async previewSync(
+  async init(
     directory: Directory,
     profile: string,
     owner: string,
-    ignoreSets?: string[],
-    withFunctions: string[] = [],
-    withoutFunctions: string[] = [],
-    preset?: string,
-  ): Promise<string> {
-    return JSON.stringify(
-      (
-        await this.syncPlan(
-          directory,
-          profile,
-          owner,
-          ignoreSets,
-          withFunctions,
-          withoutFunctions,
-          preset,
-        )
-      ).operations,
-      null,
-      2,
-    );
-  }
-
-  private async syncPlan(
-    directory: Directory,
-    profile: string,
-    owner: string,
-    ignoreSets?: string[],
-    withFunctions: string[] = [],
-    withoutFunctions: string[] = [],
-    preset?: string,
-  ) {
-    resolveProfile(profile, withFunctions, withoutFunctions, preset);
-    // Built before the conflict pass so an unknown set fails before any work.
-    const gitignore = buildGitignore(
-      await readPinnedTemplate(this.gitignoreSource()),
-      ignoreSets,
-    );
-    const docs = dag.currentModule().source().directory("templates/docs");
-    const docsPaths = await docPaths(docs);
-    const files = new Map<string, string>();
-    for (const path of [
-      "package.json",
-      "biome.jsonc",
-      ...GIT_HOOKS_ASSETS,
-      "tsconfig.json",
-      "tsconfig.typecheck.json",
-      "tsdown.config.ts",
-      // The whole release tree, so an edited `CHANGELOG.md` counts as present
-      // and is never reseeded over. Deriving the list keeps the reader and the
-      // seeder from drifting apart.
-      ...CHANGELOG_ASSETS,
-      ...SECRETS_ASSETS,
-      ".nvmrc",
-      ".npmrc",
-      "manifest.yml",
-      ".gitignore",
-      ".editorconfig",
-      ...OSS_ASSETS,
-      ...docsPaths,
-      "AGENTS.md",
-      ...EVAL_ASSETS.keys(),
-    ]) {
-      if (await directory.exists(path))
-        files.set(path, await directory.file(path).contents());
-    }
-    // Surface conflicts in existing content before asking Dagger for seed assets.
-    planSync(
-      files,
-      profile,
-      owner,
-      ignoreSets,
-      withFunctions,
-      withoutFunctions,
-      preset,
-    );
-    const templates = new Map<string, string>([[".gitignore", gitignore]]);
-    const missing = OSS_ASSETS.filter((path) => !files.has(path));
-    if (missing.length) {
-      const source = dag
-        .currentModule()
-        .source()
-        .directory("vendor/oss-templates");
-      for (const path of missing)
-        templates.set(path, await source.file(path).contents());
-    }
-    for (const path of docsPaths) {
-      if (!files.has(path))
-        templates.set(path, await docs.file(path).contents());
-    }
-    // Every kind seeds its configs from `templates/typescript`, and read them
-    // even when the repository already has one: the merge is create-if-absent,
-    // so the template is still what decides.
-    const typeScript = dag
-      .currentModule()
-      .source()
-      .directory(TYPESCRIPT_TEMPLATE);
-    for (const path of await typescriptPaths(typeScript))
-      templates.set(path, await typeScript.file(path).contents());
-    // Every kind seeds its Biome config from `templates/biome` the same way.
-    const biome = dag.currentModule().source().directory(BIOME_TEMPLATE);
-    for (const path of await biomePaths(biome))
-      templates.set(path, await biome.file(path).contents());
-    // The release policy is seeded the same way. `sync` decides whether a kind
-    // wants it; this only makes the bytes available for that decision.
-    const changelog = dag
-      .currentModule()
-      .source()
-      .directory(CHANGELOG_TEMPLATE);
-    for (const path of await changelogPaths(changelog))
-      templates.set(path, await changelog.file(path).contents());
-    // The hook config is seeded the same way: every kind takes it, and `sync`
-    // merges the named commands into whatever the repository already has.
-    const gitHooks = dag.currentModule().source().directory(GIT_HOOKS_TEMPLATE);
-    for (const path of await gitHooksPaths(gitHooks))
-      templates.set(path, await gitHooks.file(path).contents());
-    // SecretSpec is seeded the same way; `sync` decides whether a kind wants it.
-    const secrets = dag.currentModule().source().directory(SECRETS_TEMPLATE);
-    for (const path of await secretsPaths(secrets))
-      templates.set(path, await secrets.file(path).contents());
-    return planSync(
-      files,
-      profile,
-      owner,
-      ignoreSets,
-      withFunctions,
-      withoutFunctions,
-      preset,
-      templates,
-    );
-  }
-
-  @func()
-  async sync(
-    directory: Directory,
-    profile: string,
-    owner: string,
-    ignoreSets?: string[],
+    packageName?: string,
+    description = "",
+    author = "",
     withFunctions: string[] = [],
     withoutFunctions: string[] = [],
     preset?: string,
   ): Promise<Directory> {
-    const plan = await this.syncPlan(
-      directory,
+    resolveProfile(profile, withFunctions, withoutFunctions, preset);
+    const scaffold = (await directory.exists("package.json"))
+      ? await directory.file("package.json").contents()
+      : undefined;
+    const cleaned = await applyPreclean(directory);
+    const generated = await this.files(
       profile,
       owner,
-      ignoreSets,
+      packageName ?? scaffoldName(scaffold),
+      description,
+      author,
       withFunctions,
       withoutFunctions,
       preset,
     );
-    if (plan.operations.length === 0) return directory;
-    const files = applySync(plan).files;
-    let result = directory;
-    const missingOss = plan.operations
-      .filter((operation) =>
-        OSS_ASSETS.includes(operation.path as (typeof OSS_ASSETS)[number]),
-      )
-      .map((operation) => operation.path);
-    if (missingOss.length) {
-      const name = JSON.parse(plan.files.get("package.json") ?? "{}")
-        .name as string;
-      result = await copyOssAssets(
-        result,
-        dag.currentModule().source().directory("vendor/oss-templates"),
-        name,
+    const kept = (await cleaned.exists("package.json"))
+      ? await cleaned.file("package.json").contents()
+      : undefined;
+    return cleaned
+      .withDirectory(".", generated)
+      .withNewFile(
+        "package.json",
+        mergeScaffoldPackage(
+          kept,
+          await generated.file("package.json").contents(),
+        ),
+      );
+  }
+
+  /** `init` as a changeset, so deleted scaffold files are deleted on export. */
+  @func()
+  async initChanges(
+    directory: Directory,
+    profile: string,
+    owner: string,
+    packageName?: string,
+    description = "",
+    author = "",
+    withFunctions: string[] = [],
+    withoutFunctions: string[] = [],
+    preset?: string,
+  ): Promise<Changeset> {
+    return (
+      await this.init(
+        directory,
+        profile,
         owner,
-        missingOss,
-      );
-    }
-    for (const path of new Set(
-      plan.operations.map((operation) => operation.path),
-    )) {
-      if (OSS_ASSETS.includes(path as (typeof OSS_ASSETS)[number])) continue;
-      const contents = files.get(path);
-      if (contents === undefined)
-        throw new Error(`sync: ${path} missing after apply`);
-      result = result.withNewFile(
-        path,
-        contents,
-        SECRETS_EXECUTABLES.includes(
-          path as (typeof SECRETS_EXECUTABLES)[number],
-        )
-          ? { permissions: 0o755 }
-          : {},
-      );
-    }
-    return result;
+        packageName,
+        description,
+        author,
+        withFunctions,
+        withoutFunctions,
+        preset,
+      )
+    ).changes(directory);
   }
 
   @func()

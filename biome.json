@@ -12,6 +12,13 @@
     "indentStyle": "space"
   },
   "files": {
-    "includes": ["**", "!!vendor", "!!templates", "!**/node_modules", "!**/sdk", "!**/dist"]
+    "includes": [
+      "**",
+      "!!vendor",
+      "!!templates",
+      "!**/node_modules",
+      "!**/sdk",
+      "!**/dist"
+    ]
   }
 }
