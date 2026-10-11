@@ -49,6 +49,27 @@ test("the secrets tree seeds the config and executable helpers", async () => {
   expect(modes.get("secretspec.toml")).toBeUndefined();
 });
 
+test.each(["forge:deploy", "forge:install", "forge:upgrade"])(
+  "%s runs without interactive Forge prompts",
+  (script) => {
+    const scripts = buildProject("forge-app", "sample-app", "tester")
+      .packageJson.scripts;
+    expect(scripts[script]).toContain("--non-interactive");
+    if (script !== "forge:deploy")
+      expect(scripts[script]).toContain("--confirm-scopes");
+  },
+);
+
+test.each(["forge:register", "forge:uninstall", "forge:variables:set"])(
+  "%s is left without unsupported non-interactive flags",
+  (script) => {
+    const scripts = buildProject("forge-app", "sample-app", "tester")
+      .packageJson.scripts;
+    expect(scripts[script]).not.toContain("--non-interactive");
+    expect(scripts[script]).not.toContain("--confirm-scopes");
+  },
+);
+
 test("Forge app scripts target the CLI through SecretSpec and one allowlist helper", () => {
   const project = buildProject("forge-app", "sample-app", "tester");
   const scripts = project.packageJson.scripts;

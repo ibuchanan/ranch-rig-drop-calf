@@ -75,10 +75,10 @@ exports[`forge-app generated output has the selected functions: forge-app 1`] = 
     "scripts": {
       "changelog": "git cliff --config cliff.toml --unreleased -o CHANGELOG.md",
       "forge:register": "bash scripts/env-var.sh 'forge register'",
-      "forge:deploy": "bash scripts/env-var.sh 'forge deploy --environment \\"$FORGE_ENVIRONMENT\\"'",
-      "forge:install": "bash scripts/env-var.sh 'forge install --site \\"$FORGE_SITE\\" --product \\"$FORGE_PRODUCT\\" --environment \\"$FORGE_ENVIRONMENT\\"'",
+      "forge:deploy": "bash scripts/env-var.sh 'forge deploy --non-interactive --environment \\"$FORGE_ENVIRONMENT\\"'",
+      "forge:install": "bash scripts/env-var.sh 'forge install --non-interactive --confirm-scopes --site \\"$FORGE_SITE\\" --product \\"$FORGE_PRODUCT\\" --environment \\"$FORGE_ENVIRONMENT\\"'",
       "forge:uninstall": "bash scripts/env-var.sh 'forge uninstall --site \\"$FORGE_SITE\\" --product \\"$FORGE_PRODUCT\\" --environment \\"$FORGE_ENVIRONMENT\\"'",
-      "forge:upgrade": "bash scripts/env-var.sh 'forge install --upgrade --site \\"$FORGE_SITE\\" --product \\"$FORGE_PRODUCT\\" --environment \\"$FORGE_ENVIRONMENT\\"'",
+      "forge:upgrade": "bash scripts/env-var.sh 'forge install --upgrade --non-interactive --confirm-scopes --site \\"$FORGE_SITE\\" --product \\"$FORGE_PRODUCT\\" --environment \\"$FORGE_ENVIRONMENT\\"'",
       "forge:variables:set": "node scripts/forge-vars-from-secretspec.js",
       "lint:prelint": "ast-grep scan --globs '!specs/**' --globs '!node_modules/**' --config ./node_modules/@forge-ahead/prelint/sgconfig.ecosol.yml",
       "lint:forge": "forge lint",

@@ -83,16 +83,16 @@ export function forgeSecrets(): Capability {
       Object.assign(project.packageJson.scripts, {
         "forge:register": throughEnvVar("forge register"),
         "forge:deploy": throughEnvVar(
-          'forge deploy --environment "$FORGE_ENVIRONMENT"',
+          'forge deploy --non-interactive --environment "$FORGE_ENVIRONMENT"',
         ),
         "forge:install": throughEnvVar(
-          'forge install --site "$FORGE_SITE" --product "$FORGE_PRODUCT" --environment "$FORGE_ENVIRONMENT"',
+          'forge install --non-interactive --confirm-scopes --site "$FORGE_SITE" --product "$FORGE_PRODUCT" --environment "$FORGE_ENVIRONMENT"',
         ),
         "forge:uninstall": throughEnvVar(
           'forge uninstall --site "$FORGE_SITE" --product "$FORGE_PRODUCT" --environment "$FORGE_ENVIRONMENT"',
         ),
         "forge:upgrade": throughEnvVar(
-          'forge install --upgrade --site "$FORGE_SITE" --product "$FORGE_PRODUCT" --environment "$FORGE_ENVIRONMENT"',
+          'forge install --upgrade --non-interactive --confirm-scopes --site "$FORGE_SITE" --product "$FORGE_PRODUCT" --environment "$FORGE_ENVIRONMENT"',
         ),
         "forge:variables:set": "node scripts/forge-vars-from-secretspec.js",
       });
