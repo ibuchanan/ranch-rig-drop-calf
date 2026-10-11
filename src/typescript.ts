@@ -31,6 +31,7 @@ export function typeScriptToolchain(
   tsVersion = TOOL_VERSIONS.typescript,
 ): Capability {
   return {
+    templates: [TYPESCRIPT_TEMPLATE],
     addTo(project) {
       project.packageJson.devDependencies.typescript = tsVersion;
       project.packageJson.scripts.build = "tsc --project tsconfig.json";

@@ -17,7 +17,7 @@ import {
   copyChangelog,
   validateChangelog,
 } from "./changelog.ts";
-import { copyDocs } from "./docs.ts";
+import { copyDocs, DOCS_TEMPLATE } from "./docs.ts";
 import { copyGitHooks, GIT_HOOKS_TEMPLATE } from "./git-hooks.ts";
 import { copyGitignoreAssets, PINNED_GITIGNORE } from "./gitignore.ts";
 import { mergeScaffoldPackage, scaffoldName } from "./init.ts";
@@ -28,6 +28,7 @@ import { validatePrelint } from "./prelint.ts";
 import { buildProject, resolveProfile } from "./profiles.ts";
 import { renderToDirectory } from "./project.ts";
 import { copySecretsAssets, SECRETS_TEMPLATE } from "./secrets.ts";
+import { seedTemplates } from "./templates.ts";
 import { copyTypeScript, TYPESCRIPT_TEMPLATE } from "./typescript.ts";
 import { TOOL_VERSIONS } from "./versions.ts";
 
@@ -135,13 +136,12 @@ export class DropCalf {
     );
     const fallback = project.files.get("biome.jsonc");
     if (fallback) project.files.set("biome.jsonc", localBiomeConfig(fallback));
-    const rendered = renderToDirectory(project);
-    let directory = this.copyGitHooks(this.copyTypeScript(rendered));
-    directory = this.copyChangelog(directory);
-    directory = this.copyDocs(directory);
-    // SecretSpec is Forge-app only: no other kind has `forge:*` scripts.
-    if (profile === "forge-app")
-      directory = await this.copySecrets(directory, name);
+    const directory = await seedTemplates(
+      renderToDirectory(project),
+      dag.currentModule().source(),
+      project.templates,
+      name,
+    );
     return this.copyGitignore(await this.copyOss(directory, name, owner));
   }
 
@@ -149,7 +149,7 @@ export class DropCalf {
   copyDocs(directory: Directory): Directory {
     return copyDocs(
       directory,
-      dag.currentModule().source().directory("templates/docs"),
+      dag.currentModule().source().directory(DOCS_TEMPLATE),
     );
   }
 

@@ -13,7 +13,12 @@ import {
 import { buildProject } from "../src/profiles.ts";
 import { SECRETS_ASSETS } from "../src/secrets.ts";
 import { mockOssSource, ossTemplates } from "./oss-source.ts";
-import { docsTemplates } from "./templates-source.ts";
+import {
+  changelogTemplates,
+  docsTemplates,
+  gitHooksTemplates,
+  typescriptTemplates,
+} from "./templates-source.ts";
 
 const root = join(import.meta.dir, "..");
 const vendor = join(root, PINNED_OSS);
@@ -99,13 +104,27 @@ describe("pinned OSS templates", () => {
     }
   });
 
-  test.each(["library", "forge-app", "tool", "agent-skill"])(
-    "%s Dagger files renders the selected package and all assets",
-    async (kind) => {
+  test.each(
+    ["library", "forge-app", "tool", "agent-skill"].flatMap((kind) =>
+      [undefined, "all"].map((preset) => ({
+        kind,
+        preset,
+        presetName: preset ?? "default",
+      })),
+    ),
+  )(
+    "$kind Dagger files renders the selected package and all assets (preset $presetName)",
+    async ({ kind, preset }) => {
       const writes = new Map<string, string>();
+      const modes = new Map<string, number | undefined>();
       const directory = {
-        withNewFile(path: string, contents: string) {
+        withNewFile(
+          path: string,
+          contents: string,
+          options?: { permissions?: number },
+        ) {
           writes.set(path, contents);
+          modes.set(path, options?.permissions);
           return directory;
         },
         withFile(path: string, file: { text: string }) {
@@ -114,10 +133,10 @@ describe("pinned OSS templates", () => {
         },
         withDirectory(
           _path: string,
-          source: { file(path: string): { text: string } },
+          source: { files: ReadonlyMap<string, string> },
         ) {
-          for (const path of docsTemplates().keys())
-            writes.set(path, source.file(path).text);
+          for (const [path, contents] of source.files)
+            writes.set(path, contents);
           return directory;
         },
       } as unknown as Directory;
@@ -129,12 +148,20 @@ describe("pinned OSS templates", () => {
           "tester",
           "sample",
           "A sample project",
+          "",
+          [],
+          [],
+          preset,
         );
         const project = buildProject(
           kind,
           "sample",
           "tester",
           "A sample project",
+          "",
+          [],
+          [],
+          preset,
         );
         expect(JSON.parse(writes.get("package.json") ?? "null")).toEqual(
           project.packageJson,
@@ -150,15 +177,41 @@ describe("pinned OSS templates", () => {
         expect(writes.get("DEVELOPMENT.md")).toBe(
           docsTemplates().get("DEVELOPMENT.md"),
         );
+        const seeded = new Map([
+          ...typescriptTemplates(),
+          ...gitHooksTemplates(),
+          ...docsTemplates(),
+          ...(kind === "agent-skill" ? [] : changelogTemplates()),
+        ]);
+        for (const [path, contents] of seeded)
+          expect(writes.get(path)).toBe(contents);
+        expect(writes.has("cliff.toml")).toBe(kind !== "agent-skill");
+        expect(writes.has("CHANGELOG.md")).toBe(kind !== "agent-skill");
+        if (kind === "forge-app") {
+          expect(writes.get("secretspec.toml")).toContain('name = "sample"');
+          expect(writes.get("secretspec.toml")).not.toContain("[project-name]");
+          expect(modes.get("scripts/env-var.sh")).toBe(0o755);
+          expect(modes.get("scripts/forge-vars-from-secretspec.js")).toBe(
+            0o755,
+          );
+        }
+        expect(writes.get(".atlassian/OWNER")).toBe("tester");
+        expect(writes.get("LICENSE")).toBe(
+          ossTemplates()
+            .get("LICENSE")
+            ?.replaceAll("[YYYY]", String(new Date().getFullYear())),
+        );
         expect([...writes.keys()].sort()).toEqual(
           [
-            "package.json",
-            // Seeded by `copyGitignore`, so the blueprint carries none.
-            ".gitignore",
-            ...(kind === "forge-app" ? SECRETS_ASSETS : []),
-            ...project.files.keys(),
-            ...OSS_ASSETS,
-            ...docsTemplates().keys(),
+            ...new Set([
+              "package.json",
+              // Seeded by `copyGitignore`, so the blueprint carries none.
+              ".gitignore",
+              ...(kind === "forge-app" ? SECRETS_ASSETS : []),
+              ...project.files.keys(),
+              ...OSS_ASSETS,
+              ...seeded.keys(),
+            ]),
           ].sort(),
         );
       } finally {

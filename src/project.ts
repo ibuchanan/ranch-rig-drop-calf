@@ -22,6 +22,7 @@ export type PackageJson = {
 export type ProjectBlueprint = {
   packageJson: PackageJson;
   files: Map<string, string>;
+  templates: string[];
 };
 
 export function createBlueprint(
@@ -48,10 +49,10 @@ export function createBlueprint(
   // OSS and docs trees, so the Dagger layer copies it in after rendering. See
   // src/gitignore.ts. The node baseline (`.nvmrc`, `.npmrc`, `engines.node`)
   // is absent for a different reason: it belongs to the `node` capability, not
-  // to every blueprint. See src/node.ts. `tsconfig.json` belongs to the
-  // `typescript` capability, which `forge-app` deliberately does not use: it
-  // seeds the Forge config from `templates/typescript` instead.
-  return { packageJson, files };
+  // to every blueprint. See src/node.ts. Authored config trees belong to their
+  // capabilities: the blueprint carries only their paths, and generation reads
+  // them from the module source after rendering.
+  return { packageJson, files, templates: [] };
 }
 
 export function renderToDirectory(project: ProjectBlueprint): Directory {

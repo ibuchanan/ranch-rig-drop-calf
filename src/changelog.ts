@@ -56,6 +56,7 @@ export function changelogToolchain(
   cliffVersion = TOOL_VERSIONS.gitCliff,
 ): Capability {
   return {
+    templates: [CHANGELOG_TEMPLATE],
     addTo(project) {
       project.packageJson.devDependencies["git-cliff"] = cliffVersion;
       project.packageJson.scripts.changelog = CHANGELOG_COMMAND;

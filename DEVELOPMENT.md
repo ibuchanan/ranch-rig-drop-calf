@@ -103,8 +103,9 @@ DROP_CALF_E2E=1 bun test tests/e2e
   capability runs. Both are dotfiles, so they are worth knowing about when
   extending the tree: Dagger's `glob` does match them, but a shell glob will
   not.
-- `src/templates.ts`: `copyTemplate`, the shared overlay used by every
-  `templates/` tree.
+- `src/templates.ts`: `copyTemplate`, the shared tree overlay, and
+  `seedTemplates`, which reads the template paths selected by capabilities and
+  preserves SecretSpec substitutions and helper permissions.
 - `src/changelog.ts`: the release workflow — the `git-cliff` devDependency and
   the `changelog` script, plus `copyChangelog` for
   `templates/changelog/`. `validateChangelog` renders an unreleased changelog
@@ -141,9 +142,11 @@ DROP_CALF_E2E=1 bun test tests/e2e
   defaults. `copyGitignoreAssets` is the Dagger boundary used by generation and
   by `copy-gitignore`.
 - `src/capabilities.ts`: adapters that add scripts, development dependencies,
-  and configuration to the blueprint. `docsLinting()` adds the `lint:docs`
-  script and the `cspell`/`markdownlint-cli2` devDependencies every kind gets;
-  the config those tools read stays pinned in `templates/docs`.
+  and configuration to the blueprint. A capability's optional `templates`
+  array names zero or more module-source trees; `buildProject` collects those
+  paths in `ProjectBlueprint.templates` without reading the files.
+  `docsLinting()` declares `templates/docs` beside the `lint:docs` script and
+  the `cspell`/`markdownlint-cli2` devDependencies every kind gets.
 - `src/node.ts`: the Node baseline. `nodeBaseline()` seeds `.nvmrc`, `.npmrc`,
   `engines.node`, and `@types/node`; it never writes a manifest.
   `nodeContainer()` is the native Dagger side of
@@ -209,9 +212,19 @@ means it needs a live engine, which is why its tests fake `dag.container()`
 rather than starting one.
 
 A capability cannot read the module source — that would break the pure blueprint
-layer the Bun tests rely on. So content that belongs to a function but is
-authored rather than derived is pinned in `templates/` and read at the Dagger
-boundary, exactly like `oss` and `gitignore`.
+layer the Bun tests rely on. It declares template paths as data instead.
+`files` seeds those selected trees through `seedTemplates`, with no profile
+checks in the seeding entry point. Changelog templates belong to
+`changelogToolchain()`, and SecretSpec templates belong to `forgeSecrets()`.
+OSS and gitignore remain base assets rather than optional capabilities.
+
+The standalone `copy-docs`, `copy-typescript`, `copy-changelog`, `copy-git-hooks`,
+`copy-secrets`, and `copy-biome` Dagger functions remain available for deliberate
+re-seeding of one tree in an existing repository without generating a package or
+selecting a whole profile. They are not steps in the `files` pipeline.
+`copy-biome` remains explicit: normal generation uses the blueprint's derived
+Biome config and EditorConfig, so seeding `templates/biome` there would change
+output. Consolidating those sources is a separate change.
 
 ## The generated `.gitignore`
 

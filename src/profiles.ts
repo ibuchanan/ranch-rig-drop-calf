@@ -137,7 +137,11 @@ export function buildProject(
     preset,
   );
   const project = createBlueprint(packageName, description, author);
-  for (const capability of capabilities) capability.addTo(project);
+  const addCapability = (capability: Capability) => {
+    capability.addTo(project);
+    project.templates.push(...(capability.templates ?? []));
+  };
+  for (const capability of capabilities) addCapability(capability);
   validateOssOwner(owner);
   if (!withoutFunctions.includes("aidev")) seedAgentGuidance(project, profile);
   if (
@@ -145,7 +149,7 @@ export function buildProject(
     (preset === "all" || withFunctions.includes("evals")) &&
     !withoutFunctions.includes("evals")
   ) {
-    evals().addTo(project);
+    addCapability(evals());
   }
   return project;
 }

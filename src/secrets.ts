@@ -78,6 +78,7 @@ function throughEnvVar(command: string): string {
  */
 export function forgeSecrets(): Capability {
   return {
+    templates: [SECRETS_TEMPLATE],
     addTo(project) {
       Object.assign(project.packageJson.scripts, {
         "forge:register": throughEnvVar("forge register"),

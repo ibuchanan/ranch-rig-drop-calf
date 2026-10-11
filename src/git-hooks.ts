@@ -31,6 +31,7 @@ export function copyGitHooks(
 /** Every kind installs this runner and drives it through these same scripts. */
 export function gitHooks(lefthookVersion = TOOL_VERSIONS.lefthook): Capability {
   return {
+    templates: [GIT_HOOKS_TEMPLATE],
     addTo(project) {
       project.packageJson.devDependencies.lefthook = lefthookVersion;
       project.packageJson.scripts.prepare = "lefthook install || true";

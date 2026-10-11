@@ -45,6 +45,7 @@ export function mockModuleSource(
     }),
   };
   const tree = (files: ReadonlyMap<string, string>) => ({
+    files,
     glob: async () => [...files.keys()],
     exists: async (path: string) => files.has(path),
     file: (path: string) => ({

@@ -1,4 +1,5 @@
 import type { Directory } from "@dagger.io/dagger";
+import { copySecretsAssets, SECRETS_TEMPLATE } from "./secrets.ts";
 
 /**
  * Seed a template tree over a rendered directory.
@@ -12,4 +13,22 @@ export function copyTemplate(
   source: Directory,
 ): Directory {
   return destination.withDirectory(".", source);
+}
+
+/** Seed selected capability trees; template-specific handling stays at this boundary. */
+export async function seedTemplates(
+  destination: Directory,
+  moduleSource: Directory,
+  paths: readonly string[],
+  name: string,
+): Promise<Directory> {
+  let result = destination;
+  for (const path of paths) {
+    const source = moduleSource.directory(path);
+    result =
+      path === SECRETS_TEMPLATE
+        ? await copySecretsAssets(result, source, name)
+        : copyTemplate(result, source);
+  }
+  return result;
 }

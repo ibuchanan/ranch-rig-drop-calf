@@ -1,8 +1,11 @@
 import { biomeToolchain } from "./biome.ts";
+import { DOCS_TEMPLATE } from "./docs.ts";
 import type { ProjectBlueprint } from "./project.ts";
 import { TOOL_VERSIONS } from "./versions.ts";
 
+/** A project's toolchain contribution and authored template trees, with no engine reads. */
 export type Capability = {
+  templates?: readonly string[];
   addTo(project: ProjectBlueprint): void;
 };
 
@@ -48,11 +51,12 @@ export function cleanBuild(): Capability {
 
 /**
  * Lint the seeded documentation tree. The tool config is pinned in
- * `templates/docs` alongside the Markdown it checks; this only wires up the
- * runner, so a project that replaces the configs still keeps one entry point.
+ * `templates/docs` alongside the Markdown it checks; the capability declares
+ * that tree with the runner so selecting it also seeds the tools' inputs.
  */
 export function docsLinting(): Capability {
   return {
+    templates: [DOCS_TEMPLATE],
     addTo(project) {
       project.packageJson.scripts["lint:docs"] =
         'markdownlint-cli2 "**/*.md" && cspell lint "**/*.md"';
