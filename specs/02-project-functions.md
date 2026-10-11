@@ -202,6 +202,14 @@ Forge architecture-test seeds are a separate, optional concern.
 Add `promptfoo`; own `eval`/`view` scripts. Copy versioned Promptfoo config and example
 prompts/tests/data as seed assets; never overwrite an existing evaluation suite.
 
+Manifest wiring is deliberately manual: Drop Calf does not edit `manifest.yml`
+for `evals`, because agent selection and behavior belong to the app owner.
+`prompts/agent-instructions.md` is the shared prompt source. Seed
+`docs/how-to/evaluate-rovo-agent.md` with a `rovo:agent` prompt-resource example
+that resolves to that file, already read by the Promptfoo test cases. Keep the
+translation example runnable without an agent. Evaluation is a prompt simulation
+through the configured provider, not a test of the deployed Rovo runtime.
+
 ### `size`
 Add `size-limit` and `@size-limit/file`; own the `size` script. Structured-merge a
 `size-limit` entry named `Forge app bundle` (`dist/**/*.js`, `10 kB`); same name with
