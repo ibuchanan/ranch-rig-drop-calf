@@ -1,25 +1,269 @@
 import { expect, spyOn, test } from "bun:test";
 import { dag } from "@dagger.io/dagger";
 import {
+  noOpReasons,
+  updateCapabilities,
+  validateCapabilities,
+} from "../src/capability.ts";
+import { DropCalf } from "../src/index.ts";
+import {
+  AST_GREP_PACKAGE,
   PRELINT_COMMAND,
-  PRELINT_SCAN,
+  PRELINT_PACKAGE,
+  PRELINT_SCRIPTS,
   prelint,
+  updatePrelint,
   validatePrelint,
 } from "../src/prelint.ts";
 import { buildProject } from "../src/profiles.ts";
+import { createBlueprint } from "../src/project.ts";
+import { TOOL_VERSIONS } from "../src/versions.ts";
+import { mockDirectory, mockModuleSource } from "./module-source.ts";
 
-test("Forge projects contribute named prelint and Forge lint subtasks to git-hooks", () => {
-  const pkg = buildProject("forge-app", "sample", "tester").packageJson;
-  expect(pkg.devDependencies["@ast-grep/cli"]).toBe("^0.45");
-  expect(pkg.devDependencies["@forge-ahead/prelint"]).toBe(
-    "github:ibuchanan/tool-forge-prelint-ast-grep",
+const validationReason =
+  "Prelint has no repository-local configuration to validate; its rules ship in the dependency package. Source scanning belongs to the lint workflow.";
+
+test("prelint init and validate are explicit no-ops with enumerable reasons", () => {
+  const capability = prelint();
+  expect(noOpReasons([capability])).toEqual([
+    {
+      capability: "prelint",
+      verb: "init",
+      reason:
+        "Prelint has no repository-local configuration to seed; its rules ship in the dependency package, and update maintains the tool dependencies and scripts.",
+    },
+    { capability: "prelint", verb: "validate", reason: validationReason },
+  ]);
+  const project = buildProject("forge-app", "sample", "tester");
+  expect(project.packageJson.scripts["lint:prelint"]).toBeUndefined();
+  expect(project.packageJson.scripts["lint:forge"]).toBeUndefined();
+  expect(project.packageJson.devDependencies[AST_GREP_PACKAGE]).toBeUndefined();
+  expect(project.packageJson.devDependencies[PRELINT_PACKAGE]).toBeUndefined();
+  expect(project.templates.some((path) => path.includes("prelint"))).toBe(
+    false,
   );
-  expect(pkg.scripts["lint:prelint"]).toBe(PRELINT_COMMAND);
+});
+
+test("legacy prelint contributions retain named subtasks without owning lint or config", () => {
+  const project = createBlueprint("sample", "", "tester");
+  project.packageJson.scripts.lint = "owner lint";
+  prelint("0.45.1", "github:example/rules#revision").addTo(project);
+  expect(project.packageJson.scripts).toEqual({
+    ...PRELINT_SCRIPTS,
+    lint: "owner lint",
+  });
+  expect(project.packageJson.devDependencies).toEqual({
+    [AST_GREP_PACKAGE]: "0.45.1",
+    [PRELINT_PACKAGE]: "github:example/rules#revision",
+  });
+  expect(project.templates).toEqual([]);
+  expect(project.files.size).toBe(0);
+});
+
+test("update enforces selected dependencies and scripts while preserving unrelated values and files", async () => {
+  const capability = prelint("0.45.1", "github:example/rules#revision");
+  const input = mockDirectory(
+    new Map([
+      [
+        "package.json",
+        JSON.stringify({
+          name: "owner",
+          scripts: {
+            "lint:prelint": "ast-grep scan owner",
+            "lint:forge": "owner forge",
+            lint: "owner lint",
+            custom: "keep",
+          },
+          devDependencies: {
+            [AST_GREP_PACKAGE]: "old",
+            [PRELINT_PACKAGE]: "old",
+            custom: "1",
+          },
+          dependencies: { keep: "1" },
+          custom: { keep: true },
+        }),
+      ],
+      ["lefthook.yml", "owner config, even invalid\r\n"],
+      ["sgconfig.yml", "owner rules"],
+      ["src/index.ts", "owner source\n"],
+      ["package-lock.json", "owner lock"],
+      ["bun.lock", "owner bun lock"],
+    ]),
+  );
+  const before = [...input.files];
+  const output = await updateCapabilities(input, [capability]);
+  expect(JSON.parse(await output.file("package.json").contents())).toEqual({
+    name: "owner",
+    scripts: { ...PRELINT_SCRIPTS, lint: "owner lint", custom: "keep" },
+    devDependencies: {
+      [AST_GREP_PACKAGE]: "0.45.1",
+      [PRELINT_PACKAGE]: "github:example/rules#revision",
+      custom: "1",
+    },
+    dependencies: { keep: "1" },
+    custom: { keep: true },
+  });
   expect(PRELINT_COMMAND).toBe(
     "ast-grep scan --globs '!specs/**' --globs '!node_modules/**' --config ./node_modules/@forge-ahead/prelint/sgconfig.ecosol.yml",
   );
-  expect(pkg.scripts["lint:forge"]).toBe("forge lint");
-  expect(pkg.scripts.lint).toBe("lefthook run lint");
+  for (const [path, text] of input.files)
+    if (path !== "package.json")
+      expect(await output.file(path).contents()).toBe(text);
+  expect([...input.files]).toEqual(before);
+  expect(await updateCapabilities(output, [capability])).toBe(output);
+});
+
+test("update creates missing sections and owned keys, but not a missing package or hook config", async () => {
+  const empty = mockDirectory();
+  expect(await updatePrelint(empty)).toBe(empty);
+  const output = await updatePrelint(
+    mockDirectory(new Map([["package.json", "{}"]])),
+  );
+  const pkg = JSON.parse(await output.file("package.json").contents());
+  expect(pkg).toEqual({
+    scripts: PRELINT_SCRIPTS,
+    devDependencies: {
+      [AST_GREP_PACKAGE]: TOOL_VERSIONS.astGrep,
+      [PRELINT_PACKAGE]: TOOL_VERSIONS.forgePrelint,
+    },
+  });
+  expect(await output.exists("lefthook.yml")).toBe(false);
+  const text = `${JSON.stringify(pkg, null, 4)}\r\n`;
+  const matching = output.withNewFile("package.json", text);
+  expect(await updatePrelint(matching)).toBe(matching);
+  expect(await matching.file("package.json").contents()).toBe(text);
+});
+
+test.each([
+  "{",
+  "null",
+  "[]",
+  '"package"',
+  '{"scripts":null}',
+  '{"scripts":[]}',
+  '{"scripts":"bad"}',
+  '{"devDependencies":null}',
+  '{"devDependencies":[]}',
+  '{"devDependencies":"bad"}',
+])(
+  "update rejects unsafe package shape without writes: %s",
+  async (contents) => {
+    const input = mockDirectory(new Map([["package.json", contents]]));
+    const write = spyOn(input, "withNewFile");
+    try {
+      await expect(updatePrelint(input)).rejects.toThrow("package.json");
+      expect(write).not.toHaveBeenCalled();
+      expect(await input.file("package.json").contents()).toBe(contents);
+    } finally {
+      write.mockRestore();
+    }
+  },
+);
+
+test.each(["library", "forge-app", "tool", "agent-skill"])(
+  "%s initialization and composed update keep prelint Forge-only and idempotent",
+  async (kind) => {
+    const source = mockModuleSource();
+    const empty = spyOn(dag, "directory").mockImplementation(() =>
+      mockDirectory(),
+    );
+    try {
+      const module = new DropCalf();
+      const initialized = await module.init(
+        mockDirectory(),
+        kind,
+        "tester",
+        "sample",
+      );
+      const pkg = JSON.parse(await initialized.file("package.json").contents());
+      expect(pkg.scripts.lint).toBe("lefthook run lint");
+      if (kind === "forge-app") {
+        expect(pkg.scripts["lint:prelint"]).toBe(PRELINT_COMMAND);
+        expect(pkg.scripts["lint:forge"]).toBe("forge lint");
+        expect(pkg.devDependencies[AST_GREP_PACKAGE]).toBe(
+          TOOL_VERSIONS.astGrep,
+        );
+        expect(pkg.devDependencies[PRELINT_PACKAGE]).toBe(
+          TOOL_VERSIONS.forgePrelint,
+        );
+      } else {
+        expect(pkg.scripts["lint:prelint"]).toBeUndefined();
+        expect(pkg.scripts["lint:forge"]).toBeUndefined();
+        expect(pkg.devDependencies[AST_GREP_PACKAGE]).toBeUndefined();
+        expect(pkg.devDependencies[PRELINT_PACKAGE]).toBeUndefined();
+      }
+      expect(await module.update(initialized, kind)).toBe(initialized);
+      Object.assign(pkg.scripts, {
+        "lint:prelint": "owner prelint",
+        "lint:forge": "owner forge",
+      });
+      Object.assign(pkg.devDependencies, {
+        [AST_GREP_PACKAGE]: "old",
+        [PRELINT_PACKAGE]: "old",
+      });
+      const edited = initialized
+        .withNewFile("package.json", JSON.stringify(pkg))
+        .withNewFile("lefthook.yml", "owner hooks\r\n");
+      const updated = await module.update(edited, kind);
+      const actual = JSON.parse(await updated.file("package.json").contents());
+      expect(actual.scripts["lint:prelint"]).toBe(
+        kind === "forge-app" ? PRELINT_COMMAND : "owner prelint",
+      );
+      expect(actual.scripts["lint:forge"]).toBe(
+        kind === "forge-app" ? "forge lint" : "owner forge",
+      );
+      expect(actual.devDependencies[AST_GREP_PACKAGE]).toBe(
+        kind === "forge-app" ? TOOL_VERSIONS.astGrep : "old",
+      );
+      expect(actual.devDependencies[PRELINT_PACKAGE]).toBe(
+        kind === "forge-app" ? TOOL_VERSIONS.forgePrelint : "old",
+      );
+      expect(await updated.file("lefthook.yml").contents()).toBe(
+        "owner hooks\r\n",
+      );
+      expect(await module.update(updated, kind)).toBe(updated);
+    } finally {
+      empty.mockRestore();
+      source.mockRestore();
+    }
+  },
+);
+
+test("capability and standalone validation skip without reading files or starting containers", async () => {
+  const input = mockDirectory(
+    new Map([
+      ["package.json", "malformed"],
+      ["src/index.ts", "rule violations"],
+    ]),
+  );
+  const before = [...input.files];
+  const read = spyOn(input, "exists").mockImplementation(() => {
+    throw new Error("Validation must not read the repository");
+  });
+  const file = spyOn(input, "file").mockImplementation(() => {
+    throw new Error("Validation must not read files");
+  });
+  const container = spyOn(dag, "container").mockImplementation(() => {
+    throw new Error("Validation must not install tools or scan source");
+  });
+  try {
+    const skipped = { status: "skipped", reason: validationReason } as const;
+    expect(await validateCapabilities(input, [prelint()])).toEqual([
+      { capability: "prelint", ...skipped },
+    ]);
+    expect(await validatePrelint(input)).toEqual(skipped);
+    expect(JSON.parse(await new DropCalf().validatePrelint(input))).toEqual(
+      skipped,
+    );
+    expect(read).not.toHaveBeenCalled();
+    expect(file).not.toHaveBeenCalled();
+    expect(container).not.toHaveBeenCalled();
+    expect([...input.files]).toEqual(before);
+  } finally {
+    container.mockRestore();
+    file.mockRestore();
+    read.mockRestore();
+  }
 });
 
 test("Forge projects include only the three Forge Ahead runtime dependencies", () => {
@@ -31,106 +275,8 @@ test("Forge projects include only the three Forge Ahead runtime dependencies", (
     "@forge-ahead/logging": "github:ibuchanan/forge-ahead-logging",
   });
   for (const kind of ["library", "tool", "agent-skill"]) {
-    const other = buildProject(kind, "sample", "tester").packageJson;
-    expect(other.dependencies).toBeUndefined();
-    expect(other.devDependencies["@ast-grep/cli"]).toBeUndefined();
-    expect(other.devDependencies["@forge-ahead/prelint"]).toBeUndefined();
-    expect(other.scripts["lint:prelint"]).toBeUndefined();
-  }
-});
-
-test("the prelint capability is a no-op until it is composed into a kind", () => {
-  const project = buildProject("tool", "sample", "tester");
-  expect(project.packageJson.scripts["lint:prelint"]).toBeUndefined();
-  project.packageJson.scripts.lint = "owner lint";
-  prelint().addTo(project);
-  expect(project.packageJson.scripts["lint:prelint"]).toBe(PRELINT_COMMAND);
-  expect(project.packageJson.scripts.lint).toBe("owner lint");
-});
-
-/**
- * Stand in for `dag.container()` so the validation paths are exercised without
- * an engine. `outputs` maps a shell command to what the container writes back.
- */
-function mockContainer(outputs: Record<string, string>) {
-  const commands: string[][] = [];
-  const container = {
-    from: () => container,
-    withNewFile: () => container,
-    withWorkdir: () => container,
-    withExec: (args: string[]) => {
-      commands.push(args);
-      return container;
-    },
-    withMountedDirectory: () => container,
-    stdout: async () => outputs[commands.at(-1)?.join(" ") ?? ""] ?? "",
-  };
-  return {
-    commands,
-    spy: spyOn(dag, "container").mockReturnValue(container as never),
-  };
-}
-
-const directory = (manifest: Record<string, unknown> | undefined) =>
-  ({
-    exists: async () => manifest !== undefined,
-    file: () => ({ contents: async () => JSON.stringify(manifest ?? {}) }),
-  }) as unknown as Parameters<typeof validatePrelint>[0];
-
-test("validation skips a repository that never opted into prelint", async () => {
-  const { spy } = mockContainer({});
-  try {
-    expect(await validatePrelint(directory(undefined))).toEqual({
-      status: "skipped",
-      reason: "package.json is missing",
-    });
     expect(
-      await validatePrelint(directory({ name: "sample", scripts: {} })),
-    ).toEqual({ status: "skipped", reason: "lint:prelint is missing" });
-  } finally {
-    spy.mockRestore();
-  }
-});
-
-test("validation installs the pinned rules and runs the scan", async () => {
-  const { commands, spy } = mockContainer({
-    [`sh -c ${PRELINT_SCAN} 2>&1; echo "ast-grep exit=$?"`]: "ast-grep exit=0",
-  });
-  try {
-    expect(
-      await validatePrelint(
-        directory({
-          name: "sample",
-          scripts: { "lint:prelint": PRELINT_COMMAND },
-        }),
-      ),
-    ).toEqual({ status: "validated" });
-    expect(commands[0]).toEqual(["npm", "install", "--no-fund", "--no-audit"]);
-    expect(commands.at(-1)).toEqual([
-      "sh",
-      "-c",
-      "/prelint-tools/node_modules/.bin/ast-grep scan --globs '!specs/**' --globs '!node_modules/**' --config /prelint-tools/node_modules/@forge-ahead/prelint/sgconfig.ecosol.yml 2>&1; echo \"ast-grep exit=$?\"",
-    ]);
-  } finally {
-    spy.mockRestore();
-  }
-});
-
-test("validation reports the scan's own output when a rule fails", async () => {
-  const { spy } = mockContainer({
-    [`sh -c ${PRELINT_SCAN} 2>&1; echo "ast-grep exit=$?"`]:
-      "error: rule matched\nast-grep exit=1",
-  });
-  try {
-    await expect(
-      validatePrelint(
-        directory({
-          name: "sample",
-          scripts: { "lint:prelint": PRELINT_COMMAND },
-        }),
-      ),
-    ).rejects.toThrow(/ast-grep validation failed: error: rule matched/);
-  } finally {
-    spy.mockRestore();
+      buildProject(kind, "sample", "tester").packageJson.dependencies,
+    ).toBeUndefined();
   }
 });

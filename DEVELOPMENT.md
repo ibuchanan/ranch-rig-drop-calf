@@ -143,11 +143,12 @@ DROP_CALF_E2E=1 bun test tests/e2e
   `templates/git-hooks/lefthook.yml`. One config serves every kind: the
   scripts a kind omits are reached through `npm run <script> --if-present`, so
   a hook with nothing to run is a no-op rather than a failure.
-- `src/prelint.ts`: the Forge prelint workflow — the `@ast-grep/cli` and
-  `@forge-ahead/prelint` devDependencies, the `lint:prelint`/`lint:forge`
-  scripts and the `lint` chain, plus `validatePrelint`, which installs the
-  pinned rules in a container and scans a repository without changing it. The
-  rules ship inside the package, so there is no config to seed.
+- `src/prelint.ts`: the Forge prelint workflow — update enforces the
+  `@ast-grep/cli` and `@forge-ahead/prelint` dependency references and the
+  `lint:prelint`/`lint:forge` scripts. Git-hooks alone owns the `lint` dispatcher.
+  Init and validation are explicit no-ops: the rules ship inside the package,
+  with no local config to seed or validate. Standalone `validatePrelint` reports
+  the same skip; source scanning belongs to the lint workflow.
 - `src/secrets.ts`: the SecretSpec workflow — the `forge:*` scripts and
   `copySecretsAssets` for `templates/secretspec/`. The TOML and
   the two helpers are authored content copied for `forge-app`

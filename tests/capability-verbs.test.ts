@@ -94,7 +94,7 @@ test("no-op reasons are enumerable data, including the deliberately inactive ini
 });
 
 test.each(kinds)(
-  "%s required verbs preserve legacy assembly and update leaves init unchanged",
+  "%s required verbs preserve initialized legacy output and update leaves init unchanged",
   async (kind) => {
     const source = mockModuleSource();
     const empty = spyOn(dag, "directory").mockImplementation(() => tree());
@@ -118,9 +118,15 @@ test.each(kinds)(
           withoutFunctions,
           preset,
         );
-        expect(JSON.stringify(project.packageJson)).toBe(
-          JSON.stringify(legacy.packageJson),
-        );
+        // Prelint is now update-only; its retained addTo contribution is legacy-only.
+        const legacyInitPackage = structuredClone(legacy.packageJson);
+        if (kind === "forge-app") {
+          delete legacyInitPackage.devDependencies["@ast-grep/cli"];
+          delete legacyInitPackage.devDependencies["@forge-ahead/prelint"];
+          delete legacyInitPackage.scripts["lint:prelint"];
+          delete legacyInitPackage.scripts["lint:forge"];
+        }
+        expect(project.packageJson).toEqual(legacyInitPackage);
         expect([...project.files]).toEqual([...legacy.files]);
         expect(project.templates).toEqual(legacy.templates);
         const capabilities = resolveProfile(
@@ -144,6 +150,7 @@ test.each(kinds)(
               "node",
               "changelog",
               "git-hooks",
+              "prelint",
               "biome",
               "typescript",
             ].includes(capability.name) ||
@@ -201,11 +208,13 @@ test.each(kinds)(
   },
 );
 
-test("the active validators retain the existing read-only checks", async () => {
+test("standalone validators agree with capability validation results", async () => {
   const changelog = changelogToolchain().validate;
   if (typeof changelog !== "function") throw new Error("missing validator");
   expect(await changelog(tree())).toEqual(await validateChangelog(tree()));
-  expect(prelint().validate).toBe(validatePrelint);
+  expect(await validateCapabilities(tree(), [prelint()])).toEqual([
+    { capability: "prelint", ...(await validatePrelint(tree())) },
+  ]);
 });
 
 test("update composes in profile order and passes each result to the next capability", async () => {
@@ -353,11 +362,19 @@ test("top-level validate reports a real validator failure and leaves the input u
   const report = JSON.parse(await new DropCalf().validate(input, "forge-app"));
   expect(
     report.find(
-      (item: { capability: string }) => item.capability === "prelint",
+      (item: { capability: string }) => item.capability === "package-metadata",
     ),
   ).toMatchObject({
-    capability: "prelint",
+    capability: "package-metadata",
     status: "failed",
+  });
+  expect(
+    report.find(
+      (item: { capability: string }) => item.capability === "prelint",
+    ),
+  ).toEqual({
+    capability: "prelint",
+    ...(await validatePrelint(input)),
   });
   expect(report).toHaveLength(resolveProfile("forge-app").length);
   expect(report.at(-1).status).toBe("skipped");

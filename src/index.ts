@@ -134,10 +134,7 @@ export class DropCalf {
     return JSON.stringify(await validateChangelog(directory), null, 2);
   }
 
-  /**
-   * Run a repository through the pinned Forge prelint rules. Reports `skipped`
-   * rather than failing when the repository never opted into `lint:prelint`.
-   */
+  /** Prelint has no local configuration to validate; report its explicit skip reason. */
   @func()
   async validatePrelint(directory: Directory): Promise<string> {
     return JSON.stringify(await validatePrelint(directory), null, 2);

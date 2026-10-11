@@ -13,6 +13,7 @@ import {
   validatePackageMetadata,
 } from "../src/package-metadata.ts";
 import { ParseError } from "../src/preclean.ts";
+import { PRELINT_SCRIPTS } from "../src/prelint.ts";
 import { buildProject } from "../src/profiles.ts";
 import { TYPESCRIPT_SCRIPTS } from "../src/typescript.ts";
 import { TOOL_VERSIONS } from "../src/versions.ts";
@@ -115,7 +116,9 @@ test.each(kinds)(
           ...(kind === "agent-skill" ? {} : { changelog: CHANGELOG_COMMAND }),
           typecheck: TYPESCRIPT_SCRIPTS.typecheck,
           ...(kind === "library" ? {} : { build: TYPESCRIPT_SCRIPTS.build }),
-          ...(kind === "forge-app" ? VITEST_SCRIPTS : {}),
+          ...(kind === "forge-app"
+            ? { ...VITEST_SCRIPTS, ...PRELINT_SCRIPTS }
+            : {}),
         },
         devDependencies: {
           "@biomejs/biome": TOOL_VERSIONS.biome,
@@ -128,6 +131,8 @@ test.each(kinds)(
             ? {
                 vitest: TOOL_VERSIONS.vitest,
                 "@vitest/coverage-v8": TOOL_VERSIONS.vitest,
+                "@ast-grep/cli": TOOL_VERSIONS.astGrep,
+                "@forge-ahead/prelint": TOOL_VERSIONS.forgePrelint,
               }
             : {}),
         },

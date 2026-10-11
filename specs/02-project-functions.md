@@ -428,15 +428,41 @@ install repository dependencies or refresh package-manager lockfiles; those rema
 owner's package-manager workflow.
 
 ### `forge-prelint`
-Add `@ast-grep/cli` and the Forge rules package, aliased `@forge-ahead/prelint`
-(`github:ibuchanan/tool-forge-prelint-ast-grep`). The rules ship inside the package, so
-there is no config to author: `lint:prelint` runs `ast-grep scan --globs '!specs/**'
---globs '!node_modules/**' --config ./node_modules/@forge-ahead/prelint/sgconfig.ecosol.yml`.
-Add `lint:forge` (`forge lint`); never write `lint`. Git-hooks alone owns
-that script and its seeded config dispatches both subtasks with `--if-present`.
-Validate a repository by installing the pinned rules in a container and running
-the same scan against it, reporting a skip when the repository never opted into
-`lint:prelint`.
+
+The `prelint` capability is selected only for `forge-app`. It owns
+`devDependencies["@ast-grep/cli"]` at `TOOL_VERSIONS.astGrep` and
+`devDependencies["@forge-ahead/prelint"]` at `TOOL_VERSIONS.forgePrelint`
+(`github:ibuchanan/tool-forge-prelint-ast-grep` by default), plus two scripts:
+
+- `lint:prelint`: `ast-grep scan --globs '!specs/**' --globs '!node_modules/**' --config ./node_modules/@forge-ahead/prelint/sgconfig.ecosol.yml`
+- `lint:forge`: `forge lint`
+
+Under ticket 16's agreed policy:
+
+- **init** is an explicit no-op: "Prelint has no repository-local configuration to
+  seed; its rules ship in the dependency package, and update maintains the tool
+  dependencies and scripts." Top-level init's final update pass adds the dependencies
+  and scripts after scaffold merging; there is no local rule/config template.
+- **update** enforces both capability-selected dependency references and both canonical
+  scripts in an existing `package.json`, replacing owner edits and creating missing
+  sections/owned keys. The scan exclusions and packaged config path are enforced as
+  part of the whole script, not merged with owner arguments. A missing package stays
+  absent. Malformed/non-object JSON and non-object scripts/devDependencies fail before
+  writes. Unrelated package values, local config, hook config, source, and lockfiles
+  survive. Matching owned values retain original bytes; changes use sorted, two-space
+  JSON with a trailing newline. A second update changes nothing. No dependency install,
+  source scan, or lockfile refresh runs.
+- **validate** is an explicit no-op: "Prelint has no repository-local configuration to
+  validate; its rules ship in the dependency package. Source scanning belongs to the
+  lint workflow." Both capability validation and standalone `validate-prelint` return
+  skipped with that reason, without reading the repository, installing tools, scanning
+  source, or running `forge lint`. This supersedes the previous container scan validator;
+  Forge manifest acceptance remains separately tracked in ticket 23.
+
+Prelint never writes `lint` or `lefthook.yml`. Git-hooks alone owns `lint`, and its
+seeded config dispatches both named subtasks with `--if-present`; owner hook edits
+remain owner-managed. The legacy `addTo` contribution remains during expansion but
+is not the new init verb.
 
 ### `typescript`
 

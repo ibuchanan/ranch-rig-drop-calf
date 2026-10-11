@@ -10,8 +10,10 @@ import {
   PINNED_OSS_UPSTREAM,
   transformOssTemplate,
 } from "../src/oss.ts";
+import { PRELINT_SCRIPTS } from "../src/prelint.ts";
 import { buildProject } from "../src/profiles.ts";
 import { SECRETS_ASSETS } from "../src/secrets.ts";
+import { TOOL_VERSIONS } from "../src/versions.ts";
 import { mockDirectory } from "./module-source.ts";
 import { mockOssSource, ossTemplates } from "./oss-source.ts";
 import {
@@ -178,6 +180,19 @@ describe("pinned OSS templates", () => {
         );
         expect(JSON.parse(writes.get("package.json") ?? "null")).toEqual({
           ...project.packageJson,
+          scripts: {
+            ...project.packageJson.scripts,
+            ...(kind === "forge-app" ? PRELINT_SCRIPTS : {}),
+          },
+          devDependencies: {
+            ...project.packageJson.devDependencies,
+            ...(kind === "forge-app"
+              ? {
+                  "@ast-grep/cli": TOOL_VERSIONS.astGrep,
+                  "@forge-ahead/prelint": TOOL_VERSIONS.forgePrelint,
+                }
+              : {}),
+          },
           license: "Apache-2.0",
         });
         expect(writes.get("README.md")).toBe(

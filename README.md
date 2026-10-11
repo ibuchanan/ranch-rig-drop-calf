@@ -138,8 +138,9 @@ Core profile capabilities cannot be removed.
   `init-changes` on its own. It deletes the fixed list in
   [`src/preclean.ts`](src/preclean.ts) without backups.
 - `copy-*` functions copy one asset set (docs, TypeScript, OSS, changelog,
-  `.gitignore`, and more), and `validate-changelog` and `validate-prelint`
-  check an existing repository.
+  `.gitignore`, and more). `validate-changelog` checks an existing repository;
+  `validate-prelint` reports skipped because prelint has no local configuration
+  to validate. Source scanning remains part of the lint workflow.
 
 Run `dagger call -m github.com/ibuchanan/ranch-rig-drop-calf --help` to list
 every function, and add `--help` after a function name for its arguments.
