@@ -19,7 +19,10 @@ import { copyDocs, DOCS_TEMPLATE } from "./docs.ts";
 import { copyGitHooks, GIT_HOOKS_TEMPLATE } from "./git-hooks.ts";
 import { copyGitignoreAssets, PINNED_GITIGNORE } from "./gitignore.ts";
 import { mergeScaffoldPackage, scaffoldName } from "./init.ts";
-import { nodeContainer as buildNodeContainer } from "./node.ts";
+import {
+  applyForgeRuntime,
+  nodeContainer as buildNodeContainer,
+} from "./node.ts";
 import { copyOssAssets, PINNED_OSS } from "./oss.ts";
 import { applyPreclean } from "./preclean.ts";
 import { validatePrelint } from "./prelint.ts";
@@ -186,8 +189,9 @@ export class DropCalf {
   /**
    * First-time setup of a `forge create` repository: remove the scaffold files
    * Drop Calf replaces, generate the profile's files over what is left, and
-   * keep the scaffold's runtime dependencies. The package name defaults to the
-   * scaffold's own.
+   * keep the scaffold's runtime dependencies. On forge-app, normalize the
+   * scaffold's manifest runtime to the Node baseline, preserving its other keys.
+   * The package name defaults to the scaffold's own.
    */
   @func()
   async init(
@@ -205,7 +209,10 @@ export class DropCalf {
     const scaffold = (await directory.exists("package.json"))
       ? await directory.file("package.json").contents()
       : undefined;
-    const cleaned = await applyPreclean(directory);
+    // `init` is first-time setup: the scaffold runtime is invented metadata,
+    // not an owner-selected pin. Strict reconciliation is the default elsewhere.
+    const runtime = await applyForgeRuntime(directory, profile, true);
+    const cleaned = await applyPreclean(runtime);
     const generated = await this.files(
       profile,
       owner,

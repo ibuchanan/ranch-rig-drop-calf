@@ -3,6 +3,7 @@ import { execFileSync } from "node:child_process";
 import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { reconcileForgeRuntime } from "../../src/node.ts";
 
 /**
  * End to end: `forge create` -> `init-changes` -> export.
@@ -74,7 +75,9 @@ describe.skipIf(!enabled)("forge create then init", () => {
       ) as [string, string][])
         expect(result.dependencies[name]).toBe(version);
       expect(result.name).toBe(scaffold.name);
-      expect(readFileSync(join(app, "manifest.yml"), "utf8")).toBe(manifest);
+      expect(readFileSync(join(app, "manifest.yml"), "utf8")).toBe(
+        reconcileForgeRuntime(manifest, true),
+      );
       // Drop Calf's files arrived, and the scaffold's replaced ones did not.
       for (const path of ["tsconfig.json", "lefthook.yml", ".gitignore"])
         expect(existsSync(join(app, path))).toBe(true);

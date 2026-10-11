@@ -84,8 +84,20 @@ key to an existing file without disturbing other lines, and treat a different re
 a conflict. Scoped keys (`@acme:registry=…`) are distinct and are preserved.
 
 On `forge-app`, reconcile `app.runtime.name` (`nodejs24.x`) against an existing
-`manifest.yml`. The manifest belongs to the user: this never creates it, only fills in or
-checks the runtime key, and a different runtime is a conflict. Other kinds leave it alone.
+`manifest.yml`. The manifest belongs to the user: this never creates it, only
+fills in or checks the runtime key. A different runtime raises `ConflictError`
+with a remedy. Matching values leave the file byte-for-byte unchanged; edits use
+a comment-preserving YAML document API, retaining key order, scalar styles,
+indentation, comments, and sibling settings such as `memoryMB`, `architecture`,
+and `id`. Invalid YAML raises `ParseError` before any output is returned. Other
+kinds leave the manifest alone.
+
+**First-time setup exception:** `init`/`init-changes` replaces a runtime
+supplied by `forge create`, which may lag the baseline, just as it replaces
+invented scaffold package metadata. `init` is not an update command. The pure
+reconciliation function and its Dagger boundary default to strict conflict
+checking for a future update path.
+`files` has no input repository and never creates or edits a manifest.
 
 The baseline lives in one place (`src/node.ts`) so generation and sync cannot drift;
 `.nvmrc` stays bare (`24`) because changing that format would conflict with every

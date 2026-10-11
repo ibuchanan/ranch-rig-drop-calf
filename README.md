@@ -47,7 +47,10 @@ this repository.
    `init-changes` removes the scaffold files Drop Calf replaces, generates
    the `forge-app` files over what is left, and keeps the app's own
    `dependencies`, `main`, `private`, and package name. Generated keys win on
-   conflict. `manifest.yml` and `src/` are never touched.
+   conflict. On `forge-app`, the scaffold's `app.runtime.name` is set to
+   `nodejs24.x` to match the local Node baseline; the manifest's other settings
+   are preserved. `src/` is never touched. This is first-time setup, not an
+   update command.
 
 3. Apply the same changes to the working tree, then install:
 

@@ -152,7 +152,16 @@ DROP_CALF_E2E=1 bun test tests/e2e
   `docsLinting()` declares `templates/docs` beside the `lint:docs` script and
   the `cspell`/`markdownlint-cli2` devDependencies every kind gets.
 - `src/node.ts`: the Node baseline. `nodeBaseline()` seeds `.nvmrc`, `.npmrc`,
-  `engines.node`, and `@types/node`; it never writes a manifest.
+  `engines.node`, and `@types/node`; the blueprint never contains a manifest.
+  `reconcileForgeRuntime()` uses the pinned `yaml` document API to fill an
+  existing manifest's `app.runtime.name`, preserving comments, key order, scalar
+  styles, indentation, and sibling settings. A matching runtime is byte-for-byte
+  unchanged; a different runtime raises `ConflictError` with a remedy, and
+  invalid YAML raises the existing `ParseError`. `applyForgeRuntime()` is the
+  Dagger boundary: other profiles and a missing manifest are no-ops.
+  First-time `init` explicitly replaces a runtime invented by `forge create`,
+  which can lag the baseline. It is not an update command; strict reconciliation
+  remains the default for a future update path. `files` never touches a manifest.
   `nodeContainer()` is the native Dagger side of
   the same baseline: the one place the Node image is chosen, so containerized
   tools (such as `validateChangelog`) run the pinned major rather than whatever
@@ -169,11 +178,15 @@ a focused test of the resulting blueprint and run the checks above.
 `renderToDirectory` is the Dagger boundary; keep ordinary project assembly
 testable without the engine.
 
-The current generator does not read or merge an existing repository; the only
-step that reads one is `remove-scaffold`. Generated
-projects have scripts and configs but no source tree, and the copied OSS README
-is an unfilled template. The `agent-skill` profile intentionally omits a test
-script. Use the specs as a roadmap, not as a description of current CLI behavior.
+`files` does not read or merge an existing repository. First-time `init` reads
+and cleans a scaffold, merges its package dependencies, and normalizes an existing
+Forge manifest runtime; synchronization of established projects is not implemented.
+`DROP_CALF_NODE_E2E=1 bun test tests/e2e/node.e2e.test.ts` verifies runtime
+normalization through a real Dagger init without registering or deploying an app.
+Generated projects have scripts and configs but no source tree, and the copied
+OSS README is an unfilled template. The `agent-skill` profile intentionally omits
+a test script. Use the specs as a roadmap, not as a description of current CLI
+behavior.
 
 ## Seeded assets
 
@@ -229,7 +242,7 @@ first run is a no-op rather than a surprise diff. Neither `-o` nor `--prepend`
 is interchangeable here: `--prepend` stacks entries above the file's title and
 duplicates them on every run, whereas `-o` is idempotent.
 
-`validateChangelog` is the one function here that reads a repository rather than
+`validateChangelog` reads a repository rather than
 the module source, so it needs a `Directory`, not a path, and it runs
 git-cliff inside a container at the version `changelogToolchain` pins. That
 means it needs a live engine, which is why its tests fake `dag.container()`

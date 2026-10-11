@@ -1,6 +1,7 @@
 import { expect, spyOn, test } from "bun:test";
 import { DropCalf } from "../src/index.ts";
 import { mergeScaffoldPackage, scaffoldName } from "../src/init.ts";
+import { NODE_FORGE_RUNTIME, reconcileForgeRuntime } from "../src/node.ts";
 import { ParseError } from "../src/preclean.ts";
 import { buildProject } from "../src/profiles.ts";
 
@@ -75,55 +76,104 @@ const fake = (files: Map<string, string>): Fake => ({
   withDirectory: (_path, source) => fake(new Map([...files, ...source.files])),
 });
 
-test("init removes the scaffold, generates over it, and keeps the app's files and dependencies", async () => {
-  const scaffold = fake(
-    new Map([
-      [
-        "package.json",
-        JSON.stringify({
-          name: "forge-blank",
-          version: "1.0.0",
-          main: "index.js",
-          scripts: { lint: "eslint ." },
-          dependencies: { "@forge/api": "^7.0.0" },
-        }),
-      ],
-      ["manifest.yml", "modules: {}\n"],
-      ["src/index.js", "export {};\n"],
-      ["README.md", "# scaffold\n"],
-      [".eslintrc", "{}\n"],
-    ]),
-  );
-  const names: (string | undefined)[] = [];
-  const spy = spyOn(DropCalf.prototype, "files").mockImplementation(
-    async (profile, owner, packageName) => {
-      names.push(packageName);
-      const project = buildProject(profile, packageName ?? "x", owner);
-      return fake(
-        new Map([
-          ["package.json", `${JSON.stringify(project.packageJson)}\n`],
-          ["README.md", "# generated\n"],
-          ["tsconfig.json", "{}\n"],
-        ]),
-      ) as never;
-    },
-  );
+test.each([
+  "modules: {}\n",
+  "app:\n  id: example\n  runtime:\n    name: nodejs22.x # scaffold\n    memoryMB: 512\n    architecture: arm64\nmodules: {}\n",
+  `app:\n  runtime:\n    name: ${NODE_FORGE_RUNTIME}\n`,
+  undefined,
+])(
+  "init keeps app files and dependencies and normalizes only a present manifest: %j",
+  async (manifest) => {
+    const scaffold = fake(
+      new Map([
+        [
+          "package.json",
+          JSON.stringify({
+            name: "forge-blank",
+            version: "1.0.0",
+            main: "index.js",
+            scripts: { lint: "eslint ." },
+            dependencies: { "@forge/api": "^7.0.0" },
+          }),
+        ],
+        ...(manifest === undefined
+          ? []
+          : [["manifest.yml", manifest] as [string, string]]),
+        ["src/index.js", "export {};\n"],
+        ["README.md", "# scaffold\n"],
+        [".eslintrc", "{}\n"],
+      ]),
+    );
+    const names: (string | undefined)[] = [];
+    const spy = spyOn(DropCalf.prototype, "files").mockImplementation(
+      async (profile, owner, packageName) => {
+        names.push(packageName);
+        const project = buildProject(profile, packageName ?? "x", owner);
+        return fake(
+          new Map([
+            ["package.json", `${JSON.stringify(project.packageJson)}\n`],
+            ["README.md", "# generated\n"],
+            ["tsconfig.json", "{}\n"],
+          ]),
+        ) as never;
+      },
+    );
+    try {
+      const result = (await new DropCalf().init(
+        scaffold as never,
+        "forge-app",
+        "tester",
+      )) as unknown as Fake;
+      expect(names).toEqual(["forge-blank"]);
+      expect(result.files.has(".eslintrc")).toBe(false);
+      expect(result.files.get("README.md")).toBe("# generated\n");
+      expect(result.files.get("manifest.yml")).toBe(
+        manifest === undefined
+          ? undefined
+          : reconcileForgeRuntime(manifest, true),
+      );
+      expect(result.files.get("src/index.js")).toBe("export {};\n");
+      const pkg = JSON.parse(result.files.get("package.json") ?? "{}");
+      expect(pkg.name).toBe("forge-blank");
+      expect(pkg.main).toBe("index.js");
+      expect(pkg.dependencies["@forge/api"]).toBe("^7.0.0");
+      expect(pkg.scripts.lint).not.toBe("eslint .");
+    } finally {
+      spy.mockRestore();
+    }
+  },
+);
+
+test.each(["library", "tool", "agent-skill"])(
+  "%s init leaves even an unparseable manifest alone",
+  async (profile) => {
+    const manifest = "app: [unparseable\n";
+    const scaffold = fake(new Map([["manifest.yml", manifest]]));
+    const spy = spyOn(DropCalf.prototype, "files").mockResolvedValue(
+      fake(new Map([["package.json", generated(profile)]])) as never,
+    );
+    try {
+      const result = (await new DropCalf().init(
+        scaffold as never,
+        profile,
+        "tester",
+        "sample",
+      )) as unknown as Fake;
+      expect(result.files.get("manifest.yml")).toBe(manifest);
+    } finally {
+      spy.mockRestore();
+    }
+  },
+);
+
+test("init rejects invalid Forge YAML before generating output", async () => {
+  const scaffold = fake(new Map([["manifest.yml", "app: [unparseable\n"]]));
+  const spy = spyOn(DropCalf.prototype, "files");
   try {
-    const result = (await new DropCalf().init(
-      scaffold as never,
-      "forge-app",
-      "tester",
-    )) as unknown as Fake;
-    expect(names).toEqual(["forge-blank"]);
-    expect(result.files.has(".eslintrc")).toBe(false);
-    expect(result.files.get("README.md")).toBe("# generated\n");
-    expect(result.files.get("manifest.yml")).toBe("modules: {}\n");
-    expect(result.files.get("src/index.js")).toBe("export {};\n");
-    const pkg = JSON.parse(result.files.get("package.json") ?? "{}");
-    expect(pkg.name).toBe("forge-blank");
-    expect(pkg.main).toBe("index.js");
-    expect(pkg.dependencies["@forge/api"]).toBe("^7.0.0");
-    expect(pkg.scripts.lint).not.toBe("eslint .");
+    await expect(
+      new DropCalf().init(scaffold as never, "forge-app", "tester"),
+    ).rejects.toThrow(ParseError);
+    expect(spy).not.toHaveBeenCalled();
   } finally {
     spy.mockRestore();
   }
