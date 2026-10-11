@@ -416,24 +416,72 @@ running the same scan against it, reporting a skip when the repository never opt
 `lint:prelint`.
 
 ### `typescript`
-The TypeScript toolchain: the `typescript` devDependency, the `build` and `typecheck`
-scripts that invoke it, and the config it reads. `@types/node` belongs to `node`.
 
-Every kind uses the base config, seeded verbatim from `templates/typescript` (copied from the
-vendored Forge example) so the JSONC comments explaining which options the bundler forces
-survive. `build` and `typecheck` are the only two `tsc` scripts the example uses — a Forge
-app is a static resource bundle plus resolvers rather than a running server, so there is no
-`dev` script. `tsconfig.typecheck.json` extends the base config with the stricter no-* /
-exact flags; it omits `noUnusedLocals`, `noUnusedParameters`, and
-`noFallthroughCasesInSwitch` because Biome's recommended set already reports all three.
+TypeScript owns `devDependencies.typescript`, `scripts.typecheck`, both root tsconfigs,
+and `scripts.build` except in the library composition, where library-build alone owns it.
+`@types/node` belongs to Node. The compiler range comes from `TOOL_VERSIONS.typescript`;
+there is no `dev` script.
 
-Only the compiler range was ever different between kinds, and it no longer is: every kind
-takes `typescript@^5.9`. `library` additionally overrides `build` with `tsdown` and owns the
-publishing fields.
+- **init** seeds the compiler and owned scripts and overlays `templates/typescript`.
+  The final update pass sees all declared dependencies, including Vitest and tsdown,
+  before applying the conditional compiler policy. Vitest does not seed a tsconfig.
+- **update** enforces the compiler range and typecheck script in an existing package.
+  It enforces `build: tsc --project tsconfig.json` only when this capability owns build
+  and `devDependencies` does not declare `tsdown`. Library build commands and unrelated
+  package fields survive. Missing package sections/owned keys are created; a missing
+  package is not. Changes use sorted two-space JSON with a trailing newline, while
+  unchanged package bytes are retained. No repository install or lockfile update runs.
+  Both configs are recreated from their TypeScript seeds if missing; existing JSONC
+  receives targeted edits preserving unrelated settings and comments.
 
-Comments and unrelated settings in an existing config are preserved by never rewriting it:
-both configs are seeded create-if-absent, so a `tsconfig` the project already has is left
-untouched rather than parsed and edited.
+Compiler policy uses declarations in `devDependencies`, not installed modules, dependency
+versions, runtime dependencies, or profile names. Presence of the key selects the policy.
+The owning dependency capabilities maintain those declarations. Removing a trigger resets
+its owned compiler options and file-selection lists to baseline on the next update.
+When those capabilities gain dependency-update policies, their update must precede
+TypeScript's config reconciliation in the same composed pass; needing a second pass
+to observe newly created tool declarations would violate top-level idempotence.
+
+| Setting | Baseline | `vitest` declared | `tsdown` declared |
+|---|---|---|---|
+| Base `module` / `moduleResolution` | `CommonJS` / `Node` | unchanged | `ESNext` / `Bundler` |
+| Typecheck `module` / `moduleResolution` | `CommonJS` / `Node` | `ESNext` / `Bundler` | `ESNext` / `Bundler` |
+| Typecheck `rootDir` | `src` | `.` | `.` |
+| Typecheck `include` | `["src"]` | add `test`, `tests`, `vitest.config.ts` | add `tsdown.config.ts` |
+
+Both triggers combine; tsdown selects the base module settings, and typecheck includes
+both sets of files. Base `include` is always `["src"]`. Typecheck always extends
+`./tsconfig.json` and excludes `node_modules`, `dist`, `coverage`, and `specs`.
+These lists are owned whole-array values, not additive merges of owner paths.
+
+All compiler options explicitly present in each seed are enforced on update. Base options
+are `jsx: react-jsx`, `sourceMap: true`, `target: ES2022`, `lib: ["ES2022"]`,
+`strict: true`, `esModuleInterop: true`, `skipLibCheck: true`,
+`forceConsistentCasingInFileNames: true`, `outDir: dist`, `rootDir: src`, and the module
+pair above. The Node baseline is 24; ES2022 is a conservative target, not a minimum
+consumer runtime promise. Typecheck enforces `noEmit`, `noImplicitReturns`,
+`noUncheckedIndexedAccess`, `noUncheckedSideEffectImports`, `noImplicitOverride`,
+`noPropertyAccessFromIndexSignature`, and `exactOptionalPropertyTypes` as true, plus
+its conditional module pair and rootDir. Other options such as `paths`, `types`,
+`declaration`, and project references survive. `isolatedDeclarations` is not enforced;
+it is an optional tsdown optimization. Malformed JSONC, duplicate keys, non-object roots
+or compilerOptions, and malformed package scripts/devDependencies fail before a result
+is returned. Matching config bytes remain unchanged; a second update changes nothing.
+
+- **validate** runs the capability-selected compiler's `tsc --showConfig --project <file>`
+  for both configs in a Node-baseline container with a read-only repository mount.
+  It does not compile source, emit files, compare settings with policy, or validate Forge
+  deployment/tsdown output. Owner settings accepted by TypeScript pass. Both configs
+  missing reports skipped; a partial pair reports failed. Invalid settings, missing
+  extended configs, and no matched input files report failure with the tool's diagnostic
+  (including stdout). `--showConfig` can recover from syntax errors (for example an
+  unterminated `{`) without failing; validation follows that acceptance and is not a
+  strict JSONC syntax audit. Mutation rejects malformed syntax independently.
+  A configuration-only starter with no inputs does not
+  pass `--showConfig`. Package-based extends must already be available in the supplied
+  repository; validation does not install its dependencies. The compiler may be downloaded
+  on a cold run; setup/network errors are execution failures, not proof of invalid config.
+  No container changes are exported.
 
 ### `forge-ahead`
 Add the three Forge Ahead runtime dependencies (`@forge-ahead/atlassian-api-types`,
@@ -459,10 +507,12 @@ for `forge-app`, and no test scripts for `agent-skill`.
   `TOOL_VERSIONS.vitest` so coverage never prompts to install a provider.
 - The Vitest capability declares `templates/vitest`. Its config excludes
   `node_modules`, `dist`, `coverage`, and `specs/**`, disables globals in favor of
-  explicit imports, and selects the V8 coverage provider. Its typecheck config
-  includes `src`, `test`, `tests`, and `vitest.config.ts`, excludes vendored and
-  output trees, and uses modern module resolution only for local typechecking.
-  The Forge deploy-time `tsconfig.json` remains unchanged.
+  explicit imports, and selects the V8 coverage provider. Vitest owns only its runner
+  config, scripts, and dependencies, not either tsconfig. Declaring `vitest` in
+  devDependencies triggers TypeScript's typecheck policy: include source, test trees,
+  and `vitest.config.ts`, exclude specs/output trees, and use modern module resolution.
+  Vitest alone does not change the base Forge compiler settings. Ticket 10 resolves
+  the remaining Vitest update and validation policy.
 
 Both runners accept a scaffold with no tests. Test sources remain user-owned;
 Forge architecture-test seeds are a separate, optional concern.

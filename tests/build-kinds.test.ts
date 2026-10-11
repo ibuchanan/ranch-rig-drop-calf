@@ -3,6 +3,10 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import ts from "typescript";
 import { buildProject } from "../src/profiles.ts";
+import {
+  reconcileTypeScriptConfig,
+  TYPESCRIPT_CONFIGS,
+} from "../src/typescript.ts";
 import { typescriptTemplates } from "./templates-source.ts";
 
 function config(text: string | undefined) {
@@ -59,7 +63,8 @@ test("library build publishes the same entry and declarations that tsdown emits"
 });
 
 test("generated TypeScript configs typecheck and compile a sample entry", () => {
-  const root = mkdtempSync(join(process.cwd(), "tmp_rovo_build_"));
+  mkdirSync(join(process.cwd(), ".scratch"), { recursive: true });
+  const root = mkdtempSync(join(process.cwd(), ".scratch/tmp_rovo_build_"));
   try {
     for (const kind of ["library", "forge-app", "tool", "agent-skill"]) {
       const project = buildProject(kind, "sample", "tester");
@@ -73,9 +78,19 @@ test("generated TypeScript configs typecheck and compile a sample entry", () => 
         join(folder, "src/index.ts"),
         "export const value: number = 1;\n",
       );
-      for (const [path, contents] of typescriptTemplates())
-        writeFileSync(join(folder, path), contents);
-      for (const path of ["tsconfig.json", "tsconfig.typecheck.json"]) {
+      for (const path of TYPESCRIPT_CONFIGS) {
+        const seed = typescriptTemplates().get(path) ?? "";
+        writeFileSync(
+          join(folder, path),
+          reconcileTypeScriptConfig(
+            path,
+            seed,
+            seed,
+            project.packageJson.devDependencies,
+          ),
+        );
+      }
+      for (const path of TYPESCRIPT_CONFIGS) {
         const parsed = ts.getParsedCommandLineOfConfigFile(
           join(folder, path),
           {},

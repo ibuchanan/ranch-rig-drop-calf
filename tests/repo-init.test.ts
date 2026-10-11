@@ -64,12 +64,17 @@ test.each(["library", "forge-app", "tool", "agent-skill"])(
             vitestTemplates().get("vitest.config.ts") ?? "",
           );
         else expect(await result.exists("vitest.config.ts")).toBe(false);
-        expect(await result.file("tsconfig.typecheck.json").contents()).toBe(
-          (kind === "forge-app"
-            ? vitestTemplates()
-            : typescriptTemplates()
-          ).get("tsconfig.typecheck.json") ?? "",
+        const check = JSON.parse(
+          await result.file("tsconfig.typecheck.json").contents(),
         );
+        expect(check.extends).toBe("./tsconfig.json");
+        expect(check.include).toEqual([
+          "src",
+          ...(kind === "forge-app"
+            ? ["test", "tests", "vitest.config.ts"]
+            : []),
+          ...(kind === "library" ? ["tsdown.config.ts"] : []),
+        ]);
         expect(await result.file(".editorconfig").contents()).toBe(
           biomeTemplates().get(".editorconfig") ?? "",
         );

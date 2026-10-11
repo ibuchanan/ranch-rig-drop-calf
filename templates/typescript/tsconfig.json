@@ -4,13 +4,13 @@
     "jsx": "react-jsx",
     "sourceMap": true,
 
-    /* Runtime Targets: Derived from the Node 18 environment and Webpack config */
+    /* Runtime baseline: Node 24; ES2022 remains a conservative target alongside the Forge Webpack defaults */
     "target": "ES2022",
     "module": "CommonJS",
     "moduleResolution": "Node",
     "lib": ["ES2022"],
 
-    /* Standard Defaults: These are typical for Forge apps but not strictly enforced */
+    /* Drop Calf policy defaults: enforced on update, though Forge does not force them */
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,

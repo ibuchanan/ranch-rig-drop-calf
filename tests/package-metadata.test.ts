@@ -1,8 +1,7 @@
 import { expect, spyOn, test } from "bun:test";
 import { dag } from "@dagger.io/dagger";
-import { BIOME_SCRIPTS } from "../src/biome.ts";
-import { TOOL_VERSIONS } from "../src/versions.ts";
 import { parseDocument } from "yaml";
+import { BIOME_SCRIPTS } from "../src/biome.ts";
 import { validateCapabilities } from "../src/capability.ts";
 import { CATALOG_FILE, PACKAGE_NAME, renderCatalog } from "../src/catalog.ts";
 import { DropCalf } from "../src/index.ts";
@@ -13,6 +12,8 @@ import {
 } from "../src/package-metadata.ts";
 import { ParseError } from "../src/preclean.ts";
 import { buildProject } from "../src/profiles.ts";
+import { TYPESCRIPT_SCRIPTS } from "../src/typescript.ts";
+import { TOOL_VERSIONS } from "../src/versions.ts";
 import { mockDirectory, mockModuleSource } from "./module-source.ts";
 import { catalogTemplates } from "./templates-source.ts";
 
@@ -104,8 +105,16 @@ test.each(kinds)(
       const output = await new DropCalf().update(input, kind);
       expect(await manifest(output)).toEqual({
         ...pkg,
-        scripts: { ...pkg.scripts, ...BIOME_SCRIPTS },
-        devDependencies: { "@biomejs/biome": TOOL_VERSIONS.biome },
+        scripts: {
+          ...pkg.scripts,
+          ...BIOME_SCRIPTS,
+          typecheck: TYPESCRIPT_SCRIPTS.typecheck,
+          ...(kind === "library" ? {} : { build: TYPESCRIPT_SCRIPTS.build }),
+        },
+        devDependencies: {
+          "@biomejs/biome": TOOL_VERSIONS.biome,
+          typescript: TOOL_VERSIONS.typescript,
+        },
         name: "@scope/sample",
         description: "Catalog description",
         author: "tester",

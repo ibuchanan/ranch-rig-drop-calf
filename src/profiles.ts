@@ -34,7 +34,7 @@ export const PROFILES: Record<string, Capability[]> = {
     nodeBaseline("library"),
     changelogToolchain(),
     biomeToolchain(),
-    typeScriptToolchain(),
+    typeScriptToolchain(undefined, false),
     bunTesting(),
     libraryBuild(),
     bundleSize("Library bundle", "dist/index.js"),

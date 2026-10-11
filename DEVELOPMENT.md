@@ -123,10 +123,11 @@ DROP_CALF_E2E=1 bun test tests/e2e
   `templates/changelog/`. `validateChangelog` renders an unreleased changelog
   in a container built from the Node baseline image, so the verdict depends on
   the policy under review rather than on whatever the host has installed.
-- `src/typescript.ts`: the TypeScript toolchain — the `typescript`
-  devDependency, the `typecheck` and `build` scripts that invoke `tsc`, and
-  `copyTypeScript` for `templates/typescript/`, the one config
-  every kind receives verbatim. Nothing else sets the compiler or calls it.
+- `src/typescript.ts`: the compiler dependency, owned tsc scripts, and both
+  tsconfigs. Init seeds templates; update enforces compiler settings selected by
+  declared Vitest/tsdown dependencies with comment-preserving JSONC edits.
+  Library-build owns library `build`. Validation runs read-only `tsc --showConfig`.
+  Standalone `copyTypeScript` deliberately overlays the uncomposed seed pair.
 - `src/evals.ts`: optional Promptfoo toolchain — the `promptfoo` devDependency
   and `eval`/`view` scripts. It declares `templates/promptfoo/`, which holds
   the config, shared prompt, cases, synthetic contexts, and Rovo wiring guide;
@@ -222,14 +223,29 @@ That keeps assembly pure and testable, and means
 `buildProject` does not produce `.gitignore` — a unit test asserting on generated
 `.gitignore` content should assert on `buildGitignore` instead.
 
-The same applies to the TypeScript configs. `templates/typescript/` holds the
-two files copied verbatim from
-`vendor/explore-forge-jira-remote-data-fields`, and every kind seeds them, so no
-capability writes a `tsconfig` and `buildProject` carries none for any profile.
-Assert on
-`templates/typescript` rather than on the blueprint when testing what a kind
-generates. For `forge-app`, the later `templates/vitest` tree replaces only
-`tsconfig.typecheck.json`; the deploy-time `tsconfig.json` remains shared.
+`templates/typescript/` holds the two TypeScript seed configs; `buildProject`
+collects their template path, not their bytes. TypeScript owns both configs during
+init and update. After all init dependencies are declared, update enforces the seed's
+compiler settings with targeted JSONC edits, preserving unrelated options and comments.
+Declared `vitest` adds modern local resolution and test/config includes to typecheck;
+`tsdown` selects modern base resolution and includes its config in typecheck. Both
+triggers combine, and removal restores the baseline owned settings. Missing configs
+are recreated; no missing package or lockfile is created. Vitest no longer seeds a
+competing typecheck config. Library-build alone owns the library build command.
+See the exact owned settings in [the TypeScript policy](specs/02-project-functions.md#typescript).
+
+Validation runs the selected compiler's `tsc --showConfig` for both files inside a
+Node-baseline container with a read-only repository mount. It checks config acceptance,
+not source correctness or baseline agreement; a source-free config can fail with
+TypeScript's no-input diagnostic. `--showConfig` can tolerate recoverable syntax
+errors, so this is not a strict JSONC syntax audit; update rejects malformed syntax.
+Both missing configs skip, a partial pair fails, and package-based extends require
+the dependency to be available in the supplied tree.
+No dependency install for the repository or exported changes are performed.
+
+```bash
+DROP_CALF_TYPESCRIPT_E2E=1 bun test tests/e2e/typescript.e2e.test.ts
+```
 
 Forge runs on Node, not Bun. Vitest matches that runtime, provides `vi.mock` for
 `@forge/*` modules, and matches the vendored Forge examples and architecture
