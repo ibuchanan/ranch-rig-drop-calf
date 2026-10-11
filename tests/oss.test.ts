@@ -12,6 +12,7 @@ import {
 } from "../src/oss.ts";
 import { buildProject } from "../src/profiles.ts";
 import { SECRETS_ASSETS } from "../src/secrets.ts";
+import { mockDirectory } from "./module-source.ts";
 import { mockOssSource, ossTemplates } from "./oss-source.ts";
 import {
   biomeTemplates,
@@ -116,11 +117,14 @@ describe("pinned OSS templates", () => {
       })),
     ),
   )(
-    "$kind Dagger files renders the selected package and all assets (preset $presetName)",
+    "$kind init renders the selected package and all assets (preset $presetName)",
     async ({ kind, preset }) => {
       const writes = new Map<string, string>();
       const modes = new Map<string, number | undefined>();
       const directory = {
+        files: writes,
+        exists: async (path: string) => writes.has(path),
+        file: (path: string) => ({ contents: async () => writes.get(path) }),
         withNewFile(
           path: string,
           contents: string,
@@ -146,7 +150,8 @@ describe("pinned OSS templates", () => {
       const stub = spyOn(dag, "directory").mockReturnValue(directory);
       const oss = mockOssSource();
       try {
-        await new DropCalf().files(
+        await new DropCalf().init(
+          mockDirectory(),
           kind,
           "tester",
           "sample",
@@ -213,7 +218,6 @@ describe("pinned OSS templates", () => {
           [
             ...new Set([
               "package.json",
-              // Seeded by `copyGitignore`, so the blueprint carries none.
               ".gitignore",
               ...(kind === "forge-app" ? SECRETS_ASSETS : []),
               ...project.files.keys(),

@@ -71,6 +71,25 @@ and Dagger's export merges by default, so the removed scaffold files would
 stay on disk. Do not add `--wipe` in an existing repository; it also deletes
 unrelated files.
 
+## Start without a scaffold
+
+Use the same first-time setup for `library`, `tool`, `agent-skill`, or a
+`forge-app` you did not start with `forge create`. Create an empty directory,
+then preview and export the changes:
+
+```bash
+mkdir my-library
+cd my-library
+dagger call -m github.com/ibuchanan/ranch-rig-drop-calf init-changes \
+  --directory . --profile library --owner your-staff-id
+dagger call -m github.com/ibuchanan/ranch-rig-drop-calf init-changes \
+  --directory . --profile library --owner your-staff-id export --path .
+```
+
+Choose the profile you need. Empty-directory setup does not create source
+files, a Forge manifest, or an app registration; add those before building.
+There is no separate `files` operation.
+
 ## What you get
 
 The result is a starter configuration, **not a complete runnable
@@ -92,8 +111,9 @@ installed dependencies.
 
 Common options:
 
-- `--package-name` overrides the package name; `init-changes` defaults to the
-  scaffold's.
+- Package naming for `init` and `init-changes`: explicit `--package-name`
+  first, then a nonblank scaffold `package.json` name, then the Dagger
+  workspace directory name (the current directory in the examples above).
 - `--description` and `--author` set package metadata.
 - `--with-functions evals` or `--preset all` adds evaluation scripts on
   `forge-app`; `--without-functions evals` excludes them from `--preset all`.
@@ -103,10 +123,10 @@ Core profile capabilities cannot be removed.
 
 ## Other entry points
 
-- `files --profile <name> --owner <id>` generates a profile's files without a
-  scaffold, for a repository that `forge create` did not start. Add `entries`
-  to list them, or `export --path <dir>` to write them; exporting over an
-  existing repository replaces files with the same names.
+- `init --directory <dir> --profile <name> --owner <id>` returns the
+  initialized directory. Add `entries` to list its top-level contents; prefer
+  `init-changes ... export --path <dir>` to apply changes to disk, including
+  scaffold deletions.
 - `remove-scaffold-changes --directory .` is the cleanup step of
   `init-changes` on its own. It deletes the fixed list in
   [`src/preclean.ts`](src/preclean.ts) without backups.

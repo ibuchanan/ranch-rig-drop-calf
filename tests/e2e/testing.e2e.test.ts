@@ -54,10 +54,11 @@ afterAll(() => {
   if (root) rmSync(root, { recursive: true, force: true });
 });
 
-test.skipIf(!enabled).each(["generated", "initialized"])(
+test.skipIf(!enabled).each(["empty", "initialized"])(
   "%s Forge scaffold tests and typechecks independently of the handler build",
   (mode) => {
     const app = join(root, mode);
+    mkdirSync(app, { recursive: true });
     if (mode === "initialized") {
       mkdirSync(join(app, "src"), { recursive: true });
       writeFileSync(
@@ -77,9 +78,11 @@ test.skipIf(!enabled).each(["generated", "initialized"])(
         "call",
         "-m",
         repo,
-        ...(mode === "generated"
-          ? ["files", "--package-name", "sample"]
-          : ["init", "--directory", app]),
+        "init",
+        "--directory",
+        app,
+        "--package-name",
+        "sample",
         "--profile",
         "forge-app",
         "--owner",

@@ -54,40 +54,6 @@ export class DropCalf {
   }
 
   @func()
-  async files(
-    profile: string,
-    owner: string,
-    packageName?: string,
-    description = "",
-    author = "",
-    withFunctions: string[] = [],
-    withoutFunctions: string[] = [],
-    preset?: string,
-  ): Promise<Directory> {
-    resolveProfile(profile, withFunctions, withoutFunctions, preset);
-    const name =
-      packageName ??
-      basename(fileURLToPath(await dag.currentWorkspace().address()));
-    const project = buildProject(
-      profile,
-      name,
-      owner,
-      description,
-      author,
-      withFunctions,
-      withoutFunctions,
-      preset,
-    );
-    const directory = await seedTemplates(
-      renderToDirectory(project),
-      dag.currentModule().source(),
-      project.templates,
-      name,
-    );
-    return this.copyGitignore(await this.copyOss(directory, name, owner));
-  }
-
-  @func()
   copyDocs(directory: Directory): Directory {
     return copyDocs(
       directory,
@@ -188,11 +154,12 @@ export class DropCalf {
   }
 
   /**
-   * First-time setup of a `forge create` repository: remove the scaffold files
-   * Drop Calf replaces, generate the profile's files over what is left, and
+   * First-time setup of an empty directory or a `forge create` repository:
+   * remove the scaffold files Drop Calf replaces, generate the profile's files
+   * over what is left, and
    * keep the scaffold's runtime dependencies. On forge-app, normalize the
    * scaffold's manifest runtime to the Node baseline, preserving its other keys.
-   * The package name defaults to the scaffold's own.
+   * Package naming: explicit name, nonblank scaffold name, workspace basename.
    */
   @func()
   async init(
@@ -214,15 +181,28 @@ export class DropCalf {
     // not an owner-selected pin. Strict reconciliation is the default elsewhere.
     const runtime = await applyForgeRuntime(directory, profile, true);
     const cleaned = await applyPreclean(runtime);
-    const generated = await this.files(
+    const name =
+      packageName ??
+      scaffoldName(scaffold) ??
+      basename(fileURLToPath(await dag.currentWorkspace().address()));
+    const project = buildProject(
       profile,
+      name,
       owner,
-      packageName ?? scaffoldName(scaffold),
       description,
       author,
       withFunctions,
       withoutFunctions,
       preset,
+    );
+    const seeded = await seedTemplates(
+      renderToDirectory(project),
+      dag.currentModule().source(),
+      project.templates,
+      name,
+    );
+    const generated = await this.copyGitignore(
+      await this.copyOss(seeded, name, owner),
     );
     const kept = (await cleaned.exists("package.json"))
       ? await cleaned.file("package.json").contents()

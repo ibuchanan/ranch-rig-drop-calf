@@ -1,7 +1,7 @@
 import { spyOn } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { dag } from "@dagger.io/dagger";
+import { type Directory, dag } from "@dagger.io/dagger";
 import { BIOME_TEMPLATE } from "../src/biome.ts";
 import { CHANGELOG_TEMPLATE } from "../src/changelog.ts";
 import { EVALS_TEMPLATE } from "../src/evals.ts";
@@ -25,6 +25,26 @@ export const moduleTemplates = () =>
   new Map<string, string>(
     OSS_ASSETS.map((path) => [path, `fixture for ${path}`]),
   );
+
+/** An immutable in-memory directory at the Dagger SDK boundary. */
+export const mockDirectory = (files = new Map<string, string>()) => {
+  const directory = {
+    files,
+    exists: async (path: string) => files.has(path),
+    file: (path: string) => ({ contents: async () => files.get(path) }),
+    withoutFile: (path: string) =>
+      mockDirectory(new Map([...files].filter(([name]) => name !== path))),
+    withNewFile: (path: string, contents: string) =>
+      mockDirectory(new Map(files).set(path, contents)),
+    withFile: (path: string, file: { text: string }) =>
+      mockDirectory(new Map(files).set(path, file.text)),
+    withDirectory: (
+      _path: string,
+      source: { files: ReadonlyMap<string, string> },
+    ) => mockDirectory(new Map([...files, ...source.files])),
+  };
+  return directory as unknown as Directory & { files: Map<string, string> };
+};
 
 /** The real pinned template, so tests assemble from the same bytes generation does. */
 export const pinnedGitignore = () =>

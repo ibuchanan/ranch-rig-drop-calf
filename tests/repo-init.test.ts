@@ -14,7 +14,7 @@ import {
 } from "../src/profiles.ts";
 import { buildReadme, createBlueprint } from "../src/project.ts";
 import { TOOL_VERSIONS } from "../src/versions.ts";
-import { mockModuleSource } from "./module-source.ts";
+import { mockDirectory, mockModuleSource } from "./module-source.ts";
 import {
   biomeTemplates,
   changelogTemplates,
@@ -31,27 +31,11 @@ afterEach(() => {
 });
 
 test.each(["library", "forge-app", "tool", "agent-skill"])(
-  "%s files seeds the pinned Biome and EditorConfig bytes",
+  "%s init seeds the pinned Biome and EditorConfig bytes",
   async (kind) => {
-    const writes = new Map<string, string>();
-    const directory = {
-      withNewFile: (path: string, content: string) => {
-        writes.set(path, content);
-        return directory;
-      },
-      withFile: (path: string, file: { text: string }) => {
-        writes.set(path, file.text);
-        return directory;
-      },
-      withDirectory: (
-        _path: string,
-        source: { files: Map<string, string> },
-      ) => {
-        for (const [path, content] of source.files) writes.set(path, content);
-        return directory;
-      },
-    } as unknown as Directory;
-    const stub = spyOn(dag, "directory").mockReturnValue(directory);
+    const stub = spyOn(dag, "directory").mockImplementation(() =>
+      mockDirectory(),
+    );
     const exec = spyOn(childProcess, "execFileSync").mockImplementation(() => {
       throw new Error("Generation must not invoke a host tool");
     });
@@ -60,8 +44,8 @@ test.each(["library", "forge-app", "tool", "agent-skill"])(
     });
     try {
       for (const preset of [undefined, "all"]) {
-        writes.clear();
-        await new DropCalf().files(
+        const result = await new DropCalf().init(
+          mockDirectory(),
           kind,
           "tester",
           "sample",
@@ -71,23 +55,23 @@ test.each(["library", "forge-app", "tool", "agent-skill"])(
           [],
           preset,
         );
-        expect(writes.get("biome.jsonc")).toBe(
-          biomeTemplates().get("biome.jsonc"),
+        expect(await result.file("biome.jsonc").contents()).toBe(
+          biomeTemplates().get("biome.jsonc") ?? "",
         );
-        expect(writes.has("biome.json")).toBe(false);
-        expect(writes.get("vitest.config.ts")).toBe(
-          kind === "forge-app"
-            ? vitestTemplates().get("vitest.config.ts")
-            : undefined,
-        );
-        expect(writes.get("tsconfig.typecheck.json")).toBe(
+        expect(await result.exists("biome.json")).toBe(false);
+        if (kind === "forge-app")
+          expect(await result.file("vitest.config.ts").contents()).toBe(
+            vitestTemplates().get("vitest.config.ts") ?? "",
+          );
+        else expect(await result.exists("vitest.config.ts")).toBe(false);
+        expect(await result.file("tsconfig.typecheck.json").contents()).toBe(
           (kind === "forge-app"
             ? vitestTemplates()
             : typescriptTemplates()
-          ).get("tsconfig.typecheck.json"),
+          ).get("tsconfig.typecheck.json") ?? "",
         );
-        expect(writes.get(".editorconfig")).toBe(
-          biomeTemplates().get(".editorconfig"),
+        expect(await result.file(".editorconfig").contents()).toBe(
+          biomeTemplates().get(".editorconfig") ?? "",
         );
       }
       expect(exec).not.toHaveBeenCalled();
@@ -228,15 +212,31 @@ describe("kind selection", () => {
     ).toThrow(/test/);
   });
 
-  test("Dagger files rejects invalid selection before workspace or rendering", async () => {
+  test("init rejects invalid selection before rendering", async () => {
     await expect(
-      new DropCalf().files(undefined as unknown as string, "tester", "sample"),
+      new DropCalf().init(
+        mockDirectory(),
+        undefined as unknown as string,
+        "tester",
+        "sample",
+      ),
     ).rejects.toBeInstanceOf(InvalidOptionsError);
     await expect(
-      new DropCalf().files("tool", "tester", "sample", "", "", ["evals"]),
+      new DropCalf().init(mockDirectory(), "tool", "tester", "sample", "", "", [
+        "evals",
+      ]),
     ).rejects.toBeInstanceOf(InvalidOptionsError);
     await expect(
-      new DropCalf().files("library", "tester", "sample", "", "", [], ["lint"]),
+      new DropCalf().init(
+        mockDirectory(),
+        "library",
+        "tester",
+        "sample",
+        "",
+        "",
+        [],
+        ["lint"],
+      ),
     ).rejects.toBeInstanceOf(InvalidOptionsError);
   });
 });
@@ -356,29 +356,44 @@ describe("profiles", () => {
     ).toBeUndefined();
   });
 
-  test("agent-skill contains no test scripts and all kinds keep a complete blueprint", () => {
-    for (const kind of ["library", "forge-app", "tool", "agent-skill"]) {
-      const project = buildProject(kind, "sample", "tester");
-      expect({
-        packageJson: project.packageJson,
-        // Seeded trees are not in the blueprint, so add the ones this kind
-        // actually receives. `agent-skill` ships no `changelog` script, so it
-        // is not offered a release policy.
-        files: [
+  test("agent-skill contains no test scripts and all kinds keep a complete blueprint", async () => {
+    const stub = spyOn(dag, "directory").mockImplementation(() =>
+      mockDirectory(),
+    );
+    try {
+      for (const kind of ["library", "forge-app", "tool", "agent-skill"]) {
+        const project = buildProject(kind, "sample", "tester");
+        const result = await new DropCalf().init(
+          mockDirectory(),
+          kind,
+          "tester",
+          "sample",
+        );
+        const packageJson = JSON.parse(
+          await result.file("package.json").contents(),
+        );
+        // Preserve the historical snapshot's scope while checking actual init output.
+        const paths = [
           ...project.files.keys(),
           ...OSS_ASSETS,
           "biome.jsonc",
           ...typescriptTemplates().keys(),
           ...(kind === "agent-skill" ? [] : changelogTemplates().keys()),
           ...(kind === "forge-app" ? ["vitest.config.ts"] : []),
-        ].sort(),
-      }).toMatchSnapshot(kind);
-      if (kind === "agent-skill")
-        expect(
-          Object.keys(project.packageJson.scripts).some((key) =>
-            key.startsWith("test"),
-          ),
-        ).toBe(false);
+        ].sort();
+        const present = [];
+        for (const path of paths)
+          if (await result.exists(path)) present.push(path);
+        expect({ packageJson, files: present }).toMatchSnapshot(kind);
+        if (kind === "agent-skill")
+          expect(
+            Object.keys(packageJson.scripts).some((key) =>
+              key.startsWith("test"),
+            ),
+          ).toBe(false);
+      }
+    } finally {
+      stub.mockRestore();
     }
   });
 

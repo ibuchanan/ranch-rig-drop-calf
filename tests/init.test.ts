@@ -1,9 +1,11 @@
 import { expect, spyOn, test } from "bun:test";
+import { dag } from "@dagger.io/dagger";
 import { DropCalf } from "../src/index.ts";
 import { mergeScaffoldPackage, scaffoldName } from "../src/init.ts";
 import { NODE_FORGE_RUNTIME, reconcileForgeRuntime } from "../src/node.ts";
 import { ParseError } from "../src/preclean.ts";
 import { buildProject } from "../src/profiles.ts";
+import { mockDirectory, mockModuleSource } from "./module-source.ts";
 
 /** The shape `forge create` leaves behind once `remove-scaffold` has run. */
 const precleaned = JSON.stringify({
@@ -55,26 +57,80 @@ test("scaffoldName reads the scaffold's own package name", () => {
   expect(scaffoldName(undefined)).toBeUndefined();
 });
 
-type Fake = {
-  files: Map<string, string>;
-  exists(path: string): Promise<boolean>;
-  file(path: string): { contents(): Promise<string> };
-  withoutFile(path: string): Fake;
-  withNewFile(path: string, contents: string): Fake;
-  withDirectory(path: string, source: Fake): Fake;
-};
-const fake = (files: Map<string, string>): Fake => ({
-  files,
-  exists: async (path) => files.has(path),
-  file: (path) => ({ contents: async () => files.get(path) as string }),
-  withoutFile: (path) => {
-    const next = new Map(files);
-    next.delete(path);
-    return fake(next);
-  },
-  withNewFile: (path, contents) => fake(new Map(files).set(path, contents)),
-  withDirectory: (_path, source) => fake(new Map([...files, ...source.files])),
+test("the public module uses init instead of exposing files", () => {
+  expect("files" in new DropCalf()).toBe(false);
 });
+
+test.each([
+  {
+    label: "explicit name wins over scaffold and workspace",
+    packageName: "explicit-name",
+    scaffold: '{"name":"scaffold-name"}',
+    expected: "explicit-name",
+  },
+  {
+    label: "explicit name works without a scaffold",
+    packageName: "explicit-name",
+    scaffold: undefined,
+    expected: "explicit-name",
+  },
+  {
+    label: "scaffold name wins over workspace",
+    packageName: undefined,
+    scaffold: '{"name":"scaffold-name"}',
+    expected: "scaffold-name",
+  },
+  {
+    label: "empty directory uses the workspace basename",
+    packageName: undefined,
+    scaffold: undefined,
+    expected: "workspace name",
+  },
+  {
+    label: "blank scaffold name uses the workspace basename",
+    packageName: undefined,
+    scaffold: '{"name":"  "}',
+    expected: "workspace name",
+  },
+  {
+    label: "missing scaffold name uses the workspace basename",
+    packageName: undefined,
+    scaffold: "{}",
+    expected: "workspace name",
+  },
+])("init naming: $label", async ({ packageName, scaffold, expected }) => {
+  const input = mockDirectory(
+    new Map(scaffold === undefined ? [] : [["package.json", scaffold]]),
+  );
+  const source = mockModuleSource();
+  const directory = spyOn(dag, "directory").mockImplementation(() =>
+    mockDirectory(),
+  );
+  const workspace = spyOn(dag, "currentWorkspace").mockReturnValue({
+    address: async () => "file:///projects/workspace%20name/",
+  } as ReturnType<typeof dag.currentWorkspace>);
+  try {
+    const result = await new DropCalf().init(
+      input,
+      "tool",
+      "tester",
+      packageName,
+    );
+    expect(JSON.parse(await result.file("package.json").contents()).name).toBe(
+      expected,
+    );
+    expect(workspace).toHaveBeenCalledTimes(
+      packageName === undefined && expected === "workspace name" ? 1 : 0,
+    );
+  } finally {
+    workspace.mockRestore();
+    directory.mockRestore();
+    source.mockRestore();
+  }
+});
+
+type Fake = ReturnType<typeof mockDirectory>;
+const fake = mockDirectory;
 
 test.each([
   "modules: {}\n",
@@ -104,19 +160,9 @@ test.each([
         [".eslintrc", "{}\n"],
       ]),
     );
-    const names: (string | undefined)[] = [];
-    const spy = spyOn(DropCalf.prototype, "files").mockImplementation(
-      async (profile, owner, packageName) => {
-        names.push(packageName);
-        const project = buildProject(profile, packageName ?? "x", owner);
-        return fake(
-          new Map([
-            ["package.json", `${JSON.stringify(project.packageJson)}\n`],
-            ["README.md", "# generated\n"],
-            ["tsconfig.json", "{}\n"],
-          ]),
-        ) as never;
-      },
+    const source = mockModuleSource();
+    const spy = spyOn(dag, "directory").mockImplementation(() =>
+      mockDirectory(),
     );
     try {
       const result = (await new DropCalf().init(
@@ -124,9 +170,9 @@ test.each([
         "forge-app",
         "tester",
       )) as unknown as Fake;
-      expect(names).toEqual(["forge-blank"]);
       expect(result.files.has(".eslintrc")).toBe(false);
-      expect(result.files.get("README.md")).toBe("# generated\n");
+      expect(result.files.get("README.md")).not.toBe("# scaffold\n");
+      expect(result.files.has("LICENSE")).toBe(true);
       expect(result.files.get("manifest.yml")).toBe(
         manifest === undefined
           ? undefined
@@ -140,6 +186,7 @@ test.each([
       expect(pkg.scripts.lint).not.toBe("eslint .");
     } finally {
       spy.mockRestore();
+      source.mockRestore();
     }
   },
 );
@@ -149,8 +196,9 @@ test.each(["library", "tool", "agent-skill"])(
   async (profile) => {
     const manifest = "app: [unparseable\n";
     const scaffold = fake(new Map([["manifest.yml", manifest]]));
-    const spy = spyOn(DropCalf.prototype, "files").mockResolvedValue(
-      fake(new Map([["package.json", generated(profile)]])) as never,
+    const source = mockModuleSource();
+    const spy = spyOn(dag, "directory").mockImplementation(() =>
+      mockDirectory(),
     );
     try {
       const result = (await new DropCalf().init(
@@ -162,13 +210,14 @@ test.each(["library", "tool", "agent-skill"])(
       expect(result.files.get("manifest.yml")).toBe(manifest);
     } finally {
       spy.mockRestore();
+      source.mockRestore();
     }
   },
 );
 
 test("init rejects invalid Forge YAML before generating output", async () => {
   const scaffold = fake(new Map([["manifest.yml", "app: [unparseable\n"]]));
-  const spy = spyOn(DropCalf.prototype, "files");
+  const spy = spyOn(dag, "directory");
   try {
     await expect(
       new DropCalf().init(scaffold as never, "forge-app", "tester"),

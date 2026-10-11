@@ -46,7 +46,7 @@ same shell that runs Dagger. Then install dependencies and load the module:
 
 ```bash
 bun install
-dagger call files --help
+dagger call init --help
 ```
 
 Loading the module generates its local SDK. If Dagger cannot connect, confirm
@@ -70,16 +70,26 @@ starting Dagger. To exercise the Dagger boundary without writing generated
 files locally:
 
 ```bash
-dagger call files --profile library entries
+mkdir -p .scratch/tmp_rovo_empty
+dagger call init --directory .scratch/tmp_rovo_empty \
+  --profile library --owner tester --package-name sample entries
+rmdir .scratch/tmp_rovo_empty
 ```
 
 The CLI loads the module from `dagger.json` and may generate a local `sdk/`
 directory (ignored by Biome). `tsconfig.json` resolves `@dagger.io/dagger`
 through that generated SDK, so if type checking reports a missing
-`sdk/index.ts`, load the module with `dagger call files --help` before retrying.
+`sdk/index.ts`, load the module with `dagger call init --help` before retrying.
 
-The end-to-end test runs a real `forge create`, which registers an app in your
-developer space, so it is opt-in:
+To verify `init-changes` exports from empty directories across all profiles
+and presets without registering or deploying a Forge app:
+
+```bash
+DROP_CALF_INIT_E2E=1 bun test tests/e2e/init.e2e.test.ts
+```
+
+The Forge end-to-end test runs a real `forge create`, which registers an app
+in your developer space, so it is opt-in:
 
 ```bash
 DROP_CALF_E2E=1 bun test tests/e2e
@@ -87,8 +97,9 @@ DROP_CALF_E2E=1 bun test tests/e2e
 
 ## Code layout
 
-- `src/index.ts`: Dagger `DropCalf` entry point; `files` builds a `Directory`
-  and `export` writes a supplied `Directory` to a path.
+- `src/index.ts`: Dagger `DropCalf` entry point; `init` initializes an empty
+  directory or a scaffold, and `init-changes` returns the changeset to export.
+  `export` writes a supplied `Directory` to a path.
 - `src/project.ts`: project blueprint, base package metadata and files,
   and Dagger directory rendering.
 - `src/oss.ts`: owns the fixed Apache-2.0 `license` field, written into the
@@ -161,7 +172,8 @@ DROP_CALF_E2E=1 bun test tests/e2e
   Dagger boundary: other profiles and a missing manifest are no-ops.
   First-time `init` explicitly replaces a runtime invented by `forge create`,
   which can lag the baseline. It is not an update command; strict reconciliation
-  remains the default for a future update path. `files` never touches a manifest.
+  remains the default for a future update path. Empty-directory `init` does
+  not create a manifest.
   `nodeContainer()` is the native Dagger side of
   the same baseline: the one place the Node image is chosen, so containerized
   tools (such as `validateChangelog`) run the pinned major rather than whatever
@@ -178,7 +190,10 @@ a focused test of the resulting blueprint and run the checks above.
 `renderToDirectory` is the Dagger boundary; keep ordinary project assembly
 testable without the engine.
 
-`files` does not read or merge an existing repository. First-time `init` reads
+First-time `init` accepts either an empty directory or a scaffold. Its package
+name is the explicit `--package-name`, then the nonblank scaffold name, then
+the Dagger workspace directory name. Without a scaffold, cleanup and manifest
+normalization do nothing. With a scaffold, `init` reads
 and cleans a scaffold, merges its package dependencies, and normalizes an existing
 Forge manifest runtime; synchronization of established projects is not implemented.
 `DROP_CALF_NODE_E2E=1 bun test tests/e2e/node.e2e.test.ts` verifies runtime
@@ -250,7 +265,7 @@ rather than starting one.
 
 A capability cannot read the module source — that would break the pure blueprint
 layer the Bun tests rely on. It declares template paths as data instead.
-`files` seeds those selected trees through `seedTemplates`, with no profile
+`init` seeds those selected trees through `seedTemplates`, with no profile
 checks in the seeding entry point. Changelog templates belong to
 `changelogToolchain()`, and SecretSpec templates belong to `forgeSecrets()`.
 OSS and gitignore remain base assets rather than optional capabilities.
@@ -258,7 +273,7 @@ OSS and gitignore remain base assets rather than optional capabilities.
 The standalone `copy-docs`, `copy-typescript`, `copy-changelog`, `copy-git-hooks`,
 `copy-secrets`, and `copy-biome` Dagger functions remain available for deliberate
 re-seeding of one tree in an existing repository without generating a package or
-selecting a whole profile. They are not steps in the `files` pipeline.
+selecting a whole profile. They are not steps in the `init` pipeline.
 
 Every kind's `biomeToolchain()` declares `templates/biome`. Generation seeds its
 `biome.jsonc` verbatim, without invoking a local Biome binary or creating a

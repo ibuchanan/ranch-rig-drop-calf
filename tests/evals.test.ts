@@ -1,11 +1,11 @@
 import { expect, spyOn, test } from "bun:test";
 import { posix } from "node:path";
-import { type Directory, dag } from "@dagger.io/dagger";
+import { dag } from "@dagger.io/dagger";
 import { YAML } from "bun";
 import { EVALS_TEMPLATE } from "../src/evals.ts";
 import { DropCalf } from "../src/index.ts";
 import { buildProject } from "../src/profiles.ts";
-import { mockModuleSource } from "./module-source.ts";
+import { mockDirectory, mockModuleSource } from "./module-source.ts";
 import { promptfooTemplates } from "./templates-source.ts";
 
 test("evals documents a Rovo resource that resolves to the prompt used by every case", () => {
@@ -124,24 +124,11 @@ test("Forge evals selection and all preset declare the same seed tree without au
   expect(ordinary.packageJson.devDependencies.promptfoo).toBeUndefined();
 });
 
-test("files seeds every Promptfoo byte only when evals is selected", async () => {
-  const writes = new Map<string, string>();
-  const directory = {
-    withNewFile(path: string, content: string) {
-      writes.set(path, content);
-      return directory;
-    },
-    withFile(path: string, file: { text: string }) {
-      writes.set(path, file.text);
-      return directory;
-    },
-    withDirectory(_path: string, source: { files: Map<string, string> }) {
-      for (const [path, content] of source.files) writes.set(path, content);
-      return directory;
-    },
-  } as unknown as Directory;
+test("init seeds every Promptfoo byte only when evals is selected", async () => {
   const moduleSource = mockModuleSource();
-  const stub = spyOn(dag, "directory").mockReturnValue(directory);
+  const stub = spyOn(dag, "directory").mockImplementation(() =>
+    mockDirectory(),
+  );
   try {
     for (const [withFunctions, withoutFunctions, preset, enabled] of [
       [[], [], undefined, false],
@@ -149,8 +136,8 @@ test("files seeds every Promptfoo byte only when evals is selected", async () =>
       [[], [], "all", true],
       [[], ["evals"], "all", false],
     ] as const) {
-      writes.clear();
-      await new DropCalf().files(
+      const result = await new DropCalf().init(
+        mockDirectory(),
         "forge-app",
         "tester",
         "sample",
@@ -160,9 +147,11 @@ test("files seeds every Promptfoo byte only when evals is selected", async () =>
         [...withoutFunctions],
         preset,
       );
-      for (const [path, content] of promptfooTemplates())
-        expect(writes.get(path)).toBe(enabled ? content : undefined);
-      expect(writes.has("manifest.yml")).toBe(false);
+      for (const [path, content] of promptfooTemplates()) {
+        if (enabled) expect(await result.file(path).contents()).toBe(content);
+        else expect(await result.exists(path)).toBe(false);
+      }
+      expect(await result.exists("manifest.yml")).toBe(false);
     }
   } finally {
     stub.mockRestore();

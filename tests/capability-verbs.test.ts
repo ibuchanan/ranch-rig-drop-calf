@@ -14,7 +14,8 @@ import { evals } from "../src/evals.ts";
 import { DropCalf } from "../src/index.ts";
 import { prelint, validatePrelint } from "../src/prelint.ts";
 import { buildProject, PROFILES, resolveProfile } from "../src/profiles.ts";
-import { createBlueprint } from "../src/project.ts";
+import { createBlueprint, renderToDirectory } from "../src/project.ts";
+import { seedTemplates } from "../src/templates.ts";
 import { mockModuleSource } from "./module-source.ts";
 
 const kinds = ["library", "forge-app", "tool", "agent-skill"];
@@ -138,15 +139,14 @@ test.each(kinds)(
           expect(typeof capability.update).not.toBe("function");
         }
         const module = new DropCalf();
-        const generated = await module.files(
-          kind,
-          "tester",
+        const seeded = await seedTemplates(
+          renderToDirectory(legacy),
+          dag.currentModule().source(),
+          legacy.templates,
           "sample",
-          "A sample project",
-          "Tester",
-          withFunctions,
-          withoutFunctions,
-          preset,
+        );
+        const generated = await module.copyGitignore(
+          await module.copyOss(seeded, "sample", "tester"),
         );
         const initialized = await module.init(
           tree(),
