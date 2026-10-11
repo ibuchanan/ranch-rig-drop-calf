@@ -125,11 +125,14 @@ must run where the tools are used (the developer's machine or CI), not inside th
 module's runtime container, which never has them.
 
 ### `format`
-Add `@biomejs/biome`. Invoke `biome init` when config is absent and the tool is locally
-available; otherwise create equivalent minimal JSON procedurally. Deep-merge required VCS,
-file-exclusion, and formatter policy (schema version must match the installed Biome
-version). Create `.editorconfig` as a small deterministic text asset. Owns
-`format`, `format:check`, `lint:check`, `lint:fix` scripts.
+Add `@biomejs/biome` at the version pinned in `TOOL_VERSIONS.biome` and declare
+`templates/biome`. Seed its authored `biome.jsonc` verbatim for every kind; the
+schema version must match the registry pin, enforced by a test. Generation does
+not invoke a local Biome binary, create temporary directories, or build and merge
+a config in code. Keep `.editorconfig` as the blueprint's small deterministic
+text asset, excluding the tree's `.editorconfig` during normal generation until
+its sources are consolidated. Owns `format`, `format:check`, `lint:check`,
+`lint:fix` scripts.
 
 ### `forge-prelint`
 Add `@ast-grep/cli` and the Forge rules package, aliased `@forge-ahead/prelint`

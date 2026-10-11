@@ -28,55 +28,13 @@ export function biomeToolchain(
   biomeVersion: string = TOOL_VERSIONS.biome,
 ): Capability {
   return {
+    templates: [BIOME_TEMPLATE],
     addTo(project) {
       project.packageJson.devDependencies["@biomejs/biome"] = biomeVersion;
       project.packageJson.scripts.format = "biome format --write";
       project.packageJson.scripts["format:check"] = "biome format";
       project.packageJson.scripts["lint:check"] = "biome lint";
       project.packageJson.scripts["lint:fix"] = "biome lint --write";
-      project.files.set("biome.jsonc", buildBiomeConfig(biomeVersion));
     },
   };
-}
-
-function buildBiomeConfig(version: string): string {
-  return JSON.stringify(
-    {
-      $schema: `https://biomejs.dev/schemas/${version.replace(/^[^\d]*/, "")}/schema.json`,
-      vcs: {
-        enabled: true,
-        clientKind: "git",
-        useIgnoreFile: true,
-        defaultBranch: "main",
-      },
-      files: {
-        ignoreUnknown: false,
-      },
-      formatter: {
-        enabled: true,
-        indentStyle: "space",
-      },
-      linter: {
-        enabled: true,
-        rules: {
-          preset: "recommended",
-        },
-      },
-      javascript: {
-        formatter: {
-          quoteStyle: "double",
-        },
-      },
-      assist: {
-        enabled: true,
-        actions: {
-          source: {
-            organizeImports: "on",
-          },
-        },
-      },
-    },
-    null,
-    2,
-  );
 }

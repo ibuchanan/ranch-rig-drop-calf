@@ -1,5 +1,6 @@
 import { expect, test } from "bun:test";
 import type { Directory } from "@dagger.io/dagger";
+import { BIOME_TEMPLATE } from "../src/biome.ts";
 import type { Capability } from "../src/capabilities.ts";
 import { CHANGELOG_TEMPLATE } from "../src/changelog.ts";
 import { DOCS_TEMPLATE } from "../src/docs.ts";
@@ -25,6 +26,7 @@ test.each(kinds)("%s declares only its selected template trees", (kind) => {
     );
     expect([...project.templates].sort()).toEqual(
       [
+        BIOME_TEMPLATE,
         ...(kind === "agent-skill" ? [] : [CHANGELOG_TEMPLATE]),
         DOCS_TEMPLATE,
         GIT_HOOKS_TEMPLATE,
@@ -34,6 +36,15 @@ test.each(kinds)("%s declares only its selected template trees", (kind) => {
     );
   }
 });
+
+test.each(kinds)(
+  "%s leaves Biome config authorship to the pinned template",
+  (kind) => {
+    const project = buildProject(kind, "sample", "tester");
+    expect(project.files.has("biome.jsonc")).toBe(false);
+    expect(project.files.has("biome.json")).toBe(false);
+  },
+);
 
 test("assembly collects zero or multiple trees from capabilities without reading them", () => {
   const capabilities = PROFILES.tool;

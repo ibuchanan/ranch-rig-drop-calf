@@ -46,6 +46,8 @@ export function mockModuleSource(
   };
   const tree = (files: ReadonlyMap<string, string>) => ({
     files,
+    withoutFile: (path: string) =>
+      tree(new Map([...files].filter(([name]) => name !== path))),
     glob: async () => [...files.keys()],
     exists: async (path: string) => files.has(path),
     file: (path: string) => ({

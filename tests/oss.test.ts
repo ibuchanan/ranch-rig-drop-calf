@@ -14,6 +14,7 @@ import { buildProject } from "../src/profiles.ts";
 import { SECRETS_ASSETS } from "../src/secrets.ts";
 import { mockOssSource, ossTemplates } from "./oss-source.ts";
 import {
+  biomeTemplates,
   changelogTemplates,
   docsTemplates,
   gitHooksTemplates,
@@ -178,6 +179,7 @@ describe("pinned OSS templates", () => {
           docsTemplates().get("DEVELOPMENT.md"),
         );
         const seeded = new Map([
+          ...[...biomeTemplates()].filter(([path]) => path !== ".editorconfig"),
           ...typescriptTemplates(),
           ...gitHooksTemplates(),
           ...docsTemplates(),

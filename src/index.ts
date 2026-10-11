@@ -1,6 +1,4 @@
-import { execFileSync } from "node:child_process";
-import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
-import { basename, join } from "node:path";
+import { basename } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   type Changeset,
@@ -30,64 +28,6 @@ import { renderToDirectory } from "./project.ts";
 import { copySecretsAssets, SECRETS_TEMPLATE } from "./secrets.ts";
 import { seedTemplates } from "./templates.ts";
 import { copyTypeScript, TYPESCRIPT_TEMPLATE } from "./typescript.ts";
-import { TOOL_VERSIONS } from "./versions.ts";
-
-function localBiomeConfig(fallback: string): string {
-  const binary = join(process.cwd(), "node_modules", ".bin", "biome");
-  const version = TOOL_VERSIONS.biome.replace(/^[^\d]*/, "");
-  if (!existsSync(binary)) return fallback;
-  let temp: string | undefined;
-  try {
-    const reported = execFileSync(binary, ["--version"], {
-      encoding: "utf8",
-      timeout: 5000,
-    }).trim();
-    if (
-      !new RegExp(`(?:^|\\s)${version.replace(/\./g, "\\.")}$`).test(reported)
-    )
-      return fallback;
-    temp = mkdtempSync(join(process.cwd(), "tmp_rovo_biome_"));
-    execFileSync(binary, ["init"], {
-      cwd: temp,
-      stdio: "ignore",
-      timeout: 5000,
-    });
-    const initialized = JSON.parse(
-      readFileSync(join(temp, "biome.json"), "utf8"),
-    );
-    if (initialized?.$schema !== JSON.parse(fallback).$schema) return fallback;
-    const required = JSON.parse(fallback);
-    const merge = (
-      target: Record<string, unknown>,
-      source: Record<string, unknown>,
-    ) => {
-      for (const [key, value] of Object.entries(source)) {
-        if (
-          value !== null &&
-          typeof value === "object" &&
-          !Array.isArray(value)
-        ) {
-          const current = target[key];
-          target[key] = merge(
-            current !== null &&
-              typeof current === "object" &&
-              !Array.isArray(current)
-              ? (current as Record<string, unknown>)
-              : {},
-            value as Record<string, unknown>,
-          );
-        } else target[key] = value;
-      }
-      return target;
-    };
-    return `${JSON.stringify(merge(initialized, required), null, 2)}\n`;
-  } catch {
-    return fallback;
-  } finally {
-    if (temp) rmSync(temp, { recursive: true, force: true });
-  }
-}
-
 @object()
 export class DropCalf {
   /**
@@ -134,8 +74,6 @@ export class DropCalf {
       withoutFunctions,
       preset,
     );
-    const fallback = project.files.get("biome.jsonc");
-    if (fallback) project.files.set("biome.jsonc", localBiomeConfig(fallback));
     const directory = await seedTemplates(
       renderToDirectory(project),
       dag.currentModule().source(),

@@ -222,9 +222,16 @@ The standalone `copy-docs`, `copy-typescript`, `copy-changelog`, `copy-git-hooks
 `copy-secrets`, and `copy-biome` Dagger functions remain available for deliberate
 re-seeding of one tree in an existing repository without generating a package or
 selecting a whole profile. They are not steps in the `files` pipeline.
-`copy-biome` remains explicit: normal generation uses the blueprint's derived
-Biome config and EditorConfig, so seeding `templates/biome` there would change
-output. Consolidating those sources is a separate change.
+
+Every kind's `biomeToolchain()` declares `templates/biome`. Generation seeds its
+`biome.jsonc` verbatim, without invoking a local Biome binary or creating a
+host temporary directory. The template's `$schema` must match
+`TOOL_VERSIONS.biome`; the test suite checks for drift. Edit the pinned template
+to change the configuration rather than rebuilding it in code.
+
+Generation excludes `.editorconfig` from that tree so the blueprint's existing
+Markdown whitespace policy stays unchanged. The standalone `copy-biome` still
+copies the whole tree; consolidating the EditorConfig sources is separate work.
 
 ## The generated `.gitignore`
 
