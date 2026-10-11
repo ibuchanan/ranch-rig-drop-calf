@@ -4,6 +4,7 @@ import { parseDocument } from "yaml";
 import { BIOME_SCRIPTS } from "../src/biome.ts";
 import { validateCapabilities } from "../src/capability.ts";
 import { CATALOG_FILE, PACKAGE_NAME, renderCatalog } from "../src/catalog.ts";
+import { CHANGELOG_COMMAND } from "../src/changelog.ts";
 import { DropCalf } from "../src/index.ts";
 import {
   packageMetadata,
@@ -109,6 +110,7 @@ test.each(kinds)(
         scripts: {
           ...pkg.scripts,
           ...BIOME_SCRIPTS,
+          ...(kind === "agent-skill" ? {} : { changelog: CHANGELOG_COMMAND }),
           typecheck: TYPESCRIPT_SCRIPTS.typecheck,
           ...(kind === "library" ? {} : { build: TYPESCRIPT_SCRIPTS.build }),
           ...(kind === "forge-app" ? VITEST_SCRIPTS : {}),
@@ -116,6 +118,9 @@ test.each(kinds)(
         devDependencies: {
           "@biomejs/biome": TOOL_VERSIONS.biome,
           typescript: TOOL_VERSIONS.typescript,
+          ...(kind === "agent-skill"
+            ? {}
+            : { "git-cliff": TOOL_VERSIONS.gitCliff }),
           ...(kind === "forge-app"
             ? {
                 vitest: TOOL_VERSIONS.vitest,

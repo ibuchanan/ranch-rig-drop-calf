@@ -1,6 +1,9 @@
 import type { Directory } from "@dagger.io/dagger";
-import { type Capability, expandCapability } from "./capability.ts";
+import sortPackageJson from "sort-package-json";
+import type { Capability } from "./capability.ts";
+import { parseObject } from "./init.ts";
 import { nodeContainer } from "./node.ts";
+import { ParseError } from "./preclean.ts";
 import { copyTemplate } from "./templates.ts";
 import { TOOL_VERSIONS } from "./versions.ts";
 
@@ -9,11 +12,12 @@ import { TOOL_VERSIONS } from "./versions.ts";
  * an unreleased changelog, and the release policy that command reads.
  *
  * The policy is authored content rather than derived settings. Its Tera header,
- * its commit groups and the preprocessor that strips an Atlassian ticket
- * suffix are decisions someone has to be able to read in a diff, so the file
+ * its commit groups and the preprocessor that strips the Jira placeholder
+ * are decisions someone has to be able to read in a diff, so the file
  * is seeded from `templates/changelog` instead of being rebuilt by the
- * capability — the same rule the docs and TypeScript trees follow, which is
- * why `buildProject` carries neither of these files for any profile.
+ * capability. Both files are owner-managed after init; update only maintains
+ * the package tool pin and command. `buildProject` declares the template tree
+ * rather than carrying either file in its blueprint.
  *
  * `CHANGELOG.md` is seeded too, but it is the one file here that is *output*
  * rather than input: the command regenerates it whole from `cliff.toml` and
@@ -35,7 +39,7 @@ export const CHANGELOG_CONFIG = "cliff.toml";
  */
 /**
  * The command `changelogToolchain` scripts and `validateChangelog` runs.
- * Validation splits it rather than repeating it, so the two cannot drift.
+ * Validation reuses it rather than repeating it, so the two cannot drift.
  */
 export const CHANGELOG_COMMAND = `git cliff --config ${CHANGELOG_CONFIG} --unreleased -o CHANGELOG.md`;
 
@@ -51,22 +55,62 @@ export function copyChangelog(
   return copyTemplate(destination, source);
 }
 
+/** Maintain only the tool pin and command; release policy and output are init-only. */
+export async function updateChangelog(
+  directory: Directory,
+  cliffVersion: string = TOOL_VERSIONS.gitCliff,
+): Promise<Directory> {
+  if (!(await directory.exists("package.json"))) return directory;
+  const contents = await directory.file("package.json").contents();
+  const pkg = parseObject("package.json", contents);
+  let changed = false;
+  for (const [section, wanted] of [
+    ["devDependencies", { "git-cliff": cliffVersion }],
+    ["scripts", { changelog: CHANGELOG_COMMAND }],
+  ] as const) {
+    const existing = pkg[section];
+    if (
+      existing !== undefined &&
+      (existing === null ||
+        typeof existing !== "object" ||
+        Array.isArray(existing))
+    )
+      throw new ParseError("package.json", `${section} must be an object`);
+    const fields = (existing ?? {}) as Record<string, unknown>;
+    for (const [key, value] of Object.entries(wanted)) {
+      if (fields[key] === value) continue;
+      fields[key] = value;
+      changed = true;
+    }
+    pkg[section] = fields;
+  }
+  return changed
+    ? directory.withNewFile(
+        "package.json",
+        sortPackageJson(`${JSON.stringify(pkg, null, 2)}\n`),
+      )
+    : directory;
+}
+
 /** Every kind that releases installs this tool and renders through this command. */
 export function changelogToolchain(
-  cliffVersion = TOOL_VERSIONS.gitCliff,
+  cliffVersion: string = TOOL_VERSIONS.gitCliff,
 ): Capability {
-  return expandCapability(
-    "changelog",
-    "14-changelog",
-    {
-      templates: [CHANGELOG_TEMPLATE],
-      addTo(project) {
-        project.packageJson.devDependencies["git-cliff"] = cliffVersion;
-        project.packageJson.scripts.changelog = CHANGELOG_COMMAND;
-      },
+  const seed: Capability["addTo"] = (project) => {
+    project.packageJson.devDependencies["git-cliff"] = cliffVersion;
+    project.packageJson.scripts.changelog = CHANGELOG_COMMAND;
+  };
+  return {
+    name: "changelog",
+    templates: [CHANGELOG_TEMPLATE],
+    addTo: seed,
+    init(project) {
+      seed(project);
+      project.templates.push(CHANGELOG_TEMPLATE);
     },
-    validateChangelog,
-  );
+    update: (directory) => updateChangelog(directory, cliffVersion),
+    validate: (directory) => validateChangelog(directory, cliffVersion),
+  };
 }
 
 export type ChangelogValidation =
@@ -84,6 +128,7 @@ export type ChangelogValidation =
  */
 export async function validateChangelog(
   directory: Directory,
+  cliffVersion: string = TOOL_VERSIONS.gitCliff,
 ): Promise<ChangelogValidation> {
   if (!(await directory.exists(CHANGELOG_CONFIG)))
     return { status: "skipped", reason: `${CHANGELOG_CONFIG} is missing` };
@@ -94,7 +139,7 @@ export async function validateChangelog(
       "--global",
       "--no-fund",
       "--no-audit",
-      `git-cliff@${TOOL_VERSIONS.gitCliff}`,
+      `git-cliff@${cliffVersion}`,
     ])
     // A mounted repository belongs to whoever cloned it, so git would refuse
     // to read it as "dubious ownership" without this.

@@ -142,6 +142,7 @@ test.each(kinds)(
               "oss",
               "gitignore",
               "node",
+              "changelog",
               "biome",
               "typescript",
             ].includes(capability.name) ||
@@ -199,8 +200,10 @@ test.each(kinds)(
   },
 );
 
-test("the active validators are the existing read-only checks", () => {
-  expect(changelogToolchain().validate).toBe(validateChangelog);
+test("the active validators retain the existing read-only checks", async () => {
+  const changelog = changelogToolchain().validate;
+  if (typeof changelog !== "function") throw new Error("missing validator");
+  expect(await changelog(tree())).toEqual(await validateChangelog(tree()));
   expect(prelint().validate).toBe(validatePrelint);
 });
 

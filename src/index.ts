@@ -125,9 +125,9 @@ export class DropCalf {
   }
 
   /**
-   * Render an unreleased changelog for a repository to prove its release policy
-   * and its `changelog` script still agree. Reports `skipped` rather than
-   * failing when the repository has no history to render.
+   * Check git-cliff acceptance by rendering the canonical command in isolation.
+   * Does not compare owner policy or package scripts with the baseline. Reports
+   * `skipped` when the policy or Git history is unavailable.
    */
   @func()
   async validateChangelog(directory: Directory): Promise<string> {

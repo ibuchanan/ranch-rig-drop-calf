@@ -330,20 +330,40 @@ replaces the ticket's original pin-agreement proposal with ADR 0001's tool-accep
 contract.
 
 ### `changelog`
-Add `git-cliff` dev dependency and the `changelog` script. Seed the release
-policy from `templates/changelog/cliff.toml` (authored content, never rebuilt by
-the capability) and seed it create-if-absent, so a policy a project has edited is
-left alone. Only kinds that ship the `changelog` script are offered it, so
-`agent-skill` gets no policy it cannot run.
 
-The script writes `CHANGELOG.md` (`git cliff … -o CHANGELOG.md`), which is seeded
-alongside the policy and is regenerated whole, never prepended. The changelog's
-prose therefore lives in the policy's `header` key: anything written into the
-Markdown by hand would be erased on the next run. The seed is byte-identical to
-what the command renders before any release, so a project's first run is a
-no-op. Validate a repository by rendering that same command in a container at the
-pinned version when it has git history, reporting a skip rather than failing
-otherwise.
+The release workflow owns `devDependencies["git-cliff"]` at
+`TOOL_VERSIONS.gitCliff` and `scripts.changelog`:
+`git cliff --config cliff.toml --unreleased -o CHANGELOG.md`. It is selected for
+`library`, `forge-app`, and `tool`; `agent-skill` seeds neither the tool nor its files.
+
+- **init** seeds the tool pin and command and overlays `templates/changelog` for
+  `cliff.toml` and `CHANGELOG.md`. Init is fresh-repository setup, not a maintenance
+  rerun. Standalone `copy-changelog` deliberately overlays both files without
+  changing package metadata; it is not update.
+- **update** enforces only the tool pin and canonical script in an existing
+  `package.json`, creating missing sections and owned keys. A missing package is
+  not created. Malformed/non-object JSON and non-object scripts/devDependencies
+  fail before writes. Unrelated package values survive. Matching owned values
+  preserve original bytes; changes use sorted, two-space JSON with a trailing
+  newline. A second update changes nothing. No repository install or lockfile
+  refresh runs.
+- **`cliff.toml` and `CHANGELOG.md` are owner-managed after init.** Update never
+  reads, rewrites, migrates, recreates, or regenerates either file. Owner edits
+  and deletion survive. Commit groups, preprocessors (including the seeded Jira
+  placeholder removal), and release templates are starting values, not enforced
+  organization-wide policy. The explicit changelog command regenerates Markdown
+  whole, never prepends; hand-written Markdown can be replaced by that command.
+  Persistent generated prose belongs in the policy's `changelog.header`.
+- **validate** retains the existing git-cliff acceptance check: render the canonical
+  command using the capability-selected pin in an isolated Node container. It does
+  not execute or compare `package.json` scripts, compare configuration with the seed,
+  or check whether the stored Markdown is up to date. Owner configuration accepted
+  by git-cliff passes without prior init/update. Missing `cliff.toml` or unavailable
+  Git history reports skipped with a reason; command failure reports git-cliff's
+  diagnostic. The render writes only in the throwaway container and no files are
+  exported, so the caller's repository remains unchanged. Tool installation may
+  require network access; setup/download failures are execution failures, not
+  evidence of invalid configuration.
 
 ### `secrets`
 Seed `secretspec.toml`, `scripts/env-var.sh` and
