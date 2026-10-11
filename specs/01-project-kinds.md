@@ -11,7 +11,12 @@ capabilities are specified in [`02-project-functions.md`](02-project-functions.m
 A kind answers one question: *given a capability slot, which implementation does this kind
 use?* Kinds contain no behavior of their own — they are pure composition data, declared in
 `src/profiles.ts` as ordered arrays of capabilities, and are the unit users select when
-generating (`files(profile, …)`) or synchronizing (`sync(profile, …)`) a repository.
+initializing (`init`), updating (`update`), or validating (`validate`) a repository.
+[ADR 0001](../docs/adr/0001-capability-verbs-by-intent.md) defines these operations:
+init runs scaffold steps, then every capability's init, then every capability's
+update; update and validate each run only their respective capability pass. Each
+pass follows kind order. Validation is standalone and is not automatically run by
+init or update for now; it checks tool acceptance, not kind-policy compliance.
 
 ## 2. Kind contract
 
@@ -71,10 +76,13 @@ Notes:
 
 ## 5. Kind selection and errors
 
-- The kind is a required argument of both generation and synchronization; unknown or
+- The kind is a required argument of initialization, update, and validation; unknown or
   ambiguous selection is an `InvalidOptionsError` before any filesystem work.
-- Selecting a kind against an existing repository follows the same discovery → plan →
-  merge path as any function application; the kind itself never authorizes overwrites.
+- Selecting a kind against an existing repository runs the selected capability pass.
+  Preservation or replacement follows each capability's documented policy, not a
+  generic merge path; the kind itself adds no overwrite policy.
+- Every selected capability requires all three verbs, including explicit no-ops with
+  reasons. A deliberate no-op slot does not omit the capability's verb contract.
 
 ## 6. Future kinds
 

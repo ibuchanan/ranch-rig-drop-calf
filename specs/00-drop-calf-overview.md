@@ -2,51 +2,54 @@
 
 ## 1. Purpose
 
-`drop-calf` is a Dagger module that bootstraps and maintains software repositories. It treats a generated repository as the convergence of a **project profile** and a set of **capabilities**, rather than as a fixed template.
+`drop-calf` is a Dagger module that bootstraps and maintains software repositories. A **project profile** selects an ordered set of **capabilities** whose intent and policy determine how the repository changes.
 
-A human declares intent by choosing a profile (e.g., `library`, `forge-app`, `tool`, `agent-skill`). Each profile assembles the same capability slots, but each slot may be fulfilled by a different implementation. The module generates new projects and can later converge existing projects back to the current profile.
+A human declares intent by choosing a profile (e.g., `library`, `forge-app`, `tool`, `agent-skill`). Each profile assembles the same capability slots, but each slot may be fulfilled by a different implementation. The module initializes new projects, updates existing projects according to capability policy, and independently validates tool acceptance.
+
+[ADR 0001: Capabilities have three verbs, decided by intent](../docs/adr/0001-capability-verbs-by-intent.md) supersedes the original single-operation convergence model. This specification describes the target contract; the code migrates incrementally.
 
 ## 2. Goals
 
 - Produce consistent, working repositories for common project kinds.
 - Keep the generated developer API stable (`npm run lint`, `npm run format`, `npm run typecheck`, `npm run test`) while allowing implementation to vary by profile.
-- Support idempotent updates to existing repositories.
-- Avoid projen-style file ownership; merge into shared files where possible.
+- Support idempotent, policy-driven updates to existing repositories.
+- Make preservation or replacement of owner edits an explicit capability policy, not a rule inferred from file type.
 - Remain testable without the Dagger engine for the core abstraction.
 
 ## 3. Non-goals
 
-- Replace project-specific scaffolding tools such as `forge create` or `npm init`. `drop-calf` composes on top of them.
+- Replace project-specific scaffolding tools such as `forge create`. `drop-calf` composes on top of fresh scaffold output or initializes an empty directory.
 - Track persistent state inside Dagger. State lives in Git and in the repository files themselves.
 - Enforce a single toolchain across all project kinds. Profiles may choose different tools.
+- Build a generic convergence engine whose file-format rules decide repository policy.
+- Treat validation as a policy-compliance or drift check.
 
 ## 4. Core concepts
 
 | Term | Definition |
 |---|---|
-| **Profile** | A named bundle of capabilities that defines what a project kind should look like. Examples: `library`, `forge-app`, `tool`, `agent-skill`. |
-| **Capability** | An adapter that contributes one developer-facing concern to a project: linting, formatting, type checking, or testing. |
-| **Capability slot** | A role in a profile, such as `linting`, `formatting`, `typechecking`, `testing`. A profile always has the same slots, but implementations vary and slots may be no-ops. |
+| **Profile** | A named, ordered bundle of capabilities that defines a project kind. Examples: `library`, `forge-app`, `tool`, `agent-skill`. |
+| **Capability** | One repository concern with explicit initialization, update policy, and tool-validation behavior, such as formatting, testing, or OSS documents. |
+| **Capability slot** | A role in a profile, such as `linting`, `formatting`, `typechecking`, `testing`. A profile always has the same slots, but implementations vary and slots may deliberately be no-ops. |
+| **Init** | First-time setup that seeds starting content and initial settings; at the top level, scaffold preparation followed by all capability inits and then all capability updates. |
+| **Update** | Application of a capability's current policy to a repository; repeating it with the same inputs and policy produces no further changes. |
+| **Validate** | A read-only check of whether consuming tools accept the repository, independent of Drop Calf policy and of any prior init or update. |
+| **No-op reason** | An explicit explanation of why a capability has no work for a required verb; not an omitted operation. |
+| **Scaffold step** | Preparation of fresh scaffolder output before capability initialization; it has no work on an empty directory and does not run during update. |
 | **ProjectBlueprint** | A pure TypeScript model of a project: a `package.json` object plus a map of file paths to contents. |
 | **Seam** | The boundary between the pure blueprint manipulation and the Dagger `Directory` rendering. |
 
-## 5. Capability interface
+## 5. Capability contract
 
-Every capability exposes a single operation:
+Every capability requires `init`, `update`, and `validate`. A verb with no work is an explicit no-op with a non-empty, enumerable reason that answers why there is no work for that verb and anchors its documentation.
 
-```ts
-type Capability = {
-  addTo(project: ProjectBlueprint): void;
-};
-```
+- `init` seeds starting content and initial settings.
+- `update` applies the capability's documented policy and is idempotent for unchanged inputs and policy.
+- `validate` checks tool acceptance without changing the repository. It is not policy-aware: a tool-valid configuration passes even if it differs from the capability's baseline.
 
-Capabilities must be **idempotent**. Applying the same capability twice to the same blueprint should produce the same result as applying it once.
+Each capability declares the scope of its changes. Its policy decides whether content is init-only, updated authoritatively, or changed selectively within shared resources. Documented policy authorizes replacement of owner edits without an explicit opt-in or `--force`; unrelated content in shared resources is preserved. These decisions are not inferred from file type.
 
-Capabilities must **merge** rather than own shared files:
-- Own specific `package.json` script keys.
-- Own specific generated config files (`biome.json`, `tsconfig.json`).
-- Merge into line-set or section-map files (`.gitignore`, `.editorconfig`).
-- Merge block-delimited sections (`README.md`).
+The previous `addTo` interface is superseded by [ADR 0001](../docs/adr/0001-capability-verbs-by-intent.md); its removal and the concrete verb signatures belong to the code migration.
 
 ## 6. Developer API (package.json scripts)
 
@@ -76,38 +79,35 @@ Profiles are defined in `src/profiles.ts` as arrays of capabilities.
 
 ### 7.2 Future profiles
 
-Additional profiles may be added without changing existing capability implementations, provided the new profile uses the same capability interface.
+Additional profiles may be added without changing existing capability implementations, provided the new profile uses the same capability contract.
 
-## 8. Merge strategies by file kind
+## 8. Content policy and file-format helpers
 
-| File kind | Merge model | Implementation approach |
-|---|---|---|
-| `.gitignore`, `.dockerignore` | Line set | Normalize, union, deduplicate, sort. Preserve comments. |
-| `.editorconfig`, INI files | Section map | Parse into `Map<section, Map<key, value>>`, merge per section, serialize. |
-| `README.md` | Block markers | Wrap generated sections in `<!-- drop-calf:<slot> start/end -->` markers; replace only the marked block. |
-| `package.json` | Key ownership | Capabilities own specific script and dependency keys; leave unrelated keys alone. |
-| Owned config files (`biome.json`, `tsconfig.json`) | Full ownership | Regenerate entirely; mark as generated if appropriate. |
-| Complex workflows | Full ownership | Replace the whole file; warn that hand edits will be overwritten. |
+The former merge-strategy table is superseded by [ADR 0001](../docs/adr/0001-capability-verbs-by-intent.md). File type does not decide whether an output is seeded, preserved, merged, or replaced.
 
-## 9. New project generation
+A capability may use line-set, section-map, structured-key, managed-region, or whole-file operations to implement its documented policy. None is a universal default. For example, OSS updates LICENSE, CODE_OF_CONDUCT, CONTRIBUTING, and SECURITY authoritatively, while README and OWNER are init-only. Their common document format does not imply a common lifecycle.
 
-The Dagger function `files(profile, packageName, description, license, author)`:
+Detailed policies and substitutions belong to the owning capability's specification.
 
-1. Creates a base `ProjectBlueprint` with minimal package metadata, base config files, `.gitignore`, `.editorconfig`, and `README.md`.
-2. Looks up the requested profile.
-3. Applies each capability in profile order.
-4. Renders the blueprint to a Dagger `Directory`.
+## 9. Repository initialization
 
-## 10. Existing project synchronization
+Top-level `init` composes these phases in order:
 
-A future `sync` Dagger function will:
+1. Run scaffold steps to prepare fresh `forge create` output, or do nothing on an empty directory.
+2. Run every selected capability's `init` in profile order.
+3. Run every selected capability's `update` in profile order against the initialized repository.
+4. Return the resulting Dagger `Directory` or changeset for review and export.
 
-1. Read an existing directory into a `ProjectBlueprint` by parsing existing files.
-2. Apply the requested profile.
-3. Render the result back to a `Directory`.
-4. The caller reviews the diff with Git and commits.
+`files` is retired; projects without a scaffold are initialized from an empty directory. `init` is first-time setup, not a maintenance operation. Exact init preconditions and the refusal-or-warning behavior on an already-initialized repository are specified separately.
 
-This makes `drop-calf` a configuration convergence tool, not just a one-time generator.
+## 10. Repository update and validation
+
+The former `sync` convergence engine is superseded by [ADR 0001](../docs/adr/0001-capability-verbs-by-intent.md). The canonical term is `update`.
+
+- Top-level `update` runs every selected capability's `update` in profile order against the supplied repository. The caller can review the resulting Git diff and commit it. Repeating an update with the same inputs and policy produces no changes.
+- Top-level `validate` independently runs every selected capability's `validate` against the same fully composed repository, reporting validated, skipped with a reason, or failed. It does not change repository contents or require prior initialization or update.
+- Neither `init` nor `update` automatically invokes validation for now. Any future automatic validation runs only after all mutation phases complete, since shared resources such as `package.json` and `manifest.yml` may be changed by several capabilities. Standalone validation remains available.
+- Input checks needed to apply changes safely, such as rejecting malformed input, remain part of mutation operations; they are distinct from repository validation.
 
 ## 11. Example-driven canonicalization
 
@@ -115,24 +115,26 @@ Profiles may be derived from existing example repositories:
 
 1. Extract a `ProjectBlueprint` from each example repo.
 2. Canonicalize the set of blueprints into a profile (common scripts, dependencies, config files).
-3. Human reviews and curates the derived profile.
-4. The profile is committed and used for generation and synchronization.
+3. Human reviews and curates the derived profile and its capability policies.
+4. The profile is committed and used for initialization and updates.
 
 This is an optional workflow, not a requirement for the initial implementation.
 
 ## 12. Testing strategy
 
 - Unit tests target pure blueprint manipulation and capability adapters. No Dagger engine required.
-- Tests verify invariants (e.g., `.gitignore` contains an entry, `package.json` has a script) and merge behavior (e.g., existing entries are preserved).
-- Snapshot tests document the expected output of merge functions and full profile generation.
-- Dagger-level tests verify that `files()` returns a `Directory` containing expected entries.
+- Tests verify each capability's declared policy: expected settings, idempotent updates, authoritative replacements, and preservation of init-only and unrelated content.
+- Tests verify all three verbs are present and no-op reasons are non-empty and enumerable.
+- Validation tests distinguish tool acceptance from policy compliance and verify repository contents remain unchanged.
+- Snapshot tests document expected capability and full-profile outputs.
+- Dagger-level tests verify initialization from an empty directory and a fresh scaffold, as well as top-level update and validation composition.
 
 ## 13. Dagger's role
 
 Dagger provides the runtime seam for:
 - Reading existing directories (`dag.host().directory(...)`).
-- Rendering generated directories.
-- Running containerized tools when needed (e.g., `biome init`, `npm install`, test suites).
+- Rendering resulting directories and changesets.
+- Running containerized tools when needed (e.g., configuration validation, dependency installation, test suites).
 - Caching expensive operations.
 
 Dagger does **not** track persistent project state. State lives in Git and in the repository files.
@@ -141,5 +143,6 @@ Dagger does **not** track persistent project state. State lives in Git and in th
 
 - How should the README reflect the chosen test runner and other capabilities? Currently the base README is static.
 - Should profile selection support a default based on project metadata, or only explicit selection?
-- Should `sync` support partial convergence (only certain capability slots)?
+- Should `update` support selecting only certain capability slots?
+- Should a complete update pass automatically invoke validation while retaining standalone `validate`?
 - How are example repositories pinned and versioned for canonicalization?

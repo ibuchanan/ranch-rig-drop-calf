@@ -1,16 +1,22 @@
 # Project-functions specification
 
 High-level specification of the repository capabilities ("functions") Drop Calf
-(`drop-calf`) must implement, extracted from the `vendor/init-repo` design
-(`specs/esa-repo-init-spec.md`).
+(`drop-calf`) must implement, originally extracted from the `vendor/init-repo`
+design (`specs/esa-repo-init-spec.md`).
+
+[ADR 0001](../docs/adr/0001-capability-verbs-by-intent.md) supersedes the original
+single-operation, universal-merge contract. The three-verb contract below is the
+target; capability-specific migration tickets resolve detailed policies not yet
+split into verbs. Existing policy details remain unless explicitly superseded.
 
 ## 1. Purpose
 
 A **project-function** is a repository capability with a stable, project-facing interface
 (npm scripts, files, hooks). Functions are selected individually or composed into named
-**catalog kinds** (`typescript-library`, `forge-app`, `monorepo`). Each function may select
+project kinds (`library`, `forge-app`, `tool`, `agent-skill`). Each function may select
 one or more **tools** (`biome`, `lefthook`, `git-cliff`, `vitest`, …); a tool is an
-implementation choice, a function is the capability.
+implementation choice, a function is the capability. Domain terms are defined in
+[overview §4](00-drop-calf-overview.md#4-core-concepts).
 
 ## 2. Function contract
 
@@ -20,26 +26,47 @@ Every function:
 - declares `dependsOn` and `conflictsWith` (edges in the function graph);
 - **plans before mutating**: all operations (file edits, commands, installs, conflicts) are
   recorded in a plan builder first; untracked direct writes are forbidden;
-- is **idempotent**: applying it twice produces no semantic change on the second run;
-- may expose `validate()` for post-apply checks.
+- requires **`init`** for starting content and initial settings, **`update`** for
+  policy-driven changes, and **`validate`** for read-only tool-acceptance checks;
+- makes every inactive verb an explicit no-op with a non-empty, enumerable reason
+  explaining why that capability has no work for that verb;
+- makes **update idempotent**: the same inputs and policy produce no further
+  changes on a second run; init is first-time setup, not a maintenance rerun;
+- documents which outputs are init-only, updated authoritatively, or changed
+  selectively within shared resources.
 
 ## 3. Cross-cutting invariants
 
-- **Mutation modes** classify every output: `create-if-absent`, `replace-generated`
-  (only with an explicit, plan-visible `--force` strategy), `structured-merge`
-  (owned keys only, preserve unknown fields), `managed-region`, `copy-tree-if-empty`,
-  `executable-seed`.
+- **Intent determines mutation behavior.** File type and generic merge rules do
+  not decide whether to seed, preserve, merge, or replace content. Mutation modes
+  such as `create-if-absent`, whole-file replacement, `structured-merge`,
+  `managed-region`, `copy-tree-if-empty`, and `executable-seed` are implementation
+  techniques for the capability's documented policy.
+- **Documented policy authorizes update.** Authoritative updates may replace
+  owner edits without explicit opt-in or `--force`. A conflict is raised where
+  the capability's policy requires one, not merely because content differs.
 - **Script ownership is stable.** Only the owning function may replace its canonical npm
-  script; drift is a conflict, not a silent overwrite. Exception: `git-hooks` adoption on
-  existing repositories never claims `lint`/`check`.
-- **Merging preserves user content.** Existing files are merged in place where safely
-  supported; otherwise reported as conflicts. Never create `package.json.orig`.
+  script. Exception: `git-hooks` adoption on existing repositories never claims
+  `lint`/`check`.
+- **Shared-resource scope is explicit.** Preserve content outside the capability's
+  declared scope; preservation within it follows that capability's policy.
+  Never create `package.json.orig`.
 - **Versions are centralized** in one catalog-version registry; no function carries a
   duplicated version constant.
-- **Seed assets are versioned authored content** copied with collision detection; user
-  modifications are never silently overwritten.
-- Every mutating command: discover → plan → surface conflicts → apply in dependency order →
-  validate → append a journal event.
+- **Seed assets are versioned authored content.** Update leaves init-only content
+  alone; an authoritative policy may replace authored content from its pinned source.
+- **Composition uses separate passes:** scaffold steps → every capability's init
+  → every capability's update for top-level `init`; only the update pass for
+  top-level `update`. Each pass follows the selected profile's order.
+- **Validation is separate for now.** Neither mutation operation automatically
+  invokes it. Top-level `validate` is independently usable without prior init or
+  update and gives every validator the same fully composed repository. It reports
+  validated, skipped with a reason, or failed. Any future automatic validation
+  follows the complete mutation pass, never an intermediate shared-resource state.
+- **Validation checks tool acceptance, not policy compliance.** An owner-edited
+  configuration accepted by its consuming tool passes even if it differs from
+  the baseline. Checks needed to apply changes safely remain mutation preconditions,
+  not this repository-validation pass.
 
 ## 4. The functions
 
@@ -56,8 +83,17 @@ Copy `LICENSE`, `CODE_OF_CONDUCT.md`, `CONTRIBUTING.md`, `README.md`,
 `vendor/oss-templates` submodule. Substitute only the required staff ID in OWNER,
 `[Project name]` in CONTRIBUTING and README, and `[YYYY]` in LICENSE; preserve
 all other template bytes. The Apache-2.0 license is fixed. `DEVELOPMENT.md` is
-generated separately because it is not in that template. Seed files are
-create-if-absent on sync, preserving existing user content.
+generated separately because it is not in that template.
+
+Under [ADR 0001](../docs/adr/0001-capability-verbs-by-intent.md), README and OWNER
+are init-only and survive update. LICENSE, CODE_OF_CONDUCT, CONTRIBUTING, and
+SECURITY are updated authoritatively from the pinned upstream, replacing owner
+edits without explicit opt-in. This supersedes the former create-if-absent policy
+for every OSS file. Copyright-year handling, project-name substitution during
+update, and the `license` field's verb assignment remain for the OSS policy slice.
+Validate is an explicit no-op: these documents have no consuming tool whose
+acceptance OSS checks. Checking owner input is input validation, not repository
+validation.
 
 ### `gitignore`
 Build an ordered `.gitignore` from named sets (`visualstudiocode`, `linux`,
@@ -72,8 +108,8 @@ macOS rule that only matches with literal CR characters, so the file is pinned t
 `-text` in `.gitattributes` and refreshed only through
 `scripts/refresh-gitignore.ts`. A personal block (`.fallow/`, `.scratch/`,
 `.session/`, `vendor/`, `/.cocoindex_code/`) is appended after the selected
-sets on generation and contributed to the merge on sync. Merge and generation
-share one builder, so the two paths cannot drift.
+sets on initialization and contributed to the merge on update. Initialization
+and update share one builder, so the two paths cannot drift.
 
 ### `node`
 Pin the Node baseline: `.nvmrc` (`24`), `engines.node` (`24.x`), and `@types/node`
@@ -97,9 +133,11 @@ supplied by `forge create`, which may lag the baseline, just as it replaces
 invented scaffold package metadata. `init` is not an update command. The pure
 reconciliation function and its Dagger boundary default to strict conflict
 checking for a future update path.
-`files` has no input repository and never creates or edits a manifest.
+With `files` retired, init on an empty directory has no manifest to reconcile;
+this capability still does not create one. The Node policy slice decides how to
+split the existing reconciliation behavior between the required verbs.
 
-The baseline lives in one place (`src/node.ts`) so generation and sync cannot drift;
+The baseline lives in one place (`src/node.ts`) so initialization and update cannot drift;
 `.nvmrc` stays bare (`24`) because changing that format would conflict with every
 repository already generated.
 
@@ -130,8 +168,9 @@ never rebuilt by the capability), substituting only the project name. `FORGE_SIT
 … --profile … --` so `$FORGE_*` expand only after injection and every read is recorded;
 the `forge:*` scripts wrap `forge` through it. The app-variable helper pushes only the
 keys in its `APP_VARIABLE_KEYS` allowlist, always `--encrypt`, and never prints values;
-the seeded list is empty. `sync` seeds the tree create-if-absent for `forge-app` only, so
-an edited config or helper is left alone. Secretspec and Gitleaks are external
+the seeded list is empty. Seeding is create-if-absent for `forge-app` only, so
+an edited config or helper is left alone. The secrets policy slice assigns the
+tree's lifecycle to the required verbs. Secretspec and Gitleaks are external
 prerequisites; never installed, never injected. A prerequisite check is deferred: it
 must run where the tools are used (the developer's machine or CI), not inside the
 module's runtime container, which never has them.
