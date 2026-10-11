@@ -6,10 +6,10 @@ import { NODE_MAJOR } from "./versions.ts";
 
 /**
  * The Node baseline: one version, spelled consistently everywhere a tool reads
- * it. `vendor/forge-bootstrap` pins it across `package.json` and `.nvmrc`, and
- * `vendor/explore-forge-jira-remote-data-fields` shows the full shape — the
- * public npm registry in `.npmrc` and `app.runtime.name` in `manifest.yml`, so
- * a Forge app's deployed runtime matches the local toolchain.
+ * it. `vendor/explore-forge-jira-remote-data-fields` pins `.nvmrc`, the public
+ * npm registry in `.npmrc`, and `app.runtime.name` in `manifest.yml`, so a
+ * Forge app's deployed runtime matches the local toolchain. `engines.node`
+ * and `@types/node` carry the same major into `package.json`.
  *
  * Runtime reconciliation rejects a different runtime unless `init` explicitly
  * replaces the value invented by `forge create`. The manifest is never seeded.
