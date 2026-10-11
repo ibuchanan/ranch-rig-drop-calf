@@ -1,5 +1,5 @@
 import type { Directory } from "@dagger.io/dagger";
-import type { Capability } from "./capabilities.ts";
+import { type Capability, expandCapability } from "./capability.ts";
 import { copyTemplate } from "./templates.ts";
 import { TOOL_VERSIONS } from "./versions.ts";
 
@@ -27,7 +27,7 @@ export function copyBiome(
 export function biomeToolchain(
   biomeVersion: string = TOOL_VERSIONS.biome,
 ): Capability {
-  return {
+  return expandCapability("biome", "08-biome", {
     templates: [BIOME_TEMPLATE],
     addTo(project) {
       project.packageJson.devDependencies["@biomejs/biome"] = biomeVersion;
@@ -36,5 +36,5 @@ export function biomeToolchain(
       project.packageJson.scripts["lint:check"] = "biome lint";
       project.packageJson.scripts["lint:fix"] = "biome lint --write";
     },
-  };
+  });
 }

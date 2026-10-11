@@ -10,6 +10,7 @@ import {
   object,
 } from "@dagger.io/dagger";
 import { BIOME_TEMPLATE, copyBiome } from "./biome.ts";
+import { updateCapabilities, validateCapabilities } from "./capability.ts";
 import {
   CHANGELOG_TEMPLATE,
   copyChangelog,
@@ -226,7 +227,7 @@ export class DropCalf {
     const kept = (await cleaned.exists("package.json"))
       ? await cleaned.file("package.json").contents()
       : undefined;
-    return cleaned
+    const initialized = cleaned
       .withDirectory(".", generated)
       .withNewFile(
         "package.json",
@@ -235,6 +236,47 @@ export class DropCalf {
           await generated.file("package.json").contents(),
         ),
       );
+    return this.update(
+      initialized,
+      profile,
+      withFunctions,
+      withoutFunctions,
+      preset,
+    );
+  }
+
+  /** Apply only the selected capabilities' update policies; never run scaffold steps. */
+  @func()
+  async update(
+    directory: Directory,
+    profile: string,
+    withFunctions: string[] = [],
+    withoutFunctions: string[] = [],
+    preset?: string,
+  ): Promise<Directory> {
+    return updateCapabilities(
+      directory,
+      resolveProfile(profile, withFunctions, withoutFunctions, preset),
+    );
+  }
+
+  /** Read-only tool acceptance report, including skipped checks and all failures. */
+  @func()
+  async validate(
+    directory: Directory,
+    profile: string,
+    withFunctions: string[] = [],
+    withoutFunctions: string[] = [],
+    preset?: string,
+  ): Promise<string> {
+    return JSON.stringify(
+      await validateCapabilities(
+        directory,
+        resolveProfile(profile, withFunctions, withoutFunctions, preset),
+      ),
+      null,
+      2,
+    );
   }
 
   /** `init` as a changeset, so deleted scaffold files are deleted on export. */

@@ -1,5 +1,5 @@
 import type { Directory } from "@dagger.io/dagger";
-import type { Capability } from "./capabilities.ts";
+import { type Capability, expandCapability } from "./capability.ts";
 import { copyTemplate } from "./templates.ts";
 import { TOOL_VERSIONS } from "./versions.ts";
 
@@ -30,7 +30,7 @@ export function copyTypeScript(
 export function typeScriptToolchain(
   tsVersion = TOOL_VERSIONS.typescript,
 ): Capability {
-  return {
+  return expandCapability("typescript", "09-typescript", {
     templates: [TYPESCRIPT_TEMPLATE],
     addTo(project) {
       project.packageJson.devDependencies.typescript = tsVersion;
@@ -38,5 +38,5 @@ export function typeScriptToolchain(
       project.packageJson.scripts.typecheck =
         "tsc --project tsconfig.typecheck.json --noEmit";
     },
-  };
+  });
 }

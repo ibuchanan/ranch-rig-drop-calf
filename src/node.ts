@@ -1,6 +1,6 @@
 import { type Container, type Directory, dag } from "@dagger.io/dagger";
 import { isCollection, isMap, isScalar, parseDocument, visit } from "yaml";
-import type { Capability } from "./capabilities.ts";
+import { type Capability, expandCapability } from "./capability.ts";
 import { ParseError } from "./preclean.ts";
 import { NODE_MAJOR } from "./versions.ts";
 
@@ -113,12 +113,12 @@ export async function applyForgeRuntime(
 }
 
 export function nodeBaseline(): Capability {
-  return {
+  return expandCapability("node", "05-node", {
     addTo(project) {
       project.packageJson.engines = { node: NODE_ENGINE_RANGE };
       project.packageJson.devDependencies["@types/node"] = NODE_MAJOR;
       project.files.set(".nvmrc", NODE_NVMRC);
       project.files.set(".npmrc", NPMRC);
     },
-  };
+  });
 }

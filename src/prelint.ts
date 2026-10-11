@@ -1,5 +1,5 @@
 import type { Directory } from "@dagger.io/dagger";
-import type { Capability } from "./capabilities.ts";
+import { type Capability, expandCapability } from "./capability.ts";
 import { nodeContainer } from "./node.ts";
 import { TOOL_VERSIONS } from "./versions.ts";
 
@@ -39,16 +39,21 @@ export function prelint(
   astGrepVersion = TOOL_VERSIONS.astGrep,
   rulesPackage = TOOL_VERSIONS.forgePrelint,
 ): Capability {
-  return {
-    addTo(project) {
-      project.packageJson.devDependencies[AST_GREP_PACKAGE] = astGrepVersion;
-      project.packageJson.devDependencies[PRELINT_PACKAGE] = rulesPackage;
-      project.packageJson.scripts["lint:prelint"] = PRELINT_COMMAND;
-      project.packageJson.scripts["lint:forge"] = "forge lint";
-      project.packageJson.scripts.lint =
-        "npm run lint:prelint && npm run lint:check && npm run lint:forge";
+  return expandCapability(
+    "prelint",
+    "16-prelint",
+    {
+      addTo(project) {
+        project.packageJson.devDependencies[AST_GREP_PACKAGE] = astGrepVersion;
+        project.packageJson.devDependencies[PRELINT_PACKAGE] = rulesPackage;
+        project.packageJson.scripts["lint:prelint"] = PRELINT_COMMAND;
+        project.packageJson.scripts["lint:forge"] = "forge lint";
+        project.packageJson.scripts.lint =
+          "npm run lint:prelint && npm run lint:check && npm run lint:forge";
+      },
     },
-  };
+    validatePrelint,
+  );
 }
 
 export type PrelintValidation =

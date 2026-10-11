@@ -1,5 +1,5 @@
 import type { Directory } from "@dagger.io/dagger";
-import type { Capability } from "./capabilities.ts";
+import { type Capability, expandCapability } from "./capability.ts";
 import { nodeContainer } from "./node.ts";
 import { copyTemplate } from "./templates.ts";
 import { TOOL_VERSIONS } from "./versions.ts";
@@ -55,13 +55,18 @@ export function copyChangelog(
 export function changelogToolchain(
   cliffVersion = TOOL_VERSIONS.gitCliff,
 ): Capability {
-  return {
-    templates: [CHANGELOG_TEMPLATE],
-    addTo(project) {
-      project.packageJson.devDependencies["git-cliff"] = cliffVersion;
-      project.packageJson.scripts.changelog = CHANGELOG_COMMAND;
+  return expandCapability(
+    "changelog",
+    "14-changelog",
+    {
+      templates: [CHANGELOG_TEMPLATE],
+      addTo(project) {
+        project.packageJson.devDependencies["git-cliff"] = cliffVersion;
+        project.packageJson.scripts.changelog = CHANGELOG_COMMAND;
+      },
     },
-  };
+    validateChangelog,
+  );
 }
 
 export type ChangelogValidation =

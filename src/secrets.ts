@@ -1,5 +1,5 @@
 import type { Directory } from "@dagger.io/dagger";
-import type { Capability } from "./capabilities.ts";
+import { type Capability, expandCapability } from "./capability.ts";
 
 /**
  * The SecretSpec workflow: the `forge:*` scripts every Forge app drives through
@@ -77,7 +77,7 @@ function throughEnvVar(command: string): string {
  * sent to Forge by accident.
  */
 export function forgeSecrets(): Capability {
-  return {
+  return expandCapability("secrets", "17-secrets", {
     templates: [SECRETS_TEMPLATE],
     addTo(project) {
       Object.assign(project.packageJson.scripts, {
@@ -97,5 +97,5 @@ export function forgeSecrets(): Capability {
         "forge:variables:set": "node scripts/forge-vars-from-secretspec.js",
       });
     },
-  };
+  });
 }

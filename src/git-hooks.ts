@@ -1,5 +1,5 @@
 import type { Directory } from "@dagger.io/dagger";
-import type { Capability } from "./capabilities.ts";
+import { type Capability, expandCapability } from "./capability.ts";
 import { copyTemplate } from "./templates.ts";
 import { TOOL_VERSIONS } from "./versions.ts";
 
@@ -30,7 +30,7 @@ export function copyGitHooks(
 
 /** Every kind installs this runner and drives it through these same scripts. */
 export function gitHooks(lefthookVersion = TOOL_VERSIONS.lefthook): Capability {
-  return {
+  return expandCapability("git-hooks", "15-git-hooks", {
     templates: [GIT_HOOKS_TEMPLATE],
     addTo(project) {
       project.packageJson.devDependencies.lefthook = lefthookVersion;
@@ -38,5 +38,5 @@ export function gitHooks(lefthookVersion = TOOL_VERSIONS.lefthook): Capability {
       project.packageJson.scripts.lint = "lefthook run lint";
       project.packageJson.scripts.check = "lefthook run pre-push --force";
     },
-  };
+  });
 }

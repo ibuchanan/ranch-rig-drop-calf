@@ -1,5 +1,5 @@
 import { seedAgentGuidance } from "./aidev.ts";
-import type { Capability } from "./capabilities.ts";
+import type { Capability } from "./capability.ts";
 import {
   biomeToolchain,
   bunTesting,
@@ -118,7 +118,14 @@ export function resolveProfile(
       "Function evals cannot appear in both --with and --without.",
     );
   }
-  return capabilities;
+  return [
+    ...capabilities,
+    ...(profile === "forge-app" &&
+    (preset === "all" || withFunctions.includes("evals")) &&
+    !withoutFunctions.includes("evals")
+      ? [evals()]
+      : []),
+  ];
 }
 
 export function buildProject(
@@ -138,19 +145,10 @@ export function buildProject(
     preset,
   );
   const project = createBlueprint(packageName, description, author);
-  const addCapability = (capability: Capability) => {
-    capability.addTo(project);
-    project.templates.push(...(capability.templates ?? []));
-  };
-  for (const capability of capabilities) addCapability(capability);
+  for (const capability of capabilities) {
+    if (typeof capability.init === "function") capability.init(project);
+  }
   validateOssOwner(owner);
   if (!withoutFunctions.includes("aidev")) seedAgentGuidance(project, profile);
-  if (
-    profile === "forge-app" &&
-    (preset === "all" || withFunctions.includes("evals")) &&
-    !withoutFunctions.includes("evals")
-  ) {
-    addCapability(evals());
-  }
   return project;
 }

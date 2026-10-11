@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test";
 import type { Directory } from "@dagger.io/dagger";
 import { BIOME_TEMPLATE } from "../src/biome.ts";
-import type { Capability } from "../src/capabilities.ts";
+import { type Capability, expandCapability } from "../src/capability.ts";
 import { CHANGELOG_TEMPLATE } from "../src/changelog.ts";
 import { DOCS_TEMPLATE } from "../src/docs.ts";
 import { EVALS_TEMPLATE } from "../src/evals.ts";
@@ -53,8 +53,11 @@ test("assembly collects zero or multiple trees from capabilities without reading
   const capabilities = PROFILES.tool;
   if (!capabilities) throw new Error("tool profile is missing");
   const added: Capability[] = [
-    { addTo() {} },
-    { templates: ["custom/first", "custom/second"], addTo() {} },
+    expandCapability("custom-empty", "test", { addTo() {} }),
+    expandCapability("custom-trees", "test", {
+      templates: ["custom/first", "custom/second"],
+      addTo() {},
+    }),
   ];
   const before = buildProject("tool", "sample", "tester").templates;
   capabilities.push(...added);

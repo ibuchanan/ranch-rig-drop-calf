@@ -1,4 +1,4 @@
-import type { Capability } from "./capabilities.ts";
+import { type Capability, expandCapability } from "./capability.ts";
 import { TOOL_VERSIONS } from "./versions.ts";
 
 /**
@@ -24,7 +24,7 @@ export const SIZE_LIMIT_LIMIT = "10 kB";
  * and a named budget for the build output.
  */
 export function bundleSize(name: string, path: string): Capability {
-  return {
+  return expandCapability("size-limit", "19-size-limit", {
     addTo(project) {
       project.packageJson.scripts.size = SIZE_LIMIT_COMMAND;
       project.packageJson.devDependencies["size-limit"] =
@@ -35,5 +35,5 @@ export function bundleSize(name: string, path: string): Capability {
         { name, path, limit: SIZE_LIMIT_LIMIT },
       ];
     },
-  };
+  });
 }
