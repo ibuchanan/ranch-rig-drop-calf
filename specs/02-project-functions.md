@@ -73,7 +73,7 @@ Every function:
 Default order (dependency/precedence graph may encode it via `before`/`after`):
 
 ```text
-catalog → oss → gitignore → node → changelog → secrets → format → forge-prelint
+catalog → package-metadata → oss → gitignore → node → changelog → secrets → format → forge-prelint
 → typescript → forge-ahead → aidev → test → evals (optional) → size → git-hooks
 ```
 
@@ -114,7 +114,7 @@ records the field contract; scratch tickets only track deferred wiring.
 | Catalog identifier | `metadata.name` | Backstage; not a package or display name |
 | Project display name | `metadata.title` | OSS README/CONTRIBUTING (ticket 06) |
 | Description | `metadata.description` | Package metadata (ticket 04) |
-| Responsible user | `spec.owner` | OSS OWNER (ticket 06) |
+| Responsible user | `spec.owner` | Package author; OSS OWNER (ticket 06) |
 | Package name | `metadata.annotations["forge-ranch/package-name"]` | Package metadata (ticket 04) |
 | Copyright year/range | `metadata.annotations["forge-ranch/copyright-date"]` | OSS LICENSE (ticket 06) |
 | External-system pointers | Integration annotations and `metadata.links` | Jira/GitHub integrations |
@@ -134,6 +134,50 @@ functions do not require `package.json`; `copy-catalog` accepts a component type
 independently of the currently supported project kinds. Future OSS migration
 reads `metadata.title`, the copyright-date annotation, and `spec.owner`, but that
 consumer wiring is deferred to ticket 06.
+
+### `package-metadata`
+
+Own the base package fields `name`, `version`, `type`, `description`, `author`,
+and `private`. The `license` field belongs to OSS; scripts, dependencies, publishing
+entry points, and all other package fields remain outside this capability's scope.
+
+| Field | Init | Update |
+|---|---|---|
+| `name` | Derive from `metadata.annotations["forge-ranch/package-name"]` | Replace from catalog |
+| `description` | Derive from `metadata.description` | Replace from catalog; missing removes the package field, empty stays empty |
+| `author` | Derive the staff ID from `spec.owner` | Replace from catalog; `user:default/tester` and `user:tester` both yield `tester` |
+| `version` | Seed `0.1.0`, replacing scaffold metadata | Preserve; release tooling owns subsequent versions |
+| `type` | Set `module` | Enforce `module` |
+| `private` (`forge-app`, `agent-skill`) | Set `true`, overriding scaffold `false` | Enforce `true` |
+| `private` (`tool`, `library`) | Set `true`, overriding scaffold `false` | Preserve the field, including `false` or absence, to permit later npm publication |
+
+Catalog is the source of truth for shared identity on both init and update. Direct
+package edits to `name`, `description`, and `author` are overwritten. Package names
+are never inferred from `metadata.name` or `metadata.title`. The legacy `author`
+argument is retained during expansion but ignored: author, OWNER, and catalog owner
+refer to the same staff ID. OWNER synchronization itself remains in OSS ticket 06.
+Template rendering and scaffold merging finish before the update pass derives the
+final package fields from the actual catalog bytes.
+
+Update does not create a missing `package.json`. For an existing package it rejects
+malformed/non-object JSON, missing or malformed catalog YAML, a missing/non-string/
+blank package-name annotation, a non-string description, and an invalid user owner
+reference before writing. It does not run full catalog validation as a mutation
+precondition. Valid syntax with values rejected by npm is left to standalone
+validation. With unchanged owned fields, update preserves the original file bytes.
+Otherwise it writes sorted, two-space JSON with a trailing newline, preserving all
+unrelated field values. A second update changes nothing.
+
+**validate** reads `package.json` through `npm-package-json-lint` using explicit
+structural rules: name type/format, version type/SemVer format, description type,
+private type, type type, and accepted `module`/`commonjs` values. A separate author
+shape check accepts a string or an object with a string `name`; the linter has no
+structural author-type rule. Missing optional fields are accepted. Malformed JSON
+and non-object roots fail; a missing package is skipped with a reason. Validation
+is read-only, uses no recommended/style preset or autofix, does not consult catalog,
+and does not enforce policy (`module`, private packages, catalog identity, or
+`0.1.0`). The linter is a pinned module dependency, not a generated-project tool.
+This is a metadata acceptance check, not proof that npm install or publish succeeds.
 
 ### `oss`
 Copy `LICENSE`, `CODE_OF_CONDUCT.md`, `CONTRIBUTING.md`, `README.md`,

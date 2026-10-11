@@ -46,6 +46,9 @@ Every kind:
 
 Kind-specific policies:
 
+- **Package privacy:** every kind starts with `private: true`. Update enforces this
+  for `forge-app` and `agent-skill`; `tool` and `library` preserve later owner changes
+  to `private` so they can become npm-published artifacts.
 - **`forge-app`** never uses `tsdown`: `build` runs `tsc --project tsconfig.json`. Forge-only
   concerns (manifest-adjacent scripts, Secretspec wrapping, Forge lint in the `lint` slot) belong
   to this kind and must not leak into others.
@@ -61,10 +64,10 @@ Each kind additionally selects project-functions (see
 
 | Kind | Functions |
 |---|---|
-| `library` | catalog, oss, gitignore, node, changelog, format, typescript, aidev, test, size, git-hooks |
-| `forge-app` | catalog, oss, gitignore, node, changelog, secrets, format, forge-prelint, typescript, forge-ahead, aidev, test, size, git-hooks (+ optional `evals`) |
-| `tool` | catalog, oss, gitignore, node, changelog, format, typescript, aidev, test, git-hooks |
-| `agent-skill` | catalog, oss, gitignore, node, format, typescript, aidev, git-hooks |
+| `library` | catalog, package-metadata, oss, gitignore, node, changelog, format, typescript, aidev, test, size, git-hooks |
+| `forge-app` | catalog, package-metadata, oss, gitignore, node, changelog, secrets, format, forge-prelint, typescript, forge-ahead, aidev, test, size, git-hooks (+ optional `evals`) |
+| `tool` | catalog, package-metadata, oss, gitignore, node, changelog, format, typescript, aidev, test, git-hooks |
+| `agent-skill` | catalog, package-metadata, oss, gitignore, node, format, typescript, aidev, git-hooks |
 
 Notes:
 

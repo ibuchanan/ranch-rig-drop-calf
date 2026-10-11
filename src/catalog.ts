@@ -17,7 +17,8 @@ export type CatalogSeed = {
   copyrightDate?: string;
 };
 
-function catalogDocument(contents: string) {
+/** Parse a single catalog mapping, rejecting malformed YAML and duplicate keys. */
+export function catalogDocument(contents: string) {
   const document = parseDocument(contents);
   if (document.errors.length)
     throw new ParseError(
@@ -27,6 +28,21 @@ function catalogDocument(contents: string) {
   if (!isMap(document.contents))
     throw new ParseError(CATALOG_FILE, "expected one entity mapping");
   return document;
+}
+
+/** The staff ID is shared by package author and the OSS OWNER file. */
+export function catalogOwnerId(owner: unknown): string {
+  const match =
+    typeof owner === "string"
+      ? /^user:(?:[a-z0-9](?:[a-z0-9._-]*[a-z0-9])?\/)?([a-z0-9](?:[a-z0-9._-]*[a-z0-9])?)$/i.exec(
+          owner,
+        )
+      : null;
+  if (!match?.[1])
+    throw new Error(
+      `${CATALOG_FILE}: spec.owner must be a user entity reference`,
+    );
+  return match[1];
 }
 
 /** Keep the original name separately; a scoped package name is not an entity ID. */
@@ -94,16 +110,7 @@ export async function validateCatalog(
   }
   if (document.get("kind") !== "Component")
     throw new Error(`${CATALOG_FILE}: expected a Component entity`);
-  const owner = document.getIn(["spec", "owner"]);
-  if (
-    typeof owner !== "string" ||
-    !/^user:(?:[a-z0-9](?:[a-z0-9._-]*[a-z0-9])?\/)?[a-z0-9](?:[a-z0-9._-]*[a-z0-9])?$/i.test(
-      owner,
-    )
-  )
-    throw new Error(
-      `${CATALOG_FILE}: spec.owner must be a user entity reference`,
-    );
+  catalogOwnerId(document.getIn(["spec", "owner"]));
   const date = document.getIn(["metadata", "annotations", COPYRIGHT_DATE]);
   if (date !== undefined) {
     const match =

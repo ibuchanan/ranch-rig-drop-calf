@@ -19,6 +19,8 @@ exports[`profiles agent-skill contains no test scripts and all kinds keep a comp
     "tsdown.config.ts",
   ],
   "packageJson": {
+    "author": "tester",
+    "description": "",
     "devDependencies": {
       "@biomejs/biome": "2.5.15",
       "@size-limit/file": "^5.0.0",
@@ -43,6 +45,7 @@ exports[`profiles agent-skill contains no test scripts and all kinds keep a comp
     "license": "Apache-2.0",
     "main": "./dist/index.js",
     "name": "sample",
+    "private": true,
     "scripts": {
       "build": "tsdown",
       "changelog": "git cliff --config cliff.toml --unreleased -o CHANGELOG.md",
@@ -95,11 +98,13 @@ exports[`profiles agent-skill contains no test scripts and all kinds keep a comp
     "vitest.config.ts",
   ],
   "packageJson": {
+    "author": "tester",
     "dependencies": {
       "@forge-ahead/atlassian-api-types": "github:ibuchanan/forge-ahead-atlassian-api-types",
       "@forge-ahead/errors": "github:ibuchanan/forge-ahead-errors",
       "@forge-ahead/logging": "github:ibuchanan/forge-ahead-logging",
     },
+    "description": "",
     "devDependencies": {
       "@ast-grep/cli": "^0.45",
       "@biomejs/biome": "2.5.15",
@@ -120,6 +125,7 @@ exports[`profiles agent-skill contains no test scripts and all kinds keep a comp
     },
     "license": "Apache-2.0",
     "name": "sample",
+    "private": true,
     "scripts": {
       "build": "tsc --project tsconfig.json",
       "changelog": "git cliff --config cliff.toml --unreleased -o CHANGELOG.md",
@@ -177,6 +183,8 @@ exports[`profiles agent-skill contains no test scripts and all kinds keep a comp
     "tsconfig.typecheck.json",
   ],
   "packageJson": {
+    "author": "tester",
+    "description": "",
     "devDependencies": {
       "@biomejs/biome": "2.5.15",
       "@types/node": "24",
@@ -191,6 +199,7 @@ exports[`profiles agent-skill contains no test scripts and all kinds keep a comp
     },
     "license": "Apache-2.0",
     "name": "sample",
+    "private": true,
     "scripts": {
       "build": "tsc --project tsconfig.json",
       "changelog": "git cliff --config cliff.toml --unreleased -o CHANGELOG.md",
@@ -230,6 +239,8 @@ exports[`profiles agent-skill contains no test scripts and all kinds keep a comp
     "tsconfig.typecheck.json",
   ],
   "packageJson": {
+    "author": "tester",
+    "description": "",
     "devDependencies": {
       "@biomejs/biome": "2.5.15",
       "@types/node": "24",
@@ -243,6 +254,7 @@ exports[`profiles agent-skill contains no test scripts and all kinds keep a comp
     },
     "license": "Apache-2.0",
     "name": "sample",
+    "private": true,
     "scripts": {
       "build": "tsc --project tsconfig.json",
       "check": "lefthook run pre-push --force",

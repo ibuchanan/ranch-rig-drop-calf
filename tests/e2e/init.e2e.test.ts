@@ -59,6 +59,9 @@ test.skipIf(!enabled).each(cases)(
         readFileSync(join(output, "package.json"), "utf8"),
       );
       expect(pkg.name).toBe("sample");
+      expect(pkg.author).toBe("tester");
+      expect(pkg.description).toBe("");
+      expect(pkg.private).toBe(true);
       expect(pkg.engines.node).toBe("24.x");
       expect(readFileSync(join(output, ".atlassian/OWNER"), "utf8")).toBe(
         "tester",

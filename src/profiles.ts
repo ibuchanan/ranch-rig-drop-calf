@@ -1,5 +1,4 @@
 import { seedAgentGuidance } from "./aidev.ts";
-import type { Capability } from "./capability.ts";
 import {
   biomeToolchain,
   bunTesting,
@@ -10,12 +9,14 @@ import {
   noTesting,
   vitestTesting,
 } from "./capabilities.ts";
+import type { Capability } from "./capability.ts";
 import { catalog } from "./catalog.ts";
 import { changelogToolchain } from "./changelog.ts";
 import { evals } from "./evals.ts";
 import { gitHooks } from "./git-hooks.ts";
 import { nodeBaseline } from "./node.ts";
 import { validateOssOwner } from "./oss.ts";
+import { packageMetadata } from "./package-metadata.ts";
 import { prelint } from "./prelint.ts";
 import { createBlueprint, type ProjectBlueprint } from "./project.ts";
 import { forgeSecrets } from "./secrets.ts";
@@ -25,6 +26,7 @@ import { typeScriptToolchain } from "./typescript.ts";
 export const PROFILES: Record<string, Capability[]> = {
   library: [
     catalog(),
+    packageMetadata("library"),
     nodeBaseline(),
     changelogToolchain(),
     biomeToolchain(),
@@ -38,6 +40,7 @@ export const PROFILES: Record<string, Capability[]> = {
   ],
   "forge-app": [
     catalog(),
+    packageMetadata("forge-app"),
     nodeBaseline(),
     changelogToolchain(),
     forgeSecrets(),
@@ -53,6 +56,7 @@ export const PROFILES: Record<string, Capability[]> = {
   ],
   tool: [
     catalog(),
+    packageMetadata("tool"),
     nodeBaseline(),
     changelogToolchain(),
     biomeToolchain(),
@@ -64,6 +68,7 @@ export const PROFILES: Record<string, Capability[]> = {
   ],
   "agent-skill": [
     catalog(),
+    packageMetadata("agent-skill"),
     nodeBaseline(),
     biomeToolchain(),
     typeScriptToolchain(),
@@ -138,7 +143,7 @@ export function buildProject(
   packageName: string,
   owner: string,
   description = "",
-  author = "",
+  _author = "",
   withFunctions: string[] = [],
   withoutFunctions: string[] = [],
   preset?: string,
@@ -149,7 +154,8 @@ export function buildProject(
     withoutFunctions,
     preset,
   );
-  const project = createBlueprint(packageName, description, author);
+  // The legacy author input remains accepted during expansion; catalog owner wins.
+  const project = createBlueprint(packageName, description, owner);
   for (const capability of capabilities) {
     if (typeof capability.init === "function") capability.init(project);
   }

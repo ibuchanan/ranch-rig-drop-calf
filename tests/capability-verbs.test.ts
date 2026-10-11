@@ -58,7 +58,7 @@ function legacyProject(
   withoutFunctions: string[],
   preset?: string,
 ) {
-  const project = createBlueprint("sample", "A sample project", "Tester");
+  const project = createBlueprint("sample", "A sample project", "tester");
   const add = (capability: Capability) => {
     capability.addTo(project);
     project.templates.push(...(capability.templates ?? []));
@@ -87,7 +87,7 @@ test("no-op reasons are enumerable data, including the deliberately inactive ini
     reason: "The agent-skill profile does not seed a test runner.",
   });
   expect(reasons.filter((item) => item.verb === "update")).toHaveLength(
-    selected.length,
+    selected.filter((item) => typeof item.update !== "function").length,
   );
   for (const item of reasons) expect(item.reason.trim()).not.toBe("");
   expect(() => JSON.stringify(reasons)).not.toThrow();
@@ -136,7 +136,9 @@ test.each(kinds)(
           expect(capability.init).toBeDefined();
           expect(capability.update).toBeDefined();
           expect(capability.validate).toBeDefined();
-          expect(typeof capability.update).not.toBe("function");
+          if (capability.name === "package-metadata")
+            expect(typeof capability.update).toBe("function");
+          else expect(typeof capability.update).not.toBe("function");
         }
         const module = new DropCalf();
         const seeded = await seedTemplates(

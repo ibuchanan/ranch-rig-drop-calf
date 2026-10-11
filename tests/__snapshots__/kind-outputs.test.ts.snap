@@ -38,6 +38,8 @@ exports[`library generated output has the selected functions: library 1`] = `
       "lefthook": "^2.1"
     },
     "description": "A sample project",
+    "author": "tester",
+    "private": true,
     "engines": {
       "node": "24.x"
     },
@@ -114,6 +116,8 @@ exports[`forge-app generated output has the selected functions: forge-app 1`] = 
       "lefthook": "^2.1"
     },
     "description": "A sample project",
+    "author": "tester",
+    "private": true,
     "engines": {
       "node": "24.x"
     },
@@ -172,6 +176,8 @@ exports[`tool generated output has the selected functions: tool 1`] = `
       "lefthook": "^2.1"
     },
     "description": "A sample project",
+    "author": "tester",
+    "private": true,
     "engines": {
       "node": "24.x"
     }
@@ -212,6 +218,8 @@ exports[`agent-skill generated output has the selected functions: agent-skill 1`
       "lefthook": "^2.1"
     },
     "description": "A sample project",
+    "author": "tester",
+    "private": true,
     "engines": {
       "node": "24.x"
     }

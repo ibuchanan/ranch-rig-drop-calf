@@ -4,7 +4,11 @@ import { ParseError } from "./preclean.ts";
 /** Sections where a scaffold entry survives unless the blueprint owns the key. */
 const MERGED_SECTIONS = ["scripts", "devDependencies", "dependencies"] as const;
 
-function parseObject(path: string, contents: string): Record<string, unknown> {
+/** Reject malformed JSON and non-object roots before modifying shared metadata. */
+export function parseObject(
+  path: string,
+  contents: string,
+): Record<string, unknown> {
   let parsed: unknown;
   try {
     parsed = JSON.parse(contents);
@@ -25,7 +29,8 @@ function parseObject(path: string, contents: string): Record<string, unknown> {
  *
  * Generated keys win, because the blueprint owns them. Everything else the
  * scaffold carried survives: runtime `dependencies` such as `@forge/api`, and
- * fields like `main` or `private` that the blueprint never sets. Without this,
+ * fields like `main` outside the blueprint's scope. Generated privacy defaults
+ * override scaffold values. Without this,
  * overlaying the generated file would silently drop the app's dependencies.
  */
 export function mergeScaffoldPackage(

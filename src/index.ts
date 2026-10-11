@@ -182,6 +182,8 @@ export class DropCalf {
    * keep the scaffold's runtime dependencies. On forge-app, normalize the
    * scaffold's manifest runtime to the Node baseline, preserving its other keys.
    * Package naming: explicit name, nonblank scaffold name, workspace basename.
+   * Catalog owns package identity; the legacy author argument is ignored in favor
+   * of its owner staff ID.
    */
   @func()
   async init(
