@@ -40,9 +40,6 @@ exports[`library generated output has the selected functions: library 1`] = `
     "description": "A sample project",
     "author": "tester",
     "private": true,
-    "engines": {
-      "node": "24.x"
-    },
     "main": "./dist/index.js",
     "types": "./dist/index.d.ts",
     "exports": {
@@ -118,9 +115,6 @@ exports[`forge-app generated output has the selected functions: forge-app 1`] = 
     "description": "A sample project",
     "author": "tester",
     "private": true,
-    "engines": {
-      "node": "24.x"
-    },
     "dependencies": {
       "@forge-ahead/atlassian-api-types": "github:ibuchanan/forge-ahead-atlassian-api-types",
       "@forge-ahead/errors": "github:ibuchanan/forge-ahead-errors",
@@ -177,10 +171,7 @@ exports[`tool generated output has the selected functions: tool 1`] = `
     },
     "description": "A sample project",
     "author": "tester",
-    "private": true,
-    "engines": {
-      "node": "24.x"
-    }
+    "private": true
   },
   "files": {
     ".nvmrc": "24\\n",
@@ -219,10 +210,7 @@ exports[`agent-skill generated output has the selected functions: agent-skill 1`
     },
     "description": "A sample project",
     "author": "tester",
-    "private": true,
-    "engines": {
-      "node": "24.x"
-    }
+    "private": true
   },
   "files": {
     ".nvmrc": "24\\n",

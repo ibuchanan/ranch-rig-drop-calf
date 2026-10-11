@@ -3,7 +3,6 @@ import { dag } from "@dagger.io/dagger";
 import { parseDocument } from "yaml";
 import {
   applyForgeRuntime,
-  ConflictError,
   NODE_FORGE_RUNTIME,
   NPMRC,
   nodeContainer,
@@ -11,6 +10,7 @@ import {
 } from "../src/node.ts";
 import { ParseError } from "../src/preclean.ts";
 import { buildProject } from "../src/profiles.ts";
+import { mockDirectory } from "./module-source.ts";
 
 describe("node baseline", () => {
   test.each(["library", "forge-app", "tool", "agent-skill"])(
@@ -23,7 +23,7 @@ describe("node baseline", () => {
       );
       expect(files.get(".nvmrc")).toBe("24\n");
       expect(files.get(".npmrc")).toBe(NPMRC);
-      expect(pkg.engines).toEqual({ node: "24.x" });
+      expect(pkg.engines).toBeUndefined();
       expect(pkg.devDependencies["@types/node"]).toBe("24");
     },
   );
@@ -56,16 +56,11 @@ describe("Forge runtime reconciliation", () => {
   test("a matching runtime is byte-for-byte unchanged, even with unusual formatting", () => {
     const contents = `# keep this\r\napp: {runtime: {name: '${NODE_FORGE_RUNTIME}', memoryMB: 512}, id: "example"}`;
     expect(reconcileForgeRuntime(contents)).toBe(contents);
-    expect(reconcileForgeRuntime(contents, true)).toBe(contents);
   });
 
-  test("a different runtime names the conflict and how to fix it", () => {
+  test("a different runtime is replaced by the authoritative baseline", () => {
     const contents = "app:\n  runtime:\n    name: nodejs22.x\n";
-    expect(() => reconcileForgeRuntime(contents)).toThrow(ConflictError);
-    expect(() => reconcileForgeRuntime(contents)).toThrow(
-      `Change app.runtime.name to ${NODE_FORGE_RUNTIME}`,
-    );
-    expect(reconcileForgeRuntime(contents, true)).toBe(
+    expect(reconcileForgeRuntime(contents)).toBe(
       `app:\n  runtime:\n    name: ${NODE_FORGE_RUNTIME}\n`,
     );
   });
@@ -94,7 +89,7 @@ modules: {} # wiring
   test("init replacement preserves the runtime scalar's quotes and inline comment", () => {
     const contents =
       "app:\n  runtime:\n    name: 'nodejs22.x' # runtime\n  id: example\n";
-    expect(reconcileForgeRuntime(contents, true)).toBe(
+    expect(reconcileForgeRuntime(contents)).toBe(
       `app:\n  runtime:\n    name: '${NODE_FORGE_RUNTIME}' # runtime\n  id: example\n`,
     );
   });
@@ -117,7 +112,6 @@ modules: {} # wiring
     "reports invalid YAML or non-map parents as ParseError: %j",
     (contents) => {
       expect(() => reconcileForgeRuntime(contents)).toThrow(ParseError);
-      expect(() => reconcileForgeRuntime(contents, true)).toThrow(ParseError);
     },
   );
 });
@@ -147,16 +141,14 @@ describe("Forge runtime Dagger boundary", () => {
     expect(await applyForgeRuntime(directory, "forge-app")).toBe(directory);
   });
 
-  test("strict reconciliation rejects drift before writing", async () => {
-    const directory = {
-      exists: async () => true,
-      file: () => ({
-        contents: async () => "app:\n  runtime:\n    name: nodejs22.x\n",
-      }),
-    } as never;
-    await expect(applyForgeRuntime(directory, "forge-app")).rejects.toThrow(
-      ConflictError,
+  test("runtime drift is replaced while the input stays unchanged", async () => {
+    const contents = "app:\n  runtime:\n    name: nodejs22.x\n";
+    const directory = mockDirectory(new Map([["manifest.yml", contents]]));
+    const result = await applyForgeRuntime(directory, "forge-app");
+    expect(await result.file("manifest.yml").contents()).toBe(
+      `app:\n  runtime:\n    name: ${NODE_FORGE_RUNTIME}\n`,
     );
+    expect(directory.files.get("manifest.yml")).toBe(contents);
   });
 });
 

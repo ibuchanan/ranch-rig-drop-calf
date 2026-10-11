@@ -174,9 +174,7 @@ test.each([
       expect(result.files.get("README.md")).not.toBe("# scaffold\n");
       expect(result.files.has("LICENSE")).toBe(true);
       expect(result.files.get("manifest.yml")).toBe(
-        manifest === undefined
-          ? undefined
-          : reconcileForgeRuntime(manifest, true),
+        manifest === undefined ? undefined : reconcileForgeRuntime(manifest),
       );
       expect(result.files.get("src/index.js")).toBe("export {};\n");
       const pkg = JSON.parse(result.files.get("package.json") ?? "{}");

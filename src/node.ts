@@ -1,20 +1,17 @@
 import { type Container, type Directory, dag } from "@dagger.io/dagger";
+import sortPackageJson from "sort-package-json";
 import { isCollection, isMap, isScalar, parseDocument, visit } from "yaml";
-import { type Capability, expandCapability } from "./capability.ts";
+import type { Capability, Validation } from "./capability.ts";
+import { parseObject } from "./init.ts";
 import { ParseError } from "./preclean.ts";
-import { NODE_MAJOR } from "./versions.ts";
+import { NODE_MAJOR, TOOL_VERSIONS } from "./versions.ts";
 
 /**
- * The Node baseline: one version, spelled consistently everywhere a tool reads
- * it. `vendor/explore-forge-jira-remote-data-fields` pins `.nvmrc`, the public
- * npm registry in `.npmrc`, and `app.runtime.name` in `manifest.yml`, so a
- * Forge app's deployed runtime matches the local toolchain. `engines.node`
- * and `@types/node` carry the same major into `package.json`.
- *
- * Runtime reconciliation rejects a different runtime unless `init` explicitly
- * replaces the value invented by `forge create`. The manifest is never seeded.
+ * Update owns .nvmrc, the whole .npmrc, and a Forge manifest's runtime name.
+ * @types/node is init-only. No kind generates engines: a toolchain baseline
+ * is not a library's compatibility promise, and engines has troubled forge deploy.
+ * Forge update removes engines; other kinds preserve owner declarations.
  */
-export const NODE_ENGINE_RANGE = `${NODE_MAJOR}.x`;
 export const NODE_NVMRC = `${NODE_MAJOR}\n`;
 export const NODE_FORGE_RUNTIME = `nodejs${NODE_MAJOR}.x`;
 export const NPM_REGISTRY = "https://registry.npmjs.org/";
@@ -31,20 +28,8 @@ export function nodeContainer(): Container {
   return dag.container().from(`node:${NODE_MAJOR}`);
 }
 
-export class ConflictError extends Error {
-  constructor(found: unknown) {
-    super(
-      `node: manifest.yml app.runtime.name is ${JSON.stringify(found)}; expected ${NODE_FORGE_RUNTIME}. Change app.runtime.name to ${NODE_FORGE_RUNTIME} before continuing.`,
-    );
-    this.name = "ConflictError";
-  }
-}
-
-/** Preserve a user manifest; only first-time init may replace a scaffold pin. */
-export function reconcileForgeRuntime(
-  contents: string,
-  replaceScaffoldRuntime = false,
-): string {
+/** Enforce the owned runtime key without replacing the rest of the manifest. */
+export function reconcileForgeRuntime(contents: string): string {
   const document = parseDocument(contents, { keepSourceTokens: true });
   if (document.errors.length)
     throw new ParseError(
@@ -67,9 +52,6 @@ export function reconcileForgeRuntime(
   const path = ["app", "runtime", "name"];
   const current = document.getIn(path);
   if (current === NODE_FORGE_RUNTIME) return contents;
-  if (current !== undefined && current !== null && !replaceScaffoldRuntime)
-    throw new ConflictError(current);
-
   const app = document.get("app", true);
   const indent =
     isMap(app) && app.srcToken?.type === "block-map" ? app.srcToken.indent : 2;
@@ -101,24 +83,101 @@ export function reconcileForgeRuntime(
 export async function applyForgeRuntime(
   directory: Directory,
   profile: string,
-  replaceScaffoldRuntime = false,
 ): Promise<Directory> {
   if (profile !== "forge-app" || !(await directory.exists("manifest.yml")))
     return directory;
   const contents = await directory.file("manifest.yml").contents();
-  const reconciled = reconcileForgeRuntime(contents, replaceScaffoldRuntime);
+  const reconciled = reconcileForgeRuntime(contents);
   return reconciled === contents
     ? directory
     : directory.withNewFile("manifest.yml", reconciled);
 }
 
-export function nodeBaseline(): Capability {
-  return expandCapability("node", "05-node", {
-    addTo(project) {
-      project.packageJson.engines = { node: NODE_ENGINE_RANGE };
-      project.packageJson.devDependencies["@types/node"] = NODE_MAJOR;
-      project.files.set(".nvmrc", NODE_NVMRC);
-      project.files.set(".npmrc", NPMRC);
-    },
-  });
+/** Whole-file pins are policy; package dependencies remain owner-managed after init. */
+export async function updateNode(
+  directory: Directory,
+  kind: string,
+): Promise<Directory> {
+  let result = await applyForgeRuntime(directory, kind);
+  if (kind === "forge-app" && (await result.exists("package.json"))) {
+    const contents = await result.file("package.json").contents();
+    const pkg = parseObject("package.json", contents);
+    if (Object.hasOwn(pkg, "engines")) {
+      delete pkg.engines;
+      result = result.withNewFile(
+        "package.json",
+        sortPackageJson(`${JSON.stringify(pkg, null, 2)}\n`),
+      );
+    }
+  }
+  for (const [path, wanted] of [
+    [".nvmrc", NODE_NVMRC],
+    [".npmrc", NPMRC],
+  ] as const) {
+    if (
+      !(await result.exists(path)) ||
+      (await result.file(path).contents()) !== wanted
+    )
+      result = result.withNewFile(path, wanted);
+  }
+  return result;
+}
+
+/** Tool acceptance only; no policy comparison, host shell change, or repository export. */
+export async function validateNode(directory: Directory): Promise<Validation> {
+  if (!(await directory.exists(".nvmrc")))
+    return { status: "skipped", reason: ".nvmrc is missing" };
+  const platform = await dag.defaultPlatform();
+  const arch = platform.split("/")[1];
+  const asset =
+    arch === "amd64" ? "fnm-linux" : arch === "arm64" ? "fnm-arm64" : undefined;
+  if (!asset)
+    throw new Error(`fnm validation: unsupported platform ${platform}`);
+  const binary = dag.http(
+    `https://github.com/Schniz/fnm/releases/download/v${TOOL_VERSIONS.fnm}/${asset}.zip`,
+  );
+  const container = nodeContainer()
+    .withFile("/tmp/fnm.zip", binary)
+    .withExec(["unzip", "-q", "/tmp/fnm.zip", "-d", "/usr/local/bin"])
+    .withEnvVariable("FNM_DIR", "/fnm")
+    .withEnvVariable("FNM_RESOLVE_ENGINES", "false")
+    .withEnvVariable("FNM_VERSION_FILE_STRATEGY", "local")
+    .withFile("/repo/.nvmrc", directory.file(".nvmrc"))
+    .withWorkdir("/repo")
+    .withExec([
+      "bash",
+      "-ec",
+      'eval "$(fnm env --shell bash)"; fnm use --install-if-missing',
+    ]);
+  try {
+    await container.stdout();
+  } catch (error) {
+    // The generated module SDK does not re-export ExecError, but it carries stderr.
+    if (
+      error instanceof Error &&
+      "stderr" in error &&
+      typeof error.stderr === "string" &&
+      error.stderr.trim()
+    )
+      throw new Error(
+        `node: fnm validation execution failed: ${error.stderr.trim()}`,
+      );
+    throw error;
+  }
+  return { status: "validated" };
+}
+
+export function nodeBaseline(kind: string): Capability {
+  const seed: Capability["addTo"] = (project) => {
+    project.packageJson.devDependencies["@types/node"] = NODE_MAJOR;
+    project.files.set(".nvmrc", NODE_NVMRC);
+    project.files.set(".npmrc", NPMRC);
+  };
+  return {
+    name: "node",
+    addTo: seed,
+    init: seed,
+    update: (directory) => updateNode(directory, kind),
+    validate: validateNode,
+  };
 }

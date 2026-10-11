@@ -217,34 +217,59 @@ sets on initialization and contributed to the merge on update. Initialization
 and update share one builder, so the two paths cannot drift.
 
 ### `node`
-Pin the Node baseline: `.nvmrc` (`24`), `engines.node` (`24.x`), and `@types/node`
-(`24`). A different pinned major is a conflict.
 
-Own the npm registry in `.npmrc`: seed `registry=https://registry.npmjs.org/`, add the
-key to an existing file without disturbing other lines, and treat a different registry as
-a conflict. Scoped keys (`@acme:registry=…`) are distinct and are preserved.
+The Node major is centralized in `src/versions.ts` (`24`). The capability owns
+local selection and the Forge runtime, not a published package's compatibility
+promise. No kind generates `engines`: it has caused trouble with `forge deploy`,
+which is why Forge apps use `.nvmrc` and `app.runtime.name` instead. Libraries and
+tools may declare their own consumer compatibility after initialization; they
+forgo an automatically generated npm install-time engine warning.
 
-On `forge-app`, reconcile `app.runtime.name` (`nodejs24.x`) against an existing
-`manifest.yml`. The manifest belongs to the user: this never creates it, only
-fills in or checks the runtime key. A different runtime raises `ConflictError`
-with a remedy. Matching values leave the file byte-for-byte unchanged; edits use
-a comment-preserving YAML document API, retaining key order, scalar styles,
-indentation, comments, and sibling settings such as `memoryMB`, `architecture`,
-and `id`. Invalid YAML raises `ParseError` before any output is returned. Other
-kinds leave the manifest alone.
+- **`.nvmrc`:** Init seeds `24` with a trailing newline. Update creates or
+  replaces the whole file with the baseline.
+- **`.npmrc`:** Init seeds the public npm registry and explanatory comment.
+  Update creates or replaces the whole file.
+- **`devDependencies["@types/node"]`:** Init seeds `24`, overriding the scaffold.
+  Update preserves owner edits and absence; the dependency is init-only.
+- **Forge `app.runtime.name`:** Init and update set `nodejs24.x` in an existing
+  manifest, replacing mismatches to agree with the `.nvmrc` baseline.
+- **Forge `engines`:** Init removes the scaffold Node entry; its update pass
+  removes the entire field. Update removes all entries, including owner additions.
+- **Other kinds' `engines`:** Init removes scaffold `engines.node`, preserving
+  other entries and dropping an empty object. Update preserves owner declarations.
 
-**First-time setup exception:** `init`/`init-changes` replaces a runtime
-supplied by `forge create`, which may lag the baseline, just as it replaces
-invented scaffold package metadata. `init` is not an update command. The pure
-reconciliation function and its Dagger boundary default to strict conflict
-checking for a future update path.
-With `files` retired, init on an empty directory has no manifest to reconcile;
-this capability still does not create one. The Node policy slice decides how to
-split the existing reconciliation behavior between the required verbs.
+Update owns **all** `.npmrc` content, not just `registry`. Scoped registries,
+auth settings, comments, and other owner edits are replaced by the public-registry
+baseline (`registry=https://registry.npmjs.org/`). No conflict or opt-in is
+required for authoritative pins. Missing `.nvmrc` and `.npmrc` are created;
+missing `package.json` and `manifest.yml` are not. Other kinds never read or edit
+a manifest, even if one is present.
 
-The baseline lives in one place (`src/node.ts`) so initialization and update cannot drift;
-`.nvmrc` stays bare (`24`) because changing that format would conflict with every
-repository already generated.
+Forge runtime edits use the YAML document API to preserve comments, key order,
+scalar styles, indentation, and siblings such as `memoryMB`, `architecture`, and
+`id`. Matching runtime values preserve the original bytes. Malformed YAML or
+non-mapping parents raise `ParseError`; Forge engine removal also rejects malformed
+or non-object package JSON. Changes to package JSON preserve unrelated fields and
+use sorted, two-space JSON with a trailing newline only when removing `engines`.
+Unchanged owned content retains its bytes. A second update produces no changes.
+Neither init nor update creates a manifest or registers an app.
+
+**validate** checks only whether fnm accepts `.nvmrc`: copy that file alone into
+an isolated Dagger container, initialize the shell with `fnm env --shell bash`,
+and run `fnm use --install-if-missing`. The fnm version is pinned in
+`TOOL_VERSIONS.fnm`; local file resolution is used and engine fallback is disabled.
+Selectable non-baseline versions pass. Missing `.nvmrc` reports skipped with a
+reason. Tool errors report failure with fnm's diagnostic; container setup or
+network/download errors are execution failures, not proof of an invalid pin.
+The validator may download Node on a cold run but never alters the caller's
+repository or host shell, and no container changes are exported.
+
+Validation does not compare `.nvmrc`, `@types/node`, or `app.runtime.name` with
+one another or with the baseline. Type declarations are owner-managed after init.
+It does not validate `.npmrc`, run npm install, or establish Forge manifest or
+deployment acceptance; Forge manifest acceptance belongs to ticket 23. This
+replaces the ticket's original pin-agreement proposal with ADR 0001's tool-acceptance
+contract.
 
 ### `changelog`
 Add `git-cliff` dev dependency and the `changelog` script. Seed the release

@@ -3,16 +3,168 @@ import { execFileSync } from "node:child_process";
 import {
   mkdirSync,
   mkdtempSync,
+  readdirSync,
   readFileSync,
   rmSync,
   writeFileSync,
 } from "node:fs";
 import { join } from "node:path";
-import { NODE_FORGE_RUNTIME } from "../../src/node.ts";
+import { NODE_FORGE_RUNTIME, NODE_NVMRC, NPMRC } from "../../src/node.ts";
 
 // Requires a Dagger engine, but never registers or deploys a Forge app.
 const enabled = process.env.DROP_CALF_NODE_E2E === "1";
 const repo = join(import.meta.dir, "../..");
+
+function daggerCall(...args: string[]): string {
+  return execFileSync(
+    "dagger",
+    ["--progress", "plain", "call", "-m", repo, ...args],
+    {
+      cwd: repo,
+      encoding: "utf8",
+      timeout: 240_000,
+      stdio: "pipe",
+      env: { ...process.env, DAGGER_NO_NAG: "1" },
+    },
+  );
+}
+
+// Fixtures are flat; compare every filename and byte before/after read-only calls.
+const snapshot = (directory: string) =>
+  readdirSync(directory)
+    .sort()
+    .map((name) => [name, readFileSync(join(directory, name), "utf8")]);
+
+for (const kind of ["library", "forge-app"]) {
+  test.skipIf(!enabled)(
+    `Dagger ${kind} update reconciles owner edits and is idempotent`,
+    () => {
+      mkdirSync(join(repo, ".scratch"), { recursive: true });
+      const root = mkdtempSync(join(repo, ".scratch/tmp_rovo_node_update_"));
+      const input = join(root, "input");
+      const output = join(root, "output");
+      try {
+        mkdirSync(input);
+        const pkg = {
+          name: "sample",
+          author: "tester",
+          type: "module",
+          private: true,
+          license: "Apache-2.0",
+          engines: { node: ">=20", npm: ">=10" },
+          devDependencies: { "@types/node": "^22.0.0" },
+          dependencies: { kept: "1.0.0" },
+          scripts: { custom: "echo kept" },
+        };
+        const manifest =
+          "app:\n  id: example\n  runtime:\n    name: 'nodejs22.x' # pin\n    memoryMB: 512\n";
+        writeFileSync(join(input, "package.json"), JSON.stringify(pkg));
+        writeFileSync(
+          join(input, "catalog-info.yaml"),
+          "apiVersion: backstage.io/v1alpha1\nkind: Component\nmetadata:\n  name: sample\n  annotations:\n    forge-ranch/package-name: sample\nspec:\n  type: " +
+            kind +
+            "\n  lifecycle: experimental\n  owner: user:default/tester\n",
+        );
+        writeFileSync(join(input, "manifest.yml"), manifest);
+        writeFileSync(join(input, ".nvmrc"), "22\n");
+        writeFileSync(
+          join(input, ".npmrc"),
+          "@acme:registry=https://example.invalid/\n",
+        );
+        writeFileSync(join(input, "owner.txt"), "kept\n");
+        const before = snapshot(input);
+        daggerCall(
+          "update",
+          "--directory",
+          input,
+          "--profile",
+          kind,
+          "export",
+          "--path",
+          output,
+        );
+        const { engines: _engines, ...withoutEngines } = pkg;
+        expect(
+          JSON.parse(readFileSync(join(output, "package.json"), "utf8")),
+        ).toEqual(kind === "forge-app" ? withoutEngines : pkg);
+        expect(readFileSync(join(output, ".nvmrc"), "utf8")).toBe(NODE_NVMRC);
+        expect(readFileSync(join(output, ".npmrc"), "utf8")).toBe(NPMRC);
+        expect(readFileSync(join(output, "manifest.yml"), "utf8")).toBe(
+          kind === "forge-app"
+            ? manifest.replace("nodejs22.x", NODE_FORGE_RUNTIME)
+            : manifest,
+        );
+        expect(readFileSync(join(output, "owner.txt"), "utf8")).toBe("kept\n");
+        expect(
+          daggerCall(
+            "update",
+            "--directory",
+            output,
+            "--profile",
+            kind,
+            "changes",
+            "--from",
+            output,
+            "is-empty",
+          ).trim(),
+        ).toBe("true");
+        expect(snapshot(input)).toEqual(before);
+      } finally {
+        rmSync(root, { recursive: true, force: true });
+      }
+    },
+    300_000,
+  );
+}
+
+for (const { version, status } of [
+  { version: NODE_NVMRC, status: "validated" },
+  { version: "22\n", status: "validated" },
+  { version: "999999\n", status: "failed" },
+  { version: undefined, status: "skipped" },
+]) {
+  test.skipIf(!enabled)(
+    `Dagger fnm ${status}: ${JSON.stringify(version)} is read-only`,
+    () => {
+      mkdirSync(join(repo, ".scratch"), { recursive: true });
+      const root = mkdtempSync(join(repo, ".scratch/tmp_rovo_node_validate_"));
+      try {
+        if (version !== undefined) writeFileSync(join(root, ".nvmrc"), version);
+        writeFileSync(join(root, ".node-version"), "999999\n");
+        writeFileSync(
+          join(root, "package.json"),
+          '{"engines":{"node":"999999"},"devDependencies":{"@types/node":"24"}}',
+        );
+        writeFileSync(
+          join(root, ".npmrc"),
+          "registry=https://example.invalid/\n",
+        );
+        writeFileSync(join(root, "manifest.yml"), "app: [broken\n");
+        writeFileSync(join(root, "owner.txt"), "kept\n");
+        const before = snapshot(root);
+        const report = JSON.parse(
+          daggerCall(
+            "validate",
+            "--directory",
+            root,
+            "--profile",
+            "agent-skill",
+          ),
+        );
+        const node = report.find(
+          (entry: { capability: string }) => entry.capability === "node",
+        );
+        expect(node.status).toBe(status);
+        if (status === "failed") expect(node.reason).toContain("999999");
+        if (status === "skipped") expect(node.reason).toContain(".nvmrc");
+        expect(snapshot(root)).toEqual(before);
+      } finally {
+        rmSync(root, { recursive: true, force: true });
+      }
+    },
+    300_000,
+  );
+}
 
 test.skipIf(!enabled)(
   "Dagger init normalizes a scaffold manifest without changing other settings",
@@ -23,7 +175,10 @@ test.skipIf(!enabled)(
     const output = join(root, "output");
     try {
       mkdirSync(scaffold);
-      writeFileSync(join(scaffold, "package.json"), '{"name":"sample"}\n');
+      writeFileSync(
+        join(scaffold, "package.json"),
+        '{"name":"sample","engines":{"node":">=22","npm":">=10"}}\n',
+      );
       writeFileSync(
         join(scaffold, "manifest.yml"),
         `# Scaffold
@@ -57,6 +212,22 @@ app:
         ],
         { cwd: repo, encoding: "utf8", timeout: 120_000, stdio: "pipe" },
       );
+      expect(
+        JSON.parse(readFileSync(join(output, "package.json"), "utf8")).engines,
+      ).toBeUndefined();
+      expect(
+        daggerCall(
+          "update",
+          "--directory",
+          output,
+          "--profile",
+          "forge-app",
+          "changes",
+          "--from",
+          output,
+          "is-empty",
+        ).trim(),
+      ).toBe("true");
       expect(
         readFileSync(join(output, "manifest.yml"), "utf8"),
       ).toBe(`# Scaffold

@@ -62,7 +62,7 @@ test.skipIf(!enabled).each(cases)(
       expect(pkg.author).toBe("tester");
       expect(pkg.description).toBe("");
       expect(pkg.private).toBe(true);
-      expect(pkg.engines.node).toBe("24.x");
+      expect(pkg.engines).toBeUndefined();
       expect(readFileSync(join(output, ".atlassian/OWNER"), "utf8")).toBe(
         "tester",
       );

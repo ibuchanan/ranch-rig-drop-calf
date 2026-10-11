@@ -162,22 +162,26 @@ DROP_CALF_E2E=1 bun test tests/e2e
   paths in `ProjectBlueprint.templates` without reading the files.
   `docsLinting()` declares `templates/docs` beside the `lint:docs` script and
   the `cspell`/`markdownlint-cli2` devDependencies every kind gets.
-- `src/node.ts`: the Node baseline. `nodeBaseline()` seeds `.nvmrc`, `.npmrc`,
-  `engines.node`, and `@types/node`; the blueprint never contains a manifest.
-  `reconcileForgeRuntime()` uses the pinned `yaml` document API to fill an
-  existing manifest's `app.runtime.name`, preserving comments, key order, scalar
-  styles, indentation, and sibling settings. A matching runtime is byte-for-byte
-  unchanged; a different runtime raises `ConflictError` with a remedy, and
-  invalid YAML raises the existing `ParseError`. `applyForgeRuntime()` is the
-  Dagger boundary: other profiles and a missing manifest are no-ops.
-  First-time `init` explicitly replaces a runtime invented by `forge create`,
-  which can lag the baseline. It is not an update command; strict reconciliation
-  remains the default for a future update path. Empty-directory `init` does
-  not create a manifest.
-  `nodeContainer()` is the native Dagger side of
-  the same baseline: the one place the Node image is chosen, so containerized
-  tools (such as `validateChangelog`) run the pinned major rather than whatever
-  the host has installed.
+- `src/node.ts`: the Node baseline. `nodeBaseline(kind)` seeds `.nvmrc`, `.npmrc`,
+  and `@types/node`; the dependency is init-only. `updateNode()` owns the whole
+  `.nvmrc` and `.npmrc` files in every kind, including replacing owner-added
+  scoped registries and auth settings. Forge updates remove the entire `engines`
+  field; other kinds preserve owner engine declarations. No kind generates
+  `engines`: it has caused trouble with `forge deploy`, and a development
+  toolchain baseline is not a library's minimum supported runtime.
+  `reconcileForgeRuntime()` enforces an existing Forge manifest's runtime name,
+  preserving comments, key order, scalar styles, indentation, and siblings.
+  Matching values preserve the original bytes; different values are replaced.
+  Invalid YAML raises `ParseError`. `applyForgeRuntime()` leaves other kinds
+  and absent manifests alone; neither init nor update creates a manifest.
+  `validateNode()` copies only `.nvmrc` into an isolated Dagger container with
+  pinned fnm, initializes its shell, and runs `fnm use --install-if-missing`.
+  Missing `.nvmrc` is skipped; selectable non-baseline versions pass. The
+  validator may download Node and does not check `.npmrc`, type versions,
+  manifest acceptance, or deployment. Execution failures retain fnm's stderr
+  in the read-only report. It never changes the host or exports
+  container changes. `nodeContainer()` selects the baseline image for tools
+  such as `validateChangelog`, independently of the host's Node installation.
 - `src/profiles.ts`: ordered capability lists for the four supported profiles.
 - `tests/repo-init.test.ts`: Bun unit tests for the pure blueprint/capability
   layer.

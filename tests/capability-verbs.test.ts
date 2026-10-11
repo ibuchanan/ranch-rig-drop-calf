@@ -136,7 +136,7 @@ test.each(kinds)(
           expect(capability.init).toBeDefined();
           expect(capability.update).toBeDefined();
           expect(capability.validate).toBeDefined();
-          if (capability.name === "package-metadata")
+          if (["package-metadata", "node"].includes(capability.name))
             expect(typeof capability.update).toBe("function");
           else expect(typeof capability.update).not.toBe("function");
         }

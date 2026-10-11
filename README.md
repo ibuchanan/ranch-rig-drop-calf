@@ -15,12 +15,10 @@ assembling scripts, dependencies, and configuration
 from small capabilities
 rather than copying a fixed template.
 
-**Status:** Early implementation.
-Generation is available;
-synchronization of existing repositories,
-conflict-aware merging,
-and the broader project functions in the [specifications](specs/00-drop-calf-overview.md)
-are not implemented.
+**Status:** Early implementation. Initialization, update, and read-only validation
+are available. Update policies currently cover package metadata and the Node
+baseline; other capabilities are still migrating. The broader project functions
+in the [specifications](specs/00-drop-calf-overview.md) are not all implemented.
 
 ## Set up a new Forge app
 
@@ -103,9 +101,10 @@ installed dependencies.
   `CODE_OF_CONDUCT.md`, `SECURITY.md`, and `.atlassian/OWNER`, copied from a
   pinned copy of Atlassian's OSS templates. `--owner` fills `OWNER`, the
   project name fills `[Project name]`, and the current year fills `[YYYY]`.
-- **Node baseline:** Node 24 in `.nvmrc`, `engines.node`, and `@types/node`,
-  plus an `.npmrc` pinning the public npm registry, which is not the default
-  inside Atlassian.
+- **Node baseline:** Node 24 in `.nvmrc` and `@types/node` (init-only), plus an `.npmrc`
+  pinning the public npm registry, which is not the default inside Atlassian.
+  On Forge apps, `app.runtime.name` is set to `nodejs24.x`; `engines` is not
+  set in `package.json` due to compatibility with `forge deploy`.
 - **`.gitignore`:** assembled from pinned gitignore.io templates, so output is
   deterministic and generation works offline.
 
@@ -127,6 +126,14 @@ Core profile capabilities cannot be removed.
   initialized directory. Add `entries` to list its top-level contents; prefer
   `init-changes ... export --path <dir>` to apply changes to disk, including
   scaffold deletions.
+- `update --directory <dir> --profile <name>` applies migrated update policies.
+  Node update replaces the whole `.npmrc` and `.nvmrc`, sets the runtime in an
+  existing Forge manifest, and removes Forge package `engines`. It preserves
+  `@types/node`; review the returned directory before exporting it.
+- `validate --directory <dir> --profile <name>` returns a read-only capability
+  report. Node validation uses fnm in a container to select the version requested
+  by `.nvmrc`, potentially downloading Node; it is not a baseline-compliance or
+  Forge-deployability check.
 - `remove-scaffold-changes --directory .` is the cleanup step of
   `init-changes` on its own. It deletes the fixed list in
   [`src/preclean.ts`](src/preclean.ts) without backups.

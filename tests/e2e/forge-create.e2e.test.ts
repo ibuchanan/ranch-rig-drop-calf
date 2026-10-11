@@ -76,7 +76,7 @@ describe.skipIf(!enabled)("forge create then init", () => {
         expect(result.dependencies[name]).toBe(version);
       expect(result.name).toBe(scaffold.name);
       expect(readFileSync(join(app, "manifest.yml"), "utf8")).toBe(
-        reconcileForgeRuntime(manifest, true),
+        reconcileForgeRuntime(manifest),
       );
       // Drop Calf's files arrived, and the scaffold's replaced ones did not.
       for (const path of ["tsconfig.json", "lefthook.yml", ".gitignore"])

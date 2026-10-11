@@ -201,9 +201,8 @@ export class DropCalf {
     const scaffold = (await directory.exists("package.json"))
       ? await directory.file("package.json").contents()
       : undefined;
-    // `init` is first-time setup: the scaffold runtime is invented metadata,
-    // not an owner-selected pin. Strict reconciliation is the default elsewhere.
-    const runtime = await applyForgeRuntime(directory, profile, true);
+    // Reject malformed scaffold YAML before rendering; update also owns this key.
+    const runtime = await applyForgeRuntime(directory, profile);
     const cleaned = await applyPreclean(runtime);
     const name =
       packageName ??

@@ -50,6 +50,13 @@ export function mergeScaffoldPackage(
       ...(owned as Record<string, unknown> | undefined),
     };
   }
+  // Scaffold engine constraints are not the development-toolchain baseline.
+  const engines = merged.engines;
+  if (engines && typeof engines === "object" && !Array.isArray(engines)) {
+    const { node: _node, ...other } = engines as Record<string, unknown>;
+    if (Object.keys(other).length) merged.engines = other;
+    else delete merged.engines;
+  }
   return sortPackageJson(`${JSON.stringify(merged, null, 2)}\n`);
 }
 

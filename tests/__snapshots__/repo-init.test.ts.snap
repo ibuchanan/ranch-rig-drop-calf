@@ -33,9 +33,6 @@ exports[`profiles agent-skill contains no test scripts and all kinds keep a comp
       "tsdown": "^0.15.0",
       "typescript": "^5.9.3",
     },
-    "engines": {
-      "node": "24.x",
-    },
     "exports": {
       ".": {
         "default": "./dist/index.js",
@@ -120,9 +117,6 @@ exports[`profiles agent-skill contains no test scripts and all kinds keep a comp
       "typescript": "^5.9.3",
       "vitest": "5.0.3",
     },
-    "engines": {
-      "node": "24.x",
-    },
     "license": "Apache-2.0",
     "name": "sample",
     "private": true,
@@ -194,9 +188,6 @@ exports[`profiles agent-skill contains no test scripts and all kinds keep a comp
       "markdownlint-cli2": "^0.23",
       "typescript": "^5.9.3",
     },
-    "engines": {
-      "node": "24.x",
-    },
     "license": "Apache-2.0",
     "name": "sample",
     "private": true,
@@ -248,9 +239,6 @@ exports[`profiles agent-skill contains no test scripts and all kinds keep a comp
       "lefthook": "^2.1",
       "markdownlint-cli2": "^0.23",
       "typescript": "^5.9.3",
-    },
-    "engines": {
-      "node": "24.x",
     },
     "license": "Apache-2.0",
     "name": "sample",

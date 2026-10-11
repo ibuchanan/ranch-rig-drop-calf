@@ -27,7 +27,7 @@ export const PROFILES: Record<string, Capability[]> = {
   library: [
     catalog(),
     packageMetadata("library"),
-    nodeBaseline(),
+    nodeBaseline("library"),
     changelogToolchain(),
     biomeToolchain(),
     typeScriptToolchain(),
@@ -41,7 +41,7 @@ export const PROFILES: Record<string, Capability[]> = {
   "forge-app": [
     catalog(),
     packageMetadata("forge-app"),
-    nodeBaseline(),
+    nodeBaseline("forge-app"),
     changelogToolchain(),
     forgeSecrets(),
     prelint(),
@@ -57,7 +57,7 @@ export const PROFILES: Record<string, Capability[]> = {
   tool: [
     catalog(),
     packageMetadata("tool"),
-    nodeBaseline(),
+    nodeBaseline("tool"),
     changelogToolchain(),
     biomeToolchain(),
     typeScriptToolchain(),
@@ -69,7 +69,7 @@ export const PROFILES: Record<string, Capability[]> = {
   "agent-skill": [
     catalog(),
     packageMetadata("agent-skill"),
-    nodeBaseline(),
+    nodeBaseline("agent-skill"),
     biomeToolchain(),
     typeScriptToolchain(),
     noTesting(),

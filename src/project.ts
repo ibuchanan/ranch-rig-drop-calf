@@ -45,7 +45,7 @@ export function createBlueprint(
 
   // `.gitignore` is deliberately absent: it is a pinned, seeded asset like the
   // OSS and docs trees, so the Dagger layer copies it in after rendering. See
-  // src/gitignore.ts. The node baseline (`.nvmrc`, `.npmrc`, `engines.node`)
+  // src/gitignore.ts. The node baseline (`.nvmrc`, `.npmrc`, `@types/node`)
   // is absent for a different reason: it belongs to the `node` capability, not
   // to every blueprint. See src/node.ts. Authored config trees belong to their
   // capabilities: the blueprint carries only their paths, and generation reads
