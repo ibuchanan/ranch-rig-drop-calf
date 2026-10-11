@@ -1,0 +1,19 @@
+# yaml-language-server: $schema=https://promptfoo.dev/config-schema.json
+# Shared prompt and optional Rovo wiring: docs/how-to/evaluate-rovo-agent.md
+description: 'Rovo agent translation starter'
+prompts:
+  - label: Rovo Agent Simulation
+    raw: |
+      <system>
+      {{ agent_instructions }}
+      </system>
+      <context>
+      {{ agent_context }}
+      </context>
+      <user>
+      {{ user_prompt }}
+      </user>
+providers:
+  - google:gemini-2.0-flash-lite
+tests:
+  - file://test/promptfoo-test.yaml

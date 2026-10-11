@@ -1,0 +1,16 @@
+- description: Translate English to French
+  vars:
+    agent_instructions: file://prompts/agent-instructions.md
+    agent_context: file://test/data/page-1.md
+    user_prompt: Translate this context to French
+  assert:
+    - type: icontains
+      value: Bonjour le monde
+- description: Translate English to Spanish
+  vars:
+    agent_instructions: file://prompts/agent-instructions.md
+    agent_context: file://test/data/page-2.md
+    user_prompt: Translate this context to Spanish
+  assert:
+    - type: icontains
+      value: Dónde está la biblioteca

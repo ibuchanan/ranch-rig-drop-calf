@@ -30,3 +30,5 @@ export const gitHooksTemplates = () => templatesIn("git-hooks");
 export const secretsTemplates = () => templatesIn("secretspec");
 
 export const vitestTemplates = () => templatesIn("vitest");
+
+export const promptfooTemplates = () => templatesIn("promptfoo");

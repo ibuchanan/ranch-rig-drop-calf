@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { dag } from "@dagger.io/dagger";
 import { BIOME_TEMPLATE } from "../src/biome.ts";
 import { CHANGELOG_TEMPLATE } from "../src/changelog.ts";
+import { EVALS_TEMPLATE } from "../src/evals.ts";
 import { GIT_HOOKS_TEMPLATE } from "../src/git-hooks.ts";
 import { PINNED_GITIGNORE } from "../src/gitignore.ts";
 import { OSS_ASSETS } from "../src/oss.ts";
@@ -14,6 +15,7 @@ import {
   changelogTemplates,
   docsTemplates,
   gitHooksTemplates,
+  promptfooTemplates,
   secretsTemplates,
   typescriptTemplates,
   vitestTemplates,
@@ -64,6 +66,7 @@ export function mockModuleSource(
     [GIT_HOOKS_TEMPLATE, tree(gitHooks)],
     [SECRETS_TEMPLATE, tree(secrets)],
     ["templates/vitest", tree(vitestTemplates())],
+    [EVALS_TEMPLATE, tree(promptfooTemplates())],
   ]);
   return spyOn(dag, "currentModule").mockReturnValue({
     source: () => ({

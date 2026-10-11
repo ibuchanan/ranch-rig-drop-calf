@@ -18,6 +18,7 @@ import {
   changelogTemplates,
   docsTemplates,
   gitHooksTemplates,
+  promptfooTemplates,
   typescriptTemplates,
   vitestTemplates,
 } from "./templates-source.ts";
@@ -183,6 +184,9 @@ describe("pinned OSS templates", () => {
           ...biomeTemplates(),
           ...typescriptTemplates(),
           ...(kind === "forge-app" ? vitestTemplates() : []),
+          ...(kind === "forge-app" && preset === "all"
+            ? promptfooTemplates()
+            : []),
           ...gitHooksTemplates(),
           ...docsTemplates(),
           ...(kind === "agent-skill" ? [] : changelogTemplates()),

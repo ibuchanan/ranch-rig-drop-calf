@@ -115,6 +115,10 @@ DROP_CALF_E2E=1 bun test tests/e2e
   devDependency, the `typecheck` and `build` scripts that invoke `tsc`, and
   `copyTypeScript` for `templates/typescript/`, the one config
   every kind receives verbatim. Nothing else sets the compiler or calls it.
+- `src/evals.ts`: optional Promptfoo toolchain — the `promptfoo` devDependency
+  and `eval`/`view` scripts. It declares `templates/promptfoo/`, which holds
+  the config, shared prompt, cases, synthetic contexts, and Rovo wiring guide;
+  the blueprint does not author those seed files.
 - `src/size-limit.ts`: the bundle-size budget — the `size-limit` and
   `@size-limit/file` devDependencies, the `size` script, and the named
   `size-limit` section of `package.json`. `size-limit` reads its budgets from
