@@ -1,21 +1,30 @@
 import { describe, expect, spyOn, test } from "bun:test";
-import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { type Directory, dag } from "@dagger.io/dagger";
 import { DropCalf } from "../src/index.ts";
-import { OSS_ASSETS, transformOssTemplate } from "../src/oss.ts";
+import {
+  OSS_ASSETS,
+  OSS_UPSTREAM,
+  PINNED_OSS,
+  PINNED_OSS_UPSTREAM,
+  transformOssTemplate,
+} from "../src/oss.ts";
 import { SECRETS_ASSETS } from "../src/secrets.ts";
 import { buildProject } from "../src/profiles.ts";
 import { docsTemplates } from "./templates-source.ts";
 import { mockOssSource, ossTemplates } from "./oss-source.ts";
 
-const vendor = join(import.meta.dir, "../vendor/oss-templates");
-// An uninitialized submodule has no assets; a partial checkout should fail, not skip.
-const pinnedSuite = OSS_ASSETS.some((path) => existsSync(join(vendor, path)))
-  ? describe
-  : describe.skip;
+const root = join(import.meta.dir, "..");
+const vendor = join(root, PINNED_OSS);
 
-pinnedSuite("pinned OSS templates", () => {
+describe("pinned OSS templates", () => {
+  test("records the upstream commit it was pinned from", () => {
+    expect(readFileSync(join(root, PINNED_OSS_UPSTREAM), "utf8")).toMatch(
+      new RegExp(`^${OSS_UPSTREAM.replaceAll(".", "\\.")} [0-9a-f]{40}\\n$`),
+    );
+  });
+
   test("tracks every file in the pinned OSS template", () => {
     expect([...OSS_ASSETS].map(String).sort()).toEqual(
       [

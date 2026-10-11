@@ -27,7 +27,7 @@ import { copyDocs } from "./docs.ts";
 import { copyGitHooks, GIT_HOOKS_TEMPLATE } from "./git-hooks.ts";
 import { copyGitignoreAssets, PINNED_GITIGNORE } from "./gitignore.ts";
 import { mergeScaffoldPackage, scaffoldName } from "./init.ts";
-import { copyOssAssets } from "./oss.ts";
+import { copyOssAssets, PINNED_OSS } from "./oss.ts";
 import { applyPreclean } from "./preclean.ts";
 import { validatePrelint } from "./prelint.ts";
 import { buildProject, resolveProfile } from "./profiles.ts";
@@ -263,7 +263,7 @@ export class DropCalf {
   ): Promise<Directory> {
     return copyOssAssets(
       directory,
-      dag.currentModule().source().directory("vendor/oss-templates"),
+      dag.currentModule().source().directory(PINNED_OSS),
       name,
       owner,
     );

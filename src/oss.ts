@@ -2,6 +2,23 @@ import type { Directory } from "@dagger.io/dagger";
 
 export const OSS_LICENSE = "Apache-2.0";
 
+/**
+ * Upstream of the OSS templates. It is a private Bitbucket repository, so it
+ * cannot be a submodule: Dagger initializes every submodule when it loads the
+ * module from a Git ref, and the engine has no credentials for it.
+ */
+export const OSS_UPSTREAM = "https://bitbucket.org/atlassian/oss-templates.git";
+
+/**
+ * Pinned copy of `OSS_ASSETS` from `OSS_UPSTREAM`. Generation reads this so
+ * output stays deterministic and the module loads without credentials; refresh
+ * it deliberately with `bun run refresh:oss` and read the diff.
+ */
+export const PINNED_OSS = "vendor/oss-templates";
+
+/** Records the upstream commit the pin was taken from. Not an OSS asset. */
+export const PINNED_OSS_UPSTREAM = `${PINNED_OSS}/.upstream`;
+
 export const OSS_ASSETS = [
   "LICENSE",
   "CODE_OF_CONDUCT.md",
