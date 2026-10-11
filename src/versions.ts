@@ -1,7 +1,7 @@
 export const NODE_MAJOR = "24";
 
 export const TOOL_VERSIONS = {
-  biome: "2.5.13",
+  biome: "2.5.15",
   typescript: "^5.9.3",
   tsdown: "^0.15.0",
   sizeLimit: "^11.2.0",

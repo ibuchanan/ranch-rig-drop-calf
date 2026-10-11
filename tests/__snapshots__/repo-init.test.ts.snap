@@ -21,7 +21,7 @@ exports[`profiles agent-skill contains no test scripts and all kinds keep a comp
   ],
   "packageJson": {
     "devDependencies": {
-      "@biomejs/biome": "2.5.13",
+      "@biomejs/biome": "2.5.15",
       "@size-limit/file": "^5.0.0",
       "@types/node": "24",
       "cspell": "^10.3",
@@ -103,7 +103,7 @@ exports[`profiles agent-skill contains no test scripts and all kinds keep a comp
     },
     "devDependencies": {
       "@ast-grep/cli": "^0.45",
-      "@biomejs/biome": "2.5.13",
+      "@biomejs/biome": "2.5.15",
       "@forge-ahead/prelint": "github:ibuchanan/tool-forge-prelint-ast-grep",
       "@size-limit/file": "^5.0.0",
       "@types/node": "24",
@@ -178,7 +178,7 @@ exports[`profiles agent-skill contains no test scripts and all kinds keep a comp
   ],
   "packageJson": {
     "devDependencies": {
-      "@biomejs/biome": "2.5.13",
+      "@biomejs/biome": "2.5.15",
       "@types/node": "24",
       "cspell": "^10.3",
       "git-cliff": "^2.13",
@@ -232,7 +232,7 @@ exports[`profiles agent-skill contains no test scripts and all kinds keep a comp
   ],
   "packageJson": {
     "devDependencies": {
-      "@biomejs/biome": "2.5.13",
+      "@biomejs/biome": "2.5.15",
       "@types/node": "24",
       "cspell": "^10.3",
       "lefthook": "^2.1",

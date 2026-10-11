@@ -28,7 +28,7 @@ exports[`library generated output has the selected functions: library 1`] = `
     "devDependencies": {
       "@types/node": "24",
       "git-cliff": "^2.13",
-      "@biomejs/biome": "2.5.13",
+      "@biomejs/biome": "2.5.15",
       "typescript": "^5.9.3",
       "tsdown": "^0.15.0",
       "size-limit": "^11.2.0",
@@ -61,7 +61,7 @@ exports[`library generated output has the selected functions: library 1`] = `
     ".editorconfig": "root = true\\n\\n[*]\\ncharset = utf-8\\nend_of_line = lf\\ninsert_final_newline = true\\ntrim_trailing_whitespace = true\\nindent_style = space\\nindent_size = 2\\n\\n[*.md]\\ntrim_trailing_whitespace = false\\n",
     ".nvmrc": "24\\n",
     ".npmrc": "# Use the public npm registry (not the default for internal Atlassians)\\nregistry=https://registry.npmjs.org/\\n",
-    "biome.jsonc": "{\\n  \\"$schema\\": \\"https://biomejs.dev/schemas/2.5.13/schema.json\\",\\n  \\"vcs\\": {\\n    \\"enabled\\": true,\\n    \\"clientKind\\": \\"git\\",\\n    \\"useIgnoreFile\\": true,\\n    \\"defaultBranch\\": \\"main\\"\\n  },\\n  \\"files\\": {\\n    \\"ignoreUnknown\\": false\\n  },\\n  \\"formatter\\": {\\n    \\"enabled\\": true,\\n    \\"indentStyle\\": \\"space\\"\\n  },\\n  \\"linter\\": {\\n    \\"enabled\\": true,\\n    \\"rules\\": {\\n      \\"preset\\": \\"recommended\\"\\n    }\\n  },\\n  \\"javascript\\": {\\n    \\"formatter\\": {\\n      \\"quoteStyle\\": \\"double\\"\\n    }\\n  },\\n  \\"assist\\": {\\n    \\"enabled\\": true,\\n    \\"actions\\": {\\n      \\"source\\": {\\n        \\"organizeImports\\": \\"on\\"\\n      }\\n    }\\n  }\\n}",
+    "biome.jsonc": "{\\n  \\"$schema\\": \\"https://biomejs.dev/schemas/2.5.15/schema.json\\",\\n  \\"vcs\\": {\\n    \\"enabled\\": true,\\n    \\"clientKind\\": \\"git\\",\\n    \\"useIgnoreFile\\": true,\\n    \\"defaultBranch\\": \\"main\\"\\n  },\\n  \\"files\\": {\\n    \\"ignoreUnknown\\": false\\n  },\\n  \\"formatter\\": {\\n    \\"enabled\\": true,\\n    \\"indentStyle\\": \\"space\\"\\n  },\\n  \\"linter\\": {\\n    \\"enabled\\": true,\\n    \\"rules\\": {\\n      \\"preset\\": \\"recommended\\"\\n    }\\n  },\\n  \\"javascript\\": {\\n    \\"formatter\\": {\\n      \\"quoteStyle\\": \\"double\\"\\n    }\\n  },\\n  \\"assist\\": {\\n    \\"enabled\\": true,\\n    \\"actions\\": {\\n      \\"source\\": {\\n        \\"organizeImports\\": \\"on\\"\\n      }\\n    }\\n  }\\n}",
     "tsdown.config.ts": "import { defineConfig } from \\"tsdown\\";\\n\\nexport default defineConfig({ entry: [\\"src/index.ts\\"], outDir: \\"dist\\", format: [\\"esm\\"], dts: true });\\n"
   }
 }"
@@ -105,7 +105,7 @@ exports[`forge-app generated output has the selected functions: forge-app 1`] = 
       "git-cliff": "^2.13",
       "@ast-grep/cli": "^0.45",
       "@forge-ahead/prelint": "github:ibuchanan/tool-forge-prelint-ast-grep",
-      "@biomejs/biome": "2.5.13",
+      "@biomejs/biome": "2.5.15",
       "typescript": "^5.9.3",
       "size-limit": "^11.2.0",
       "@size-limit/file": "^5.0.0",
@@ -134,7 +134,7 @@ exports[`forge-app generated output has the selected functions: forge-app 1`] = 
     ".editorconfig": "root = true\\n\\n[*]\\ncharset = utf-8\\nend_of_line = lf\\ninsert_final_newline = true\\ntrim_trailing_whitespace = true\\nindent_style = space\\nindent_size = 2\\n\\n[*.md]\\ntrim_trailing_whitespace = false\\n",
     ".nvmrc": "24\\n",
     ".npmrc": "# Use the public npm registry (not the default for internal Atlassians)\\nregistry=https://registry.npmjs.org/\\n",
-    "biome.jsonc": "{\\n  \\"$schema\\": \\"https://biomejs.dev/schemas/2.5.13/schema.json\\",\\n  \\"vcs\\": {\\n    \\"enabled\\": true,\\n    \\"clientKind\\": \\"git\\",\\n    \\"useIgnoreFile\\": true,\\n    \\"defaultBranch\\": \\"main\\"\\n  },\\n  \\"files\\": {\\n    \\"ignoreUnknown\\": false\\n  },\\n  \\"formatter\\": {\\n    \\"enabled\\": true,\\n    \\"indentStyle\\": \\"space\\"\\n  },\\n  \\"linter\\": {\\n    \\"enabled\\": true,\\n    \\"rules\\": {\\n      \\"preset\\": \\"recommended\\"\\n    }\\n  },\\n  \\"javascript\\": {\\n    \\"formatter\\": {\\n      \\"quoteStyle\\": \\"double\\"\\n    }\\n  },\\n  \\"assist\\": {\\n    \\"enabled\\": true,\\n    \\"actions\\": {\\n      \\"source\\": {\\n        \\"organizeImports\\": \\"on\\"\\n      }\\n    }\\n  }\\n}",
+    "biome.jsonc": "{\\n  \\"$schema\\": \\"https://biomejs.dev/schemas/2.5.15/schema.json\\",\\n  \\"vcs\\": {\\n    \\"enabled\\": true,\\n    \\"clientKind\\": \\"git\\",\\n    \\"useIgnoreFile\\": true,\\n    \\"defaultBranch\\": \\"main\\"\\n  },\\n  \\"files\\": {\\n    \\"ignoreUnknown\\": false\\n  },\\n  \\"formatter\\": {\\n    \\"enabled\\": true,\\n    \\"indentStyle\\": \\"space\\"\\n  },\\n  \\"linter\\": {\\n    \\"enabled\\": true,\\n    \\"rules\\": {\\n      \\"preset\\": \\"recommended\\"\\n    }\\n  },\\n  \\"javascript\\": {\\n    \\"formatter\\": {\\n      \\"quoteStyle\\": \\"double\\"\\n    }\\n  },\\n  \\"assist\\": {\\n    \\"enabled\\": true,\\n    \\"actions\\": {\\n      \\"source\\": {\\n        \\"organizeImports\\": \\"on\\"\\n      }\\n    }\\n  }\\n}",
     "AGENTS.md": "# Agent guidance\\n\\nThis repository is an Atlassian Forge app. Read \`manifest.yml\` before\\nchanging modules, functions, scopes, or external permissions. Prefer\\nForge's built-in authentication and storage to custom services; check\\nauthorization when using app-level access.\\n\\nBefore submitting changes, run \`npm run lint\`, \`npm run format:check\`,\\n\`npm run typecheck\`, and \`npm run test\`. Review scope or egress changes before\\ndeploying; do not deploy or install without approval.\\n"
   }
 }"
@@ -167,7 +167,7 @@ exports[`tool generated output has the selected functions: tool 1`] = `
     "devDependencies": {
       "@types/node": "24",
       "git-cliff": "^2.13",
-      "@biomejs/biome": "2.5.13",
+      "@biomejs/biome": "2.5.15",
       "typescript": "^5.9.3",
       "cspell": "^10.3",
       "markdownlint-cli2": "^0.23",
@@ -182,7 +182,7 @@ exports[`tool generated output has the selected functions: tool 1`] = `
     ".editorconfig": "root = true\\n\\n[*]\\ncharset = utf-8\\nend_of_line = lf\\ninsert_final_newline = true\\ntrim_trailing_whitespace = true\\nindent_style = space\\nindent_size = 2\\n\\n[*.md]\\ntrim_trailing_whitespace = false\\n",
     ".nvmrc": "24\\n",
     ".npmrc": "# Use the public npm registry (not the default for internal Atlassians)\\nregistry=https://registry.npmjs.org/\\n",
-    "biome.jsonc": "{\\n  \\"$schema\\": \\"https://biomejs.dev/schemas/2.5.13/schema.json\\",\\n  \\"vcs\\": {\\n    \\"enabled\\": true,\\n    \\"clientKind\\": \\"git\\",\\n    \\"useIgnoreFile\\": true,\\n    \\"defaultBranch\\": \\"main\\"\\n  },\\n  \\"files\\": {\\n    \\"ignoreUnknown\\": false\\n  },\\n  \\"formatter\\": {\\n    \\"enabled\\": true,\\n    \\"indentStyle\\": \\"space\\"\\n  },\\n  \\"linter\\": {\\n    \\"enabled\\": true,\\n    \\"rules\\": {\\n      \\"preset\\": \\"recommended\\"\\n    }\\n  },\\n  \\"javascript\\": {\\n    \\"formatter\\": {\\n      \\"quoteStyle\\": \\"double\\"\\n    }\\n  },\\n  \\"assist\\": {\\n    \\"enabled\\": true,\\n    \\"actions\\": {\\n      \\"source\\": {\\n        \\"organizeImports\\": \\"on\\"\\n      }\\n    }\\n  }\\n}"
+    "biome.jsonc": "{\\n  \\"$schema\\": \\"https://biomejs.dev/schemas/2.5.15/schema.json\\",\\n  \\"vcs\\": {\\n    \\"enabled\\": true,\\n    \\"clientKind\\": \\"git\\",\\n    \\"useIgnoreFile\\": true,\\n    \\"defaultBranch\\": \\"main\\"\\n  },\\n  \\"files\\": {\\n    \\"ignoreUnknown\\": false\\n  },\\n  \\"formatter\\": {\\n    \\"enabled\\": true,\\n    \\"indentStyle\\": \\"space\\"\\n  },\\n  \\"linter\\": {\\n    \\"enabled\\": true,\\n    \\"rules\\": {\\n      \\"preset\\": \\"recommended\\"\\n    }\\n  },\\n  \\"javascript\\": {\\n    \\"formatter\\": {\\n      \\"quoteStyle\\": \\"double\\"\\n    }\\n  },\\n  \\"assist\\": {\\n    \\"enabled\\": true,\\n    \\"actions\\": {\\n      \\"source\\": {\\n        \\"organizeImports\\": \\"on\\"\\n      }\\n    }\\n  }\\n}"
   }
 }"
 `;
@@ -209,7 +209,7 @@ exports[`agent-skill generated output has the selected functions: agent-skill 1`
     },
     "devDependencies": {
       "@types/node": "24",
-      "@biomejs/biome": "2.5.13",
+      "@biomejs/biome": "2.5.15",
       "typescript": "^5.9.3",
       "cspell": "^10.3",
       "markdownlint-cli2": "^0.23",
@@ -224,7 +224,7 @@ exports[`agent-skill generated output has the selected functions: agent-skill 1`
     ".editorconfig": "root = true\\n\\n[*]\\ncharset = utf-8\\nend_of_line = lf\\ninsert_final_newline = true\\ntrim_trailing_whitespace = true\\nindent_style = space\\nindent_size = 2\\n\\n[*.md]\\ntrim_trailing_whitespace = false\\n",
     ".nvmrc": "24\\n",
     ".npmrc": "# Use the public npm registry (not the default for internal Atlassians)\\nregistry=https://registry.npmjs.org/\\n",
-    "biome.jsonc": "{\\n  \\"$schema\\": \\"https://biomejs.dev/schemas/2.5.13/schema.json\\",\\n  \\"vcs\\": {\\n    \\"enabled\\": true,\\n    \\"clientKind\\": \\"git\\",\\n    \\"useIgnoreFile\\": true,\\n    \\"defaultBranch\\": \\"main\\"\\n  },\\n  \\"files\\": {\\n    \\"ignoreUnknown\\": false\\n  },\\n  \\"formatter\\": {\\n    \\"enabled\\": true,\\n    \\"indentStyle\\": \\"space\\"\\n  },\\n  \\"linter\\": {\\n    \\"enabled\\": true,\\n    \\"rules\\": {\\n      \\"preset\\": \\"recommended\\"\\n    }\\n  },\\n  \\"javascript\\": {\\n    \\"formatter\\": {\\n      \\"quoteStyle\\": \\"double\\"\\n    }\\n  },\\n  \\"assist\\": {\\n    \\"enabled\\": true,\\n    \\"actions\\": {\\n      \\"source\\": {\\n        \\"organizeImports\\": \\"on\\"\\n      }\\n    }\\n  }\\n}"
+    "biome.jsonc": "{\\n  \\"$schema\\": \\"https://biomejs.dev/schemas/2.5.15/schema.json\\",\\n  \\"vcs\\": {\\n    \\"enabled\\": true,\\n    \\"clientKind\\": \\"git\\",\\n    \\"useIgnoreFile\\": true,\\n    \\"defaultBranch\\": \\"main\\"\\n  },\\n  \\"files\\": {\\n    \\"ignoreUnknown\\": false\\n  },\\n  \\"formatter\\": {\\n    \\"enabled\\": true,\\n    \\"indentStyle\\": \\"space\\"\\n  },\\n  \\"linter\\": {\\n    \\"enabled\\": true,\\n    \\"rules\\": {\\n      \\"preset\\": \\"recommended\\"\\n    }\\n  },\\n  \\"javascript\\": {\\n    \\"formatter\\": {\\n      \\"quoteStyle\\": \\"double\\"\\n    }\\n  },\\n  \\"assist\\": {\\n    \\"enabled\\": true,\\n    \\"actions\\": {\\n      \\"source\\": {\\n        \\"organizeImports\\": \\"on\\"\\n      }\\n    }\\n  }\\n}"
   }
 }"
 `;
