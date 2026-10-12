@@ -68,7 +68,7 @@ Each kind additionally selects project-functions (see
 | Kind | Capabilities in execution order (including optional capabilities) |
 |---|---|
 | `library` | `catalog`, `package-metadata`, `oss`, `gitignore`, `node`, `changelog`, `biome`, `library-build`, `typescript`, `test`, `size-limit`, `clean-build`, `docs`, `git-hooks`, `aidev` |
-| `forge-app` | `catalog`, `package-metadata`, `oss`, `gitignore`, `node`, `forge-manifest`, `changelog`, `secrets`, `prelint`, `biome`, `test`, `typescript`, `forge-ahead`, `size-limit`, `clean-build`, `docs`, `git-hooks`, `aidev` (Default; `--without-functions aidev`), `evals` (Opt-in; `--with-functions evals`; `--without-functions evals`; `--preset all`) |
+| `forge-app` | `catalog`, `package-metadata`, `oss`, `gitignore`, `node`, `forge-manifest`, `changelog`, `secrets`, `prelint`, `biome`, `test`, `typescript`, `forge-ahead`, `size-limit`, `clean-build`, `docs`, `git-hooks`, `evals` (Opt-in; `--with-functions evals`; `--without-functions evals`; `--preset all`), `aidev` (Default; `--without-functions aidev`) |
 | `tool` | `catalog`, `package-metadata`, `oss`, `gitignore`, `node`, `changelog`, `biome`, `typescript`, `test`, `clean-build`, `docs`, `git-hooks`, `aidev` |
 | `agent-skill` | `catalog`, `package-metadata`, `oss`, `gitignore`, `node`, `biome`, `typescript`, `test`, `clean-build`, `docs`, `git-hooks`, `aidev` |
 <!-- capability-inventory:end -->

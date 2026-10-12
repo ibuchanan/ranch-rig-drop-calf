@@ -79,9 +79,16 @@ test.each([undefined, "all"])(
         );
         if (!without.includes("aidev")) {
           expect(await initialized.file("AGENTS.md").contents()).toBe(
-            buildProject("forge-app", "sample", "tester").files.get(
-              "AGENTS.md",
-            ) ?? "",
+            buildProject(
+              "forge-app",
+              "sample",
+              "tester",
+              "",
+              "",
+              [],
+              [],
+              preset,
+            ).files.get("AGENTS.md") ?? "",
           );
         }
         for (const repository of [
@@ -94,6 +101,22 @@ test.each([undefined, "all"])(
           expect(
             await module.update(repository, "forge-app", [], without, preset),
           ).toBe(repository);
+          for (const nextPreset of [undefined, "all"]) {
+            const updated = await module.update(
+              repository,
+              "forge-app",
+              [],
+              without,
+              nextPreset,
+            );
+            expect(await updated.exists("AGENTS.md")).toBe(
+              await repository.exists("AGENTS.md"),
+            );
+            if (await repository.exists("AGENTS.md"))
+              expect(await updated.file("AGENTS.md").contents()).toBe(
+                await repository.file("AGENTS.md").contents(),
+              );
+          }
         }
       }
     } finally {
@@ -144,28 +167,163 @@ test.each(kinds)(
   },
 );
 
-test("Forge generation includes authored agent guidance for Forge work", () => {
-  const guidance = buildProject("forge-app", "sample", "tester").files.get(
-    "AGENTS.md",
-  );
-  expect(guidance).toContain("manifest.yml");
-  expect(guidance).toContain("Forge");
-  expect(guidance).toContain("npm run typecheck");
+test.each([
+  {
+    name: "default",
+    withFunctions: [],
+    withoutFunctions: [],
+    preset: undefined,
+    evals: false,
+  },
+  {
+    name: "with evals",
+    withFunctions: ["evals"],
+    withoutFunctions: [],
+    preset: undefined,
+    evals: true,
+  },
+  {
+    name: "without evals",
+    withFunctions: [],
+    withoutFunctions: ["evals"],
+    preset: undefined,
+    evals: false,
+  },
+  {
+    name: "all",
+    withFunctions: [],
+    withoutFunctions: [],
+    preset: "all",
+    evals: true,
+  },
+  {
+    name: "all without evals",
+    withFunctions: [],
+    withoutFunctions: ["evals"],
+    preset: "all",
+    evals: false,
+  },
+])(
+  "Forge guidance references initialized scripts and files: $name",
+  async (selection) => {
+    const source = mockModuleSource();
+    const empty = spyOn(dag, "directory").mockImplementation(() =>
+      mockDirectory(),
+    );
+    try {
+      const initialized = await new DropCalf().init(
+        mockDirectory(
+          new Map([
+            [
+              "manifest.yml",
+              "app:\n  id: ari:cloud:ecosystem::app/example\n  runtime:\n    name: nodejs24.x\nmodules:\n  function: []\n",
+            ],
+          ]),
+        ),
+        "forge-app",
+        "tester",
+        "sample",
+        "",
+        "",
+        [...selection.withFunctions],
+        [...selection.withoutFunctions],
+        selection.preset,
+      );
+      const guidance = await initialized.file("AGENTS.md").contents();
+      const pkg = JSON.parse(await initialized.file("package.json").contents());
+      const references = [...guidance.matchAll(/`([^`]+)`/g)].map(
+        (match) => match[1] as string,
+      );
+      const scripts = references
+        .filter((reference) => reference.startsWith("npm run "))
+        .map((reference) => reference.slice("npm run ".length));
+      expect(scripts).toEqual(
+        expect.arrayContaining([
+          "check",
+          "typecheck",
+          "test",
+          "lint:forge",
+          "forge:deploy",
+          "forge:upgrade",
+        ]),
+      );
+      for (const script of scripts)
+        expect(
+          pkg.scripts[script],
+          `Missing guidance script: ${script}`,
+        ).toBeString();
+      const paths = references.filter((reference) =>
+        /\.(md|yml|yaml|json)$/.test(reference),
+      );
+      expect(paths).toContain("manifest.yml");
+      for (const path of paths)
+        expect(
+          await initialized.exists(path),
+          `Missing guidance file: ${path}`,
+        ).toBe(true);
+      expect(pkg.scripts.test).toBe("vitest run --passWithNoTests");
+      expect(guidance).toContain("Vitest");
+      expect(guidance.includes("## Prompt evaluations")).toBe(selection.evals);
+      expect(scripts.includes("eval")).toBe(selection.evals);
+      expect(scripts.includes("view")).toBe(selection.evals);
+      expect(guidance).not.toMatch(
+        /`forge (?:deploy|install|tunnel|logs|lint|register)/,
+      );
+      for (const stale of [
+        "npm run types`",
+        "bun test",
+        "forge:tunnel",
+        "forge:logs",
+        "architecture tests",
+        "trigger starters",
+      ])
+        expect(guidance).not.toContain(stale);
+      if (selection.evals) {
+        expect(guidance).toContain("may\n  incur charges");
+        expect(guidance).toContain(
+          "do not replace deployed Rovo integration tests",
+        );
+        expect(await initialized.exists("promptfooconfig.yaml")).toBe(true);
+      }
+      if (selection.name === "default" || selection.name === "all")
+        expect(guidance).toMatchSnapshot();
+    } finally {
+      empty.mockRestore();
+      source.mockRestore();
+    }
+  },
+);
+
+test("a promptfoo dependency alone does not select eval guidance", () => {
+  const project = createBlueprint("sample", "", "tester");
+  project.packageJson.devDependencies.promptfoo = "owner";
+  const capability = aidev("forge-app");
+  if (typeof capability.init === "function") capability.init(project);
+  expect(project.files.get("AGENTS.md")).not.toContain("## Prompt evaluations");
 });
 
-test("authored guidance stays inside the line length lint:docs enforces", () => {
-  // `lint:docs` globs `**/*.md`, so this Markdown is linted too and has to
-  // survive MD013 without being a seeded file the docs tree can wrap.
-  const guidance = buildProject("forge-app", "sample", "tester").files.get(
-    "AGENTS.md",
-  ) as string;
-  expect(
-    guidance
-      .split("\n")
-      .map((line, index) => [index + 1, line.length] as const)
-      .filter(([, length]) => length > 80),
-  ).toEqual([]);
-});
+test.each([undefined, "all"])(
+  "authored guidance stays inside the docs line length with preset %s",
+  (preset) => {
+    // `lint:docs` globs `**/*.md`, including this seed, and enforces MD013.
+    const guidance = buildProject(
+      "forge-app",
+      "sample",
+      "tester",
+      "",
+      "",
+      [],
+      [],
+      preset,
+    ).files.get("AGENTS.md") as string;
+    expect(
+      guidance
+        .split("\n")
+        .map((line, index) => [index + 1, line.length] as const)
+        .filter(([, length]) => length > 80),
+    ).toEqual([]);
+  },
+);
 
 test("excluding aidev prevents Forge guidance generation", () => {
   const without = ["aidev"];

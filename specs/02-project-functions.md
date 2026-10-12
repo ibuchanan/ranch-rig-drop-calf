@@ -136,8 +136,8 @@ Missing files or prerequisites can also cause a validator to skip or fail.
 | `forge-app`, `tool`, `agent-skill` | `typescript` | Required | [TypeScript](https://www.typescriptlang.org/docs/) — Type-checks source and emits JavaScript or library declarations. | Seed TypeScript, typecheck/build scripts, and compiler configuration (declarations config only with tsdown). | Enforce TypeScript/typecheck and compiler policy; maintain tsc build unless tsdown is declared. | Run tsc --showConfig for applicable compiler configs, without compiling source or declarations. |
 | `forge-app` | `forge-ahead` | Required | [Forge Ahead API types](https://github.com/ibuchanan/forge-ahead-atlassian-api-types) — Provides types for Atlassian API integration in Forge apps.<br>[Forge Ahead errors](https://github.com/ibuchanan/forge-ahead-errors) — Provides typed error handling at Forge boundaries.<br>[Forge Ahead logging](https://github.com/ibuchanan/forge-ahead-logging) — Provides logging helpers for Forge apps. | Seed API types as an owner-managed dependency. | Enforce errors and logging dependencies; preserve API types and other dependencies. | **No-op:** Forge Ahead dependencies have no repository-local configuration to validate; comparing dependency references would check policy, not tool acceptance. Runtime integration belongs to the app's build and test workflows. |
 | `forge-app` | `size-limit` | Required | [Size Limit](https://github.com/ai/size-limit) — Measures built file sizes against owner-managed budgets with @size-limit/file. | Seed paired tools, build-then-size script, and a 10 kB budget for dist/**/*.js. | Enforce paired tool references and the size command; preserve owner budgets and paths. | **No-op:** Size Limit has no supported configuration-only validation interface. Measurement requires build artifacts and belongs to the size workflow; validation does not build the project or assess potentially stale output. |
-| `forge-app` | `aidev` | Default; `--without-functions aidev` | [AGENTS.md](https://agents.md/) — Gives coding agents repository-specific instructions; human guidance, not executable config. | Seed authored Forge agent guidance in AGENTS.md. | **No-op:** Agent guidance is init-only and owner-managed; update preserves edits and does not restore a deleted AGENTS.md. | **No-op:** AGENTS.md is human guidance, not consuming-tool configuration; checking referenced scripts would check guidance policy, not tool acceptance. |
 | `forge-app` | `evals` | Opt-in; `--with-functions evals`; `--without-functions evals`; `--preset all` | [Promptfoo](https://www.promptfoo.dev/docs/) — Evaluates prompts against authored test cases and displays results. | Seed Promptfoo, eval/view scripts, and the config/prompts/tests/data/guide tree; no manifest wiring. | Enforce Promptfoo and eval/view scripts; preserve the owner-managed suite and its deletions. | Use Promptfoo's native config/schema validator to load suite references; no model calls or assertion execution. |
+| `forge-app` | `aidev` | Default; `--without-functions aidev` | [AGENTS.md](https://agents.md/) — Gives coding agents repository-specific instructions; human guidance, not executable config. | Seed authored Forge agent guidance in AGENTS.md. | **No-op:** Agent guidance is init-only and owner-managed; update preserves edits and does not restore a deleted AGENTS.md. | **No-op:** AGENTS.md is human guidance, not consuming-tool configuration; checking referenced scripts would check guidance policy, not tool acceptance. |
 <!-- capability-reference:end -->
 
 The sections below specify detailed field ownership and preservation policies.
@@ -814,9 +814,9 @@ not immutable resolved versions.
 ### `aidev`
 
 Agent guidance is a capability in every kind's ordered composition. Only
-`forge-app` seeds the current authored `AGENTS.md`; other kinds omit Forge-only
-instructions with an explicit init no-op reason. The seed content is unchanged;
-expanding it is a separate concern.
+`forge-app` seeds authored `AGENTS.md`; other kinds omit Forge-only instructions
+with an explicit init no-op reason. All guidance is starting text owned by the
+repository after initialization; there is no Drop Calf-maintained content block.
 
 - **init** seeds the Forge guidance during first-time setup, replacing any Forge
   scaffolder guidance removed by scaffold preparation. It is enabled by default
@@ -832,6 +832,41 @@ expanding it is a separate concern.
   tool acceptance." It does not parse guidance or compare named scripts with
   `package.json`. Top-level validation reports a skipped result with this reason
   whenever the capability is selected.
+
+#### Forge guidance content policy
+
+The seed is deliberately short and action-oriented: manifest/code alignment,
+invocation-scoped functions and async work, Forge storage, UI Kit versus Custom
+UI, Bridge/resolver boundaries, explicit web-trigger/remote wiring, declarative
+egress, and user-versus-app authorization. It omits directory tours, generic
+coding standards, setup tutorials, and a version-sensitive CLI flag catalog.
+
+The command guidance names generated `npm run check`, `typecheck`, `test`, and
+`lint:forge` workflows; Forge tests use Vitest. Deployment and installation
+upgrades use `forge:deploy` and `forge:upgrade`, with explicit approval after
+scope or egress changes. Other Forge operations use the generated `forge:*`
+SecretSpec wrappers rather than bare CLI commands or copied flags. Registration
+is identified as an app-identity change, not routine maintenance. Debugging text
+states development-only tunneling and backend/browser log separation without
+inventing `forge:tunnel` or `forge:logs` scripts. This capability adds no wrappers.
+
+The Forge composition seeds optional evals before aidev. Aidev includes the
+prompt-evaluation section only when that selected capability has declared its
+`templates/promptfoo` seed step in the blueprint. An existing dependency or
+repository file does not select it. `--with evals` and `--preset all` include the
+section; default selection and `--without evals` omit it. The section names
+`npm run eval` and `npm run view`, requires approval and approved data for model
+calls that may incur charges, and distinguishes prompt simulations from deployed
+Rovo integration tests. Architecture-test and trigger-starter instructions are
+omitted while those capabilities remain unshipped; no future selection mechanism
+is introduced.
+
+Drop Calf's generation tests, not the capability's validate verb, check every
+named script and file against initialized output with a supplied Forge manifest.
+They cover optional selection/exclusion, the Vitest runner, Markdown line length,
+stale-reference omissions, and default/eval-enabled content snapshots. Updates
+still preserve owner guidance and deletions, even when selected capabilities
+change; owners maintain their guidance after init.
 
 Aidev owns only `AGENTS.md`; it contributes no package fields, scripts,
 dependencies, or template trees. Profile assembly invokes its verbs like any

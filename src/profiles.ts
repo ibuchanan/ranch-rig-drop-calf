@@ -61,8 +61,8 @@ export const PROFILES: Record<string, Capability[]> = {
     cleanBuild(),
     docsLinting(),
     gitHooks(),
-    aidev("forge-app"),
     evals(),
+    aidev("forge-app"),
   ],
   tool: [
     catalog("tool"),
