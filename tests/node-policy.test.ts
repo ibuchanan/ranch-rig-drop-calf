@@ -2,7 +2,6 @@ import { expect, spyOn, test } from "bun:test";
 import { dag } from "@dagger.io/dagger";
 import { mergeScaffoldPackage } from "../src/init.ts";
 import {
-  NODE_FORGE_RUNTIME,
   NODE_NVMRC,
   NPMRC,
   nodeBaseline,
@@ -74,11 +73,7 @@ test.each(kinds)(
     expect(await output.file(".nvmrc").contents()).toBe(NODE_NVMRC);
     expect(await output.file(".npmrc").contents()).toBe(NPMRC);
     expect(await output.file("README.md").contents()).toBe("owner text");
-    expect(await output.file("manifest.yml").contents()).toBe(
-      kind === "forge-app"
-        ? manifest.replace("nodejs22.x", NODE_FORGE_RUNTIME)
-        : manifest,
-    );
+    expect(await output.file("manifest.yml").contents()).toBe(manifest);
     expect(await updateNode(output, kind)).toBe(output);
     expect([...input.files]).toEqual(before);
   },
@@ -135,12 +130,14 @@ test.each(["{", "[]", "null"])(
   },
 );
 
-test("non-Forge update ignores even malformed manifests", async () => {
-  const input = mockDirectory(new Map([["manifest.yml", "app: [broken\n"]]));
-  const output = await updateNode(input, "tool");
-  expect(await output.file("manifest.yml").contents()).toBe("app: [broken\n");
-  await expect(updateNode(input, "forge-app")).rejects.toThrow(ParseError);
-});
+test.each(kinds)(
+  "%s Node update ignores even malformed manifests",
+  async (kind) => {
+    const input = mockDirectory(new Map([["manifest.yml", "app: [broken\n"]]));
+    const output = await updateNode(input, kind);
+    expect(await output.file("manifest.yml").contents()).toBe("app: [broken\n");
+  },
+);
 
 test("scaffold merge removes only the Node engine and drops empty engines", () => {
   for (const engines of [{ node: ">=22" }, { node: ">=22", npm: ">=10" }]) {

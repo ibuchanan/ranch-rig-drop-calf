@@ -2,7 +2,12 @@ import { expect, spyOn, test } from "bun:test";
 import { dag } from "@dagger.io/dagger";
 import { DropCalf } from "../src/index.ts";
 import { mergeScaffoldPackage, scaffoldName } from "../src/init.ts";
-import { NODE_FORGE_RUNTIME, reconcileForgeRuntime } from "../src/node.ts";
+import {
+  forgeRuntimeFromNvmrc,
+  reconcileForgeRuntime,
+} from "../src/forge-manifest.ts";
+import { NODE_NVMRC } from "../src/node.ts";
+const NODE_FORGE_RUNTIME = forgeRuntimeFromNvmrc(NODE_NVMRC);
 import { ParseError } from "../src/preclean.ts";
 import { buildProject } from "../src/profiles.ts";
 import { mockDirectory, mockModuleSource } from "./module-source.ts";
@@ -174,7 +179,9 @@ test.each([
       expect(result.files.get("README.md")).not.toBe("# scaffold\n");
       expect(result.files.has("LICENSE")).toBe(true);
       expect(result.files.get("manifest.yml")).toBe(
-        manifest === undefined ? undefined : reconcileForgeRuntime(manifest),
+        manifest === undefined
+          ? undefined
+          : reconcileForgeRuntime(manifest, NODE_FORGE_RUNTIME),
       );
       expect(result.files.get("src/index.js")).toBe("export {};\n");
       const pkg = JSON.parse(result.files.get("package.json") ?? "{}");
@@ -213,16 +220,20 @@ test.each(["library", "tool", "agent-skill"])(
   },
 );
 
-test("init rejects invalid Forge YAML before generating output", async () => {
+test("init rejects invalid Forge YAML during the final update pass without changing input", async () => {
   const scaffold = fake(new Map([["manifest.yml", "app: [unparseable\n"]]));
-  const spy = spyOn(dag, "directory");
+  const source = mockModuleSource();
+  const spy = spyOn(dag, "directory").mockImplementation(() => mockDirectory());
   try {
     await expect(
-      new DropCalf().init(scaffold as never, "forge-app", "tester"),
+      new DropCalf().init(scaffold as never, "forge-app", "tester", "sample"),
     ).rejects.toThrow(ParseError);
-    expect(spy).not.toHaveBeenCalled();
+    expect([...scaffold.files]).toEqual([
+      ["manifest.yml", "app: [unparseable\n"],
+    ]);
   } finally {
     spy.mockRestore();
+    source.mockRestore();
   }
 });
 

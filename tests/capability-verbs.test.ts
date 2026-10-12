@@ -133,6 +133,7 @@ test.each(kinds)(
               "oss",
               "gitignore",
               "node",
+              "forge-manifest",
               "changelog",
               "git-hooks",
               "prelint",

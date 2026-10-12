@@ -103,8 +103,9 @@ installed dependencies.
   project name fills `[Project name]`, and the current year fills `[YYYY]`.
 - **Node baseline:** Node 24 in `.nvmrc` and `@types/node` (init-only), plus an `.npmrc`
   pinning the public npm registry, which is not the default inside Atlassian.
-  On Forge apps, `app.runtime.name` is set to `nodejs24.x`; `engines` is not
-  set in `package.json` due to compatibility with `forge deploy`.
+  `engines` is not set in `package.json` due to compatibility with `forge deploy`.
+- **Forge manifest:** On Forge apps, runtime update derives `app.runtime.name`
+  from `.nvmrc`, giving `nodejs24.x` after Node's update. Other settings survive.
 - **`.gitignore`:** assembled from pinned gitignore.io templates, so output is
   deterministic and generation works offline.
 
@@ -127,13 +128,18 @@ Core profile capabilities cannot be removed.
   `init-changes ... export --path <dir>` to apply changes to disk, including
   scaffold deletions.
 - `update --directory <dir> --profile <name>` applies migrated update policies.
-  Node update replaces the whole `.npmrc` and `.nvmrc`, sets the runtime in an
-  existing Forge manifest, and removes Forge package `engines`. It preserves
-  `@types/node`; review the returned directory before exporting it.
+  Node update replaces the whole `.npmrc` and `.nvmrc`, removes Forge package
+  `engines`, and preserves `@types/node`. On `forge-app`, manifest update then
+  derives the runtime from `.nvmrc`; review the result before exporting it.
 - `validate --directory <dir> --profile <name>` returns a read-only capability
   report. Node validation uses fnm in a container to select the version requested
   by `.nvmrc`, potentially downloading Node; it is not a baseline-compliance or
-  Forge-deployability check.
+  Forge-deployability check. Forge manifest validation separately runs pinned
+  `forge lint` against the supplied repository, including source checks,
+  without fixes.
+  Supply dependencies needed by lint; no app registration or deployment occurs.
+  Forge lint requires explicit `--forge-email` and `--forge-api-token` Dagger
+  Secret inputs; omitted credentials report a prerequisite failure.
 - `remove-scaffold-changes --directory .` is the cleanup step of
   `init-changes` on its own. It deletes the fixed list in
   [`src/preclean.ts`](src/preclean.ts) without backups.

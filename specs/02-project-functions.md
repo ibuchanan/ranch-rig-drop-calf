@@ -73,7 +73,7 @@ Every function:
 Default order (dependency/precedence graph may encode it via `before`/`after`):
 
 ```text
-catalog → package-metadata → oss → gitignore → node → changelog → secrets → format → forge-prelint
+catalog → package-metadata → oss → gitignore → node → forge-manifest → changelog → secrets → format → forge-prelint
 → typescript → forge-ahead → aidev → test → evals (optional) → size → git-hooks
 ```
 
@@ -270,8 +270,9 @@ Under ticket 07's agreed policy:
 ### `node`
 
 The Node major is centralized in `src/versions.ts` (`24`). The capability owns
-local selection and the Forge runtime, not a published package's compatibility
-promise. No kind generates `engines`: it has caused trouble with `forge deploy`,
+local Node selection, not the Forge manifest or a published package's
+compatibility promise. No kind generates `engines`: it has caused trouble with
+`forge deploy`,
 which is why Forge apps use `.nvmrc` and `app.runtime.name` instead. Libraries and
 tools may declare their own consumer compatibility after initialization; they
 forgo an automatically generated npm install-time engine warning.
@@ -289,8 +290,6 @@ forgo an automatically generated npm install-time engine warning.
   a trailing newline. OSS separately requires `Apache-2.0` for its pinned template.
 - **`devDependencies["@types/node"]`:** Init seeds `24`, overriding the scaffold.
   Update preserves owner edits and absence; the dependency is init-only.
-- **Forge `app.runtime.name`:** Init and update set `nodejs24.x` in an existing
-  manifest, replacing mismatches to agree with the `.nvmrc` baseline.
 - **Forge `engines`:** Init removes the scaffold Node entry; its update pass
   removes the entire field. Update removes all entries, including owner additions.
 - **Other kinds' `engines`:** Init removes scaffold `engines.node`, preserving
@@ -300,17 +299,14 @@ Update owns **all** `.npmrc` content, not just `registry`. Scoped registries,
 auth settings, comments, and other owner edits are replaced by the public-registry
 baseline (`registry=https://registry.npmjs.org/`). No conflict or opt-in is
 required for authoritative pins. Missing `.nvmrc` and `.npmrc` are created;
-missing `package.json` and `manifest.yml` are not. Other kinds never read or edit
-a manifest, even if one is present.
+a missing `package.json` is not created. Node never reads or edits a manifest,
+even in the Forge profile; runtime reconciliation belongs to `forge-manifest`.
 
-Forge runtime edits use the YAML document API to preserve comments, key order,
-scalar styles, indentation, and siblings such as `memoryMB`, `architecture`, and
-`id`. Matching runtime values preserve the original bytes. Malformed YAML or
-non-mapping parents raise `ParseError`; Forge engine removal also rejects malformed
-or non-object package JSON. Changes to package JSON preserve unrelated fields and
-use sorted, two-space JSON with a trailing newline when changing `license` or removing `engines`.
-Unchanged owned content retains its bytes. A second update produces no changes.
-Neither init nor update creates a manifest or registers an app.
+Forge engine removal rejects malformed or non-object package JSON. Changes to
+package JSON preserve unrelated fields and use sorted, two-space JSON with a trailing
+newline when changing `license` or removing `engines`. Unchanged owned content retains
+its bytes. A second update produces no changes. Neither init nor update creates a
+manifest or registers an app.
 
 **validate** checks only whether fnm accepts `.nvmrc`: copy that file alone into
 an isolated Dagger container, initialize the shell with `fnm env --shell bash`,
@@ -322,12 +318,63 @@ network/download errors are execution failures, not proof of an invalid pin.
 The validator may download Node on a cold run but never alters the caller's
 repository or host shell, and no container changes are exported.
 
-Validation does not compare `.nvmrc`, `@types/node`, or `app.runtime.name` with
-one another or with the baseline. Type declarations are owner-managed after init.
-It does not validate `.npmrc`, run npm install, or establish Forge manifest or
-deployment acceptance; Forge manifest acceptance belongs to ticket 23. This
-replaces the ticket's original pin-agreement proposal with ADR 0001's tool-acceptance
-contract.
+Validation does not compare `.nvmrc` and `@types/node` with one another or with
+the baseline. Type declarations are owner-managed after init. It does not validate
+`.npmrc` or run npm install. Forge manifest acceptance is handled separately by
+the forge-manifest capability. This replaces the ticket's original pin-agreement
+proposal with ADR 0001's tool-acceptance contract.
+
+### `forge-manifest`
+
+Forge-app-only capability that owns `manifest.yml`'s `app.runtime.name` key.
+
+- **init** is an explicit no-op: `forge create` or the owner supplies the manifest.
+  Drop Calf does not seed app identity or module wiring. Top-level init includes
+  normal final update pass; there is no early scaffold-specific runtime mutation.
+- **update** reads an existing `.nvmrc` and reconciles the runtime name in an existing
+  manifest. Numeric pins with an optional `v` prefix and one to three components
+  derive their major: `22`, `22.12`, and `v22.12.0` become `nodejs22.x`. Aliases,
+  ranges, empty and malformed pins raise actionable `ParseError`; update does not
+  resolve moving aliases or invent a major. Missing either file leaves the directory
+  unchanged. Neither file is created here. Unsupported numeric majors are left for
+  Forge's consuming tool to reject, rather than maintaining a parallel runtime schema.
+  YAML edits preserve comments, existing key order, scalar styles,
+  indentation, and sibling settings. Matching runtime values retain original bytes.
+  A second update changes nothing. Malformed YAML and non-mapping parents
+  fail before writing.
+- **No key sorting** is enforced now; ordering remains owner-managed. It may be
+  considered as a separate future update policy.
+- **validate** runs `forge lint`, never `--fix`, with `TOOL_VERSIONS.forgeCli` (14.1.0)
+  in an isolated Node-baseline container with Bun and analytics disabled. The supplied
+  repository is mounted read-only; no container changes are exported. A missing
+  manifest skips; lint and tool/setup failures report diagnostics. Full Forge lint
+  includes source checks, not just manifest schema acceptance. Repository dependencies
+  must already be available in the supplied tree; there is no repository dependency
+  install, implicit host credential forwarding, registration, deployment,
+  or installation.
+  Manifest substitutions needing host values are not supplied;
+  declared defaults work.
+  Validation does not compare against `.nvmrc` or baseline policy and does not prove
+  deployment readiness. `validate-forge-manifest` exposes the same standalone report.
+
+**Authentication:** Forge CLI 14.1.0 requires authentication even for `forge lint`
+and offers no offline flag. Standalone `validate-forge-manifest` and top-level
+`validate` accept optional `forgeEmail` and `forgeApiToken` Dagger Secret arguments.
+Both must be supplied to lint an existing manifest; otherwise validation reports
+an execution prerequisite failure before allocating tools,
+not an acceptance verdict.
+The container injects them as `FORGE_EMAIL` and `FORGE_API_TOKEN` only after setup.
+It never resolves or logs Secret values, reads host credentials implicitly,
+logs in, or registers an app. Lint explicitly selects development without prompting.
+Authenticated acceptance requires access to the registered app; no app identity is
+rewritten. Bun execution produces Forge's unsupported-runtime warning, and full
+authenticated CLI compatibility still requires verification.
+
+`forge-manifest` runs immediately after Node in the Forge profile.
+Node retains its
+whole-file `.nvmrc` policy, so full-profile init/update still produces `nodejs24.x`;
+standalone capability update derives the runtime from the supplied numeric pin.
+Other kinds do not select this capability, even when a manifest is present.
 
 ### `changelog`
 
@@ -540,7 +587,7 @@ Under ticket 16's agreed policy:
   lint workflow." Both capability validation and standalone `validate-prelint` return
   skipped with that reason, without reading the repository, installing tools, scanning
   source, or running `forge lint`. This supersedes the previous container scan validator;
-  Forge manifest acceptance remains separately tracked in ticket 23.
+  Forge acceptance belongs to the separate `forge-manifest` validator.
 
 Prelint never writes `lint` or `lefthook.yml`. Git-hooks alone owns `lint`, and its
 seeded config dispatches both named subtasks with `--if-present`; owner hook edits

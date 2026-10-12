@@ -13,6 +13,7 @@ import type { Capability } from "./capability.ts";
 import { catalog } from "./catalog.ts";
 import { changelogToolchain } from "./changelog.ts";
 import { evals } from "./evals.ts";
+import { forgeManifest } from "./forge-manifest.ts";
 import { gitHooks } from "./git-hooks.ts";
 import { gitignore } from "./gitignore.ts";
 import { nodeBaseline } from "./node.ts";
@@ -48,6 +49,7 @@ export const PROFILES: Record<string, Capability[]> = {
     oss(),
     gitignore(),
     nodeBaseline("forge-app"),
+    forgeManifest(),
     changelogToolchain(),
     forgeSecrets(),
     prelint(),

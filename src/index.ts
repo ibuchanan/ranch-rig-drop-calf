@@ -8,6 +8,7 @@ import {
   type File,
   func,
   object,
+  type Secret,
 } from "@dagger.io/dagger";
 import { BIOME_TEMPLATE, copyBiome } from "./biome.ts";
 import { updateCapabilities, validateCapabilities } from "./capability.ts";
@@ -18,13 +19,11 @@ import {
   validateChangelog,
 } from "./changelog.ts";
 import { copyDocs, DOCS_TEMPLATE } from "./docs.ts";
+import { forgeManifest, validateForgeManifest } from "./forge-manifest.ts";
 import { copyGitHooks, GIT_HOOKS_TEMPLATE } from "./git-hooks.ts";
 import { copyGitignoreAssets, PINNED_GITIGNORE } from "./gitignore.ts";
 import { mergeScaffoldPackage, scaffoldName } from "./init.ts";
-import {
-  applyForgeRuntime,
-  nodeContainer as buildNodeContainer,
-} from "./node.ts";
+import { nodeContainer as buildNodeContainer } from "./node.ts";
 import { copyOssAssets, PINNED_OSS } from "./oss.ts";
 import { applyPreclean } from "./preclean.ts";
 import { validatePrelint } from "./prelint.ts";
@@ -134,6 +133,20 @@ export class DropCalf {
     return JSON.stringify(await validateChangelog(directory), null, 2);
   }
 
+  /** Run Forge lint against an unchanged repository without registration or deployment. */
+  @func()
+  async validateForgeManifest(
+    directory: Directory,
+    forgeEmail?: Secret,
+    forgeApiToken?: Secret,
+  ): Promise<string> {
+    return JSON.stringify(
+      await validateForgeManifest(directory, forgeEmail, forgeApiToken),
+      null,
+      2,
+    );
+  }
+
   /** Prelint has no local configuration to validate; report its explicit skip reason. */
   @func()
   async validatePrelint(directory: Directory): Promise<string> {
@@ -171,7 +184,7 @@ export class DropCalf {
    * remove the scaffold files Drop Calf replaces, generate the profile's files
    * over what is left, and
    * keep the scaffold's runtime dependencies. On forge-app, normalize the
-   * scaffold's manifest runtime to the Node baseline, preserving its other keys.
+   * scaffold's manifest runtime from .nvmrc in the final update pass.
    * Package naming: explicit name, nonblank scaffold name, workspace basename.
    * Catalog owns package identity; the legacy author argument is ignored in favor
    * of its owner staff ID.
@@ -192,9 +205,7 @@ export class DropCalf {
     const scaffold = (await directory.exists("package.json"))
       ? await directory.file("package.json").contents()
       : undefined;
-    // Reject malformed scaffold YAML before rendering; update also owns this key.
-    const runtime = await applyForgeRuntime(directory, profile);
-    const cleaned = await applyPreclean(runtime);
+    const cleaned = await applyPreclean(directory);
     const name =
       packageName ??
       scaffoldName(scaffold) ??
@@ -266,12 +277,21 @@ export class DropCalf {
     withFunctions: string[] = [],
     withoutFunctions: string[] = [],
     preset?: string,
+    forgeEmail?: Secret,
+    forgeApiToken?: Secret,
   ): Promise<string> {
+    const capabilities = resolveProfile(
+      profile,
+      withFunctions,
+      withoutFunctions,
+      preset,
+    ).map((capability) =>
+      capability.name === "forge-manifest"
+        ? forgeManifest(forgeEmail, forgeApiToken)
+        : capability,
+    );
     return JSON.stringify(
-      await validateCapabilities(
-        directory,
-        resolveProfile(profile, withFunctions, withoutFunctions, preset),
-      ),
+      await validateCapabilities(directory, capabilities),
       null,
       2,
     );

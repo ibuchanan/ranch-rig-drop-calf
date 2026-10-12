@@ -177,25 +177,53 @@ DROP_CALF_E2E=1 bun test tests/e2e
   `forge-ranch/license` into an existing package's `license` field during update
   (including init's final update pass), preserving unrelated fields. Missing or
   malformed license metadata fails; no missing package is created.
-  `updateNode()` owns the whole
-  `.nvmrc` and `.npmrc` files in every kind, including replacing owner-added
-  scoped registries and auth settings. Forge updates remove the entire `engines`
-  field; other kinds preserve owner engine declarations. No kind generates
-  `engines`: it has caused trouble with `forge deploy`, and a development
-  toolchain baseline is not a library's minimum supported runtime.
-  `reconcileForgeRuntime()` enforces an existing Forge manifest's runtime name,
-  preserving comments, key order, scalar styles, indentation, and siblings.
-  Matching values preserve the original bytes; different values are replaced.
-  Invalid YAML raises `ParseError`. `applyForgeRuntime()` leaves other kinds
-  and absent manifests alone; neither init nor update creates a manifest.
-  `validateNode()` copies only `.nvmrc` into an isolated Dagger container with
-  pinned fnm, initializes its shell, and runs `fnm use --install-if-missing`.
-  Missing `.nvmrc` is skipped; selectable non-baseline versions pass. The
-  validator may download Node and does not check `.npmrc`, type versions,
-  manifest acceptance, or deployment. Execution failures retain fnm's stderr
-  in the read-only report. It never changes the host or exports
-  container changes. `nodeContainer()` selects the baseline image for tools
-  such as `validateChangelog`, independently of the host's Node installation.
+  `updateNode()` owns the whole `.nvmrc` and `.npmrc` files in every kind,
+  including replacing owner-added scoped registries and auth settings. Forge
+  updates remove the entire `engines` field; other kinds preserve owner engine
+  declarations. No kind generates `engines`: it has caused trouble with
+  `forge deploy`, and a development toolchain baseline is not a library's minimum
+  supported runtime. `validateNode()` copies only `.nvmrc` into an isolated
+  Dagger container with pinned fnm, initializes its shell, and runs
+  `fnm use --install-if-missing`. Missing `.nvmrc` is skipped; selectable
+  non-baseline versions pass. The validator may download Node and does not check
+  `.npmrc`, type versions, or deployment. Execution failures retain fnm's stderr
+  in the read-only report. It never changes the host or exports container
+  changes. `nodeContainer()` selects the baseline image for tools such as
+  `validateChangelog`, independently of the host's Node installation.
+- `src/forge-manifest.ts`: the Forge manifest capability for Forge apps.
+  `forgeManifest()` derives a runtime major from numeric `.nvmrc` and enforces
+  `app.runtime.name` in an existing manifest using the YAML document API,
+  preserving comments, key order, scalar
+  styles, indentation, and siblings. Matching values preserve original bytes
+  (byte-idempotent). Init is a no-op; update enforces the runtime only when both
+  manifest and `.nvmrc` exist. Aliases/ranges and malformed YAML raise `ParseError`.
+  `validateForgeManifest()` runs `forge lint` in an isolated Dagger container
+  with pinned Forge CLI 14.1.0, reporting tool acceptance without claiming
+  deployment readiness. Missing manifest is skipped; lint failures report the
+  tool's diagnostic. This capability is positioned immediately after node in the
+  capability order, so Node establishes the runtime baseline before this
+  capability reads it. The validator runs full Forge lint, including source checks;
+  dependencies must be present in the supplied repository. Forge lint requires
+  authentication: both validation entry points accept `--forge-email` and
+  `--forge-api-token` as Dagger Secrets, injected only for lint. Credentials are
+  never read from the host implicitly; missing credentials fail before tool setup.
+  Lint selects the development environment without prompting. Manifest substitutions
+  needing other host variables are not forwarded; declared defaults work.
+  `DROP_CALF_FORGE_MANIFEST_E2E=1 bun test tests/e2e/forge-manifest.e2e.test.ts`
+  verifies read-only credential-prerequisite reporting, not acceptance.
+  Authenticated tool acceptance still needs a credentialed run against an accessible
+  registered app; a local fixture with an invented app ID is not sufficient.
+
+  With credentials already supplied by the owner in the environment:
+
+  ```sh
+  dagger call validate-forge-manifest --directory . \
+    --forge-email env://FORGE_EMAIL --forge-api-token env://FORGE_API_TOKEN
+  ```
+
+  Top-level `validate --profile forge-app` accepts the same Secret arguments.
+  Bun executes the pinned CLI; Forge warns that its Node version detection does
+  not recognize Bun. Authenticated CLI compatibility remains unverified.
 - `src/profiles.ts`: ordered capability lists for the four supported profiles.
 - `tests/repo-init.test.ts`: Bun unit tests for the pure blueprint/capability
   layer.

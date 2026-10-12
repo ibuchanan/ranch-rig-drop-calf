@@ -3,6 +3,7 @@ export const NODE_MAJOR = "24";
 export const TOOL_VERSIONS = {
   bun: "1.4.2",
   fnm: "1.38.1",
+  forgeCli: "14.1.0",
   biome: "2.5.15",
   typescript: "^5.9.3",
   tsdown: "^0.15.0",

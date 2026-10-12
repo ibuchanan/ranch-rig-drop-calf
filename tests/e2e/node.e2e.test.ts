@@ -11,7 +11,9 @@ import {
 } from "node:fs";
 import { join } from "node:path";
 import { BIOME_SCRIPTS } from "../../src/biome.ts";
-import { NODE_FORGE_RUNTIME, NODE_NVMRC, NPMRC } from "../../src/node.ts";
+import { forgeRuntimeFromNvmrc } from "../../src/forge-manifest.ts";
+import { NODE_NVMRC, NPMRC } from "../../src/node.ts";
+const NODE_FORGE_RUNTIME = forgeRuntimeFromNvmrc(NODE_NVMRC);
 import { TOOL_VERSIONS } from "../../src/versions.ts";
 
 // Requires a Dagger engine, but never registers or deploys a Forge app.
