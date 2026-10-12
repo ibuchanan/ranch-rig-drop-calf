@@ -651,9 +651,42 @@ translation example runnable without an agent. Evaluation is a prompt simulation
 through the configured provider, not a test of the deployed Rovo runtime.
 
 ### `size`
-Add `size-limit` and `@size-limit/file`; own the `size` script. Structured-merge a
-`size-limit` entry named `Forge app bundle` (`dist/**/*.js`, `10 kB`); same name with
-incompatible values is a conflict.
+
+The `size-limit` capability is selected for `library` and `forge-app`. It owns
+`devDependencies["size-limit"]`, `devDependencies["@size-limit/file"]`, and
+`scripts.size` (`npm run build && size-limit`). Both tools use the same exact
+`TOOL_VERSIONS.sizeLimit` pin (`11.2.0`); the file adapter declares an exact peer
+version, so separate pins or independently resolving ranges can be incompatible.
+
+- **init** seeds both tool pins, the command, and one `package.json["size-limit"]`
+  budget with a `10 kB` limit: `Library bundle` at `dist/index.js` for libraries,
+  or `Forge app bundle` at `dist/**/*.js` for Forge apps. It replaces scaffold
+  budgets during fresh initialization and declares no template tree.
+- **update** enforces only the paired pins and canonical command in an existing
+  package, creating missing sections and owned keys. A missing `package.json`
+  is not created. Malformed/non-object JSON and non-object scripts/devDependencies
+  fail before writes. Other package fields, files, and lockfiles survive. Matching
+  owned values preserve original bytes; changes use sorted, two-space JSON with
+  a trailing newline. A second update changes nothing. No install, lockfile
+  refresh, build, or measurement runs.
+- **The entire budget is owner-managed after init.** Update does not validate,
+  merge, reset, restore, or migrate its names, paths, limits, additional entries,
+  or options. Deletion and even malformed budget values survive update. External
+  Size Limit configuration files are also untouched. This supersedes the previous
+  same-name conflict rule: a tuned budget is not a conflict.
+- **validate** is an explicit no-op: "Size Limit has no supported configuration-only
+  validation interface. Measurement requires build artifacts and belongs to the
+  size workflow; validation does not build the project or assess potentially
+  stale output." It reports skipped without reading the repository, installing
+  tools, resolving paths, or measuring output. It does not establish configuration
+  acceptance, build success, or budget compliance.
+
+The published Size Limit 11.2.0 CLI always calculates sizes after loading config;
+its public API also calculates sizes, and its config checker is private. Path
+comparison with the seed would be policy compliance, not tool acceptance. The
+explicit size workflow builds before measuring and lets Size Limit diagnose the
+owner's configuration and artifacts. Forge's seeded glob measures TypeScript's
+local `dist/` output, not the Forge deployment bundle.
 
 ### `git-hooks`
 

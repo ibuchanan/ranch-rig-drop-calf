@@ -132,12 +132,13 @@ DROP_CALF_E2E=1 bun test tests/e2e
   and `eval`/`view` scripts. It declares `templates/promptfoo/`, which holds
   the config, shared prompt, cases, synthetic contexts, and Rovo wiring guide;
   the blueprint does not author those seed files.
-- `src/size-limit.ts`: the bundle-size budget — the `size-limit` and
-  `@size-limit/file` devDependencies, the `size` script, and the named
-  `size-limit` section of `package.json`. `size-limit` reads its budgets from
-  `package.json` rather than a config file, so the capability owns the section
-  outright and there is no template to seed. `SIZE_LIMIT_FIELD` keeps the field
-  name in one place.
+- `src/size-limit.ts`: the bundle-size workflow — init seeds the named
+  `size-limit` budget in `package.json`; update maintains only the `size` script
+  and the paired `size-limit` / `@size-limit/file` dependencies at one exact pin.
+  Budget edits and deletion survive update, as do external config files. There
+  is no template tree. Validation is an explicit no-op because Size Limit has
+  no supported config-only check; building and measuring belong to the size
+  workflow, not repository validation.
 - `src/git-hooks.ts`: the Git hook workflow — the `lefthook` devDependency,
   the `prepare`/`lint`/`check` scripts, and `copyGitHooks` for
   `templates/git-hooks/lefthook.yml`. One config serves every kind: the

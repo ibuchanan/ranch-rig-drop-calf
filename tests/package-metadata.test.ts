@@ -16,6 +16,7 @@ import { ParseError } from "../src/preclean.ts";
 import { PRELINT_SCRIPTS } from "../src/prelint.ts";
 import { buildProject } from "../src/profiles.ts";
 import { FORGE_SECRETS_SCRIPTS } from "../src/secrets.ts";
+import { SIZE_LIMIT_COMMAND } from "../src/size-limit.ts";
 import { TYPESCRIPT_SCRIPTS } from "../src/typescript.ts";
 import { TOOL_VERSIONS } from "../src/versions.ts";
 import { VITEST_SCRIPTS } from "../src/vitest.ts";
@@ -114,6 +115,9 @@ test.each(kinds)(
           ...pkg.scripts,
           ...BIOME_SCRIPTS,
           ...GIT_HOOKS_SCRIPTS,
+          ...(kind === "library" || kind === "forge-app"
+            ? { size: SIZE_LIMIT_COMMAND }
+            : {}),
           ...(kind === "agent-skill" ? {} : { changelog: CHANGELOG_COMMAND }),
           typecheck: TYPESCRIPT_SCRIPTS.typecheck,
           ...(kind === "library" ? {} : { build: TYPESCRIPT_SCRIPTS.build }),
@@ -129,6 +133,12 @@ test.each(kinds)(
           "@biomejs/biome": TOOL_VERSIONS.biome,
           lefthook: TOOL_VERSIONS.lefthook,
           typescript: TOOL_VERSIONS.typescript,
+          ...(kind === "library" || kind === "forge-app"
+            ? {
+                "size-limit": TOOL_VERSIONS.sizeLimit,
+                "@size-limit/file": TOOL_VERSIONS.sizeLimit,
+              }
+            : {}),
           ...(kind === "agent-skill"
             ? {}
             : { "git-cliff": TOOL_VERSIONS.gitCliff }),
