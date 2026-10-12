@@ -13,8 +13,8 @@ import {
   forgeRuntimeFromNvmrc,
   reconcileForgeRuntime,
 } from "../../src/forge-manifest.ts";
-import { planScaffoldTypeScript } from "../../src/init.ts";
 import { NODE_NVMRC } from "../../src/node.ts";
+import { planScaffoldTypeScript } from "../../src/scaffold.ts";
 
 /**
  * End to end: `forge create` -> `init-changes` -> export.

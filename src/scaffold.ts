@@ -1,6 +1,14 @@
 import type { Directory } from "@dagger.io/dagger";
 import { CST, isAlias, isMap, isScalar, isSeq, parseDocument } from "yaml";
 import { ParseError } from "./errors.ts";
+import { PACKAGE_JSON, stripScaffold } from "./package-json.ts";
+
+/**
+ * Scaffold steps: prepare fresh scaffolder output (such as `forge create`)
+ * before capability init; they never run on update. Profiles choose which
+ * steps a kind runs. package.json cleanup and merging stay in the package-json
+ * module, which owns that file (ADR 0002); this module only calls it.
+ */
 
 export type ScaffoldTypeScriptPlan = {
   renames: { from: string; to: string }[];
@@ -87,5 +95,29 @@ export async function adoptScaffoldTypeScript(
     result = result.withFile(to, directory.file(from)).withoutFile(from);
   if (plan.manifest !== undefined && plan.manifest !== manifest)
     result = result.withNewFile("manifest.yml", plan.manifest);
+  return result;
+}
+
+// Files supplied by forge create that Drop Calf replaces or regenerates.
+export const UNWANTED = [
+  "AGENTS.md",
+  ".eslintrc",
+  "README.md",
+  "package-lock.json",
+  "yarn.lock",
+  "tsconfig.json",
+] as const;
+
+export async function applyPreclean(directory: Directory): Promise<Directory> {
+  let result = directory;
+  for (const path of UNWANTED) {
+    if (await result.exists(path)) result = result.withoutFile(path);
+  }
+  if (await result.exists(PACKAGE_JSON)) {
+    const contents = await result.file(PACKAGE_JSON).contents();
+    const cleaned = stripScaffold(contents);
+    if (cleaned !== contents)
+      result = result.withNewFile(PACKAGE_JSON, cleaned);
+  }
   return result;
 }

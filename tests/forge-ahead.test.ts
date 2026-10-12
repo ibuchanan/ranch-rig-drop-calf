@@ -1,7 +1,7 @@
 import { expect, spyOn, test } from "bun:test";
 import { type Directory, dag } from "@dagger.io/dagger";
-import { forgeAhead } from "../src/capabilities.ts";
 import { noOpReasons, validateCapabilities } from "../src/capability.ts";
+import { forgeAhead } from "../src/forge-ahead.ts";
 import { DropCalf } from "../src/index.ts";
 import { createBlueprint } from "../src/project.ts";
 import { TOOL_VERSIONS } from "../src/versions.ts";

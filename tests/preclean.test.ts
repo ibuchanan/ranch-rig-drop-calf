@@ -4,7 +4,7 @@ import {
   SCAFFOLD_FIELDS,
   stripScaffold,
 } from "../src/package-json.ts";
-import { applyPreclean, UNWANTED } from "../src/preclean.ts";
+import { applyPreclean, UNWANTED } from "../src/scaffold.ts";
 
 function directory(files: Map<string, string>) {
   const removed: string[] = [];

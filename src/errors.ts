@@ -5,3 +5,11 @@ export class ParseError extends Error {
     this.name = "ParseError";
   }
 }
+
+/** The caller's kind, selection, or capability options are not valid. */
+export class InvalidOptionsError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "InvalidOptionsError";
+  }
+}

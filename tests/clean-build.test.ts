@@ -1,8 +1,8 @@
 import { expect, spyOn, test } from "bun:test";
 import { type Directory, dag } from "@dagger.io/dagger";
 import sortPackageJson from "sort-package-json";
-import { cleanBuild } from "../src/capabilities.ts";
 import { noOpReasons, validateCapabilities } from "../src/capability.ts";
+import { cleanBuild } from "../src/clean-build.ts";
 import { DropCalf } from "../src/index.ts";
 import { createBlueprint } from "../src/project.ts";
 import { runInit, runUpdate } from "./capability-fixtures.ts";

@@ -179,14 +179,18 @@ DROP_CALF_E2E=1 bun test tests/e2e
   those blocks. `gitignore()` declares the pin at init and recovers topic selections
   from block URLs during update; validation is an explicit no-op.
   `copyGitignoreAssets` is an internal helper used by the capability.
-- `src/capabilities.ts`: capability implementations and re-exports. Every
-  capability has required `init`, `update`, and `validate` verbs; an inactive
-  verb carries a deliberate no-op reason. Init contributes blueprint values
-  and seed steps in `ProjectBlueprint.templates` without reading module files.
-  Optional selection policy lives with the capability; profile resolution
-  checks that data without naming individual capabilities.
-  `docsLinting()` is re-exported from `src/docs.ts` for compatibility; its
-  dedicated module owns documentation initialization, update, and validation.
+- `src/forge-ahead.ts`, `src/clean-build.ts`, `src/bun-testing.ts`:
+  capabilities whose only output is their `package.json` contribution. Like
+  every capability module, each has required `init`, `update`, and `validate`
+  verbs; an inactive verb carries a deliberate no-op reason. Init contributes
+  blueprint values and seed steps in `ProjectBlueprint.templates` without
+  reading module files. Optional selection policy lives with the capability;
+  profile resolution checks that data without naming individual capabilities.
+- `src/scaffold.ts`: scaffold steps that prepare fresh `forge create` output
+  before init and never run on update: preclean (removes replaced files and
+  calls `package-json` to strip scaffold metadata) and Forge TypeScript adoption.
+- `src/errors.ts`: `ParseError` for malformed repository files and
+  `InvalidOptionsError` for invalid kind, selection, or capability options.
 - `src/node.ts`: the Node baseline. `nodeBaseline(options)` seeds `.nvmrc`, `.npmrc`,
   and `@types/node`; update keeps the dependency fresh. Node also pulls catalog
   `forge-ranch/license` into an existing package's `license` field during update
@@ -259,7 +263,7 @@ the Dagger workspace directory name. Without a scaffold, cleanup and manifest
 normalization do nothing. With a scaffold, `init` reads
 and cleans a scaffold, merges its package dependencies, and normalizes an existing
 Forge manifest runtime. Forge initialization also adopts root `src/` JavaScript
-as TypeScript using the pure plan in `src/init.ts`: `.js` becomes `.ts`, `.jsx`
+as TypeScript using the pure plan in `src/scaffold.ts`: `.js` becomes `.ts`, `.jsx`
 becomes `.tsx`, and matching resource-path scalars change in `manifest.yml`.
 Contents, function handlers without extensions, and Custom UI `static/` projects
 survive.

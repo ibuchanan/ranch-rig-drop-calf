@@ -1,33 +1,30 @@
 import type { Directory } from "@dagger.io/dagger";
 import { aidev } from "./aidev.ts";
-import {
-  biomeToolchain,
-  bunTesting,
-  cleanBuild,
-  docsLinting,
-  forgeAhead,
-  libraryBuild,
-  vitestTesting,
-} from "./capabilities.ts";
+import { biomeToolchain } from "./biome.ts";
+import { bunTesting } from "./bun-testing.ts";
 import type { Capability } from "./capability.ts";
 import { catalog } from "./catalog.ts";
 import { changelogToolchain } from "./changelog.ts";
+import { cleanBuild } from "./clean-build.ts";
+import { docsLinting } from "./docs.ts";
+import { InvalidOptionsError } from "./errors.ts";
 import { evals } from "./evals.ts";
+import { forgeAhead } from "./forge-ahead.ts";
 import { forgeManifest } from "./forge-manifest.ts";
 import { gitHooks } from "./git-hooks.ts";
 import { gitignore } from "./gitignore.ts";
-import { adoptScaffoldTypeScript } from "./init.ts";
+import { libraryBuild } from "./library-build.ts";
 import { nodeBaseline } from "./node.ts";
-import { InvalidOptionsError } from "./options.ts";
 import { oss, validateOssOwner } from "./oss.ts";
 import { seedPackage } from "./package-json.ts";
 import { packageMetadata } from "./package-metadata.ts";
-import { applyPreclean } from "./preclean.ts";
 import { prelint } from "./prelint.ts";
 import { createBlueprint, type ProjectBlueprint } from "./project.ts";
+import { adoptScaffoldTypeScript, applyPreclean } from "./scaffold.ts";
 import { forgeSecrets } from "./secrets.ts";
 import { bundleSize } from "./size-limit.ts";
 import { typeScriptToolchain } from "./typescript.ts";
+import { vitestTesting } from "./vitest.ts";
 
 export const PROFILES: Record<string, Capability[]> = {
   library: [
@@ -123,8 +120,6 @@ export function scaffoldSteps(
     );
   return steps;
 }
-
-export { InvalidOptionsError } from "./options.ts";
 
 export function resolveProfile(
   profile: string | undefined,

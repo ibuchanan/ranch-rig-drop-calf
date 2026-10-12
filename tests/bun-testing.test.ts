@@ -3,7 +3,7 @@ import { spawnSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { type Directory, dag } from "@dagger.io/dagger";
-import { bunTesting } from "../src/capabilities.ts";
+import { bunTesting } from "../src/bun-testing.ts";
 import { validateCapabilities } from "../src/capability.ts";
 import { DropCalf } from "../src/index.ts";
 import { createBlueprint } from "../src/project.ts";

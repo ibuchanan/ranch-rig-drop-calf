@@ -2,6 +2,7 @@ import { describe, expect, spyOn, test } from "bun:test";
 import type { Directory, File } from "@dagger.io/dagger";
 import { dag } from "@dagger.io/dagger";
 import { validateCapabilities } from "../src/capability.ts";
+import { InvalidOptionsError } from "../src/errors.ts";
 import {
   ADDITIONAL_IGNORES,
   availableSets,
@@ -18,7 +19,7 @@ import {
   updateGitignore,
 } from "../src/gitignore.ts";
 import { DropCalf } from "../src/index.ts";
-import { InvalidOptionsError, resolveProfile } from "../src/profiles.ts";
+import { resolveProfile } from "../src/profiles.ts";
 import {
   mockDirectory,
   mockModuleSource,

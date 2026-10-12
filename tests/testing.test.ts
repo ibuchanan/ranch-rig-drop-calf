@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { BUN_TEST_SCRIPTS } from "../src/capabilities.ts";
+import { BUN_TEST_SCRIPTS } from "../src/bun-testing.ts";
 import { buildProject } from "../src/profiles.ts";
 import { TOOL_VERSIONS } from "../src/versions.ts";
 import { gitHooksTemplates } from "./templates-source.ts";

@@ -4,13 +4,10 @@ import * as fs from "node:fs";
 import { dag } from "@dagger.io/dagger";
 import ts from "typescript";
 import { biomeToolchain } from "../src/biome.ts";
+import { InvalidOptionsError } from "../src/errors.ts";
 import { DropCalf } from "../src/index.ts";
 import { OSS_ASSETS } from "../src/oss.ts";
-import {
-  buildProject,
-  InvalidOptionsError,
-  PROFILES,
-} from "../src/profiles.ts";
+import { buildProject, PROFILES } from "../src/profiles.ts";
 import { createBlueprint } from "../src/project.ts";
 import { SECRETS_ASSETS } from "../src/secrets.ts";
 import { TOOL_VERSIONS } from "../src/versions.ts";

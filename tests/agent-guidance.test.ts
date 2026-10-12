@@ -1,14 +1,11 @@
 import { expect, spyOn, test } from "bun:test";
 import { dag } from "@dagger.io/dagger";
 import { noOpReasons, validateCapabilities } from "../src/capability.ts";
+import { InvalidOptionsError } from "../src/errors.ts";
 import { DropCalf } from "../src/index.ts";
-import { applyPreclean } from "../src/preclean.ts";
-import {
-  buildProject,
-  InvalidOptionsError,
-  resolveProfile,
-} from "../src/profiles.ts";
+import { buildProject, resolveProfile } from "../src/profiles.ts";
 import { createBlueprint } from "../src/project.ts";
+import { applyPreclean } from "../src/scaffold.ts";
 import { capabilityOf, runInit } from "./capability-fixtures.ts";
 import { mockDirectory, mockModuleSource } from "./module-source.ts";
 

@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
 import { parseDocument } from "yaml";
-import { planScaffoldTypeScript } from "../src/init.ts";
+import { planScaffoldTypeScript } from "../src/scaffold.ts";
 
 const backend =
   "modules:\n  function:\n    - key: main\n      handler: index.run\n";

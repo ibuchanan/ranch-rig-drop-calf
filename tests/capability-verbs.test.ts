@@ -9,16 +9,11 @@ import {
   validateCapabilities,
 } from "../src/capability.ts";
 import { changelogToolchain } from "../src/changelog.ts";
+import { InvalidOptionsError } from "../src/errors.ts";
 import { DropCalf } from "../src/index.ts";
-import { adoptScaffoldTypeScript } from "../src/init.ts";
-import { applyPreclean } from "../src/preclean.ts";
 import { prelint } from "../src/prelint.ts";
-import {
-  InvalidOptionsError,
-  PROFILES,
-  resolveProfile,
-  scaffoldSteps,
-} from "../src/profiles.ts";
+import { PROFILES, resolveProfile, scaffoldSteps } from "../src/profiles.ts";
+import { adoptScaffoldTypeScript, applyPreclean } from "../src/scaffold.ts";
 import { contents, kinds, selections, verb } from "./capability-fixtures.ts";
 import { mockModuleSource, mockDirectory as tree } from "./module-source.ts";
 
