@@ -2,18 +2,18 @@ import { expect, spyOn, test } from "bun:test";
 import { dag } from "@dagger.io/dagger";
 import { parseDocument } from "yaml";
 import {
+  noOpReasons,
+  updateCapabilities,
+  validateCapabilities,
+} from "../src/capability.ts";
+import {
   CATALOG_FILE,
   COPYRIGHT_DATE,
   LICENSE,
   renderCatalog,
 } from "../src/catalog.ts";
-import {
-  noOpReasons,
-  updateCapabilities,
-  validateCapabilities,
-} from "../src/capability.ts";
 import { DropCalf } from "../src/index.ts";
-import { OSS_ASSETS, copyOssAssets, oss } from "../src/oss.ts";
+import { copyOssAssets, OSS_ASSETS, oss } from "../src/oss.ts";
 import { resolveProfile } from "../src/profiles.ts";
 import { mockDirectory } from "./module-source.ts";
 import { mockOssSource, ossTemplates } from "./oss-source.ts";

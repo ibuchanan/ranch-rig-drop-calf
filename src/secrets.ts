@@ -1,5 +1,3 @@
-import type { ProjectBlueprint } from "./project.ts";
-import { templateTree } from "./templates.ts";
 import { type Directory, dag } from "@dagger.io/dagger";
 import { parse as parseToml } from "smol-toml";
 import sortPackageJson from "sort-package-json";
@@ -7,6 +5,8 @@ import ts from "typescript";
 import type { Capability, Validation } from "./capability.ts";
 import { parseObject } from "./init.ts";
 import { ParseError } from "./preclean.ts";
+import type { ProjectBlueprint } from "./project.ts";
+import { templateTree } from "./templates.ts";
 
 /** Owner declarations are init-only; helpers and the six dispatch scripts track policy. */
 export const SECRETS_TEMPLATE = "templates/secretspec";

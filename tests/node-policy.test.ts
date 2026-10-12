@@ -11,8 +11,8 @@ import {
 import { ParseError } from "../src/preclean.ts";
 import { buildProject } from "../src/profiles.ts";
 import { TOOL_VERSIONS } from "../src/versions.ts";
-import { mockDirectory } from "./module-source.ts";
 import { mockContainer } from "./container-source.ts";
+import { mockDirectory } from "./module-source.ts";
 
 const kinds = ["library", "forge-app", "tool", "agent-skill"];
 const licenseCatalog =

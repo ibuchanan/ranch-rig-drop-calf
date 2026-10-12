@@ -4,19 +4,19 @@ import { type Directory, dag } from "@dagger.io/dagger";
 import ts from "typescript";
 import { updateCapabilities, validateCapabilities } from "../src/capability.ts";
 import { DropCalf } from "../src/index.ts";
-import { mockDirectory, mockModuleSource } from "./module-source.ts";
 import { buildProject } from "../src/profiles.ts";
 import {
   copySecretsAssets,
-  forgeSecrets,
   FORGE_SECRETS_SCRIPTS,
   FORGE_VARIABLE_KEYS,
+  forgeSecrets,
   SECRETS_ASSETS,
   SECRETS_EXECUTABLES,
   transformSecretsTemplate,
   updateSecrets,
   validateSecrets,
 } from "../src/secrets.ts";
+import { mockDirectory, mockModuleSource } from "./module-source.ts";
 import { secretsTemplates } from "./templates-source.ts";
 
 test("only the project name is derived, and only in the config", () => {

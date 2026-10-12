@@ -2,19 +2,19 @@ import { expect, spyOn, test } from "bun:test";
 import { type Directory, dag } from "@dagger.io/dagger";
 import { parse, parseDocument } from "yaml";
 import {
-  CATALOG_FILE,
-  CATALOG_TEMPLATE,
-  COPYRIGHT_DATE,
-  PACKAGE_NAME,
-  catalog,
-  renderCatalog,
-  validateCatalog,
-} from "../src/catalog.ts";
-import {
   noOpReasons,
   updateCapabilities,
   validateCapabilities,
 } from "../src/capability.ts";
+import {
+  CATALOG_FILE,
+  CATALOG_TEMPLATE,
+  COPYRIGHT_DATE,
+  catalog,
+  PACKAGE_NAME,
+  renderCatalog,
+  validateCatalog,
+} from "../src/catalog.ts";
 import { DropCalf } from "../src/index.ts";
 import { buildProject, PROFILES } from "../src/profiles.ts";
 import { mockDirectory, mockModuleSource } from "./module-source.ts";

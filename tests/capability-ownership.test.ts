@@ -1,5 +1,5 @@
 import { expect, spyOn, test } from "bun:test";
-import { type Directory, type File, dag } from "@dagger.io/dagger";
+import { type Directory, dag, type File } from "@dagger.io/dagger";
 import { type Capability, noOpReasons } from "../src/capability.ts";
 import { DropCalf } from "../src/index.ts";
 import { buildProject, PROFILES, resolveProfile } from "../src/profiles.ts";

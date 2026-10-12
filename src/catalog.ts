@@ -2,8 +2,8 @@ import type { Directory } from "@dagger.io/dagger";
 import { validate } from "@roadiehq/roadie-backstage-entity-validator";
 import { isMap, parseDocument, visit } from "yaml";
 import { type Capability, noOp, type Validation } from "./capability.ts";
-import { templateTree } from "./templates.ts";
 import { ParseError } from "./preclean.ts";
+import { templateTree } from "./templates.ts";
 
 export const CATALOG_FILE = "catalog-info.yaml";
 export const CATALOG_TEMPLATE = "templates/catalog";

@@ -1,9 +1,9 @@
-import type { ProjectBlueprint } from "./project.ts";
 import { type Container, type Directory, dag } from "@dagger.io/dagger";
 import sortPackageJson from "sort-package-json";
 import type { Capability, Validation } from "./capability.ts";
 import { CATALOG_FILE, LICENSE, readCatalog } from "./catalog.ts";
 import { parseObject } from "./init.ts";
+import type { ProjectBlueprint } from "./project.ts";
 import { NODE_MAJOR, TOOL_VERSIONS } from "./versions.ts";
 
 /**

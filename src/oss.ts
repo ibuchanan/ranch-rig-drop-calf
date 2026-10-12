@@ -1,14 +1,14 @@
-import { templateTree } from "./templates.ts";
 import { type Directory, dag } from "@dagger.io/dagger";
 import { type Capability, noOp } from "./capability.ts";
 import {
   CATALOG_FILE,
   COPYRIGHT_DATE,
-  LICENSE,
   catalogCopyrightDate,
   catalogOwnerId,
+  LICENSE,
   readCatalog,
 } from "./catalog.ts";
+import { templateTree } from "./templates.ts";
 
 export const OSS_LICENSE = "Apache-2.0";
 

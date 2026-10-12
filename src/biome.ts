@@ -1,4 +1,3 @@
-import type { ProjectBlueprint } from "./project.ts";
 import type { Container, Directory } from "@dagger.io/dagger";
 import sortPackageJson from "sort-package-json";
 import ts from "typescript";
@@ -6,6 +5,7 @@ import type { Capability, Validation } from "./capability.ts";
 import { parseObject } from "./init.ts";
 import { nodeContainer } from "./node.ts";
 import { ParseError } from "./preclean.ts";
+import type { ProjectBlueprint } from "./project.ts";
 import { copyTemplate, templateTree } from "./templates.ts";
 import { TOOL_VERSIONS } from "./versions.ts";
 

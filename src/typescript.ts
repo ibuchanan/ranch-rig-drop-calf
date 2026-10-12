@@ -1,4 +1,3 @@
-import type { ProjectBlueprint } from "./project.ts";
 import { type Directory, dag } from "@dagger.io/dagger";
 import {
   applyEdits,
@@ -14,6 +13,7 @@ import type { Capability, Validation } from "./capability.ts";
 import { parseObject } from "./init.ts";
 import { nodeContainer } from "./node.ts";
 import { ParseError } from "./preclean.ts";
+import type { ProjectBlueprint } from "./project.ts";
 import { copyTemplate, templateTree } from "./templates.ts";
 import { TOOL_VERSIONS } from "./versions.ts";
 

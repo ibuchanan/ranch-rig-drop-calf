@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
-import { typeScriptToolchain, updateTypeScript } from "../src/typescript.ts";
 import { validateCapabilities } from "../src/capability.ts";
+import { typeScriptToolchain, updateTypeScript } from "../src/typescript.ts";
 import { mockContainer } from "./container-source.ts";
 import { mockDirectory, mockModuleSource } from "./module-source.ts";
 

@@ -13,8 +13,8 @@ import { DropCalf } from "../src/index.ts";
 import { buildProject } from "../src/profiles.ts";
 import { createBlueprint } from "../src/project.ts";
 import { TOOL_VERSIONS } from "../src/versions.ts";
-import { mockDirectory, mockModuleSource } from "./module-source.ts";
 import { mockContainer } from "./container-source.ts";
+import { mockDirectory, mockModuleSource } from "./module-source.ts";
 import { changelogTemplates } from "./templates-source.ts";
 
 /** Map each command to what the container writes back. */

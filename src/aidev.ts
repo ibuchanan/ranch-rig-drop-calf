@@ -1,6 +1,6 @@
-import type { ProjectBlueprint } from "./project.ts";
 import { type Capability, noOp } from "./capability.ts";
 import { EVALS_TEMPLATE } from "./evals.ts";
+import type { ProjectBlueprint } from "./project.ts";
 
 // Authored seed, not a maintained block. References are checked against init output.
 const FORGE_GUIDANCE = `# Agent guidance

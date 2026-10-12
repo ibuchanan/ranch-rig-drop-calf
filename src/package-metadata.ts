@@ -1,15 +1,15 @@
-import type { ProjectBlueprint } from "./project.ts";
 import type { Directory } from "@dagger.io/dagger";
 import { NpmPackageJsonLint } from "npm-package-json-lint";
 import sortPackageJson from "sort-package-json";
 import type { Capability, Validation } from "./capability.ts";
 import {
   CATALOG_FILE,
-  readCatalog,
   catalogOwnerId,
   PACKAGE_NAME,
+  readCatalog,
 } from "./catalog.ts";
 import { parseObject } from "./init.ts";
+import type { ProjectBlueprint } from "./project.ts";
 
 /** Catalog-derived identity and kind policy; release versions remain owner-managed. */
 export async function updatePackageMetadata(

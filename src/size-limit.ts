@@ -1,9 +1,9 @@
-import type { ProjectBlueprint } from "./project.ts";
 import type { Directory } from "@dagger.io/dagger";
 import sortPackageJson from "sort-package-json";
 import { type Capability, noOp } from "./capability.ts";
 import { parseObject } from "./init.ts";
 import { ParseError } from "./preclean.ts";
+import type { ProjectBlueprint } from "./project.ts";
 import { TOOL_VERSIONS } from "./versions.ts";
 
 /** The budget is seeded here, then owner-managed independently of tool updates. */

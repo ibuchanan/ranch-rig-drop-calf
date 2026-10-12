@@ -6,9 +6,8 @@ import { parseObject } from "./init.ts";
 import { ParseError } from "./preclean.ts";
 import { TOOL_VERSIONS } from "./versions.ts";
 
-export { docsLinting } from "./docs.ts";
-
 export type { Capability } from "./capability.ts";
+export { docsLinting } from "./docs.ts";
 export { biomeToolchain };
 
 const FORGE_AHEAD_DEPENDENCIES = {

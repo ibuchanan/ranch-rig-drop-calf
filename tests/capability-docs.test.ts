@@ -1,8 +1,5 @@
 import { expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
-import { bunTesting, vitestTesting } from "../src/capabilities.ts";
-import { type Capability, noOpReasons } from "../src/capability.ts";
-import { buildProject, PROFILES } from "../src/profiles.ts";
 import {
   INVENTORY_END,
   INVENTORY_START,
@@ -13,6 +10,9 @@ import {
   renderCapabilityReference,
   replaceGeneratedBlock,
 } from "../scripts/capability-reference.ts";
+import { bunTesting, vitestTesting } from "../src/capabilities.ts";
+import { type Capability, noOpReasons } from "../src/capability.ts";
+import { buildProject, PROFILES } from "../src/profiles.ts";
 
 const root = new URL("../", import.meta.url);
 

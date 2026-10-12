@@ -12,8 +12,8 @@ import { DropCalf } from "../src/index.ts";
 import { buildProject, resolveProfile } from "../src/profiles.ts";
 import { createBlueprint } from "../src/project.ts";
 import { TOOL_VERSIONS } from "../src/versions.ts";
-import { mockDirectory, mockModuleSource } from "./module-source.ts";
 import { mockContainer } from "./container-source.ts";
+import { mockDirectory, mockModuleSource } from "./module-source.ts";
 import { gitHooksTemplates } from "./templates-source.ts";
 
 test("init and update enforce only the selected pin and hook dispatch scripts", async () => {
