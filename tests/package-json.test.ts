@@ -4,9 +4,9 @@ import { ParseError } from "../src/errors.ts";
 import {
   assemblePackage,
   editPackageJson,
-  updatePackage,
   type PackageContribution,
   seedPackage,
+  updatePackage,
 } from "../src/package-json.ts";
 import { mockDirectory } from "./module-source.ts";
 

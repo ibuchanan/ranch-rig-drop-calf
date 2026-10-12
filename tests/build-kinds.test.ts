@@ -3,11 +3,11 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import ts from "typescript";
 import { buildProject } from "../src/profiles.ts";
-import { TOOL_VERSIONS } from "../src/versions.ts";
 import {
   reconcileTypeScriptConfig,
   TYPESCRIPT_CONFIGS,
 } from "../src/typescript.ts";
+import { TOOL_VERSIONS } from "../src/versions.ts";
 import { typescriptTemplates } from "./templates-source.ts";
 
 function config(text: string | undefined) {

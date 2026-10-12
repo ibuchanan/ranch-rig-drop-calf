@@ -11,9 +11,9 @@ import {
 } from "../src/library-build.ts";
 import { buildProject, resolveProfile } from "../src/profiles.ts";
 import { TOOL_VERSIONS } from "../src/versions.ts";
+import { runUpdate } from "./capability-fixtures.ts";
 import { mockDirectory, mockModuleSource } from "./module-source.ts";
 import { libraryBuildTemplates } from "./templates-source.ts";
-import { runUpdate } from "./capability-fixtures.ts";
 
 const templates = libraryBuildTemplates();
 

@@ -1,13 +1,13 @@
 import { expect, spyOn, test } from "bun:test";
 import { dag } from "@dagger.io/dagger";
+import { ParseError } from "../src/errors.ts";
 import {
   forgeRuntimeFromNvmrc,
   reconcileForgeRuntime,
 } from "../src/forge-manifest.ts";
 import { DropCalf } from "../src/index.ts";
-import { mergeScaffoldPackage, scaffoldName } from "../src/package-json.ts";
 import { NODE_NVMRC } from "../src/node.ts";
-import { ParseError } from "../src/errors.ts";
+import { mergeScaffoldPackage, scaffoldName } from "../src/package-json.ts";
 import { buildProject } from "../src/profiles.ts";
 import { mockDirectory, mockModuleSource } from "./module-source.ts";
 

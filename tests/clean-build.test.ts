@@ -5,8 +5,8 @@ import { cleanBuild } from "../src/capabilities.ts";
 import { noOpReasons, validateCapabilities } from "../src/capability.ts";
 import { DropCalf } from "../src/index.ts";
 import { createBlueprint } from "../src/project.ts";
-import { mockDirectory, mockModuleSource } from "./module-source.ts";
 import { runInit, runUpdate } from "./capability-fixtures.ts";
+import { mockDirectory, mockModuleSource } from "./module-source.ts";
 
 const command = "rm -rf dist";
 const update = (directory: Directory) => runUpdate(cleanBuild(), directory);

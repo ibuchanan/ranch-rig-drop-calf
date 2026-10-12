@@ -5,8 +5,8 @@ import { noOpReasons, validateCapabilities } from "../src/capability.ts";
 import { DropCalf } from "../src/index.ts";
 import { createBlueprint } from "../src/project.ts";
 import { TOOL_VERSIONS } from "../src/versions.ts";
-import { mockDirectory, mockModuleSource } from "./module-source.ts";
 import { runInit, runUpdate } from "./capability-fixtures.ts";
+import { mockDirectory, mockModuleSource } from "./module-source.ts";
 
 const apiTypes = "@forge-ahead/atlassian-api-types";
 const authoritative = {
