@@ -1,8 +1,6 @@
 import { expect, spyOn, test } from "bun:test";
 import { type Directory, dag } from "@dagger.io/dagger";
-import { seedAgentGuidance } from "../src/aidev.ts";
 import {
-  type Capability,
   expandCapability,
   noOp,
   noOpReasons,
@@ -10,54 +8,11 @@ import {
   validateCapabilities,
 } from "../src/capability.ts";
 import { changelogToolchain, validateChangelog } from "../src/changelog.ts";
-import { evals } from "../src/evals.ts";
 import { DropCalf } from "../src/index.ts";
 import { prelint, validatePrelint } from "../src/prelint.ts";
-import { buildProject, PROFILES, resolveProfile } from "../src/profiles.ts";
-import { createBlueprint, renderToDirectory } from "../src/project.ts";
-import { seedTemplates } from "../src/templates.ts";
+import { PROFILES, resolveProfile } from "../src/profiles.ts";
+import { contents, kinds, selections } from "./capability-fixtures.ts";
 import { mockDirectory as tree, mockModuleSource } from "./module-source.ts";
-
-const kinds = ["library", "forge-app", "tool", "agent-skill"];
-const selections = (kind: string) => [
-  { withFunctions: [], withoutFunctions: [], preset: undefined },
-  { withFunctions: [], withoutFunctions: [], preset: "all" },
-  ...(kind === "forge-app"
-    ? [
-        { withFunctions: ["evals"], withoutFunctions: [], preset: undefined },
-        { withFunctions: [], withoutFunctions: ["evals"], preset: "all" },
-        { withFunctions: [], withoutFunctions: ["aidev"], preset: "all" },
-      ]
-    : []),
-];
-
-const contents = (directory: Directory) =>
-  [...(directory as unknown as { files: Map<string, string> }).files].sort(
-    ([a], [b]) => a.localeCompare(b),
-  );
-
-// The pre-expansion assembly, kept as an independent compatibility oracle.
-function legacyProject(
-  kind: string,
-  withFunctions: string[],
-  withoutFunctions: string[],
-  preset?: string,
-) {
-  const project = createBlueprint("sample", "A sample project", "tester");
-  const add = (capability: Capability) => {
-    capability.addTo(project);
-    project.templates.push(...(capability.templates ?? []));
-  };
-  for (const capability of PROFILES[kind] ?? []) add(capability);
-  if (!withoutFunctions.includes("aidev")) seedAgentGuidance(project, kind);
-  if (
-    kind === "forge-app" &&
-    (preset === "all" || withFunctions.includes("evals")) &&
-    !withoutFunctions.includes("evals")
-  )
-    add(evals());
-  return project;
-}
 
 test.each(["", " ", "\n\t"])("no-op rejects an empty reason: %j", (reason) => {
   expect(() => noOp(reason)).toThrow("non-empty reason");
@@ -77,122 +32,6 @@ test("no-op reasons are enumerable data, including the deliberately inactive ini
   for (const item of reasons) expect(item.reason.trim()).not.toBe("");
   expect(() => JSON.stringify(reasons)).not.toThrow();
 });
-
-test.each(kinds)(
-  "%s required verbs preserve initialized legacy output and update leaves init unchanged",
-  async (kind) => {
-    const source = mockModuleSource();
-    const empty = spyOn(dag, "directory").mockImplementation(() => tree());
-    try {
-      for (const { withFunctions, withoutFunctions, preset } of selections(
-        kind,
-      )) {
-        const legacy = legacyProject(
-          kind,
-          withFunctions,
-          withoutFunctions,
-          preset,
-        );
-        const project = buildProject(
-          kind,
-          "sample",
-          "tester",
-          "A sample project",
-          "Tester",
-          withFunctions,
-          withoutFunctions,
-          preset,
-        );
-        // Prelint is now update-only; its retained addTo contribution is legacy-only.
-        const legacyInitPackage = structuredClone(legacy.packageJson);
-        if (kind === "forge-app") {
-          delete legacyInitPackage.devDependencies["@ast-grep/cli"];
-          delete legacyInitPackage.devDependencies["@forge-ahead/prelint"];
-          delete legacyInitPackage.scripts["lint:prelint"];
-          delete legacyInitPackage.scripts["lint:forge"];
-        }
-        expect(project.packageJson).toEqual(legacyInitPackage);
-        expect([...project.files]).toEqual([...legacy.files]);
-        expect(project.templates).toEqual(legacy.templates);
-        const capabilities = resolveProfile(
-          kind,
-          withFunctions,
-          withoutFunctions,
-          preset,
-        );
-        expect(new Set(capabilities.map((item) => item.name)).size).toBe(
-          capabilities.length,
-        );
-        for (const capability of capabilities) {
-          expect(capability.init).toBeDefined();
-          expect(capability.update).toBeDefined();
-          expect(capability.validate).toBeDefined();
-          if (
-            [
-              "package-metadata",
-              "oss",
-              "gitignore",
-              "node",
-              "changelog",
-              "git-hooks",
-              "prelint",
-              "biome",
-              "typescript",
-              "secrets",
-            ].includes(capability.name) ||
-            (kind === "forge-app" && capability.name === "test")
-          )
-            expect(typeof capability.update).toBe("function");
-          else expect(typeof capability.update).not.toBe("function");
-        }
-        const module = new DropCalf();
-        const seeded = await seedTemplates(
-          renderToDirectory(legacy),
-          dag.currentModule().source(),
-          legacy.templates,
-          "sample",
-          {
-            name: "sample",
-            owner: "tester",
-            type: kind,
-            description: "A sample project",
-          },
-        );
-        const generated = await module.update(
-          await module.copyGitignore(seeded),
-          kind,
-          withFunctions,
-          withoutFunctions,
-          preset,
-        );
-        const initialized = await module.init(
-          tree(),
-          kind,
-          "tester",
-          "sample",
-          "A sample project",
-          "Tester",
-          withFunctions,
-          withoutFunctions,
-          preset,
-        );
-        expect(contents(initialized)).toEqual(contents(generated));
-        expect(
-          await module.update(
-            initialized,
-            kind,
-            withFunctions,
-            withoutFunctions,
-            preset,
-          ),
-        ).toBe(initialized);
-      }
-    } finally {
-      empty.mockRestore();
-      source.mockRestore();
-    }
-  },
-);
 
 test("standalone validators agree with capability validation results", async () => {
   const changelog = changelogToolchain().validate;
