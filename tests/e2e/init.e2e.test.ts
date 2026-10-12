@@ -6,6 +6,7 @@ import {
   mkdtempSync,
   readFileSync,
   rmSync,
+  writeFileSync,
 } from "node:fs";
 import { join } from "node:path";
 
@@ -22,7 +23,7 @@ const cases = ["library", "forge-app", "tool", "agent-skill"].flatMap(
 );
 
 test.skipIf(!enabled).each(cases)(
-  "$profile empty-directory init-changes exports to a new directory ($label)",
+  "$profile init-changes exports once and both init forms refuse reruns ($label)",
   ({ profile, preset }) => {
     mkdirSync(join(repo, ".scratch"), { recursive: true });
     const root = mkdtempSync(join(repo, ".scratch/tmp_rovo_init_"));
@@ -84,6 +85,61 @@ test.skipIf(!enabled).each(cases)(
         profile === "forge-app" && preset === "all",
       );
       expect(existsSync(join(input, "package.json"))).toBe(false);
+
+      const ownerFiles = new Map([
+        ["README.md", "# Owner-written README\n"],
+        ["AGENTS.md", "# Owner-written guidance\n"],
+        ["tsconfig.json", "// Owner compiler settings\n{}\n"],
+      ]);
+      for (const [path, contents] of ownerFiles)
+        writeFileSync(join(output, path), contents);
+      for (const path of [
+        "package.json",
+        "catalog-info.yaml",
+        ".atlassian/OWNER",
+      ])
+        ownerFiles.set(path, readFileSync(join(output, path), "utf8"));
+      for (const marker of ["catalog-info.yaml", ".atlassian/OWNER"]) {
+        if (marker === ".atlassian/OWNER") {
+          rmSync(join(output, "catalog-info.yaml"));
+          ownerFiles.delete("catalog-info.yaml");
+        }
+        for (const operation of ["init", "init-changes"]) {
+          expect(() =>
+            execFileSync(
+              "dagger",
+              [
+                "--progress",
+                "plain",
+                "call",
+                "-m",
+                repo,
+                operation,
+                "--directory",
+                output,
+                "--profile",
+                profile,
+                "--owner",
+                "tester",
+                "--package-name",
+                "sample",
+                ...(preset ? ["--preset", preset] : []),
+                "export",
+                "--path",
+                output,
+              ],
+              { cwd: repo, encoding: "utf8", timeout: 120_000, stdio: "pipe" },
+            ),
+          ).toThrow(`${marker} already exists; use update instead`);
+          for (const [path, contents] of ownerFiles)
+            expect(readFileSync(join(output, path), "utf8"), path).toBe(
+              contents,
+            );
+          expect(existsSync(join(output, "catalog-info.yaml"))).toBe(
+            marker === "catalog-info.yaml",
+          );
+        }
+      }
     } finally {
       rmSync(root, { recursive: true, force: true });
     }

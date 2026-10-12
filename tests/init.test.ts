@@ -237,6 +237,76 @@ test("init rejects invalid Forge YAML during the final update pass without chang
   }
 });
 
+test.each(
+  (["init", "initChanges"] as const).flatMap((operation) =>
+    ["catalog-info.yaml", ".atlassian/OWNER"].flatMap((marker) =>
+      ["", "not valid YAML: [", "kind: Component\n"].map((contents) => ({
+        operation,
+        marker,
+        contents,
+      })),
+    ),
+  ),
+)(
+  "$operation refuses an existing $marker without touching owner files: %j",
+  async ({ operation, marker, contents }) => {
+    const input = mockDirectory(
+      new Map([
+        [marker, contents],
+        ["package.json", "not valid JSON"],
+        ["README.md", "# Owner-written README\n"],
+        ["AGENTS.md", "# Owner-written guidance\n"],
+        ["tsconfig.json", "// Owner compiler settings\n{}\n"],
+      ]),
+    );
+    const before = [...input.files];
+    await expect(
+      new DropCalf()[operation](input, "forge-app", "tester", "sample"),
+    ).rejects.toThrow(
+      `init is a one-time operation: ${marker} already exists; use update instead.`,
+    );
+    expect([...input.files]).toEqual(before);
+  },
+);
+
+test.each(["library", "forge-app", "tool", "agent-skill"])(
+  "%s init refuses a rerun after owner edits",
+  async (profile) => {
+    const source = mockModuleSource();
+    const directory = spyOn(dag, "directory").mockImplementation(() =>
+      mockDirectory(),
+    );
+    try {
+      const module = new DropCalf();
+      const initialized = await module.init(
+        mockDirectory(),
+        profile,
+        "tester",
+        "sample",
+      );
+      const edited = initialized
+        .withNewFile("README.md", "# Owner-written README\n")
+        .withNewFile("AGENTS.md", "# Owner-written guidance\n")
+        .withNewFile("tsconfig.json", "// Owner compiler settings\n{}\n");
+      for (const marker of ["catalog-info.yaml", ".atlassian/OWNER"]) {
+        const input = (
+          marker === "catalog-info.yaml"
+            ? edited
+            : edited.withoutFile("catalog-info.yaml")
+        ) as ReturnType<typeof mockDirectory>;
+        const before = [...input.files];
+        await expect(
+          module.init(input, profile, "tester", "sample"),
+        ).rejects.toThrow(`${marker} already exists; use update instead`);
+        expect([...input.files]).toEqual(before);
+      }
+    } finally {
+      directory.mockRestore();
+      source.mockRestore();
+    }
+  },
+);
+
 test("init rejects an invalid selection before touching the directory", async () => {
   await expect(
     new DropCalf().init({} as never, "nonsense", "tester"),

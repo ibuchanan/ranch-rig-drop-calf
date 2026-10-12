@@ -20,6 +20,20 @@ are available. Update policies currently cover package metadata and the Node
 baseline; other capabilities are still migrating. The broader project functions
 in the [specifications](specs/00-drop-calf-overview.md) are not all implemented.
 
+## Choose the operation
+
+- **`init` once:** Set up an empty directory or a fresh `forge create` scaffold.
+  Prefer `init-changes` when exporting, so scaffold deletions reach disk.
+  Both refuse before cleanup or generation if `catalog-info.yaml` or
+  `.atlassian/OWNER` exists at the project root, regardless of file contents,
+  and point you to `update`. These are presence gates, not proof that a directory
+  without either marker is a fresh scaffold.
+- **`update` to converge on policy:** Maintain an existing repository with the
+  selected capabilities' implemented update policies, without rerunning scaffold
+  cleanup or init-only template seeding. Review the changes before exporting.
+- **`validate` to check:** Get a read-only report of tool acceptance and explicit
+  skipped or failed checks. It does not apply fixes or guarantee policy compliance.
+
 ## Set up a new Forge app
 
 You need the [Forge CLI](https://developer.atlassian.com/platform/forge/getting-started/),

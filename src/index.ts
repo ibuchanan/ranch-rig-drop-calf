@@ -180,11 +180,13 @@ export class DropCalf {
   }
 
   /**
-   * First-time setup of an empty directory or a `forge create` repository:
-   * remove the scaffold files Drop Calf replaces, generate the profile's files
-   * over what is left, and
-   * keep the scaffold's runtime dependencies. On forge-app, normalize the
-   * scaffold's manifest runtime from .nvmrc in the final update pass.
+   * First-time setup of an empty directory or a `forge create` repository.
+   * Refuse when catalog-info.yaml or .atlassian/OWNER exists at the project root;
+   * use update for maintenance.
+   * Otherwise remove the scaffold files Drop Calf replaces, generate the
+   * profile's files over what is left, and keep the scaffold's runtime dependencies.
+   * On forge-app, normalize the scaffold's manifest runtime from .nvmrc in the
+   * final update pass.
    * Package naming: explicit name, nonblank scaffold name, workspace basename.
    * Catalog owns package identity; the legacy author argument is ignored in favor
    * of its owner staff ID.
@@ -202,6 +204,11 @@ export class DropCalf {
     preset?: string,
   ): Promise<Directory> {
     resolveProfile(profile, withFunctions, withoutFunctions, preset);
+    for (const marker of ["catalog-info.yaml", ".atlassian/OWNER"])
+      if (await directory.exists(marker))
+        throw new Error(
+          `init is a one-time operation: ${marker} already exists; use update instead.`,
+        );
     const scaffold = (await directory.exists("package.json"))
       ? await directory.file("package.json").contents()
       : undefined;
