@@ -1,5 +1,5 @@
 import { expect, spyOn, test } from "bun:test";
-import { type Directory, dag } from "@dagger.io/dagger";
+import { dag } from "@dagger.io/dagger";
 import { updateCapabilities, validateCapabilities } from "../src/capability.ts";
 import {
   DOCS_COMMAND,
@@ -11,6 +11,7 @@ import {
 import { DropCalf } from "../src/index.ts";
 import { createBlueprint } from "../src/project.ts";
 import { TOOL_VERSIONS } from "../src/versions.ts";
+import { mockContainer } from "./container-source.ts";
 import { mockDirectory, mockModuleSource } from "./module-source.ts";
 import { docsTemplates } from "./templates-source.ts";
 import { runUpdate, runInit } from "./capability-fixtures.ts";
@@ -165,41 +166,6 @@ test.each(["library", "forge-app", "tool", "agent-skill"])(
   },
 );
 
-function mockDocsContainer(failure?: Error) {
-  const commands: string[][] = [];
-  const mounts: {
-    path: string;
-    directory: Directory;
-    options?: { readOnly?: boolean };
-  }[] = [];
-  const container = {
-    from: () => container,
-    file: () => ({}),
-    withFile: () => container,
-    withWorkdir: () => container,
-    withMountedDirectory: (
-      path: string,
-      directory: Directory,
-      options?: { readOnly?: boolean },
-    ) => {
-      mounts.push({ path, directory, options });
-      return container;
-    },
-    withExec: (args: string[]) => {
-      commands.push(args);
-      return container;
-    },
-    stdout: async () => {
-      if (failure) throw failure;
-      return "0 files";
-    },
-  };
-  const spy = spyOn(dag, "container").mockReturnValue(
-    container as unknown as ReturnType<typeof dag.container>,
-  );
-  return { commands, mounts, spy };
-}
-
 test("validation uses selected tools and content-free commands with a read-only repository", async () => {
   const input = mockDirectory(
     new Map([
@@ -209,7 +175,7 @@ test("validation uses selected tools and content-free commands with a read-only 
     ]),
   );
   const before = [...input.files];
-  const { commands, mounts, spy } = mockDocsContainer();
+  const { commands, mounts, mounted, spy } = mockContainer();
   try {
     expect(
       await validateCapabilities(input, [docsLinting("10.3.0", "0.23.0")]),
@@ -249,9 +215,8 @@ test("validation uses selected tools and content-free commands with a read-only 
         "**/*.md",
       ],
     ]);
-    expect(mounts).toEqual([
-      { path: "/repo", directory: input, options: { readOnly: true } },
-    ]);
+    expect(mounts).toEqual([{ path: "/repo", readOnly: true }]);
+    expect(mounted).toEqual([input]);
     expect([...input.files]).toEqual(before);
   } finally {
     spy.mockRestore();
@@ -286,7 +251,7 @@ test("validation reports tool diagnostics without changing config", async () => 
     stdout: "configuration load",
     stderr: "Unable to parse JSONC content",
   });
-  const { spy } = mockDocsContainer(failure);
+  const { spy } = mockContainer({ failure });
   try {
     expect(await validateCapabilities(input, [docsLinting()])).toEqual([
       {

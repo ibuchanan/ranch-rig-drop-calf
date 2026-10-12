@@ -1,7 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import { NPMRC, nodeContainer } from "../src/node.ts";
+import { NPMRC } from "../src/node.ts";
 import { buildProject } from "../src/profiles.ts";
-import { mockContainer } from "./container-source.ts";
 
 describe("node baseline", () => {
   test.each(["library", "forge-app", "tool", "agent-skill"])(
@@ -25,14 +24,4 @@ describe("node baseline", () => {
         buildProject(kind, "sample", "tester").files.has("manifest.yml"),
       ).toBe(false);
   });
-});
-
-test("nodeContainer builds the baseline image through native Dagger", () => {
-  const { container, images, spy } = mockContainer();
-  try {
-    expect(nodeContainer()).toBe(container as never);
-    expect(images).toEqual(["node:24"]);
-  } finally {
-    spy.mockRestore();
-  }
 });

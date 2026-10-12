@@ -1,5 +1,5 @@
 import { expect, spyOn, test } from "bun:test";
-import { type Directory, dag } from "@dagger.io/dagger";
+import { dag } from "@dagger.io/dagger";
 import { validateCapabilities } from "../src/capability.ts";
 import {
   EVALS_CONFIG,
@@ -10,6 +10,7 @@ import {
 } from "../src/evals.ts";
 import { DropCalf } from "../src/index.ts";
 import { createBlueprint } from "../src/project.ts";
+import { mockContainer } from "./container-source.ts";
 import { mockDirectory, mockModuleSource } from "./module-source.ts";
 import { promptfooTemplates } from "./templates-source.ts";
 import { runUpdate, runInit } from "./capability-fixtures.ts";
@@ -195,57 +196,13 @@ test("top-level update requires explicit evals selection, preserves edits and de
   }
 });
 
-function mockEvalsContainer(failure?: Error) {
-  const commands: string[][] = [];
-  const environment: Record<string, string> = {};
-  const files: Record<string, string> = {};
-  const mounts: {
-    path: string;
-    directory: Directory;
-    options?: { readOnly?: boolean };
-  }[] = [];
-  const container = {
-    from: () => container,
-    file: () => ({}),
-    withFile: () => container,
-    withWorkdir: () => container,
-    withEnvVariable: (key: string, value: string) => {
-      environment[key] = value;
-      return container;
-    },
-    withNewFile: (path: string, contents: string) => {
-      files[path] = contents;
-      return container;
-    },
-    withMountedDirectory: (
-      path: string,
-      directory: Directory,
-      options?: { readOnly?: boolean },
-    ) => {
-      mounts.push({ path, directory, options });
-      return container;
-    },
-    withExec: (args: string[]) => {
-      commands.push(args);
-      return container;
-    },
-    stdout: async () => {
-      if (failure) throw failure;
-      return "Configuration is valid.";
-    },
-  };
-  const spy = spyOn(dag, "container").mockReturnValue(
-    container as unknown as ReturnType<typeof dag.container>,
-  );
-  return { commands, environment, files, mounts, spy };
-}
-
 test("evals validation uses native tool acceptance, not owner package policy or model evaluation", async () => {
   const input = mockDirectory(
     new Map([...promptfooTemplates(), ["package.json", "not consumed"]]),
   );
   const before = [...input.files];
-  const { commands, environment, files, mounts, spy } = mockEvalsContainer();
+  const { commands, environment, newFiles, mounts, mounted, spy } =
+    mockContainer();
   try {
     expect(await validateCapabilities(input, [evals(version)])).toEqual([
       { capability: "evals", status: "validated" },
@@ -254,8 +211,8 @@ test("evals validation uses native tool acceptance, not owner package policy or 
       ["bun", "add", "--ignore-scripts", `promptfoo@${version}`],
       ["bun", "run", "--no-install", "/tools/validate.mjs"],
     ]);
-    expect(files["/tools/validate.mjs"]).toContain("commands/validate.js");
-    expect(files["/tools/validate.mjs"]).toContain(
+    expect(newFiles["/tools/validate.mjs"]).toContain("commands/validate.js");
+    expect(newFiles["/tools/validate.mjs"]).toContain(
       `doValidate({ config: ['/repo/${EVALS_CONFIG}'], envPath: '/dev/null' }, {})`,
     );
     expect(environment).toEqual({
@@ -264,9 +221,8 @@ test("evals validation uses native tool acceptance, not owner package policy or 
       PROMPTFOO_CONFIG_DIR: "/tmp/promptfoo",
       PROMPTFOO_LOG_DIR: "/tmp/promptfoo/logs",
     });
-    expect(mounts).toEqual([
-      { path: "/repo", directory: input, options: { readOnly: true } },
-    ]);
+    expect(mounts).toEqual([{ path: "/repo", readOnly: true }]);
+    expect(mounted).toEqual([input]);
     expect([...input.files]).toEqual(before);
   } finally {
     spy.mockRestore();
@@ -294,7 +250,7 @@ test("evals validation reports native config diagnostics without modifying input
     stdout: "Failed to validate configuration",
     stderr: "unknown provider",
   });
-  const { spy } = mockEvalsContainer(failure);
+  const { spy } = mockContainer({ failure });
   try {
     expect(await validateCapabilities(input, [evals()])).toEqual([
       {

@@ -1,7 +1,7 @@
-import { type Directory, dag } from "@dagger.io/dagger";
+import type { Directory } from "@dagger.io/dagger";
 import { type Capability, noOp, type Validation } from "./capability.ts";
-import { nodeContainer } from "./node.ts";
 import { copyTemplate, templateTree } from "./templates.ts";
+import { bunTools, REPOSITORY, runTool } from "./tool-run.ts";
 import { TOOL_VERSIONS } from "./versions.ts";
 
 export const DOCS_TEMPLATE = "templates/docs";
@@ -32,24 +32,12 @@ export async function validateDocs(
     };
   if (missing.length)
     return { status: "failed", reason: `${missing.join(" and ")} is missing` };
-  const container = nodeContainer()
-    .withFile(
-      "/usr/local/bin/bun",
-      dag
-        .container()
-        .from(`oven/bun:${TOOL_VERSIONS.bun}`)
-        .file("/usr/local/bin/bun"),
-    )
-    .withWorkdir("/tools")
-    .withExec([
-      "bun",
-      "add",
-      "--ignore-scripts",
-      `cspell@${cspellVersion}`,
-      `markdownlint-cli2@${markdownlintVersion}`,
-    ])
-    .withMountedDirectory("/repo", directory, { readOnly: true })
-    .withWorkdir("/repo")
+  const container = bunTools(
+    `cspell@${cspellVersion}`,
+    `markdownlint-cli2@${markdownlintVersion}`,
+  )
+    .withMountedDirectory(REPOSITORY, directory, { readOnly: true })
+    .withWorkdir(REPOSITORY)
     // Disable owner globs and exclude everything, even when the config enables fixes.
     .withExec([
       "bun",
@@ -77,24 +65,7 @@ export async function validateDocs(
       "**",
       "**/*.md",
     ]);
-  try {
-    await container.stdout();
-  } catch (error) {
-    if (error instanceof Error) {
-      const diagnostic = ["stdout", "stderr"]
-        .map((key) =>
-          key in error
-            ? String((error as unknown as Record<string, unknown>)[key]).trim()
-            : "",
-        )
-        .filter(Boolean)
-        .join("\n");
-      throw new Error(
-        `docs: validation execution failed: ${diagnostic || error.message}`,
-      );
-    }
-    throw error;
-  }
+  await runTool(container, "docs: validation");
   return { status: "validated" };
 }
 

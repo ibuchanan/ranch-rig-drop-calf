@@ -9,18 +9,23 @@ import {
   object,
   type Secret,
 } from "@dagger.io/dagger";
-import { updateCapabilities, validateCapabilities } from "./capability.ts";
+import {
+  updateCapabilities,
+  type Validation,
+  validateCapabilities,
+} from "./capability.ts";
 import { validateCatalog } from "./catalog.ts";
 import { validateChangelog } from "./changelog.ts";
-import { forgeManifest, validateForgeManifest } from "./forge-manifest.ts";
+import { forgeManifest } from "./forge-manifest.ts";
 import { adoptScaffoldTypeScript } from "./init.ts";
-import { nodeContainer as buildNodeContainer } from "./node.ts";
 import { mergeScaffoldPackage, scaffoldName } from "./package-json.ts";
 import { applyPreclean } from "./preclean.ts";
 import { validatePrelint } from "./prelint.ts";
 import { buildProject, resolveProfile } from "./profiles.ts";
 import { renderToDirectory } from "./project.ts";
 import { seedTemplates } from "./templates.ts";
+import { nodeContainer as buildNodeContainer } from "./tool-run.ts";
+
 @object()
 export class DropCalf {
   /**
@@ -55,11 +60,12 @@ export class DropCalf {
     forgeEmail?: Secret,
     forgeApiToken?: Secret,
   ): Promise<string> {
-    return JSON.stringify(
-      await validateForgeManifest(directory, forgeEmail, forgeApiToken),
-      null,
-      2,
-    );
+    // validateCapabilities reports tool failures as `failed`, as `validate` does.
+    const [{ capability: _, ...result }] = (await validateCapabilities(
+      directory,
+      [forgeManifest(forgeEmail, forgeApiToken)],
+    )) as [{ capability: string } & Validation];
+    return JSON.stringify(result, null, 2);
   }
 
   /** Prelint has no local configuration to validate; report its explicit skip reason. */

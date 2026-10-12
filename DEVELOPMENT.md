@@ -124,6 +124,15 @@ DROP_CALF_E2E=1 bun test tests/e2e
   and `seedTemplates`, which executes ordered seed steps declared by capability
   init. Substitution, exclusions, and executable modes belong to capabilities;
   the seeding loop has no capability-specific branches.
+- `src/tool-run.ts`: the containerized-tool recipe shared by every validator
+  (and Biome migration). `nodeContainer()` is the one place the Node baseline
+  image is chosen, independently of the host's Node installation. `bunTools()`
+  grafts the pinned Bun binary and installs packages into `/tools` without
+  install scripts; `npmTools()` installs globally for tools run by binary name.
+  `runTool()` is the one failure convention: it throws
+  `<label> execution failed: <diagnostic>`, where the diagnostic is the tool's
+  stdout and stderr (or the error message), and `validateCapabilities` reports
+  the throw as `failed`. Validators choose packages, mounts, and commands only.
 - `src/changelog.ts`: the release workflow — the `git-cliff` devDependency and
   the `changelog` script, plus `copyChangelog` for
   `templates/changelog/`. `validateChangelog` renders an unreleased changelog
@@ -191,10 +200,9 @@ DROP_CALF_E2E=1 bun test tests/e2e
   Dagger container with pinned fnm, initializes its shell, and runs
   `fnm use --install-if-missing`. Missing `.nvmrc` is skipped; selectable
   non-baseline versions pass. The validator may download Node and does not check
-  `.npmrc`, type versions, or deployment. Execution failures retain fnm's stderr
+  `.npmrc`, type versions, or deployment. Execution failures retain fnm's output
   in the read-only report. It never changes the host or exports container
-  changes. `nodeContainer()` selects the baseline image for tools such as
-  `validateChangelog`, independently of the host's Node installation.
+  changes.
 - `src/forge-manifest.ts`: the Forge manifest capability for Forge apps.
   `forgeManifest()` derives a runtime major from numeric `.nvmrc` and enforces
   `app.runtime.name` in an existing manifest using the YAML document API,

@@ -1,7 +1,7 @@
 import type { Directory } from "@dagger.io/dagger";
 import { type Capability, noOp, type Validation } from "./capability.ts";
-import { nodeContainer } from "./node.ts";
 import { copyTemplate, templateTree } from "./templates.ts";
+import { npmTools, REPOSITORY } from "./tool-run.ts";
 import { TOOL_VERSIONS } from "./versions.ts";
 
 /** Authored hook commands are seeded once and owner-managed after init. */
@@ -67,22 +67,14 @@ export async function validateGitHooks(
 ): Promise<Validation> {
   if (!(await directory.exists("lefthook.yml")))
     return { status: "skipped", reason: "lefthook.yml is missing" };
-  const container = nodeContainer()
-    .withExec([
-      "npm",
-      "install",
-      "--global",
-      "--no-fund",
-      "--no-audit",
-      `lefthook@${lefthookVersion}`,
-    ])
+  const container = npmTools(`lefthook@${lefthookVersion}`)
     // Lefthook needs Git metadata even for validate. Keep it outside the read-only
     // mount so source .git files, worktree pointers and hooks cannot be modified.
     .withExec(["git", "init", "/lefthook-worktree"])
     .withEnvVariable("GIT_DIR", "/lefthook-worktree/.git")
-    .withEnvVariable("GIT_WORK_TREE", "/repo")
-    .withMountedDirectory("/repo", directory)
-    .withWorkdir("/repo");
+    .withEnvVariable("GIT_WORK_TREE", REPOSITORY)
+    .withMountedDirectory(REPOSITORY, directory)
+    .withWorkdir(REPOSITORY);
   const report = await container
     .withExec(["sh", "-c", 'lefthook validate 2>&1; echo "lefthook exit=$?"'])
     .stdout();

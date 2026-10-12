@@ -22,6 +22,8 @@ export function mockContainer(options: MockContainerOptions = {}) {
   const mounted: Directory[] = [];
   const reads: string[] = [];
   const environment: Record<string, string> = {};
+  const secrets: [string, unknown][] = [];
+  const newFiles: Record<string, string> = {};
   const copied: string[] = [];
   const images: string[] = [];
   let input: Directory | undefined;
@@ -34,7 +36,10 @@ export function mockContainer(options: MockContainerOptions = {}) {
       copied.push(path);
       return container;
     },
-    withNewFile: () => container,
+    withNewFile: (path: string, contents: string) => {
+      newFiles[path] = contents;
+      return container;
+    },
     directory: () => ({ files: new Map<string, string>() }),
     withExec: (args: string[]) => {
       commands.push(args);
@@ -53,6 +58,10 @@ export function mockContainer(options: MockContainerOptions = {}) {
     withWorkdir: () => container,
     withEnvVariable: (name: string, value: string) => {
       environment[name] = value;
+      return container;
+    },
+    withSecretVariable: (name: string, secret: unknown) => {
+      secrets.push([name, secret]);
       return container;
     },
     stdout: async () => {
@@ -78,6 +87,8 @@ export function mockContainer(options: MockContainerOptions = {}) {
     mounted,
     reads,
     environment,
+    secrets,
+    newFiles,
     copied,
     images,
     spy: spyOn(dag, "container").mockReturnValue(container as never),

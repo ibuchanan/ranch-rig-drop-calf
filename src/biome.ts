@@ -2,8 +2,8 @@ import type { Container, Directory } from "@dagger.io/dagger";
 import ts from "typescript";
 import type { Capability, Validation } from "./capability.ts";
 import { ParseError } from "./errors.ts";
-import { nodeContainer } from "./node.ts";
 import { copyTemplate, templateTree } from "./templates.ts";
+import { npmTools, REPOSITORY, runTool } from "./tool-run.ts";
 import { TOOL_VERSIONS } from "./versions.ts";
 
 export const BIOME_TEMPLATE = "templates/biome";
@@ -13,8 +13,6 @@ export const BIOME_SCRIPTS = {
   "lint:check": "biome lint",
   "lint:fix": "biome lint --write",
 } as const;
-
-const REPOSITORY = "/repo";
 
 export function copyBiome(
   destination: Directory,
@@ -30,37 +28,18 @@ async function configPath(directory: Directory): Promise<string | undefined> {
 }
 
 function biomeContainer(version: string): Container {
-  return nodeContainer().withExec([
-    "npm",
-    "install",
-    "--global",
-    "--no-fund",
-    "--no-audit",
-    `@biomejs/biome@${version}`,
-  ]);
+  return npmTools(`@biomejs/biome@${version}`);
 }
 
-async function runBiome(
+function runBiome(
   container: Container,
   args: string[],
   verb: string,
 ): Promise<Container> {
-  const result = container.withExec(["biome", ...args, "--colors=off"]);
-  try {
-    await result.stdout();
-  } catch (error) {
-    if (
-      error instanceof Error &&
-      "stderr" in error &&
-      typeof error.stderr === "string" &&
-      error.stderr.trim()
-    )
-      throw new Error(
-        `biome: ${verb} execution failed: ${error.stderr.trim()}`,
-      );
-    throw error;
-  }
-  return result;
+  return runTool(
+    container.withExec(["biome", ...args, "--colors=off"]),
+    `biome: ${verb}`,
+  );
 }
 
 /** Let Biome migrate an existing root config in isolation; package.json is contributed. */

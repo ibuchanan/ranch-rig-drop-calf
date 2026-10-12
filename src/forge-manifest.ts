@@ -1,8 +1,8 @@
-import { type Directory, dag, type Secret } from "@dagger.io/dagger";
+import type { Directory, Secret } from "@dagger.io/dagger";
 import { isCollection, isMap, isScalar, parseDocument, visit } from "yaml";
 import { type Capability, noOp, type Validation } from "./capability.ts";
-import { nodeContainer } from "./node.ts";
 import { ParseError } from "./errors.ts";
+import { bunTools, REPOSITORY, runTool, TOOLS } from "./tool-run.ts";
 import { TOOL_VERSIONS } from "./versions.ts";
 
 /** Only numeric pins have a deterministic Forge runtime major without version resolution. */
@@ -104,18 +104,9 @@ export async function validateForgeManifest(
       reason:
         "forge-manifest: forge lint requires authentication; supply both --forge-email and --forge-api-token as Dagger Secrets. Missing credentials are an execution prerequisite failure, not a manifest acceptance verdict.",
     };
-  const cli = "/tools/node_modules/@forge/cli/out/bin/cli.js";
-  const container = nodeContainer()
-    .withFile(
-      "/usr/local/bin/bun",
-      dag
-        .container()
-        .from(`oven/bun:${TOOL_VERSIONS.bun}`)
-        .file("/usr/local/bin/bun"),
-    )
+  const cli = `${TOOLS}/node_modules/@forge/cli/out/bin/cli.js`;
+  const container = bunTools(`@forge/cli@${version}`)
     .withEnvVariable("CI", "1")
-    .withWorkdir("/tools")
-    .withExec(["bun", "add", "--ignore-scripts", `@forge/cli@${version}`])
     .withExec([
       "bun",
       "run",
@@ -127,28 +118,10 @@ export async function validateForgeManifest(
     ])
     .withSecretVariable("FORGE_EMAIL", forgeEmail)
     .withSecretVariable("FORGE_API_TOKEN", forgeApiToken)
-    .withMountedDirectory("/repo", directory, { readOnly: true })
-    .withWorkdir("/repo")
+    .withMountedDirectory(REPOSITORY, directory, { readOnly: true })
+    .withWorkdir(REPOSITORY)
     .withExec(["bun", "run", cli, "lint", "--environment", "development"]);
-  try {
-    await container.stdout();
-  } catch (error) {
-    if (error instanceof Error) {
-      const diagnostic = ["stdout", "stderr"]
-        .map((key) =>
-          key in error
-            ? String((error as unknown as Record<string, unknown>)[key]).trim()
-            : "",
-        )
-        .filter(Boolean)
-        .join("\n");
-      return {
-        status: "failed",
-        reason: `forge-manifest: forge lint execution failed: ${diagnostic || error.message}`,
-      };
-    }
-    throw error;
-  }
+  await runTool(container, "forge-manifest: forge lint");
   return { status: "validated" };
 }
 

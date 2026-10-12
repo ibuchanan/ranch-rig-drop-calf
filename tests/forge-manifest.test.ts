@@ -18,6 +18,7 @@ import { nodeBaseline } from "../src/node.ts";
 import { ParseError } from "../src/errors.ts";
 import { resolveProfile } from "../src/profiles.ts";
 import { TOOL_VERSIONS } from "../src/versions.ts";
+import { mockContainer } from "./container-source.ts";
 import { mockDirectory } from "./module-source.ts";
 
 const runtime = "nodejs22.x";
@@ -233,9 +234,6 @@ test.each([
 );
 
 test("validation runs pinned Forge lint on a read-only repo and keeps all diagnostics", async () => {
-  const commands: string[][] = [];
-  const mounts: unknown[] = [];
-  const secrets: unknown[] = [];
   const email = {} as Secret;
   const token = {} as Secret;
   const input = mockDirectory(
@@ -245,27 +243,9 @@ test("validation runs pinned Forge lint on a read-only repo and keeps all diagno
     ]),
   );
   const before = [...input.files];
-  const container = {
-    from: () => container,
-    file: () => ({}),
-    withFile: () => container,
-    withEnvVariable: () => container,
-    withSecretVariable: (...args: unknown[]) => {
-      secrets.push(args);
-      return container;
-    },
-    withWorkdir: () => container,
-    withExec: (command: string[]) => {
-      commands.push(command);
-      return container;
-    },
-    withMountedDirectory: (...args: unknown[]) => {
-      mounts.push(args);
-      return container;
-    },
-    stdout: async () => "No issues found.",
-  };
-  const spy = spyOn(dag, "container").mockReturnValue(container as never);
+  const { commands, container, mounts, mounted, secrets, spy } = mockContainer({
+    stdout: () => "No issues found.",
+  });
   try {
     expect(
       JSON.parse(
@@ -290,7 +270,8 @@ test("validation runs pinned Forge lint on a read-only repo and keeps all diagno
       "--environment",
       "development",
     ]);
-    expect(mounts).toEqual([["/repo", input, { readOnly: true }]]);
+    expect(mounts).toEqual([{ path: "/repo", readOnly: true }]);
+    expect(mounted).toEqual([input]);
     expect([...input.files]).toEqual(before);
     const minimal = mockDirectory(new Map([["manifest.yml", "app: {}\n"]]));
     const profile = JSON.parse(
@@ -326,6 +307,15 @@ test("validation runs pinned Forge lint on a read-only repo and keeps all diagno
           reason: expect.stringContaining("manifest rejected\ninvalid runtime"),
         },
       ]);
+      expect(
+        JSON.parse(
+          await new DropCalf().validateForgeManifest(input, email, token),
+        ),
+      ).toEqual({
+        status: "failed",
+        reason:
+          "forge-manifest: forge lint execution failed: manifest rejected\ninvalid runtime",
+      });
       expect([...input.files]).toEqual(before);
     } finally {
       failure.mockRestore();

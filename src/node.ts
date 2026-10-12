@@ -1,7 +1,8 @@
-import { type Container, type Directory, dag } from "@dagger.io/dagger";
+import { type Directory, dag } from "@dagger.io/dagger";
 import type { Capability, Validation } from "./capability.ts";
 import { CATALOG_FILE, LICENSE, readCatalog } from "./catalog.ts";
 import { editPackageJson, readPackageJson } from "./package-json.ts";
+import { nodeContainer, REPOSITORY, runTool } from "./tool-run.ts";
 import { NODE_MAJOR, TOOL_VERSIONS } from "./versions.ts";
 
 /**
@@ -13,18 +14,6 @@ import { NODE_MAJOR, TOOL_VERSIONS } from "./versions.ts";
 export const NODE_NVMRC = `${NODE_MAJOR}\n`;
 export const NPM_REGISTRY = "https://registry.npmjs.org/";
 export const NPMRC = `# Use the public npm registry (not the default for internal Atlassians)\nregistry=${NPM_REGISTRY}\n`;
-
-/**
- * The Node baseline as a native Dagger container. This is the one place the
- * Node image is chosen, so a containerized tool (such as `validateChangelog`)
- * runs the same major the file pins promise rather than whatever the host has
- * installed. The `node` image carries `git`, which containerized commands
- * dispatch through.
- */
-export function nodeContainer(): Container {
-  return dag.container().from(`node:${NODE_MAJOR}`);
-}
-
 /** Whole-file pins and catalog license are policy; dependencies remain owner-managed. */
 export async function updateNode(directory: Directory): Promise<Directory> {
   let result = directory;
@@ -72,28 +61,14 @@ export async function validateNode(directory: Directory): Promise<Validation> {
     .withEnvVariable("FNM_DIR", "/fnm")
     .withEnvVariable("FNM_RESOLVE_ENGINES", "false")
     .withEnvVariable("FNM_VERSION_FILE_STRATEGY", "local")
-    .withFile("/repo/.nvmrc", directory.file(".nvmrc"))
-    .withWorkdir("/repo")
+    .withFile(`${REPOSITORY}/.nvmrc`, directory.file(".nvmrc"))
+    .withWorkdir(REPOSITORY)
     .withExec([
       "bash",
       "-ec",
       'eval "$(fnm env --shell bash)"; fnm use --install-if-missing',
     ]);
-  try {
-    await container.stdout();
-  } catch (error) {
-    // The generated module SDK does not re-export ExecError, but it carries stderr.
-    if (
-      error instanceof Error &&
-      "stderr" in error &&
-      typeof error.stderr === "string" &&
-      error.stderr.trim()
-    )
-      throw new Error(
-        `node: fnm validation execution failed: ${error.stderr.trim()}`,
-      );
-    throw error;
-  }
+  await runTool(container, "node: fnm validation");
   return { status: "validated" };
 }
 

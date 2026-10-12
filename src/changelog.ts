@@ -1,7 +1,7 @@
 import type { Directory } from "@dagger.io/dagger";
 import { type Capability, noOp } from "./capability.ts";
-import { nodeContainer } from "./node.ts";
 import { copyTemplate, templateTree } from "./templates.ts";
+import { npmTools, REPOSITORY } from "./tool-run.ts";
 import { TOOL_VERSIONS } from "./versions.ts";
 
 /**
@@ -42,8 +42,6 @@ export const CHANGELOG_COMMAND = `git cliff --config ${CHANGELOG_CONFIG} --unrel
 
 /** The marker `validateChangelog` looks for after the command it ran. */
 const EXIT_MARKER = "git-cliff exit=";
-
-const REPOSITORY = "/repo";
 
 export function copyChangelog(
   destination: Directory,
@@ -106,15 +104,7 @@ export async function validateChangelog(
 ): Promise<ChangelogValidation> {
   if (!(await directory.exists(CHANGELOG_CONFIG)))
     return { status: "skipped", reason: `${CHANGELOG_CONFIG} is missing` };
-  const container = nodeContainer()
-    .withExec([
-      "npm",
-      "install",
-      "--global",
-      "--no-fund",
-      "--no-audit",
-      `git-cliff@${cliffVersion}`,
-    ])
+  const container = npmTools(`git-cliff@${cliffVersion}`)
     // A mounted repository belongs to whoever cloned it, so git would refuse
     // to read it as "dubious ownership" without this.
     .withExec(["git", "config", "--global", "--add", "safe.directory", "*"])

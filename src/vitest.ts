@@ -1,7 +1,7 @@
-import { type Directory, dag } from "@dagger.io/dagger";
+import type { Directory } from "@dagger.io/dagger";
 import { type Capability, noOp, type Validation } from "./capability.ts";
-import { nodeContainer } from "./node.ts";
 import { templateTree } from "./templates.ts";
+import { bunTools, REPOSITORY, runTool, TOOLS } from "./tool-run.ts";
 import { TOOL_VERSIONS } from "./versions.ts";
 
 export const VITEST_TEMPLATE = "templates/vitest";
@@ -39,54 +39,22 @@ export async function validateVitest(
 ): Promise<Validation> {
   if (!(await directory.exists(VITEST_CONFIG)))
     return { status: "skipped", reason: `${VITEST_CONFIG} is missing` };
-  const tools = nodeContainer()
-    .withFile(
-      "/usr/local/bin/bun",
-      dag
-        .container()
-        .from(`oven/bun:${TOOL_VERSIONS.bun}`)
-        .file("/usr/local/bin/bun"),
-    )
-    .withWorkdir("/tools")
-    .withExec([
-      "bun",
-      "add",
-      "--ignore-scripts",
-      `vitest@${version}`,
-      `@vitest/coverage-v8@${version}`,
-    ]);
+  const tools = bunTools(`vitest@${version}`, `@vitest/coverage-v8@${version}`);
   const repository = directory.withDirectory(
     "node_modules/vitest",
-    tools.directory("/tools/node_modules/vitest"),
+    tools.directory(`${TOOLS}/node_modules/vitest`),
   );
   const container = tools
-    .withMountedDirectory("/repo", repository, { readOnly: true })
+    .withMountedDirectory(REPOSITORY, repository, { readOnly: true })
     .withMountedDirectory(
       "/node_modules",
-      tools.directory("/tools/node_modules"),
+      tools.directory(`${TOOLS}/node_modules`),
       { readOnly: true },
     )
-    .withNewFile("/tools/validate.mjs", VITEST_VALIDATOR)
-    .withWorkdir("/repo")
-    .withExec(["bun", "run", "--no-install", "/tools/validate.mjs"]);
-  try {
-    await container.stdout();
-  } catch (error) {
-    if (error instanceof Error) {
-      const diagnostic = ["stdout", "stderr"]
-        .map((key) =>
-          key in error
-            ? String((error as unknown as Record<string, unknown>)[key]).trim()
-            : "",
-        )
-        .filter(Boolean)
-        .join("\n");
-      throw new Error(
-        `vitest: validation execution failed: ${diagnostic || error.message}`,
-      );
-    }
-    throw error;
-  }
+    .withNewFile(`${TOOLS}/validate.mjs`, VITEST_VALIDATOR)
+    .withWorkdir(REPOSITORY)
+    .withExec(["bun", "run", "--no-install", `${TOOLS}/validate.mjs`]);
+  await runTool(container, "vitest: validation");
   return { status: "validated" };
 }
 

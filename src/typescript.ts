@@ -10,9 +10,9 @@ import {
 } from "jsonc-parser";
 import type { Capability, Validation } from "./capability.ts";
 import { ParseError } from "./errors.ts";
-import { nodeContainer } from "./node.ts";
 import { readPackageJson } from "./package-json.ts";
 import { copyTemplate, templateTree } from "./templates.ts";
+import { npmTools, REPOSITORY, runTool } from "./tool-run.ts";
 import { TOOL_VERSIONS } from "./versions.ts";
 
 export const TYPESCRIPT_TEMPLATE = "templates/typescript";
@@ -178,41 +178,14 @@ export async function validateTypeScript(
       status: missing.length === required.length ? "skipped" : "failed",
       reason: `Missing TypeScript configuration: ${missing.join(", ")}`,
     };
-  const container = nodeContainer()
-    .withExec([
-      "npm",
-      "install",
-      "--global",
-      "--no-fund",
-      "--no-audit",
-      `typescript@${version}`,
-    ])
-    .withMountedDirectory("/repo", directory, { readOnly: true })
-    .withWorkdir("/repo");
-  for (const path of required) {
-    try {
-      await container
-        .withExec(["tsc", "--showConfig", "--project", path])
-        .stdout();
-    } catch (error) {
-      if (error instanceof Error) {
-        const diagnostic = ["stdout", "stderr"]
-          .map((key) =>
-            key in error
-              ? String(
-                  (error as unknown as Record<string, unknown>)[key],
-                ).trim()
-              : "",
-          )
-          .filter(Boolean)
-          .join("\n");
-        throw new Error(
-          `typescript: ${path} validation execution failed: ${diagnostic || error.message}`,
-        );
-      }
-      throw error;
-    }
-  }
+  const container = npmTools(`typescript@${version}`)
+    .withMountedDirectory(REPOSITORY, directory, { readOnly: true })
+    .withWorkdir(REPOSITORY);
+  for (const path of required)
+    await runTool(
+      container.withExec(["tsc", "--showConfig", "--project", path]),
+      `typescript: ${path} validation`,
+    );
   return { status: "validated" };
 }
 
