@@ -117,6 +117,29 @@ export function nodeBaseline(kind: string): Capability {
   };
   return {
     name: "node",
+    documentation: {
+      tools: [
+        {
+          name: "fnm (Fast Node Manager)",
+          url: "https://github.com/Schniz/fnm",
+          purpose:
+            "Selects and, when needed, installs the Node version requested by .nvmrc.",
+        },
+        {
+          name: "Node.js",
+          url: "https://nodejs.org/",
+          purpose:
+            "Reference for Node.js versions and TypeScript type definitions",
+        },
+      ],
+      init: "Seed .nvmrc, public-registry .npmrc, and init-only @types/node; no engines declaration.",
+      update:
+        kind === "forge-app"
+          ? "Replace .nvmrc/.npmrc, derive package license from catalog, and remove engines; preserve @types/node."
+          : "Replace .nvmrc/.npmrc and derive package license from catalog; preserve engines and @types/node.",
+      validate:
+        "Use fnm to select .nvmrc (may download Node); no baseline, type-version, or deployment check.",
+    },
     init: seed,
     update: (directory) => updateNode(directory, kind),
     validate: validateNode,

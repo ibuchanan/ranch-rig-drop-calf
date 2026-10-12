@@ -111,6 +111,21 @@ export function evals(version: string = TOOL_VERSIONS.promptfoo): Capability {
   };
   return {
     name: "evals",
+    documentation: {
+      tools: [
+        {
+          name: "Promptfoo",
+          url: "https://www.promptfoo.dev/docs/",
+          purpose:
+            "Evaluates prompts against authored test cases and displays results.",
+        },
+      ],
+      init: "Seed Promptfoo, eval/view scripts, and the config/prompts/tests/data/guide tree; no manifest wiring.",
+      update:
+        "Enforce Promptfoo and eval/view scripts; preserve the owner-managed suite and its deletions.",
+      validate:
+        "Use Promptfoo's native config/schema validator to load suite references; no model calls or assertion execution.",
+    },
     selection: { with: true, without: true, default: false },
     init(project) {
       seed(project);

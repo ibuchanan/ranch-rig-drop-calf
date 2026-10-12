@@ -257,6 +257,24 @@ export function typeScriptToolchain(
   };
   return {
     name: "typescript",
+    documentation: {
+      tools: [
+        {
+          name: "TypeScript",
+          url: "https://www.typescriptlang.org/docs/",
+          purpose:
+            "Type-checks source and emits JavaScript or library declarations.",
+        },
+      ],
+      init: ownsBuild
+        ? "Seed TypeScript, typecheck/build scripts, and compiler configuration (declarations config only with tsdown)."
+        : "Seed TypeScript, typecheck, and compiler configuration including declarations; library-build owns build.",
+      update: ownsBuild
+        ? "Enforce TypeScript/typecheck and compiler policy; maintain tsc build unless tsdown is declared."
+        : "Enforce TypeScript/typecheck and dependency-selected compiler policy; leave build to library-build.",
+      validate:
+        "Run tsc --showConfig for applicable compiler configs, without compiling source or declarations.",
+    },
     init(project) {
       seed(project);
       project.templates.push(templateTree(TYPESCRIPT_TEMPLATE, copyTypeScript));

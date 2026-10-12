@@ -142,6 +142,20 @@ export function vitestTesting(
   };
   return {
     name: "test",
+    documentation: {
+      tools: [
+        {
+          name: "Vitest",
+          url: "https://vitest.dev/",
+          purpose: "Runs Forge app tests with mocking and V8 coverage support.",
+        },
+      ],
+      init: "Seed Vitest, matching V8 coverage, test/watch/coverage scripts, and vitest.config.ts; no sample tests.",
+      update:
+        "Enforce runner/coverage references and test scripts; preserve owner configuration and test sources.",
+      validate:
+        "Load Vitest config, discover test files, and initialize coverage configuration without executing tests.",
+    },
     init(project) {
       seed(project);
       project.templates.push(templateTree(VITEST_TEMPLATE));

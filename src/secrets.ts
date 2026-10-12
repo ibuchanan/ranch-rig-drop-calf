@@ -273,6 +273,27 @@ export function forgeSecrets(): Capability {
   };
   return {
     name: "secrets",
+    documentation: {
+      tools: [
+        {
+          name: "SecretSpec",
+          url: "https://secretspec.dev",
+          purpose:
+            "Manages environment variable injection and secret validation for Forge CLI commands",
+        },
+        {
+          name: "Atlassian Forge CLI",
+          url: "https://developer.atlassian.com/platform/forge/cli-reference/",
+          purpose:
+            "Reference for forge register, deploy, install, and upgrade command syntax",
+        },
+      ],
+      init: "Seed owner SecretSpec declarations and app-variable allowlist, executable helpers, and six Forge dispatch scripts.",
+      update:
+        "Enforce helper contents/modes and dispatch scripts; preserve declarations/allowlist, rejecting unmigrated embedded keys.",
+      validate:
+        "Parse TOML and allowlist, check helper presence and executable modes; no secret resolution or Forge execution.",
+    },
     init(project) {
       seed(project);
       const name = project.packageJson.name;

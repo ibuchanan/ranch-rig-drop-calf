@@ -102,6 +102,19 @@ export function libraryBuild(
   };
   return {
     name: "library-build",
+    documentation: {
+      tools: [
+        {
+          name: "tsdown",
+          url: "https://tsdown.dev/",
+          purpose:
+            "Bundles a TypeScript library as ESM and CommonJS with declaration output.",
+        },
+      ],
+      init: "Seed tsdown, the build pipeline/config, and publishing fields.",
+      update:
+        "Enforce tsdown, the build command/script, and ESM/CommonJS formats; preserve owner entry/dependency settings and publishing fields.",
+    },
     init(project) {
       seed(project);
       project.templates.push(templateTree(LIBRARY_BUILD_TEMPLATE));

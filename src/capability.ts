@@ -16,6 +16,13 @@ export type Validation =
 
 export type Capability = {
   name: string;
+  /** Reference text lives with policy; inactive verbs use their NoOp reason instead. */
+  documentation: {
+    tools: { name: string; url: string; purpose: string }[];
+    init?: string;
+    update?: string;
+    validate?: string;
+  };
   init: ((project: ProjectBlueprint) => void) | NoOp;
   update: ((directory: Directory) => Directory | Promise<Directory>) | NoOp;
   validate: ((directory: Directory) => Promise<Validation>) | NoOp;

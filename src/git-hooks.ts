@@ -70,6 +70,27 @@ export function gitHooks(
   };
   return {
     name: "git-hooks",
+    documentation: {
+      tools: [
+        {
+          name: "Lefthook",
+          url: "https://lefthook.dev/",
+          purpose:
+            "Dispatches lint/check workflows and Git hooks from lefthook.yml.",
+        },
+        {
+          name: "Gitleaks",
+          url: "https://github.com/gitleaks/gitleaks",
+          purpose:
+            "Scans staged changes for secrets in the pre-commit hook; install separately.",
+        },
+      ],
+      init: "Seed Lefthook, prepare/lint/check dispatch scripts, and lefthook.yml.",
+      update:
+        "Enforce the runner and dispatch scripts; preserve owner hook configuration.",
+      validate:
+        "Run lefthook validate with isolated Git metadata; never install or execute hooks.",
+    },
     init(project) {
       seed(project);
       project.templates.push(templateTree(GIT_HOOKS_TEMPLATE));

@@ -47,6 +47,29 @@ async function updateForgeAhead(directory: Directory): Promise<Directory> {
 export function forgeAhead(): Capability {
   return {
     name: "forge-ahead",
+    documentation: {
+      tools: [
+        {
+          name: "Forge Ahead API types",
+          url: "https://github.com/ibuchanan/forge-ahead-atlassian-api-types",
+          purpose:
+            "Provides types for Atlassian API integration in Forge apps.",
+        },
+        {
+          name: "Forge Ahead errors",
+          url: "https://github.com/ibuchanan/forge-ahead-errors",
+          purpose: "Provides typed error handling at Forge boundaries.",
+        },
+        {
+          name: "Forge Ahead logging",
+          url: "https://github.com/ibuchanan/forge-ahead-logging",
+          purpose: "Provides logging helpers for Forge apps.",
+        },
+      ],
+      init: "Seed API types as an owner-managed dependency.",
+      update:
+        "Enforce errors and logging dependencies; preserve API types and other dependencies.",
+    },
     init(project) {
       project.packageJson.dependencies = {
         ...project.packageJson.dependencies,
@@ -90,6 +113,17 @@ async function updateCleanBuild(directory: Directory): Promise<Directory> {
 export function cleanBuild(): Capability {
   return {
     name: "clean-build",
+    documentation: {
+      tools: [
+        {
+          name: "rm",
+          url: "https://www.gnu.org/software/coreutils/manual/html_node/rm-invocation.html",
+          purpose: "Removes dist when the owner runs the clean workflow.",
+        },
+      ],
+      update:
+        "Enforce scripts.clean as rm -rf dist in an existing package; do not execute it.",
+    },
     init: noOp(
       "Clean build has no files, dependencies, or initial settings to seed; update maintains the clean script.",
     ),
@@ -137,6 +171,18 @@ async function updateBunTesting(directory: Directory): Promise<Directory> {
 export function bunTesting(): Capability {
   return {
     name: "test",
+    documentation: {
+      tools: [
+        {
+          name: "Bun test",
+          url: "https://bun.com/docs/test",
+          purpose:
+            "Runs library, tool, and agent-skill tests with built-in watch and coverage support.",
+        },
+      ],
+      update:
+        "Enforce Bun test/watch/coverage scripts; preserve owner test sources.",
+    },
     init: noOp(
       "Bun's built-in test runner needs no dependency or configuration seed; update maintains the test scripts, and test sources are owner-managed.",
     ),

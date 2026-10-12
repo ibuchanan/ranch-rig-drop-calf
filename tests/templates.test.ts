@@ -63,12 +63,14 @@ test("assembly collects zero or multiple trees from capabilities without reading
   const added: Capability[] = [
     {
       name: "custom-empty",
+      documentation: { tools: [] },
       init: noOp("No seed is needed."),
       update: noOp("No outputs to maintain."),
       validate: noOp("No consuming configuration."),
     },
     {
       name: "custom-trees",
+      documentation: { tools: [] },
       init(project) {
         project.templates.push(
           templateTree("custom/first"),

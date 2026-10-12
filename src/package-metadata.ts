@@ -109,6 +109,28 @@ export function packageMetadata(kind: string): Capability {
   };
   return {
     name: "package-metadata",
+    documentation: {
+      tools: [
+        {
+          name: "npm-package-json-lint",
+          url: "https://www.npmjs.com/package/npm-package-json-lint",
+          purpose:
+            "Checks package metadata field types and formats with explicit structural rules.",
+        },
+        {
+          name: "npm",
+          url: "https://docs.npmjs.com/cli/",
+          purpose: "Reference for package.json schema and metadata format",
+        },
+      ],
+      init: "Seed version 0.1.0, type module, and private true; top-level initialization supplies the initial package name.",
+      update:
+        kind === "forge-app" || kind === "agent-skill"
+          ? "Derive name/description/author from catalog; enforce type module and private true, preserving release version."
+          : "Derive name/description/author from catalog; enforce type module, preserving owner privacy and release version.",
+      validate:
+        "Check metadata field types/formats with explicit structural rules, not policy compliance.",
+    },
     init: seed,
     update: (directory) => updatePackageMetadata(directory, kind),
     validate: validatePackageMetadata,

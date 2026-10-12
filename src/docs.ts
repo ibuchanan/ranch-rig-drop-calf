@@ -156,6 +156,25 @@ export function docsLinting(
   };
   return {
     name: "docs",
+    documentation: {
+      tools: [
+        {
+          name: "markdownlint-cli2",
+          url: "https://github.com/igorshubovych/markdownlint-cli2",
+          purpose: "Lints markdown files against consistent style rules",
+        },
+        {
+          name: "CSpell",
+          url: "https://cspell.org/",
+          purpose: "Spell-checks documentation and code comments",
+        },
+      ],
+      init: "Seed Markdown/spelling tools and lint:docs, configs, DEVELOPMENT.md, and Diátaxis/spec starter documents.",
+      update:
+        "Enforce tool references and lint:docs; preserve owner config and documents, including deletions.",
+      validate:
+        "Load Markdown/spelling configs and references without scanning documentation quality.",
+    },
     init(project) {
       seed(project);
       project.templates.push(templateTree(DOCS_TEMPLATE));

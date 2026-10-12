@@ -69,6 +69,19 @@ export function bundleSize(
   };
   return {
     name: "size-limit",
+    documentation: {
+      tools: [
+        {
+          name: "Size Limit",
+          url: "https://github.com/ai/size-limit",
+          purpose:
+            "Measures built file sizes against owner-managed budgets with @size-limit/file.",
+        },
+      ],
+      init: `Seed paired tools, build-then-size script, and a ${SIZE_LIMIT_LIMIT} budget for ${path}.`,
+      update:
+        "Enforce paired tool references and the size command; preserve owner budgets and paths.",
+    },
     init: seed,
     update: (directory) => updateSizeLimit(directory, version),
     validate: noOp(

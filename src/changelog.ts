@@ -103,6 +103,21 @@ export function changelogToolchain(
   };
   return {
     name: "changelog",
+    documentation: {
+      tools: [
+        {
+          name: "git-cliff",
+          url: "https://git-cliff.org/",
+          purpose:
+            "Renders unreleased changelog from commit history and release policy",
+        },
+      ],
+      init: "Seeds cliff.toml release policy and CHANGELOG.md from templates; adds changelog script to package.json",
+      update:
+        "Maintains git-cliff dependency version and changelog command in package.json",
+      validate:
+        "Validates cliff.toml policy and runs git-cliff command against repository commit history",
+    },
     init(project) {
       seed(project);
       project.templates.push(templateTree(CHANGELOG_TEMPLATE));

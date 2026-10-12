@@ -158,6 +158,20 @@ export function forgeManifest(
 ): Capability {
   return {
     name: "forge-manifest",
+    documentation: {
+      tools: [
+        {
+          name: "Forge CLI",
+          url: "https://developer.atlassian.com/platform/forge/cli-reference/",
+          purpose:
+            "Lints Forge manifests and app source against platform requirements.",
+        },
+      ],
+      update:
+        "Derive app.runtime.name from numeric .nvmrc in an existing manifest; preserve other settings.",
+      validate:
+        "Run pinned forge lint, including source checks, with supplied dependencies and explicit Forge credentials; no fixes or deployment.",
+    },
     init: noOp(
       "The Forge manifest is supplied by forge create or the owner; Drop Calf does not seed app identity or module wiring.",
     ),

@@ -1,10 +1,10 @@
 # Developing Drop Calf
 
-Drop Calf (`drop-calf`) is a TypeScript Dagger module. The current code only
-generates new project files, and
-`remove-scaffold` strips a `forge create` starter first; the
-[`specs/` documents](specs/00-drop-calf-overview.md) also describe future
-synchronization and additional project functions.
+Drop Calf (`drop-calf`) is a TypeScript Dagger module with first-time init,
+policy update, and read-only tool-acceptance validation. `init-changes` also
+records scaffold deletions for export. The
+[`specs/` documents](specs/00-drop-calf-overview.md) include future capabilities
+as well as current implementation contracts.
 
 ## Set up a fresh clone
 
@@ -258,6 +258,34 @@ Generated projects have scripts and configs but no source tree, and the copied
 OSS README is an unfilled template. The `agent-skill` profile intentionally omits
 a test script. Use the specs as a roadmap, not as a description of current CLI
 behavior.
+
+## Maintaining the capability reference
+
+Each capability's `documentation` names its tools or format, public links,
+one-line purposes, and summaries of implemented verbs. Keep these summaries
+beside the implementation when changing its policy. Do not document inactive
+verbs separately: the renderer reads their exact `noOp(reason)` text.
+
+`src/profiles.ts` supplies kind membership and selection policy. The renderer
+groups only rows whose capability name, selection, tools, and verb descriptions
+are identical; Bun/Vitest, privacy policies, Node engine policy, and size paths
+stay distinct where behavior differs. The kind inventory preserves execution order.
+
+After editing policy, descriptions, reasons, or profiles, regenerate the marked
+blocks in README and both specifications, then check for drift:
+
+```bash
+bun run scripts/refresh-capability-docs.ts
+bun test tests/capability-docs.test.ts
+```
+
+The script replaces only marked blocks, refusing missing, duplicated, or reversed
+markers. The test compares the committed blocks with fresh output and rejects
+missing tool information, missing active-verb summaries, or duplicated no-op text.
+It does not infer prose from function bodies: reviewers still check active summaries
+against behavior, backed by each capability's behavior tests. README contains the
+consumer overview and collapsed reference; the functions spec contains detailed
+policy reference; regeneration and contributor workflow belong here.
 
 ## Seeded assets
 

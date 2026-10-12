@@ -71,6 +71,24 @@ export function prelint(
 ): Capability {
   return {
     name: "prelint",
+    documentation: {
+      tools: [
+        {
+          name: "ast-grep",
+          url: "https://ast-grep.github.io/",
+          purpose:
+            "AST-based pattern scanner for semantic code analysis and linting",
+        },
+        {
+          name: "@forge-ahead/prelint",
+          url: "https://github.com/ibuchanan/tool-forge-prelint-ast-grep",
+          purpose:
+            "Forge app linting rules for manifest, module wiring, and handler patterns",
+        },
+      ],
+      update:
+        "Maintains ast-grep and @forge-ahead/prelint dependency versions and lint commands",
+    },
     init: noOp(
       "Prelint has no repository-local configuration to seed; its rules ship in the dependency package, and update maintains the tool dependencies and scripts.",
     ),

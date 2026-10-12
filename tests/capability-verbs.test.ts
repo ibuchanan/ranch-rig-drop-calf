@@ -38,6 +38,7 @@ const capability = (
   operations: Partial<Capability> = {},
 ): Capability => ({
   name,
+  documentation: { tools: [] },
   init: inactive,
   update: inactive,
   validate: inactive,

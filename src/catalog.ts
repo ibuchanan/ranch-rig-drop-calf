@@ -140,6 +140,19 @@ export async function validateCatalog(
 export function catalog(kind?: string): Capability {
   return {
     name: "catalog",
+    documentation: {
+      tools: [
+        {
+          name: "Backstage Entity Validator",
+          url: "https://www.npmjs.com/package/@roadiehq/roadie-backstage-entity-validator",
+          purpose:
+            "Validates catalog-info.yaml component entities against Backstage schema",
+        },
+      ],
+      init: "Seeds catalog-info.yaml with project metadata from package.json and CLI inputs",
+      validate:
+        "Check YAML and Backstage Component structure, user owner reference, and optional copyright-date format; no remote lookup.",
+    },
     init(project) {
       if (!kind) throw new Error("Catalog init requires a project kind.");
       const seed = {

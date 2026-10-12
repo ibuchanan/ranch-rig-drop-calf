@@ -21,6 +21,19 @@ export function aidev(profile: string): Capability {
   };
   return {
     name: "aidev",
+    documentation: {
+      tools: [
+        {
+          name: "AGENTS.md",
+          url: "https://agents.md/",
+          purpose:
+            "Gives coding agents repository-specific instructions; human guidance, not executable config.",
+        },
+      ],
+      ...(profile === "forge-app"
+        ? { init: "Seed authored Forge agent guidance in AGENTS.md." }
+        : {}),
+    },
     ...(profile === "forge-app"
       ? { selection: { without: true, default: true } }
       : {}),

@@ -94,6 +94,19 @@ export async function copyOssAssets(
 export function oss(): Capability {
   return {
     name: "oss",
+    documentation: {
+      tools: [
+        {
+          name: "Apache License 2.0 / pinned Atlassian OSS templates",
+          url: "https://www.apache.org/licenses/LICENSE-2.0",
+          purpose:
+            "Supplies licensing, contribution, conduct, security, README, and ownership documents; no executable tool.",
+        },
+      ],
+      init: "Seed LICENSE, README.md, CONTRIBUTING.md, CODE_OF_CONDUCT.md, SECURITY.md, and .atlassian/OWNER with catalog metadata.",
+      update:
+        "Replace authoritative OSS documents and OWNER from pinned templates and catalog metadata; preserve README edits/deletion.",
+    },
     init(project) {
       project.templates.push(templateTree(PINNED_OSS, copyOssAssets));
     },

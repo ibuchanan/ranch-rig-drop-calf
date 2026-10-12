@@ -225,6 +225,7 @@ test.each(kinds)(
 test("ownership checks detect two capabilities writing the same output even with identical seeds", async () => {
   const seed = (name: string): Capability => ({
     name,
+    documentation: { tools: [] },
     init(project) {
       project.files.set("duplicate.txt", "same");
       project.packageJson.scripts.duplicate = "same";
@@ -246,6 +247,7 @@ test("ownership checks detect two capabilities writing the same output even with
 test("ownership checks detect updaters enforcing the same package values", async () => {
   const update = (name: string): Capability => ({
     name,
+    documentation: { tools: [] },
     init: { reason: "There is no init seed." },
     async update(directory) {
       const pkg = JSON.parse(await directory.file("package.json").contents());

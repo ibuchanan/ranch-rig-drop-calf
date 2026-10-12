@@ -168,6 +168,21 @@ export function biomeToolchain(
   };
   return {
     name: "biome",
+    documentation: {
+      tools: [
+        {
+          name: "Biome",
+          url: "https://biomejs.dev/",
+          purpose:
+            "Formats and lints JavaScript, TypeScript, and supported configuration files.",
+        },
+      ],
+      init: "Seed Biome, formatting/lint subtasks, biome.jsonc, and .editorconfig.",
+      update:
+        "Enforce the tool and four subtasks; let Biome migrate an existing root config, preserving EditorConfig.",
+      validate:
+        "Load the root config and references with Biome, without scanning source quality.",
+    },
     init(project) {
       seed(project);
       project.templates.push(templateTree(BIOME_TEMPLATE));

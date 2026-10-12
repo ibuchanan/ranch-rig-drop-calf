@@ -232,6 +232,19 @@ export async function copyGitignoreAssets(
 export function gitignore(): Capability {
   return {
     name: "gitignore",
+    documentation: {
+      tools: [
+        {
+          name: "gitignore.io",
+          url: "https://www.gitignore.io/",
+          purpose:
+            "Provides template rules for Node, TypeScript, Forge, and other tool ecosystems",
+        },
+      ],
+      init: "Seed two owned blocks from pinned gitignore.io topics and Drop Calf defaults, retaining unowned scaffold rules.",
+      update:
+        "Replace existing owned blocks from recorded topics/pinned defaults; preserve bytes outside blocks and do not seed missing blocks.",
+    },
     init(project) {
       project.templates.push({
         path: PINNED_GITIGNORE,
