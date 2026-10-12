@@ -293,8 +293,8 @@ describe("profiles", () => {
       format: "biome format --write",
       typecheck: "tsc --project tsconfig.typecheck.json --noEmit",
       build,
-      clean: "rm -rf dist",
     });
+    expect(packageJson.scripts.clean).toBeUndefined();
     expect(packageJson.scripts.test).toBe(testScript);
     if (kind === "library") {
       expect(packageJson.devDependencies.tsdown).toBeDefined();

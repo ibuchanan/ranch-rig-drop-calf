@@ -116,6 +116,7 @@ test.each(kinds)(
           ...pkg.scripts,
           ...BIOME_SCRIPTS,
           ...GIT_HOOKS_SCRIPTS,
+          clean: "rm -rf dist",
           "lint:docs": DOCS_COMMAND,
           ...(kind === "library" || kind === "forge-app"
             ? { size: SIZE_LIMIT_COMMAND }

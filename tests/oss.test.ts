@@ -188,6 +188,7 @@ describe("pinned OSS templates", () => {
           ...project.packageJson,
           scripts: {
             ...project.packageJson.scripts,
+            clean: "rm -rf dist",
             ...(kind === "forge-app"
               ? PRELINT_SCRIPTS
               : {

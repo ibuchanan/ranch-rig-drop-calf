@@ -811,6 +811,32 @@ new dependency declarations affect config policy in the same update pass.
 Both runners accept a scaffold with no tests. Test sources remain user-owned;
 Forge architecture-test seeds are a separate, optional concern.
 
+### `clean-build`
+
+Every project kind selects this capability. It owns only `package.json#scripts.clean`
+with the canonical command `rm -rf dist`. Generated projects assume a POSIX-compatible
+shell and `rm`; native Windows shell support is outside this policy. No dependency,
+configuration file, or additional cleanup target is introduced.
+
+- **init** is an explicit no-op: "Clean build has no files, dependencies, or initial
+  settings to seed; update maintains the clean script." Top-level init's update pass
+  supplies the command.
+- **update** enforces the canonical command in an existing package, replacing owner
+  edits to `scripts.clean` and creating a missing scripts section or clean key. A
+  missing `package.json` is not created. Malformed/non-object JSON and a non-object
+  scripts section fail before writes. Other package fields, script keys, files,
+  dependencies, and lockfiles survive. Matching values preserve original package
+  bytes; changes use sorted, two-space JSON with a trailing newline. A second update
+  changes nothing.
+- **validate** is an explicit no-op: "Clean build owns no configuration with a separate
+  tool-acceptance check; executing the clean script would delete build output and
+  belongs to the clean workflow." It reports skipped without reading the repository,
+  comparing the script to policy, or executing any command.
+
+Drop Calf never executes the clean script during init, update, or validate, and never
+removes build output through this capability. The command removes only `dist` relative
+to the package root when the owner explicitly runs the clean workflow.
+
 ### `evals` (optional; `--preset all` or `--with evals`)
 Add `promptfoo`; own `eval`/`view` scripts. Copy versioned Promptfoo config and example
 prompts/tests/data as seed assets; never overwrite an existing evaluation suite.

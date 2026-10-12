@@ -106,6 +106,7 @@ test.each(kinds)(
         );
         // Update-only capabilities retain addTo solely for the legacy oracle.
         const legacyInitPackage = structuredClone(legacy.packageJson);
+        delete legacyInitPackage.scripts.clean;
         if (kind !== "forge-app") {
           delete legacyInitPackage.scripts.test;
           delete legacyInitPackage.scripts["test:watch"];
@@ -146,6 +147,7 @@ test.each(kinds)(
               "biome",
               "typescript",
               "library-build",
+              "clean-build",
               "secrets",
               "size-limit",
               "docs",

@@ -25,12 +25,46 @@ export function forgeAhead(): Capability {
 
 export { libraryBuild } from "./library-build.ts";
 
+const CLEAN_BUILD_COMMAND = "rm -rf dist";
+
+async function updateCleanBuild(directory: Directory): Promise<Directory> {
+  if (!(await directory.exists("package.json"))) return directory;
+  const pkg = parseObject(
+    "package.json",
+    await directory.file("package.json").contents(),
+  );
+  const existing = pkg.scripts;
+  if (
+    existing !== undefined &&
+    (existing === null ||
+      typeof existing !== "object" ||
+      Array.isArray(existing))
+  )
+    throw new ParseError("package.json", "scripts must be an object");
+  const scripts = (existing ?? {}) as Record<string, unknown>;
+  if (scripts.clean === CLEAN_BUILD_COMMAND) return directory;
+  pkg.scripts = { ...scripts, clean: CLEAN_BUILD_COMMAND };
+  return directory.withNewFile(
+    "package.json",
+    sortPackageJson(`${JSON.stringify(pkg, null, 2)}\n`),
+  );
+}
+
 export function cleanBuild(): Capability {
-  return expandCapability("clean-build", "13-clean-build", {
+  return {
+    name: "clean-build",
+    // Retain the legacy contribution until ticket 26 contracts the old shape.
     addTo(project) {
-      project.packageJson.scripts.clean = "rm -rf dist";
+      project.packageJson.scripts.clean = CLEAN_BUILD_COMMAND;
     },
-  });
+    init: noOp(
+      "Clean build has no files, dependencies, or initial settings to seed; update maintains the clean script.",
+    ),
+    update: updateCleanBuild,
+    validate: noOp(
+      "Clean build owns no configuration with a separate tool-acceptance check; executing the clean script would delete build output and belongs to the clean workflow.",
+    ),
+  };
 }
 
 const BUN_TEST_SCRIPTS = {
