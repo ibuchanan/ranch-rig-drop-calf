@@ -140,6 +140,7 @@ test.each(kinds)(
               "typescript",
               "secrets",
               "size-limit",
+              "docs",
             ].includes(capability.name) ||
             (kind === "forge-app" && capability.name === "test")
           )

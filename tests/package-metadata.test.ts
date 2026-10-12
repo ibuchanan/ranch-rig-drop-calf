@@ -5,6 +5,7 @@ import { BIOME_SCRIPTS } from "../src/biome.ts";
 import { validateCapabilities } from "../src/capability.ts";
 import { CATALOG_FILE, PACKAGE_NAME, renderCatalog } from "../src/catalog.ts";
 import { CHANGELOG_COMMAND } from "../src/changelog.ts";
+import { DOCS_COMMAND } from "../src/docs.ts";
 import { GIT_HOOKS_SCRIPTS } from "../src/git-hooks.ts";
 import { DropCalf } from "../src/index.ts";
 import {
@@ -115,6 +116,7 @@ test.each(kinds)(
           ...pkg.scripts,
           ...BIOME_SCRIPTS,
           ...GIT_HOOKS_SCRIPTS,
+          "lint:docs": DOCS_COMMAND,
           ...(kind === "library" || kind === "forge-app"
             ? { size: SIZE_LIMIT_COMMAND }
             : {}),
@@ -132,6 +134,8 @@ test.each(kinds)(
         devDependencies: {
           "@biomejs/biome": TOOL_VERSIONS.biome,
           lefthook: TOOL_VERSIONS.lefthook,
+          cspell: TOOL_VERSIONS.cspell,
+          "markdownlint-cli2": TOOL_VERSIONS.markdownlintCli2,
           typescript: TOOL_VERSIONS.typescript,
           ...(kind === "library" || kind === "forge-app"
             ? {

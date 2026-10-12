@@ -1,6 +1,6 @@
 import { biomeToolchain } from "./biome.ts";
 import { type Capability, expandCapability, noOp } from "./capability.ts";
-import { DOCS_TEMPLATE } from "./docs.ts";
+export { docsLinting } from "./docs.ts";
 import { TOOL_VERSIONS } from "./versions.ts";
 
 export type { Capability } from "./capability.ts";
@@ -40,24 +40,6 @@ export function cleanBuild(): Capability {
   return expandCapability("clean-build", "13-clean-build", {
     addTo(project) {
       project.packageJson.scripts.clean = "rm -rf dist";
-    },
-  });
-}
-
-/**
- * Lint the seeded documentation tree. The tool config is pinned in
- * `templates/docs` alongside the Markdown it checks; the capability declares
- * that tree with the runner so selecting it also seeds the tools' inputs.
- */
-export function docsLinting(): Capability {
-  return expandCapability("docs", "20-docs", {
-    templates: [DOCS_TEMPLATE],
-    addTo(project) {
-      project.packageJson.scripts["lint:docs"] =
-        'markdownlint-cli2 "**/*.md" && cspell lint "**/*.md"';
-      project.packageJson.devDependencies.cspell = TOOL_VERSIONS.cspell;
-      project.packageJson.devDependencies["markdownlint-cli2"] =
-        TOOL_VERSIONS.markdownlintCli2;
     },
   });
 }

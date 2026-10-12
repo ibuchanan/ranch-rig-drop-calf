@@ -466,6 +466,50 @@ Tool installation may require network access on a cold container run. Update doe
 install repository dependencies or refresh package-manager lockfiles; those remain the
 owner's package-manager workflow.
 
+### `docs`
+
+Every kind includes the documentation workflow: `devDependencies.cspell` at
+`TOOL_VERSIONS.cspell`, `devDependencies["markdownlint-cli2"]` at
+`TOOL_VERSIONS.markdownlintCli2`, and `scripts["lint:docs"]`:
+`markdownlint-cli2 "**/*.md" && cspell lint "**/*.md"`.
+
+- **init** seeds both tool pins and the command and overlays `templates/docs`.
+  The tree includes the four Diátaxis placeholders, `DEVELOPMENT.md`, `specs/spec.md`,
+  `.markdownlint-cli2.jsonc`, and `.cspell.jsonc`. These are starting content, not
+  continuing policy. Standalone `copy-docs` deliberately overlays the same tree;
+  it is not maintenance update.
+- **update** enforces only the two tool pins and canonical script in an existing
+  `package.json`, creating missing sections and owned keys. Missing package stays
+  absent; malformed/non-object JSON and non-object scripts/devDependencies fail
+  before writes. Unrelated fields survive. Matching values preserve package bytes;
+  changes use sorted, two-space JSON with a trailing newline. A second update
+  changes nothing. No repository install or lockfile refresh runs.
+- **Documentation and both configs are owner-managed after init.** Update never
+  reads, recreates, rewrites, or migrates them. Authored prose, added spelling words,
+  custom rules, exclusions, comments, and intentional deletions survive byte-for-byte.
+  Neither config is split: the seeded markdownlint rules and CSpell settings are
+  defaults, not centrally enforced policy, so there is no maintained rules file.
+- **validate** loads the two seeded root configs with the capability-selected tools
+  in an isolated Node-baseline container using the centralized Bun runtime pin.
+  Both configs missing reports skipped; a partial pair reports failed. No prior
+  init, update, package installation, or baseline agreement is required.
+  Markdownlint runs with `--config .markdownlint-cli2.jsonc --no-globs "**/*.md" "#**"`;
+  CSpell runs with `lint --config .cspell.jsonc --no-config-search
+  --no-must-find-files --no-progress --exclude "**" "**/*.md"`. Both load config while
+  selecting zero documents, even with owner globs and markdownlint autofix enabled.
+  Malformed JSONC and unavailable config imports/extends fail with tool diagnostics;
+  accepted owner configurations pass. The repository is mounted read-only and
+  no container changes are exported. Tool setup/download failures are execution
+  failures, not evidence of invalid config.
+
+This validates loading of the two root JSONC files and their config references,
+not every alternative config discovery format, nested configuration, full schema,
+rule parameters, dictionary availability, or documentation spelling/style. Some
+invalid option types can be accepted by a no-file load; validation follows tool
+acceptance, not a stricter invented schema. Config modules referenced by imports
+or extends can execute; owner dependencies must be available in the supplied tree.
+Content linting belongs to `lint:docs`, not this validator.
+
 ### `forge-prelint`
 
 The `prelint` capability is selected only for `forge-app`. It owns

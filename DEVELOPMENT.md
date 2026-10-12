@@ -109,12 +109,15 @@ DROP_CALF_E2E=1 bun test tests/e2e
   [Refreshing the pinned OSS templates](#refreshing-the-pinned-oss-templates).
   Standalone `copy-oss --directory ...` reads the same catalog and re-seeds all
   six files, including README.
-- `src/docs.ts`: copies `templates/docs/` through Dagger, separate from OSS.
-  The tree carries the generated `docs/` placeholders plus the pinned
-  `.cspell.jsonc` and `.markdownlint-cli2.jsonc` the `docsLinting()`
-  capability runs. Both are dotfiles, so they are worth knowing about when
-  extending the tree: Dagger's `glob` does match them, but a shell glob will
-  not.
+- `src/docs.ts`: the documentation workflow, separate from OSS. Init seeds
+  `templates/docs/`, including the Diátaxis placeholders, `DEVELOPMENT.md`, spec,
+  and both lint configs. Update maintains only `lint:docs` and the CSpell and
+  markdownlint-cli2 pins; owner docs, words, rules, and deletions survive.
+  Validation loads both root JSONC configs with pinned tools in a read-only
+  container while excluding all documents. It checks loading, not spelling,
+  Markdown style, full schemas, or dictionary availability. See the
+  [docs policy](specs/02-project-functions.md#docs). Both configs are dotfiles:
+  Dagger's `glob` matches them, but a shell glob will not.
 - `src/templates.ts`: `copyTemplate`, the shared tree overlay, and
   `seedTemplates`, which reads the template paths selected by capabilities and
   preserves SecretSpec substitutions and helper permissions.
@@ -167,8 +170,8 @@ DROP_CALF_E2E=1 bun test tests/e2e
   and configuration to the blueprint. A capability's optional `templates`
   array names zero or more module-source trees; `buildProject` collects those
   paths in `ProjectBlueprint.templates` without reading the files.
-  `docsLinting()` declares `templates/docs` beside the `lint:docs` script and
-  the `cspell`/`markdownlint-cli2` devDependencies every kind gets.
+  `docsLinting()` is re-exported from `src/docs.ts` for compatibility; its
+  dedicated module owns documentation initialization, update, and validation.
 - `src/node.ts`: the Node baseline. `nodeBaseline(kind)` seeds `.nvmrc`, `.npmrc`,
   and `@types/node`; the dependency is init-only. Node also pulls catalog
   `forge-ranch/license` into an existing package's `license` field during update
@@ -342,6 +345,13 @@ Markdown keeps trailing whitespace because two trailing spaces encode a hard
 line break. The docs template leaves markdownlint's MD009 at its default, which
 allows two-space hard breaks while rejecting other excess trailing whitespace.
 Editors therefore preserve meaningful spaces, and `lint:docs` checks their use.
+
+To exercise docs config loading, malformed configs, unavailable references, and
+read-only acceptance without linting or fixing Markdown content:
+
+```bash
+DROP_CALF_DOCS_E2E=1 bun test tests/e2e/docs.e2e.test.ts
+```
 
 ## The generated `.gitignore`
 
