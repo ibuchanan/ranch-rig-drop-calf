@@ -1,5 +1,6 @@
 import { expect, test } from "bun:test";
 import { buildProject } from "../src/profiles.ts";
+import { TOOL_VERSIONS } from "../src/versions.ts";
 import { gitHooksTemplates } from "./templates-source.ts";
 
 test("Forge apps expose Vitest test, watch and coverage commands on an empty starter", () => {
@@ -11,8 +12,10 @@ test("Forge apps expose Vitest test, watch and coverage commands on an empty sta
   expect(packageJson.scripts["test:coverage"]).toBe(
     "vitest run --coverage --passWithNoTests",
   );
-  expect(packageJson.devDependencies.vitest).toBe("5.0.3");
-  expect(packageJson.devDependencies["@vitest/coverage-v8"]).toBe("5.0.3");
+  expect(packageJson.devDependencies.vitest).toBe(TOOL_VERSIONS.vitest);
+  expect(packageJson.devDependencies["@vitest/coverage-v8"]).toBe(
+    TOOL_VERSIONS.vitest,
+  );
 });
 
 test("Forge pre-push checks reach the typecheck command through lint", () => {

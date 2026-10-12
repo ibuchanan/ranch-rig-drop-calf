@@ -13,6 +13,7 @@ import { buildProject, resolveProfile } from "../src/profiles.ts";
 import { createBlueprint } from "../src/project.ts";
 import { TOOL_VERSIONS } from "../src/versions.ts";
 import { mockDirectory, mockModuleSource } from "./module-source.ts";
+import { mockContainer } from "./container-source.ts";
 import { gitHooksTemplates } from "./templates-source.ts";
 
 test("init and update enforce only the selected pin and hook dispatch scripts", async () => {
@@ -150,37 +151,8 @@ test("git-hooks is the only capability that contributes lint, regardless of comp
   expect(owners.map((capability) => capability.name)).toEqual(["git-hooks"]);
 });
 
-function mockContainer(report: string) {
-  const commands: string[][] = [];
-  const environment: Record<string, string> = {};
-  const mounts: unknown[][] = [];
-  const container = {
-    from: () => container,
-    withEnvVariable: (name: string, value: string) => {
-      environment[name] = value;
-      return container;
-    },
-    withMountedDirectory: (...args: unknown[]) => {
-      mounts.push(args);
-      return container;
-    },
-    withWorkdir: () => container,
-    withExec: (args: string[]) => {
-      commands.push(args);
-      return container;
-    },
-    stdout: async () => report,
-  };
-  return {
-    commands,
-    environment,
-    mounts,
-    spy: spyOn(dag, "container").mockReturnValue(container as never),
-  };
-}
-
 test("validation skips missing lefthook.yml before starting a container", async () => {
-  const { commands, spy } = mockContainer("");
+  const { commands, spy } = mockContainer();
   try {
     expect(await validateGitHooks(mockDirectory())).toEqual({
       status: "skipped",
@@ -199,7 +171,9 @@ test.each([
 ] as const)(
   "validation retains Lefthook diagnostic and never runs hooks: %s",
   async (report, status) => {
-    const { commands, environment, mounts, spy } = mockContainer(report);
+    const { commands, environment, mounts, mounted, spy } = mockContainer({
+      stdout: () => report,
+    });
     const input = mockDirectory(
       new Map([
         [
@@ -234,7 +208,8 @@ test.each([
         GIT_DIR: "/lefthook-worktree/.git",
         GIT_WORK_TREE: "/repo",
       });
-      expect(mounts).toEqual([["/repo", input]]);
+      expect(mounts).toEqual([{ path: "/repo" }]);
+      expect(mounted).toEqual([input]);
       expect([...input.files]).toEqual(before);
     } finally {
       spy.mockRestore();
@@ -253,7 +228,7 @@ test.each(["library", "forge-app", "tool", "agent-skill"])(
       "sample",
       "tester",
     ).packageJson;
-    expect(devDependencies.lefthook).toBe("^2.1");
+    expect(devDependencies.lefthook).toBe(TOOL_VERSIONS.lefthook);
     expect(scripts.prepare).toBe("lefthook install || true");
     expect(scripts.lint).toBe("lefthook run lint");
     expect(scripts.check).toBe("lefthook run pre-push --force");

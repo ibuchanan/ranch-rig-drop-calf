@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test";
 import { typeScriptToolchain, updateTypeScript } from "../src/typescript.ts";
 import { validateCapabilities } from "../src/capability.ts";
-import { mockBiomeContainer } from "./biome-source.ts";
+import { mockContainer } from "./container-source.ts";
 import { mockDirectory, mockModuleSource } from "./module-source.ts";
 
 test("TypeScript enforces declaration emission and keeps owner compiler settings", async () => {
@@ -53,7 +53,7 @@ test("TypeScript enforces declaration emission and keeps owner compiler settings
 });
 
 test("validation checks existing declarations with the compiler even without a tsdown declaration", async () => {
-  const { spy, commands, mounts } = mockBiomeContainer();
+  const { spy, commands, mounts } = mockContainer();
   const input = mockDirectory(
     new Map([
       ["tsconfig.json", "{}"],

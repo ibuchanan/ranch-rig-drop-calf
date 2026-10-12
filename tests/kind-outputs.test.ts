@@ -1,10 +1,10 @@
 import { expect, spyOn, test } from "bun:test";
 import { dag } from "@dagger.io/dagger";
 import { DropCalf } from "../src/index.ts";
-import { OSS_ASSETS } from "../src/oss.ts";
-import { buildProject } from "../src/profiles.ts";
 import { mockDirectory, mockModuleSource } from "./module-source.ts";
 
+// The full per-kind output is snapshotted in repo-init.test.ts; here we assert
+// the selected functions directly so a failure names the missing capability.
 test.each(["library", "forge-app", "tool", "agent-skill"])(
   "%s generated output has the selected functions",
   async (kind) => {
@@ -13,13 +13,6 @@ test.each(["library", "forge-app", "tool", "agent-skill"])(
       mockDirectory(),
     );
     try {
-      // Keep the historical blueprint-only snapshot shape, but read actual init bytes.
-      const project = buildProject(
-        kind,
-        "sample",
-        "tester",
-        "A sample project",
-      );
       const result = await new DropCalf().init(
         mockDirectory(),
         kind,
@@ -31,28 +24,6 @@ test.each(["library", "forge-app", "tool", "agent-skill"])(
         await result.file("package.json").contents(),
       );
       const scripts = packageJson.scripts;
-      expect(
-        JSON.stringify(
-          {
-            packageJson,
-            files: Object.fromEntries(
-              await Promise.all(
-                [...project.files.keys()]
-                  .filter(
-                    (path) =>
-                      !OSS_ASSETS.includes(path as (typeof OSS_ASSETS)[number]),
-                  )
-                  .map(async (path) => [
-                    path,
-                    await result.file(path).contents(),
-                  ]),
-              ),
-            ),
-          },
-          null,
-          2,
-        ),
-      ).toMatchSnapshot(kind);
       expect(Boolean(scripts.test)).toBe(true);
       expect(Boolean(scripts.size)).toBe(
         kind === "library" || kind === "forge-app",
