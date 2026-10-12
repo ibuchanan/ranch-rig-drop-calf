@@ -1,5 +1,9 @@
+# EditorConfig is awesome: https://editorconfig.org
+
+# Top-most EditorConfig file
 root = true
 
+# All files
 [*]
 charset = utf-8
 end_of_line = lf
@@ -8,6 +12,32 @@ trim_trailing_whitespace = true
 indent_style = space
 indent_size = 2
 
-# Preserve Markdown hard line breaks (two trailing spaces, allowed by MD009).
+# YAML files (manifest.yml)
+[*.{yml,yaml}]
+indent_style = space
+indent_size = 2
+
+# JavaScript/TypeScript (Forge backend/Frontend)
+[*.{js,jsx,ts,tsx}]
+indent_style = space
+indent_size = 2
+
+# Resources (Static UI)
+[static/**/*.html]
+indent_style = space
+indent_size = 2
+
+# JSON (tsconfig.json and jsonc config files)
+[*.{json,jsonc}]
+indent_style = space
+indent_size = 2
+
+# Documentation (Markdown)
 [*.md]
-trim_trailing_whitespace = false
+indent_style = space
+indent_size = 2
+
+# Configuration
+[*.toml]
+indent_style = space
+indent_size = 2
