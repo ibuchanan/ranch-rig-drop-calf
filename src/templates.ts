@@ -3,6 +3,7 @@ import { CATALOG_TEMPLATE, type CatalogSeed, copyCatalog } from "./catalog.ts";
 import { copyGitignoreAssets, PINNED_GITIGNORE } from "./gitignore.ts";
 import { copyOssAssets, PINNED_OSS } from "./oss.ts";
 import { copySecretsAssets, SECRETS_TEMPLATE } from "./secrets.ts";
+import { copyTypeScript, TYPESCRIPT_TEMPLATE } from "./typescript.ts";
 
 /**
  * Seed a template tree over a rendered directory.
@@ -37,6 +38,8 @@ export async function seedTemplates(
       if (!catalogSeed)
         throw new Error("Catalog template requires seed inputs");
       result = await copyCatalog(result, source, catalogSeed);
+    } else if (path === TYPESCRIPT_TEMPLATE) {
+      result = copyTypeScript(result, source);
     } else if (path === PINNED_OSS) {
       result = await copyOssAssets(result, source);
     } else {

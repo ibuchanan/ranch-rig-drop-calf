@@ -145,6 +145,7 @@ test.each(kinds)(
               "prelint",
               "biome",
               "typescript",
+              "library-build",
               "secrets",
               "size-limit",
               "docs",

@@ -21,6 +21,7 @@ import {
   changelogTemplates,
   docsTemplates,
   gitHooksTemplates,
+  libraryBuildTemplates,
   promptfooTemplates,
   typescriptTemplates,
   vitestTemplates,
@@ -168,6 +169,11 @@ describe("pinned OSS templates", () => {
           "package.json",
           await output.file("package.json").contents(),
         );
+        if (kind === "library")
+          writes.set(
+            "tsconfig.declarations.json",
+            await output.file("tsconfig.declarations.json").contents(),
+          );
         const project = buildProject(
           kind,
           "sample",
@@ -214,7 +220,10 @@ describe("pinned OSS templates", () => {
         );
         const seeded = new Map([
           ...biomeTemplates(),
-          ...typescriptTemplates(),
+          ...[...typescriptTemplates()].filter(
+            ([path]) => path !== "tsconfig.declarations.json",
+          ),
+          ...(kind === "library" ? libraryBuildTemplates() : []),
           ...(kind === "forge-app" ? vitestTemplates() : []),
           ...(kind === "forge-app" && preset === "all"
             ? promptfooTemplates()
@@ -251,6 +260,7 @@ describe("pinned OSS templates", () => {
               ...project.files.keys(),
               ...OSS_ASSETS,
               ...seeded.keys(),
+              ...(kind === "library" ? ["tsconfig.declarations.json"] : []),
             ]),
           ].sort(),
         );

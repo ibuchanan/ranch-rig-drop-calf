@@ -50,16 +50,17 @@ test("every kind seeds the TypeScript configs its scripts invoke", () => {
 test("library build publishes the same entry and declarations that tsdown emits", () => {
   const project = buildProject("library", "sample", "tester");
   const pkg = project.packageJson;
-  expect(pkg.scripts.build).toBe("tsdown");
+  expect(pkg.scripts.build).toBe("sh scripts/build.sh");
   expect(pkg.devDependencies.tsdown).toBeDefined();
-  expect(pkg.main).toBe("./dist/index.js");
-  expect(pkg.types).toBe("./dist/index.d.ts");
+  expect(pkg.main).toBe("dist/index.mjs");
+  expect(pkg.types).toBe("dist/index.d.ts");
   expect(pkg.exports?.["."]).toEqual({
-    types: "./dist/index.d.ts",
-    default: "./dist/index.js",
+    import: { types: "./dist/index.d.ts", default: "./dist/index.mjs" },
+    require: { types: "./dist/index.d.cts", default: "./dist/index.cjs" },
   });
-  expect(project.files.get("tsdown.config.ts")).toContain("src/index.ts");
-  expect(project.files.get("tsdown.config.ts")).toContain("dts: true");
+  expect(pkg.files).toEqual(["dist"]);
+  // tsdown.config.json and scripts/build.sh are provided by the library-build template
+  expect(project.templates).toContain("templates/library-build");
 });
 
 test("generated TypeScript configs typecheck and compile a sample entry", () => {
@@ -78,7 +79,10 @@ test("generated TypeScript configs typecheck and compile a sample entry", () => 
         join(folder, "src/index.ts"),
         "export const value: number = 1;\n",
       );
-      for (const path of TYPESCRIPT_CONFIGS) {
+      const configs = TYPESCRIPT_CONFIGS.filter(
+        (path) => path !== "tsconfig.declarations.json" || kind === "library",
+      );
+      for (const path of configs) {
         const seed = typescriptTemplates().get(path) ?? "";
         writeFileSync(
           join(folder, path),
@@ -90,7 +94,7 @@ test("generated TypeScript configs typecheck and compile a sample entry", () => 
           ),
         );
       }
-      for (const path of TYPESCRIPT_CONFIGS) {
+      for (const path of configs) {
         const parsed = ts.getParsedCommandLineOfConfigFile(
           join(folder, path),
           {},

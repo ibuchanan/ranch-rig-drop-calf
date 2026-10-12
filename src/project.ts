@@ -7,7 +7,8 @@ export type PackageJson = {
   private?: boolean;
   main?: string;
   types?: string;
-  exports?: Record<string, { types: string; default: string }>;
+  exports?: Record<string, unknown>;
+  files?: string[];
   "size-limit"?: { name: string; path: string; limit: string }[];
   scripts: Record<string, string>;
   devDependencies: Record<string, string>;

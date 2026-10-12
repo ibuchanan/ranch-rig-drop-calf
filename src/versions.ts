@@ -6,7 +6,7 @@ export const TOOL_VERSIONS = {
   forgeCli: "14.1.0",
   biome: "2.5.15",
   typescript: "^5.9.3",
-  tsdown: "^0.15.0",
+  tsdown: "^0.23",
   sizeLimit: "11.2.0",
   cspell: "^10.3",
   markdownlintCli2: "^0.23",

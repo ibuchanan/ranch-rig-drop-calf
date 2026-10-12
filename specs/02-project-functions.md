@@ -92,6 +92,8 @@ catalog → package-metadata → oss → gitignore → node → forge-manifest �
 ```
 
 **Note:** Init sequence stages catalog init before OSS; within the init pass, capabilities run in listed order. The OSS capability depends on catalog being initialized first to read metadata.
+Library's `library-build` capability precedes `typescript` so its restored tsdown
+declaration selects compiler policy in the same update pass.
 Forge's Vitest `test` capability precedes `typescript` in `src/profiles.ts` so its
 updated dependency declaration is visible to compiler policy in the same pass.
 
@@ -608,6 +610,49 @@ seeded config dispatches both named subtasks with `--if-present`; owner hook edi
 remain owner-managed. The legacy `addTo` contribution remains during expansion but
 is not the new init verb.
 
+### `library-build`
+
+The `library` composition uses the `forge-ahead-errors` pipeline: tsdown bundles
+ESM and CJS, TypeScript emits declarations, and the build script copies every
+`.d.ts` to its corresponding `.d.cts`, including nested outputs.
+
+| Resource | Init | Update |
+|---|---|---|
+| `devDependencies.tsdown` | Seed `TOOL_VERSIONS.tsdown` (`^0.23`) | Enforce selected range |
+| `scripts.build` | Seed `sh scripts/build.sh` | Enforce command |
+| `scripts/build.sh` | Overlay reviewed template | Enforce whole template |
+| `tsdown.config.json` | Overlay reviewed template | Enforce `format: ["esm", "cjs"]`; preserve all other settings |
+| `main`, `types`, `exports`, `files` | Seed publishing defaults | Preserve owner values and deletions |
+
+The JSON seed contains `entry: {"index": "./src/index.ts"}`, both formats,
+`sourcemap: true`, and `target: "node22"`. Publishing defaults are
+`main: "dist/index.mjs"`, `types: "dist/index.d.ts"`, and `files: ["dist"]`.
+The `.` export has `import` with `types: "./dist/index.d.ts"` and
+`default: "./dist/index.mjs"`, and `require` with `types: "./dist/index.d.cts"`
+and `default: "./dist/index.cjs"`. Additional entries, dependency externals,
+subpath exports and publishing paths are library-specific owner settings.
+
+Update does not create a missing package. An existing package with missing owned
+sections or keys is repaired. Missing config or script is restored. Executable
+`tsdown.config.{ts,mts,cts,js,mjs,cjs}` or `package.json#tsdown` conflicts fail with
+instructions to move owner settings to JSON; update never silently shadows them.
+Malformed shared metadata, non-object sections, or malformed/non-object bundler
+JSON fails before a result is returned. Matching package and config bytes are
+retained; a second update changes nothing. No build, dependency installation,
+lockfile change, artifact inspection, or publishing-field reconciliation occurs.
+
+Library-build precedes TypeScript in composition so adding its dependency selects
+Bundler compiler policy in the same pass. TypeScript alone owns the declaration
+compiler config; library-build never edits tsconfigs. The enforced script runs
+`tsdown --no-dts`, `tsc -p tsconfig.declarations.json`, then copies declarations.
+The script uses the example's fixed `dist` output directory.
+
+**Validate** is an explicit no-op: tsdown 0.23 exposes no supported
+configuration-only loader. Its exported `resolveUserConfig` is documented as
+internal, and `--no-write` still bundles source. Validation does not execute a
+build or assess stale artifacts; build execution belongs to the build workflow.
+The separate TypeScript validator checks acceptance of declaration compiler config.
+
 ### `typescript`
 
 TypeScript owns `devDependencies.typescript`, `scripts.typecheck`, both root tsconfigs,
@@ -624,8 +669,13 @@ there is no `dev` script.
   package fields survive. Missing package sections/owned keys are created; a missing
   package is not. Changes use sorted two-space JSON with a trailing newline, while
   unchanged package bytes are retained. No repository install or lockfile update runs.
-  Both configs are recreated from their TypeScript seeds if missing; existing JSONC
-  receives targeted edits preserving unrelated settings and comments.
+  Both baseline configs are recreated from their TypeScript seeds if missing;
+  existing JSONC receives targeted edits preserving unrelated settings and comments.
+  When `tsdown` is declared, TypeScript also seeds and reconciles
+  `tsconfig.declarations.json`: `extends: ./tsconfig.json`, `include: ["src"]`,
+  `declaration: true`, `emitDeclarationOnly: true`, `rootDir: ./src`, `outDir: ./dist`,
+  and `ESNext`/`Bundler`. It is not seeded for other projects; an existing declaration
+  config is retained if the trigger is removed.
 
 Compiler policy uses declarations in `devDependencies`, not installed modules, dependency
 versions, runtime dependencies, or profile names. Presence of the key selects the policy.
@@ -640,10 +690,10 @@ to observe newly created tool declarations would violate top-level idempotence.
 | Base `module` / `moduleResolution` | `CommonJS` / `Node` | unchanged | `ESNext` / `Bundler` |
 | Typecheck `module` / `moduleResolution` | `CommonJS` / `Node` | `ESNext` / `Bundler` | `ESNext` / `Bundler` |
 | Typecheck `rootDir` | `src` | `.` | `.` |
-| Typecheck `include` | `["src"]` | add `test`, `tests`, `vitest.config.ts` | add `tsdown.config.ts` |
+| Typecheck `include` | `["src"]` | add `test`, `tests`, `vitest.config.ts` | unchanged (bundler config is JSON) |
 
-Both triggers combine; tsdown selects the base module settings, and typecheck includes
-both sets of files. Base `include` is always `["src"]`. Typecheck always extends
+Both triggers combine; tsdown selects the base module settings, and Vitest adds its
+typecheck inputs. Base `include` is always `["src"]`. Typecheck always extends
 `./tsconfig.json` and excludes `node_modules`, `dist`, `coverage`, and `specs`.
 These lists are owned whole-array values, not additive merges of owner paths.
 
@@ -662,7 +712,8 @@ or compilerOptions, and malformed package scripts/devDependencies fail before a 
 is returned. Matching config bytes remain unchanged; a second update changes nothing.
 
 - **validate** runs the capability-selected compiler's `tsc --showConfig --project <file>`
-  for both configs in a Node-baseline container with a read-only repository mount.
+  for both baseline configs and any existing declaration config in a Node-baseline
+  container with a read-only repository mount.
   It does not compile source, emit files, compare settings with policy, or validate Forge
   deployment/tsdown output. Owner settings accepted by TypeScript pass. Both configs
   missing reports skipped; a partial pair reports failed. Invalid settings, missing
@@ -781,7 +832,7 @@ The `size-limit` capability is selected for `library` and `forge-app`. It owns
 version, so separate pins or independently resolving ranges can be incompatible.
 
 - **init** seeds both tool pins, the command, and one `package.json["size-limit"]`
-  budget with a `10 kB` limit: `Library bundle` at `dist/index.js` for libraries,
+  budget with a `10 kB` limit: `Library bundle` at `dist/index.mjs` for libraries,
   or `Forge app bundle` at `dist/**/*.js` for Forge apps. It replaces scaffold
   budgets during fresh initialization and declares no template tree.
 - **update** enforces only the paired pins and canonical command in an existing

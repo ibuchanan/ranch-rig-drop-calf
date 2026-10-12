@@ -18,6 +18,7 @@ import {
   changelogTemplates,
   docsTemplates,
   gitHooksTemplates,
+  libraryBuildTemplates,
   promptfooTemplates,
   secretsTemplates,
   typescriptTemplates,
@@ -134,6 +135,7 @@ export function mockModuleSource(
     [GIT_HOOKS_TEMPLATE, tree(gitHooks)],
     [SECRETS_TEMPLATE, tree(secrets, secretsPermissions)],
     ["templates/vitest", tree(vitestTemplates())],
+    ["templates/library-build", tree(libraryBuildTemplates())],
     [EVALS_TEMPLATE, tree(promptfooTemplates())],
   ]);
   const container = mockBiomeContainer();

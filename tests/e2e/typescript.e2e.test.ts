@@ -147,11 +147,18 @@ for (const kind of ["library", "forge-app", "tool", "agent-skill"]) {
           readFileSync(join(reset, "tsconfig.typecheck.json"), "utf8"),
         ).config;
         expect(check.compilerOptions).toMatchObject({
-          module: "CommonJS",
-          moduleResolution: "Node",
-          rootDir: "src",
+          module:
+            kind === "library" || kind === "forge-app" ? "ESNext" : "CommonJS",
+          moduleResolution:
+            kind === "library" || kind === "forge-app" ? "Bundler" : "Node",
+          rootDir: kind === "library" || kind === "forge-app" ? "." : "src",
         });
-        expect(check.include).toEqual(["src"]);
+        expect(check.include).toEqual([
+          "src",
+          ...(kind === "forge-app"
+            ? ["test", "tests", "vitest.config.ts"]
+            : []),
+        ]);
       } finally {
         rmSync(temporary, { recursive: true, force: true });
       }

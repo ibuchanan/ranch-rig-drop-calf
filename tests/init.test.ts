@@ -45,7 +45,7 @@ test("generated keys win over the scaffold's", () => {
   const forgeApp = JSON.parse(mergeScaffoldPackage(stale, generated()));
   expect(forgeApp.dependencies[pinned]).toBe(owned.dependencies?.[pinned]);
   const library = JSON.parse(mergeScaffoldPackage(stale, generated("library")));
-  expect(library.main).toBe("./dist/index.js");
+  expect(library.main).toBe("dist/index.mjs");
 });
 
 test("with no scaffold package.json the generated one is used as is", () => {

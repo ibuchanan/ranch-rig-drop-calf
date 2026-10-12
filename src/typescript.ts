@@ -20,6 +20,7 @@ export const TYPESCRIPT_TEMPLATE = "templates/typescript";
 export const TYPESCRIPT_CONFIGS = [
   "tsconfig.json",
   "tsconfig.typecheck.json",
+  "tsconfig.declarations.json",
 ] as const;
 export const TYPESCRIPT_SCRIPTS = {
   build: "tsc --project tsconfig.json",
@@ -30,7 +31,10 @@ export function copyTypeScript(
   destination: Directory,
   source: Directory,
 ): Directory {
-  return copyTemplate(destination, source);
+  return copyTemplate(
+    destination,
+    source.withoutFile("tsconfig.declarations.json"),
+  );
 }
 
 function object(path: string, value: unknown): Record<string, unknown> {
@@ -77,6 +81,7 @@ export function reconcileTypeScriptConfig(
   const vitest = Object.hasOwn(devDependencies, "vitest");
   const tsdown = Object.hasOwn(devDependencies, "tsdown");
   const check = path === "tsconfig.typecheck.json";
+  const declarations = path === "tsconfig.declarations.json";
   const modern = tsdown || (check && vitest);
   const compilerOptions = {
     ...object(path, seed.compilerOptions),
@@ -94,15 +99,14 @@ export function reconcileTypeScriptConfig(
   );
   fields.push([
     ["include"],
-    [
-      "src",
-      ...(check && vitest ? ["test", "tests", "vitest.config.ts"] : []),
-      ...(check && tsdown ? ["tsdown.config.ts"] : []),
-    ],
+    ["src", ...(check && vitest ? ["test", "tests", "vitest.config.ts"] : [])],
   ]);
   if (check) {
     fields.push([["extends"], "./tsconfig.json"]);
     fields.push([["exclude"], ["node_modules", "dist", "coverage", "specs"]]);
+  }
+  if (declarations) {
+    fields.push([["extends"], "./tsconfig.json"]);
   }
   let result = contents;
   for (const [keys, wanted] of fields) {
@@ -166,7 +170,10 @@ export async function updateTypeScript(
       );
   }
   const source = dag.currentModule().source().directory(TYPESCRIPT_TEMPLATE);
+  const tsdown = Object.hasOwn(dependencies, "tsdown");
   for (const path of TYPESCRIPT_CONFIGS) {
+    // declarations config is only seeded for tsdown projects
+    if (path === "tsconfig.declarations.json" && !tsdown) continue;
     const baseline = await source.file(path).contents();
     const exists = await directory.exists(path);
     const contents = exists ? await directory.file(path).contents() : baseline;
@@ -187,13 +194,17 @@ export async function validateTypeScript(
   directory: Directory,
   version: string = TOOL_VERSIONS.typescript,
 ): Promise<Validation> {
+  const declarations = await directory.exists("tsconfig.declarations.json");
   const missing: string[] = [];
-  for (const path of TYPESCRIPT_CONFIGS)
+  const required: string[] = [];
+  for (const path of TYPESCRIPT_CONFIGS) {
+    if (path === "tsconfig.declarations.json" && !declarations) continue;
+    required.push(path);
     if (!(await directory.exists(path))) missing.push(path);
+  }
   if (missing.length)
     return {
-      status:
-        missing.length === TYPESCRIPT_CONFIGS.length ? "skipped" : "failed",
+      status: missing.length === required.length ? "skipped" : "failed",
       reason: `Missing TypeScript configuration: ${missing.join(", ")}`,
     };
   const container = nodeContainer()
@@ -207,7 +218,7 @@ export async function validateTypeScript(
     ])
     .withMountedDirectory("/repo", directory, { readOnly: true })
     .withWorkdir("/repo");
-  for (const path of TYPESCRIPT_CONFIGS) {
+  for (const path of required) {
     try {
       await container
         .withExec(["tsc", "--showConfig", "--project", path])

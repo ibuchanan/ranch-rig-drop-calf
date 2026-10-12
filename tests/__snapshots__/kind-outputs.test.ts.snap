@@ -12,14 +12,23 @@ exports[`library generated output has the selected functions: library 1`] = `
     "type": "module",
     "exports": {
       ".": {
-        "types": "./dist/index.d.ts",
-        "default": "./dist/index.js"
+        "import": {
+          "types": "./dist/index.d.ts",
+          "default": "./dist/index.mjs"
+        },
+        "require": {
+          "types": "./dist/index.d.cts",
+          "default": "./dist/index.cjs"
+        }
       }
     },
-    "main": "./dist/index.js",
-    "types": "./dist/index.d.ts",
+    "main": "dist/index.mjs",
+    "types": "dist/index.d.ts",
+    "files": [
+      "dist"
+    ],
     "scripts": {
-      "build": "tsdown",
+      "build": "sh scripts/build.sh",
       "changelog": "git cliff --config cliff.toml --unreleased -o CHANGELOG.md",
       "check": "lefthook run pre-push --force",
       "clean": "rm -rf dist",
@@ -45,21 +54,20 @@ exports[`library generated output has the selected functions: library 1`] = `
       "lefthook": "^2.1",
       "markdownlint-cli2": "^0.23",
       "size-limit": "11.2.0",
-      "tsdown": "^0.15.0",
+      "tsdown": "^0.23",
       "typescript": "^5.9.3"
     },
     "size-limit": [
       {
         "name": "Library bundle",
-        "path": "dist/index.js",
+        "path": "dist/index.mjs",
         "limit": "10 kB"
       }
     ]
   },
   "files": {
     ".nvmrc": "24\\n",
-    ".npmrc": "# Use the public npm registry (not the default for internal Atlassians)\\nregistry=https://registry.npmjs.org/\\n",
-    "tsdown.config.ts": "import { defineConfig } from \\"tsdown\\";\\n\\nexport default defineConfig({ entry: [\\"src/index.ts\\"], outDir: \\"dist\\", format: [\\"esm\\"], dts: true });\\n"
+    ".npmrc": "# Use the public npm registry (not the default for internal Atlassians)\\nregistry=https://registry.npmjs.org/\\n"
   }
 }"
 `;

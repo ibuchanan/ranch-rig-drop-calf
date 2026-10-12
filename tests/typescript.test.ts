@@ -56,7 +56,6 @@ for (const dependencies of [
         ...("vitest" in dependencies
           ? ["test", "tests", "vitest.config.ts"]
           : []),
-        ...("tsdown" in dependencies ? ["tsdown.config.ts"] : []),
       ]);
       expect(await updateTypeScript(output)).toBe(output);
       expect(await input.file("tsconfig.json").contents()).toBe(
@@ -83,15 +82,19 @@ test.each(["library", "forge-app", "tool", "agent-skill"])(
         "tester",
         "sample",
       );
+      const existingConfigs = await Promise.all(
+        TYPESCRIPT_CONFIGS.map(async (path) => {
+          const exists = await output.exists(path);
+          return [
+            path,
+            exists ? await output.file(path).contents() : null,
+          ] as const;
+        }),
+      );
       expect(
         JSON.stringify(
           Object.fromEntries(
-            await Promise.all(
-              TYPESCRIPT_CONFIGS.map(async (path) => [
-                path,
-                await output.file(path).contents(),
-              ]),
-            ),
+            existingConfigs.filter(([_, contents]) => contents !== null),
           ),
           null,
           2,
@@ -252,8 +255,10 @@ test("missing configs are recreated; missing package is not; matching package by
   const source = mockModuleSource();
   try {
     const output = await updateTypeScript(mockDirectory());
-    for (const path of TYPESCRIPT_CONFIGS)
-      expect(await output.exists(path)).toBe(true);
+    // declarations config only created when tsdown is present
+    expect(await output.exists("tsconfig.json")).toBe(true);
+    expect(await output.exists("tsconfig.typecheck.json")).toBe(true);
+    expect(await output.exists("tsconfig.declarations.json")).toBe(false);
     expect(await output.exists("package.json")).toBe(false);
     expect(await updateTypeScript(output)).toBe(output);
     const pkg = JSON.stringify({
@@ -302,9 +307,10 @@ test.each([
 
 test("validation uses the selected compiler and two read-only showConfig commands without enforcing policy", async () => {
   const { spy, commands, mounts } = mockBiomeContainer();
+  // Only the two baseline configs are supplied.
   const input = mockDirectory(
     new Map(
-      TYPESCRIPT_CONFIGS.map((path) => [
+      ["tsconfig.json", "tsconfig.typecheck.json"].map((path) => [
         path,
         '{"compilerOptions":{"strict":false}}',
       ]),
@@ -323,7 +329,8 @@ test("validation uses the selected compiler and two read-only showConfig command
       "--no-audit",
       "typescript@5.9.3",
     ]);
-    for (const path of TYPESCRIPT_CONFIGS)
+    // No declaration config exists to validate.
+    for (const path of ["tsconfig.json", "tsconfig.typecheck.json"])
       expect(commands).toContainEqual([
         "tsc",
         "--showConfig",

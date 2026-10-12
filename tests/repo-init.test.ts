@@ -19,6 +19,7 @@ import { mockDirectory, mockModuleSource } from "./module-source.ts";
 import {
   biomeTemplates,
   changelogTemplates,
+  libraryBuildTemplates,
   typescriptTemplates,
   vitestTemplates,
 } from "./templates-source.ts";
@@ -74,7 +75,6 @@ test.each(["library", "forge-app", "tool", "agent-skill"])(
           ...(kind === "forge-app"
             ? ["test", "tests", "vitest.config.ts"]
             : []),
-          ...(kind === "library" ? ["tsdown.config.ts"] : []),
         ]);
         expect(await result.file(".editorconfig").contents()).toBe(
           biomeTemplates().get(".editorconfig") ?? "",
@@ -272,7 +272,7 @@ describe("profiles", () => {
   });
 
   test.each([
-    ["library", "lefthook run lint", "tsdown", undefined],
+    ["library", "lefthook run lint", "sh scripts/build.sh", undefined],
     [
       "forge-app",
       "lefthook run lint",
@@ -298,10 +298,14 @@ describe("profiles", () => {
     expect(packageJson.scripts.test).toBe(testScript);
     if (kind === "library") {
       expect(packageJson.devDependencies.tsdown).toBeDefined();
-      expect(packageJson.main).toBe("./dist/index.js");
-      expect(packageJson.types).toBe("./dist/index.d.ts");
+      expect(packageJson.main).toBe("dist/index.mjs");
+      expect(packageJson.types).toBe("dist/index.d.ts");
+      expect(packageJson.files).toEqual(["dist"]);
       expect(packageJson.exports).toEqual({
-        ".": { types: "./dist/index.d.ts", default: "./dist/index.js" },
+        ".": {
+          import: { types: "./dist/index.d.ts", default: "./dist/index.mjs" },
+          require: { types: "./dist/index.d.cts", default: "./dist/index.cjs" },
+        },
       });
     } else {
       expect(packageJson.devDependencies.tsdown).toBeUndefined();
@@ -377,7 +381,11 @@ describe("profiles", () => {
           ...project.files.keys(),
           ...OSS_ASSETS,
           "biome.jsonc",
-          ...typescriptTemplates().keys(),
+          ...(kind === "library" ? libraryBuildTemplates().keys() : []),
+          ...[...typescriptTemplates().keys()].filter(
+            (path) =>
+              path !== "tsconfig.declarations.json" || kind === "library",
+          ),
           ...(kind === "agent-skill" ? [] : changelogTemplates().keys()),
           ...(kind === "forge-app"
             ? ["vitest.config.ts", ...SECRETS_ASSETS]

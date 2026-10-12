@@ -122,7 +122,10 @@ test.each(kinds)(
             : {}),
           ...(kind === "agent-skill" ? {} : { changelog: CHANGELOG_COMMAND }),
           typecheck: TYPESCRIPT_SCRIPTS.typecheck,
-          ...(kind === "library" ? {} : { build: TYPESCRIPT_SCRIPTS.build }),
+          build:
+            kind === "library"
+              ? "sh scripts/build.sh"
+              : TYPESCRIPT_SCRIPTS.build,
           ...(kind === "forge-app"
             ? {
                 ...VITEST_SCRIPTS,
@@ -141,6 +144,7 @@ test.each(kinds)(
           cspell: TOOL_VERSIONS.cspell,
           "markdownlint-cli2": TOOL_VERSIONS.markdownlintCli2,
           typescript: TOOL_VERSIONS.typescript,
+          ...(kind === "library" ? { tsdown: TOOL_VERSIONS.tsdown } : {}),
           ...(kind === "library" || kind === "forge-app"
             ? {
                 "size-limit": TOOL_VERSIONS.sizeLimit,

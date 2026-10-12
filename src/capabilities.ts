@@ -23,23 +23,7 @@ export function forgeAhead(): Capability {
   });
 }
 
-export function libraryBuild(version = TOOL_VERSIONS.tsdown): Capability {
-  return expandCapability("library-build", "12-library-build", {
-    addTo(project) {
-      project.packageJson.scripts.build = "tsdown";
-      project.packageJson.devDependencies.tsdown = version;
-      project.files.set(
-        "tsdown.config.ts",
-        'import { defineConfig } from "tsdown";\n\nexport default defineConfig({ entry: ["src/index.ts"], outDir: "dist", format: ["esm"], dts: true });\n',
-      );
-      project.packageJson.main = "./dist/index.js";
-      project.packageJson.types = "./dist/index.d.ts";
-      project.packageJson.exports = {
-        ".": { types: "./dist/index.d.ts", default: "./dist/index.js" },
-      };
-    },
-  });
-}
+export { libraryBuild } from "./library-build.ts";
 
 export function cleanBuild(): Capability {
   return expandCapability("clean-build", "13-clean-build", {

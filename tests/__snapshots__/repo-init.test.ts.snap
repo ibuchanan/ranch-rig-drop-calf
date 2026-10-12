@@ -14,9 +14,11 @@ exports[`profiles all kinds expose testing workflows and keep a complete bluepri
     "SECURITY.md",
     "biome.jsonc",
     "cliff.toml",
+    "scripts/build.sh",
+    "tsconfig.declarations.json",
     "tsconfig.json",
     "tsconfig.typecheck.json",
-    "tsdown.config.ts",
+    "tsdown.config.json",
   ],
   "packageJson": {
     "author": "tester",
@@ -30,21 +32,30 @@ exports[`profiles all kinds expose testing workflows and keep a complete bluepri
       "lefthook": "^2.1",
       "markdownlint-cli2": "^0.23",
       "size-limit": "11.2.0",
-      "tsdown": "^0.15.0",
+      "tsdown": "^0.23",
       "typescript": "^5.9.3",
     },
     "exports": {
       ".": {
-        "default": "./dist/index.js",
-        "types": "./dist/index.d.ts",
+        "import": {
+          "default": "./dist/index.mjs",
+          "types": "./dist/index.d.ts",
+        },
+        "require": {
+          "default": "./dist/index.cjs",
+          "types": "./dist/index.d.cts",
+        },
       },
     },
+    "files": [
+      "dist",
+    ],
     "license": "Apache-2.0",
-    "main": "./dist/index.js",
+    "main": "dist/index.mjs",
     "name": "sample",
     "private": true,
     "scripts": {
-      "build": "tsdown",
+      "build": "sh scripts/build.sh",
       "changelog": "git cliff --config cliff.toml --unreleased -o CHANGELOG.md",
       "check": "lefthook run pre-push --force",
       "clean": "rm -rf dist",
@@ -65,11 +76,11 @@ exports[`profiles all kinds expose testing workflows and keep a complete bluepri
       {
         "limit": "10 kB",
         "name": "Library bundle",
-        "path": "dist/index.js",
+        "path": "dist/index.mjs",
       },
     ],
     "type": "module",
-    "types": "./dist/index.d.ts",
+    "types": "dist/index.d.ts",
     "version": "0.1.0",
   },
 }

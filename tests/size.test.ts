@@ -32,7 +32,7 @@ test("library and Forge seed an owned size command, paired pins and matching bud
   for (const [kind, budget] of [
     [
       "library",
-      { name: "Library bundle", path: "dist/index.js", limit: "10 kB" },
+      { name: "Library bundle", path: "dist/index.mjs", limit: "10 kB" },
     ],
     [
       "forge-app",
