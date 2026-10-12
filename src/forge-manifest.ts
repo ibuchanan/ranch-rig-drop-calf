@@ -71,9 +71,7 @@ export function reconcileForgeRuntime(
 }
 
 /** Node runs first in the Forge profile; this capability never creates either file. */
-export async function updateForgeManifest(
-  directory: Directory,
-): Promise<Directory> {
+async function updateForgeManifest(directory: Directory): Promise<Directory> {
   if (
     !(await directory.exists("manifest.yml")) ||
     !(await directory.exists(".nvmrc"))
@@ -90,11 +88,10 @@ export async function updateForgeManifest(
 }
 
 /** Run the consuming tool as-is, not --fix or a comparison with the Node baseline. */
-export async function validateForgeManifest(
+async function validateForgeManifest(
   directory: Directory,
   forgeEmail?: Secret,
   forgeApiToken?: Secret,
-  version: string = TOOL_VERSIONS.forgeCli,
 ): Promise<Validation> {
   if (!(await directory.exists("manifest.yml")))
     return { status: "skipped", reason: "manifest.yml is missing" };
@@ -105,7 +102,7 @@ export async function validateForgeManifest(
         "forge-manifest: forge lint requires authentication; supply both --forge-email and --forge-api-token as Dagger Secrets. Missing credentials are an execution prerequisite failure, not a manifest acceptance verdict.",
     };
   const cli = `${TOOLS}/node_modules/@forge/cli/out/bin/cli.js`;
-  const container = bunTools(`@forge/cli@${version}`)
+  const container = bunTools(`@forge/cli@${TOOL_VERSIONS.forgeCli}`)
     .withEnvVariable("CI", "1")
     .withExec([
       "bun",

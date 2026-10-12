@@ -13,10 +13,10 @@ import {
   catalog,
   PACKAGE_NAME,
   renderCatalog,
-  validateCatalog,
 } from "../src/catalog.ts";
 import { DropCalf } from "../src/index.ts";
 import { buildProject, PROFILES } from "../src/profiles.ts";
+import { verb } from "./capability-fixtures.ts";
 import { mockDirectory, mockModuleSource } from "./module-source.ts";
 import { catalogTemplates } from "./templates-source.ts";
 
@@ -120,7 +120,7 @@ test("seed values remain YAML data, including multiline strings and token-like i
   const output = seeded({ name, description });
   expect(parse(output).metadata.title).toBe(name);
   expect(parse(output).metadata.description).toBe(description);
-  expect(await validateCatalog(repository(output))).toEqual({
+  expect(await verb(catalog(), "validate")(repository(output))).toEqual({
     status: "validated",
   });
 });
@@ -147,7 +147,7 @@ test("catalog update is explicitly inactive and leaves both present and missing 
 });
 
 test("missing catalog validation is skipped, not accepted or bootstrapped", async () => {
-  expect(await validateCatalog(repository())).toEqual({
+  expect(await verb(catalog(), "validate")(repository())).toEqual({
     status: "skipped",
     reason: "catalog-info.yaml is missing",
   });
@@ -194,7 +194,9 @@ test("forge-ranch annotations persist as shared metadata for other modules", asy
   const input = mockDirectory(new Map([[CATALOG_FILE, contents]]));
   const output = await updateCapabilities(input, [catalog()]);
   expect(await output.file(CATALOG_FILE).contents()).toBe(contents);
-  expect(await validateCatalog(output)).toEqual({ status: "validated" });
+  expect(await verb(catalog(), "validate")(output)).toEqual({
+    status: "validated",
+  });
   expect(
     parse(contents).metadata.annotations["forge-ranch/module-setting"],
   ).toBe("an owner-edited value");
@@ -259,7 +261,9 @@ test.each(Object.keys(PROFILES))(
         [],
         "all",
       );
-      expect(await validateCatalog(output)).toEqual({ status: "validated" });
+      expect(await verb(catalog(), "validate")(output)).toEqual({
+        status: "validated",
+      });
       const entity = parse(await output.file(CATALOG_FILE).contents());
       expect(entity.spec.type).toBe(profile);
       expect(entity.spec.owner).toBe("user:default/tester");

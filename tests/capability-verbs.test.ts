@@ -2,15 +2,17 @@ import { expect, spyOn, test } from "bun:test";
 import { type Directory, dag } from "@dagger.io/dagger";
 import {
   type Capability,
+  type NoOp,
   noOp,
+  noOpReasons,
   updateCapabilities,
   validateCapabilities,
 } from "../src/capability.ts";
-import { changelogToolchain, validateChangelog } from "../src/changelog.ts";
+import { changelogToolchain } from "../src/changelog.ts";
 import { DropCalf } from "../src/index.ts";
-import { prelint, validatePrelint } from "../src/prelint.ts";
+import { prelint } from "../src/prelint.ts";
 import { PROFILES, resolveProfile } from "../src/profiles.ts";
-import { contents, kinds, selections } from "./capability-fixtures.ts";
+import { contents, kinds, selections, verb } from "./capability-fixtures.ts";
 import { mockModuleSource, mockDirectory as tree } from "./module-source.ts";
 
 const inactive = noOp("The test capability has no outputs for this verb.");
@@ -26,12 +28,16 @@ const capability = (
   ...operations,
 });
 
-test("standalone validators agree with capability validation results", async () => {
-  const changelog = changelogToolchain().validate;
-  if (typeof changelog !== "function") throw new Error("missing validator");
-  expect(await changelog(tree())).toEqual(await validateChangelog(tree()));
+test("validation reports a capability's own verb result and a no-op's reason", async () => {
+  expect(await validateCapabilities(tree(), [changelogToolchain()])).toEqual([
+    {
+      capability: "changelog",
+      ...(await verb(changelogToolchain(), "validate")(tree())),
+    },
+  ]);
+  const { reason } = prelint().validate as NoOp;
   expect(await validateCapabilities(tree(), [prelint()])).toEqual([
-    { capability: "prelint", ...(await validatePrelint(tree())) },
+    { capability: "prelint", status: "skipped", reason },
   ]);
 });
 
@@ -184,13 +190,17 @@ test("top-level validate reports a real validator failure and leaves the input u
     capability: "package-metadata",
     status: "failed",
   });
+  const prelintSkipped = noOpReasons([prelint()]).find(
+    (r) => r.capability === "prelint" && r.verb === "validate",
+  );
   expect(
     report.find(
       (item: { capability: string }) => item.capability === "prelint",
     ),
   ).toEqual({
     capability: "prelint",
-    ...(await validatePrelint(input)),
+    status: "skipped",
+    reason: prelintSkipped?.reason,
   });
   expect(report).toHaveLength(resolveProfile("forge-app").length);
   expect(report.at(-1).status).toBe("skipped");

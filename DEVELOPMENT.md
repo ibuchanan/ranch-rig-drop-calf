@@ -120,8 +120,8 @@ DROP_CALF_E2E=1 bun test tests/e2e
   Markdown style, full schemas, or dictionary availability. See the
   [docs policy](specs/02-project-functions.md#docs). Both configs are dotfiles:
   Dagger's `glob` matches them, but a shell glob will not.
-- `src/templates.ts`: `copyTemplate`, the shared tree overlay, `templateTree`,
-  and `seedTemplates`, which executes ordered seed steps declared by capability
+- `src/templates.ts`: `templateTree`, whose default seed is a plain tree
+  overlay, and `seedTemplates`, which executes ordered seed steps declared by capability
   init. Substitution, exclusions, and executable modes belong to capabilities;
   the seeding loop has no capability-specific branches.
 - `src/tool-run.ts`: the containerized-tool recipe shared by every validator
@@ -134,15 +134,16 @@ DROP_CALF_E2E=1 bun test tests/e2e
   stdout and stderr (or the error message), and `validateCapabilities` reports
   the throw as `failed`. Validators choose packages, mounts, and commands only.
 - `src/changelog.ts`: the release workflow — the `git-cliff` devDependency and
-  the `changelog` script, plus `copyChangelog` for
-  `templates/changelog/`. `validateChangelog` renders an unreleased changelog
+  the `changelog` script, plus `templates/changelog/`. Validation renders an
+  unreleased changelog
   in a container built from the Node baseline image, so the verdict depends on
   the policy under review rather than on whatever the host has installed.
 - `src/typescript.ts`: the compiler dependency, owned tsc scripts, and both
   tsconfigs. Init seeds templates; update enforces compiler settings selected by
   declared Vitest/tsdown dependencies with comment-preserving JSONC edits.
   Library-build owns library `build`. Validation runs read-only `tsc --showConfig`.
-  The internal `copyTypeScript` helper overlays the uncomposed seed pair.
+  Init overlays the uncomposed seed pair; update adds the declarations config
+  for tsdown projects.
 - `src/evals.ts`: optional Promptfoo toolchain — the `promptfoo` devDependency
   and `eval`/`view` scripts. It declares `templates/promptfoo/`, which holds
   the config, shared prompt, cases, synthetic contexts, and Rovo wiring guide;
@@ -155,7 +156,7 @@ DROP_CALF_E2E=1 bun test tests/e2e
   no supported config-only check; building and measuring belong to the size
   workflow, not repository validation.
 - `src/git-hooks.ts`: the Git hook workflow — the `lefthook` devDependency,
-  the `prepare`/`lint`/`check` scripts, and `copyGitHooks` for
+  the `prepare`/`lint`/`check` scripts, and
   `templates/git-hooks/lefthook.yml`. One config serves every kind: the
   scripts a kind omits are reached through `npm run <script> --if-present`, so
   a hook with nothing to run is a no-op rather than a failure.
@@ -163,8 +164,8 @@ DROP_CALF_E2E=1 bun test tests/e2e
   `@ast-grep/cli` and `@forge-ahead/prelint` dependency references and the
   `lint:prelint`/`lint:forge` scripts. Git-hooks alone owns the `lint` dispatcher.
   Init and validation are explicit no-ops: the rules ship inside the package,
-  with no local config to seed or validate. Standalone `validatePrelint` reports
-  the same skip; source scanning belongs to the lint workflow.
+  with no local config to seed or validate. Standalone `validate-prelint`
+  reports the same skip; source scanning belongs to the lint workflow.
 - `src/secrets.ts`: the Forge-only SecretSpec workflow. Init seeds owner-managed
   `secretspec.toml` and `forge-variable-keys.json`, substituting the TOML project
   name and marking both helpers executable. Update maintains the two helpers
@@ -191,12 +192,12 @@ DROP_CALF_E2E=1 bun test tests/e2e
   `forge-ranch/license` into an existing package's `license` field during update
   (including init's final update pass), preserving unrelated fields. Missing or
   malformed license metadata fails; no missing package is created.
-  `updateNode()` owns the whole `.nvmrc` and `.npmrc` files in every kind,
+  Update owns the whole `.nvmrc` and `.npmrc` files in every kind,
   including replacing owner-added scoped registries and auth settings. Forge
   updates remove the entire `engines` field; other kinds preserve owner engine
   declarations. No kind generates `engines`: it has caused trouble with
   `forge deploy`, and a development toolchain baseline is not a library's minimum
-  supported runtime. `validateNode()` copies only `.nvmrc` into an isolated
+  supported runtime. Validation copies only `.nvmrc` into an isolated
   Dagger container with pinned fnm, initializes its shell, and runs
   `fnm use --install-if-missing`. Missing `.nvmrc` is skipped; selectable
   non-baseline versions pass. The validator may download Node and does not check
@@ -380,11 +381,22 @@ first run is a no-op rather than a surprise diff. Neither `-o` nor `--prepend`
 is interchangeable here: `--prepend` stacks entries above the file's title and
 duplicates them on every run, whereas `-o` is idempotent.
 
-`validateChangelog` reads a repository rather than
+Changelog validation reads a repository rather than
 the module source, so it needs a `Directory`, not a path, and it runs
-git-cliff inside a container at the version `changelogToolchain` pins. That
+git-cliff inside a container at the `TOOL_VERSIONS.gitCliff` pin. That
 means it needs a live engine, which is why its tests fake `dag.container()`
 rather than starting one.
+
+Capability verbs are the test surface. Factories take only policy options
+(a kind, a budget name, Forge credentials, `ownsBuild`), never tool versions:
+pins come from `TOOL_VERSIONS`, and tests assert against it. Per-verb
+functions stay module-private; tests reach them through `runUpdate`,
+`validateCapabilities`, or `verb(capability, "update" | "validate")` from
+`tests/capability-fixtures.ts` when a test needs a verb's direct result or
+thrown error. Pure policy helpers and specialized seed steps (such as
+`copyOssAssets`) may still be exported and tested directly. Ad hoc
+`validate-*` functions on `DropCalf` route through `validateCapabilities` too,
+so a tool failure reports `failed` rather than throwing.
 
 A capability's blueprint init cannot read the module source. It declares
 seed steps with source paths and deferred copy operations instead; update may

@@ -6,22 +6,19 @@ import { validateCapabilities } from "../src/capability.ts";
 import { CATALOG_FILE, PACKAGE_NAME, renderCatalog } from "../src/catalog.ts";
 import { CHANGELOG_COMMAND } from "../src/changelog.ts";
 import { DOCS_COMMAND } from "../src/docs.ts";
+import { ParseError } from "../src/errors.ts";
 import { GIT_HOOKS_SCRIPTS } from "../src/git-hooks.ts";
 import { DropCalf } from "../src/index.ts";
-import {
-  packageMetadata,
-  validatePackageMetadata,
-} from "../src/package-metadata.ts";
-import { ParseError } from "../src/errors.ts";
+import { packageMetadata } from "../src/package-metadata.ts";
 import { PRELINT_SCRIPTS } from "../src/prelint.ts";
 import { buildProject } from "../src/profiles.ts";
 import { FORGE_SECRETS_SCRIPTS } from "../src/secrets.ts";
 import { SIZE_LIMIT_COMMAND } from "../src/size-limit.ts";
 import { TYPESCRIPT_SCRIPTS } from "../src/typescript.ts";
 import { VITEST_SCRIPTS } from "../src/vitest.ts";
+import { runUpdate, verb } from "./capability-fixtures.ts";
 import { mockDirectory, mockModuleSource } from "./module-source.ts";
 import { catalogTemplates } from "./templates-source.ts";
-import { runUpdate } from "./capability-fixtures.ts";
 
 const kinds = ["library", "forge-app", "tool", "agent-skill"];
 const catalog = () =>
@@ -312,6 +309,7 @@ test("update skips a missing package and rejects missing or malformed sources wi
 });
 
 test("standalone validation accepts owner choices without catalog or policy comparison", async () => {
+  const validate = verb(packageMetadata("tool"), "validate");
   for (const author of [
     "Another author",
     { name: "Another author", email: "person@example.com" },
@@ -325,17 +323,15 @@ test("standalone validation accepts owner choices without catalog or policy comp
       author,
     });
     const input = mockDirectory(new Map([["package.json", contents]]));
-    expect(await validatePackageMetadata(input)).toEqual({
+    expect(await validate(input)).toEqual({
       status: "validated",
     });
     expect(await input.file("package.json").contents()).toBe(contents);
   }
   expect(
-    await validatePackageMetadata(
-      mockDirectory(new Map([["package.json", "{}"]])),
-    ),
+    await validate(mockDirectory(new Map([["package.json", "{}"]]))),
   ).toEqual({ status: "validated" });
-  expect(await validatePackageMetadata(mockDirectory())).toEqual({
+  expect(await validate(mockDirectory())).toEqual({
     status: "skipped",
     reason: "package.json is missing",
   });

@@ -6,16 +6,15 @@ import {
   CHANGELOG_CONFIG,
   CHANGELOG_TEMPLATE,
   changelogToolchain,
-  validateChangelog,
 } from "../src/changelog.ts";
 import { DropCalf } from "../src/index.ts";
 import { buildProject } from "../src/profiles.ts";
 import { createBlueprint } from "../src/project.ts";
 import { TOOL_VERSIONS } from "../src/versions.ts";
+import { runInit, runUpdate, verb } from "./capability-fixtures.ts";
 import { mockContainer } from "./container-source.ts";
 import { mockDirectory, mockModuleSource } from "./module-source.ts";
 import { changelogTemplates } from "./templates-source.ts";
-import { runUpdate, runInit } from "./capability-fixtures.ts";
 
 /** Map each command to what the container writes back. */
 const containerFor = (outputs: Record<string, string>) =>
@@ -23,10 +22,14 @@ const containerFor = (outputs: Record<string, string>) =>
     stdout: (commands) => outputs[commands.at(-1)?.join(" ") ?? ""] ?? "",
   });
 
-const directory = (present: boolean) =>
-  ({ exists: async () => present }) as unknown as Parameters<
-    typeof validateChangelog
+const directory = (present: boolean) => {
+  const validate = changelogToolchain().validate;
+  if (typeof validate !== "function")
+    throw new Error("validate is not a function");
+  return { exists: async () => present } as unknown as Parameters<
+    typeof validate
   >[0];
+};
 
 test("changelog kinds install a pinned tool and script without authoring a policy", () => {
   for (const kind of ["library", "forge-app", "tool"]) {
@@ -54,14 +57,16 @@ test("the release tree ships the policy file the changelog command reads", () =>
 });
 
 test("init and update use the selected pin without claiming unrelated package fields", async () => {
-  const capability = changelogToolchain("2.0.0");
+  const capability = changelogToolchain();
   const project = createBlueprint("sample", "", "tester");
   if (typeof capability.init !== "function") throw new Error("missing init");
   runInit(capability, project);
   expect(project.templates.map((template) => template.path)).toEqual([
     CHANGELOG_TEMPLATE,
   ]);
-  expect(project.packageJson.devDependencies["git-cliff"]).toBe("2.0.0");
+  expect(project.packageJson.devDependencies["git-cliff"]).toBe(
+    TOOL_VERSIONS.gitCliff,
+  );
   expect(project.packageJson.scripts.changelog).toBe(CHANGELOG_COMMAND);
 
   const input = mockDirectory(
@@ -86,7 +91,7 @@ test("init and update use the selected pin without claiming unrelated package fi
   expect(JSON.parse(await output.file("package.json").contents())).toEqual({
     name: "owner",
     scripts: { changelog: CHANGELOG_COMMAND, release: "owner release" },
-    devDependencies: { "git-cliff": "2.0.0", owner: "1" },
+    devDependencies: { "git-cliff": TOOL_VERSIONS.gitCliff, owner: "1" },
     dependencies: { keep: "1" },
     custom: { keep: true },
   });
@@ -195,10 +200,10 @@ test("capability validation uses the selected pin and canonical command, leaving
   );
   const before = [...input.files];
   try {
-    expect(
-      await validateCapabilities(input, [changelogToolchain("2.0.0")]),
-    ).toEqual([{ capability: "changelog", status: "validated" }]);
-    expect(commands[0]?.at(-1)).toBe("git-cliff@2.0.0");
+    expect(await validateCapabilities(input, [changelogToolchain()])).toEqual([
+      { capability: "changelog", status: "validated" },
+    ]);
+    expect(commands[0]?.at(-1)).toBe(`git-cliff@${TOOL_VERSIONS.gitCliff}`);
     expect(commands.at(-1)).toEqual([
       "sh",
       "-c",
@@ -213,7 +218,9 @@ test("capability validation uses the selected pin and canonical command, leaving
 test("validation skips a repository with no policy", async () => {
   const { spy } = containerFor({});
   try {
-    expect(await validateChangelog(directory(false))).toEqual({
+    expect(
+      await verb(changelogToolchain(), "validate")(directory(false)),
+    ).toEqual({
       status: "skipped",
       reason: "cliff.toml is missing",
     });
@@ -229,7 +236,9 @@ test("validation runs the scripted command at the pinned version", async () => {
       "## What's Changed\ngit-cliff exit=0",
   });
   try {
-    expect(await validateChangelog(directory(true))).toEqual({
+    expect(
+      await verb(changelogToolchain(), "validate")(directory(true)),
+    ).toEqual({
       status: "validated",
     });
     expect(commands[0]).toEqual([
@@ -256,7 +265,9 @@ test("validation skips a repository with no commits to render", async () => {
       "sh -c git rev-list --count HEAD 2>/dev/null || true": history,
     });
     try {
-      expect(await validateChangelog(directory(true))).toEqual({
+      expect(
+        await verb(changelogToolchain(), "validate")(directory(true)),
+      ).toEqual({
         status: "skipped",
         reason: "Git history is unavailable",
       });
@@ -273,9 +284,9 @@ test("validation reports the command's own output when the policy fails", async 
       "error: invalid type\ngit-cliff exit=1",
   });
   try {
-    await expect(validateChangelog(directory(true))).rejects.toThrow(
-      /git-cliff validation failed: error: invalid type/,
-    );
+    await expect(
+      verb(changelogToolchain(), "validate")(directory(true)),
+    ).rejects.toThrow(/git-cliff validation failed: error: invalid type/);
   } finally {
     spy.mockRestore();
   }

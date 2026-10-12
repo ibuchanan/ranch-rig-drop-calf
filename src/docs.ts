@@ -1,6 +1,6 @@
 import type { Directory } from "@dagger.io/dagger";
 import { type Capability, noOp, type Validation } from "./capability.ts";
-import { copyTemplate, templateTree } from "./templates.ts";
+import { templateTree } from "./templates.ts";
 import { bunTools, REPOSITORY, runTool } from "./tool-run.ts";
 import { TOOL_VERSIONS } from "./versions.ts";
 
@@ -12,16 +12,8 @@ export const DOCS_CONFIGS = [
   ".cspell.jsonc",
 ] as const;
 
-export function copyDocs(destination: Directory, source: Directory): Directory {
-  return copyTemplate(destination, source);
-}
-
 /** Load the two root configs and their references, never lint documentation content. */
-export async function validateDocs(
-  directory: Directory,
-  cspellVersion: string = TOOL_VERSIONS.cspell,
-  markdownlintVersion: string = TOOL_VERSIONS.markdownlintCli2,
-): Promise<Validation> {
+async function validateDocs(directory: Directory): Promise<Validation> {
   const missing: string[] = [];
   for (const path of DOCS_CONFIGS)
     if (!(await directory.exists(path))) missing.push(path);
@@ -33,8 +25,8 @@ export async function validateDocs(
   if (missing.length)
     return { status: "failed", reason: `${missing.join(" and ")} is missing` };
   const container = bunTools(
-    `cspell@${cspellVersion}`,
-    `markdownlint-cli2@${markdownlintVersion}`,
+    `cspell@${TOOL_VERSIONS.cspell}`,
+    `markdownlint-cli2@${TOOL_VERSIONS.markdownlintCli2}`,
   )
     .withMountedDirectory(REPOSITORY, directory, { readOnly: true })
     .withWorkdir(REPOSITORY)
@@ -69,10 +61,7 @@ export async function validateDocs(
   return { status: "validated" };
 }
 
-export function docsLinting(
-  cspellVersion: string = TOOL_VERSIONS.cspell,
-  markdownlintVersion: string = TOOL_VERSIONS.markdownlintCli2,
-): Capability {
+export function docsLinting(): Capability {
   return {
     name: "docs",
     documentation: {
@@ -95,8 +84,8 @@ export function docsLinting(
     packageJson: {
       seed: {
         devDependencies: {
-          cspell: cspellVersion,
-          "markdownlint-cli2": markdownlintVersion,
+          cspell: TOOL_VERSIONS.cspell,
+          "markdownlint-cli2": TOOL_VERSIONS.markdownlintCli2,
         },
       },
       policy: {
@@ -109,7 +98,6 @@ export function docsLinting(
     update: noOp(
       "Docs configuration and documents are owner-managed after init, including deletions; its package.json contribution enforces lint:docs and keeps the seeded tool dependencies fresh.",
     ),
-    validate: (directory) =>
-      validateDocs(directory, cspellVersion, markdownlintVersion),
+    validate: validateDocs,
   };
 }

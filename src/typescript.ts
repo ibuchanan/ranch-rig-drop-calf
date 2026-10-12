@@ -11,7 +11,7 @@ import {
 import type { Capability, Validation } from "./capability.ts";
 import { ParseError } from "./errors.ts";
 import { readPackageJson } from "./package-json.ts";
-import { copyTemplate, templateTree } from "./templates.ts";
+import { templateTree } from "./templates.ts";
 import { npmTools, REPOSITORY, runTool } from "./tool-run.ts";
 import { TOOL_VERSIONS } from "./versions.ts";
 
@@ -26,12 +26,10 @@ export const TYPESCRIPT_SCRIPTS = {
   typecheck: "tsc --project tsconfig.typecheck.json --noEmit",
 } as const;
 
-export function copyTypeScript(
-  destination: Directory,
-  source: Directory,
-): Directory {
-  return copyTemplate(
-    destination,
+/** Seed the uncomposed pair; update adds the declarations config for tsdown projects. */
+function seedTypeScript(destination: Directory, source: Directory): Directory {
+  return destination.withDirectory(
+    ".",
     source.withoutFile("tsconfig.declarations.json"),
   );
 }
@@ -131,9 +129,7 @@ export function reconcileTypeScriptConfig(
 }
 
 /** Declared dependencies select compiler policy; package.json itself is contributed. */
-export async function updateTypeScript(
-  directory: Directory,
-): Promise<Directory> {
+async function updateTypeScript(directory: Directory): Promise<Directory> {
   let result = directory;
   const pkg = await readPackageJson(directory);
   const dependencies = object(
@@ -161,10 +157,7 @@ export async function updateTypeScript(
 }
 
 /** Configuration acceptance only: never compile source, apply policy, or export container changes. */
-export async function validateTypeScript(
-  directory: Directory,
-  version: string = TOOL_VERSIONS.typescript,
-): Promise<Validation> {
+async function validateTypeScript(directory: Directory): Promise<Validation> {
   const declarations = await directory.exists("tsconfig.declarations.json");
   const missing: string[] = [];
   const required: string[] = [];
@@ -178,7 +171,7 @@ export async function validateTypeScript(
       status: missing.length === required.length ? "skipped" : "failed",
       reason: `Missing TypeScript configuration: ${missing.join(", ")}`,
     };
-  const container = npmTools(`typescript@${version}`)
+  const container = npmTools(`typescript@${TOOL_VERSIONS.typescript}`)
     .withMountedDirectory(REPOSITORY, directory, { readOnly: true })
     .withWorkdir(REPOSITORY);
   for (const path of required)
@@ -189,10 +182,8 @@ export async function validateTypeScript(
   return { status: "validated" };
 }
 
-export function typeScriptToolchain(
-  tsVersion: string = TOOL_VERSIONS.typescript,
-  ownsBuild = true,
-): Capability {
+/** `ownsBuild: false` leaves the build script to library-build. */
+export function typeScriptToolchain({ ownsBuild = true } = {}): Capability {
   return {
     name: "typescript",
     documentation: {
@@ -213,7 +204,7 @@ export function typeScriptToolchain(
         "Run tsc --showConfig for applicable compiler configs, without compiling source or declarations.",
     },
     packageJson: {
-      seed: { devDependencies: { typescript: tsVersion } },
+      seed: { devDependencies: { typescript: TOOL_VERSIONS.typescript } },
       policy: {
         scripts: {
           typecheck: TYPESCRIPT_SCRIPTS.typecheck,
@@ -223,9 +214,9 @@ export function typeScriptToolchain(
       },
     },
     init(project) {
-      project.templates.push(templateTree(TYPESCRIPT_TEMPLATE, copyTypeScript));
+      project.templates.push(templateTree(TYPESCRIPT_TEMPLATE, seedTypeScript));
     },
     update: updateTypeScript,
-    validate: (directory) => validateTypeScript(directory, tsVersion),
+    validate: validateTypeScript,
   };
 }

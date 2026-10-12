@@ -11,11 +11,7 @@ export const SIZE_LIMIT_COMMAND = "npm run build && size-limit";
 export const SIZE_LIMIT_LIMIT = "10 kB";
 
 /** Seed an owner budget; maintain only the paired tools and measurement command. */
-export function bundleSize(
-  name: string,
-  path: string,
-  version: string = TOOL_VERSIONS.sizeLimit,
-): Capability {
+export function bundleSize(name: string, path: string): Capability {
   return {
     name: "size-limit",
     documentation: {
@@ -31,8 +27,8 @@ export function bundleSize(
     packageJson: {
       seed: {
         devDependencies: {
-          "size-limit": version,
-          "@size-limit/file": version,
+          "size-limit": TOOL_VERSIONS.sizeLimit,
+          "@size-limit/file": TOOL_VERSIONS.sizeLimit,
         },
         [SIZE_LIMIT_FIELD]: [{ name, path, limit: SIZE_LIMIT_LIMIT }],
       },

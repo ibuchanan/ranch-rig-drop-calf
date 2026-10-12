@@ -110,7 +110,7 @@ function guardLegacyAllowlist(contents: string): void {
 }
 
 /** Apply tooling policy without creating, parsing, or rewriting owner declarations. */
-export async function updateSecrets(directory: Directory): Promise<Directory> {
+async function updateSecrets(directory: Directory): Promise<Directory> {
   const helper = SECRETS_EXECUTABLES[1];
   if (await directory.exists(helper))
     guardLegacyAllowlist(await directory.file(helper).contents());
@@ -157,9 +157,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 /** Local structural acceptance only; never resolve values, run helpers, or contact Forge. */
-export async function validateSecrets(
-  directory: Directory,
-): Promise<Validation> {
+async function validateSecrets(directory: Directory): Promise<Validation> {
   if (!(await directory.exists("secretspec.toml")))
     return { status: "skipped", reason: "secretspec.toml is missing" };
   let config: Record<string, unknown>;

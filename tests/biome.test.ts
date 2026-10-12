@@ -1,13 +1,13 @@
 import { expect, test } from "bun:test";
-import { BIOME_SCRIPTS, biomeToolchain, validateBiome } from "../src/biome.ts";
+import { BIOME_SCRIPTS, biomeToolchain } from "../src/biome.ts";
 import { validateCapabilities } from "../src/capability.ts";
 import { ParseError } from "../src/errors.ts";
 import { buildProject } from "../src/profiles.ts";
 import { TOOL_VERSIONS } from "../src/versions.ts";
+import { runUpdate, verb } from "./capability-fixtures.ts";
 import { mockContainer } from "./container-source.ts";
 import { mockDirectory } from "./module-source.ts";
 import { biomeTemplates } from "./templates-source.ts";
-import { runUpdate } from "./capability-fixtures.ts";
 
 const kinds = ["library", "forge-app", "tool", "agent-skill"];
 
@@ -158,17 +158,17 @@ test("root JSON takes precedence over JSONC and custom pins apply to both update
   );
   const { spy, reads, commands } = mockContainer();
   try {
-    const output = await runUpdate(biomeToolchain("2.5.13"), input);
+    const output = await runUpdate(biomeToolchain(), input);
     expect(
       JSON.parse(await output.file("package.json").contents()).devDependencies[
         "@biomejs/biome"
       ],
-    ).toBe("2.5.13");
+    ).toBe(TOOL_VERSIONS.biome);
     expect(await output.file("biome.jsonc").contents()).toBe(
       "{ malformed unselected config",
     );
     expect(reads).toEqual(["/repo/biome.json"]);
-    expect(await validateBiome(input, "2.5.13")).toEqual({
+    expect(await verb(biomeToolchain(), "validate")(input)).toEqual({
       status: "validated",
     });
     expect(
@@ -179,7 +179,9 @@ test("root JSON takes precedence over JSONC and custom pins apply to both update
     expect(
       commands
         .filter((args) => args[0] === "npm")
-        .every((args) => args.includes("@biomejs/biome@2.5.13")),
+        .every((args) =>
+          args.includes(`@biomejs/biome@${TOOL_VERSIONS.biome}`),
+        ),
     ).toBe(true);
   } finally {
     spy.mockRestore();
@@ -189,7 +191,7 @@ test("root JSON takes precedence over JSONC and custom pins apply to both update
 test("standalone validation skips a missing config without starting a container", async () => {
   const { spy } = mockContainer();
   try {
-    expect(await validateBiome(mockDirectory())).toEqual({
+    expect(await verb(biomeToolchain(), "validate")(mockDirectory())).toEqual({
       status: "skipped",
       reason: "biome.json and biome.jsonc are missing",
     });
@@ -209,7 +211,7 @@ test("validation uses the capability pin, read-only mount, and config-only comma
   );
   const before = [...input.files];
   try {
-    const capability = biomeToolchain("2.5.13");
+    const capability = biomeToolchain();
     expect(await validateCapabilities(input, [capability])).toEqual([
       { capability: "biome", status: "validated" },
     ]);
@@ -219,7 +221,7 @@ test("validation uses the capability pin, read-only mount, and config-only comma
       "--global",
       "--no-fund",
       "--no-audit",
-      "@biomejs/biome@2.5.13",
+      `@biomejs/biome@${TOOL_VERSIONS.biome}`,
     ]);
     expect(commands.at(-1)).toEqual([
       "biome",

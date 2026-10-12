@@ -6,18 +6,17 @@ import {
   DOCS_CONFIGS,
   DOCS_TEMPLATE,
   docsLinting,
-  validateDocs,
 } from "../src/docs.ts";
 import { DropCalf } from "../src/index.ts";
 import { createBlueprint } from "../src/project.ts";
 import { TOOL_VERSIONS } from "../src/versions.ts";
+import { runInit, runUpdate, verb } from "./capability-fixtures.ts";
 import { mockContainer } from "./container-source.ts";
 import { mockDirectory, mockModuleSource } from "./module-source.ts";
 import { docsTemplates } from "./templates-source.ts";
-import { runUpdate, runInit } from "./capability-fixtures.ts";
 
 test("init declares its template tree and selected tools without authoring docs", () => {
-  const capability = docsLinting("10.3.0", "0.23.0");
+  const capability = docsLinting();
   const project = createBlueprint("sample", "", "tester");
   if (typeof capability.init !== "function") throw new Error("missing init");
   runInit(capability, project);
@@ -27,8 +26,8 @@ test("init declares its template tree and selected tools without authoring docs"
   expect(project.files.size).toBe(0);
   expect(project.packageJson.scripts["lint:docs"]).toBe(DOCS_COMMAND);
   expect(project.packageJson.devDependencies).toEqual({
-    cspell: "10.3.0",
-    "markdownlint-cli2": "0.23.0",
+    cspell: TOOL_VERSIONS.cspell,
+    "markdownlint-cli2": TOOL_VERSIONS.markdownlintCli2,
   });
 });
 
@@ -61,14 +60,14 @@ test("update maintains only docs tools and script, preserving owner words, prose
     ]),
   );
   const before = [...input.files];
-  const capability = docsLinting("10.3.0", "0.23.0");
+  const capability = docsLinting();
   const output = await updateCapabilities(input, [capability]);
   expect(JSON.parse(await output.file("package.json").contents())).toEqual({
     name: "owner",
     scripts: { "lint:docs": DOCS_COMMAND, lint: "owner lint" },
     devDependencies: {
-      cspell: "10.3.0",
-      "markdownlint-cli2": "0.23.0",
+      cspell: TOOL_VERSIONS.cspell,
+      "markdownlint-cli2": TOOL_VERSIONS.markdownlintCli2,
       owner: "1",
     },
     dependencies: { keep: "1" },
@@ -177,16 +176,16 @@ test("validation uses selected tools and content-free commands with a read-only 
   const before = [...input.files];
   const { commands, mounts, mounted, spy } = mockContainer();
   try {
-    expect(
-      await validateCapabilities(input, [docsLinting("10.3.0", "0.23.0")]),
-    ).toEqual([{ capability: "docs", status: "validated" }]);
+    expect(await validateCapabilities(input, [docsLinting()])).toEqual([
+      { capability: "docs", status: "validated" },
+    ]);
     expect(commands).toEqual([
       [
         "bun",
         "add",
         "--ignore-scripts",
-        "cspell@10.3.0",
-        "markdownlint-cli2@0.23.0",
+        `cspell@${TOOL_VERSIONS.cspell}`,
+        `markdownlint-cli2@${TOOL_VERSIONS.markdownlintCli2}`,
       ],
       [
         "bun",
@@ -228,12 +227,15 @@ test("validation skips an absent pair and fails a partial pair before installing
     throw new Error("must not install");
   });
   try {
-    expect(await validateDocs(mockDirectory())).toEqual({
+    expect(await verb(docsLinting(), "validate")(mockDirectory())).toEqual({
       status: "skipped",
       reason: ".markdownlint-cli2.jsonc and .cspell.jsonc are missing",
     });
     for (const path of DOCS_CONFIGS) {
-      const result = await validateDocs(mockDirectory(new Map([[path, "{}"]])));
+      const result = await verb(
+        docsLinting(),
+        "validate",
+      )(mockDirectory(new Map([[path, "{}"]])));
       expect(result.status).toBe("failed");
       expect("reason" in result && result.reason).toContain(
         path === DOCS_CONFIGS[0] ? DOCS_CONFIGS[1] : DOCS_CONFIGS[0],

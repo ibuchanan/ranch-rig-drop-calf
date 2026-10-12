@@ -6,18 +6,17 @@ import {
   updateCapabilities,
   validateCapabilities,
 } from "../src/capability.ts";
+import { ParseError } from "../src/errors.ts";
 import {
   forgeManifest,
   forgeRuntimeFromNvmrc,
   reconcileForgeRuntime,
-  updateForgeManifest,
-  validateForgeManifest,
 } from "../src/forge-manifest.ts";
 import { DropCalf } from "../src/index.ts";
 import { nodeBaseline } from "../src/node.ts";
-import { ParseError } from "../src/errors.ts";
 import { resolveProfile } from "../src/profiles.ts";
 import { TOOL_VERSIONS } from "../src/versions.ts";
+import { verb } from "./capability-fixtures.ts";
 import { mockContainer } from "./container-source.ts";
 import { mockDirectory } from "./module-source.ts";
 
@@ -59,7 +58,7 @@ test("Forge manifest is selected only for Forge, immediately after Node, with ex
       reason: expect.stringContaining("does not seed"),
     },
   ]);
-  expect(capability.update).toBe(updateForgeManifest);
+  expect(typeof capability.update).toBe("function");
   expect(typeof capability.validate).toBe("function");
   const names = resolveProfile("forge-app").map((item) => item.name);
   expect(names[names.indexOf("node") + 1]).toBe("forge-manifest");
@@ -134,7 +133,8 @@ test.each([
   "missing manifest or pin is a no-op without parsing or creating files",
   async (files) => {
     const input = mockDirectory(files);
-    expect(await updateForgeManifest(input)).toBe(input);
+    const update = verb(forgeManifest(), "update");
+    expect(await update(input)).toBe(input);
   },
 );
 test("update derives the runtime from .nvmrc, preserves other files and is idempotent", async () => {
@@ -148,13 +148,14 @@ test("update derives the runtime from .nvmrc, preserves other files and is idemp
     ]),
   );
   const before = [...input.files];
-  const output = await updateForgeManifest(input);
+  const update = verb(forgeManifest(), "update");
+  const output = await update(input);
   expect(await output.file("manifest.yml").contents()).toBe(
     contents.replace("nodejs24.x", runtime),
   );
   expect(await output.file(".nvmrc").contents()).toBe("v22.12.0\n");
   expect(await output.file("owner.txt").contents()).toBe("kept");
-  expect(await updateForgeManifest(output)).toBe(output);
+  expect(await update(output)).toBe(output);
   expect([...input.files]).toEqual(before);
 });
 test("Node first establishes its policy; manifest then reads the resulting .nvmrc", async () => {
@@ -184,16 +185,16 @@ test("standalone update rejects an ambiguous pin without changing the input", as
       ["manifest.yml", "app: {}\n"],
     ]),
   );
-  await expect(updateForgeManifest(input)).rejects.toThrow(
-    "numeric Node version",
-  );
+  const update = verb(forgeManifest(), "update");
+  await expect(update(input)).rejects.toThrow("numeric Node version");
   expect(await input.file("manifest.yml").contents()).toBe("app: {}\n");
 });
 
 test("validation skips a missing manifest without allocating tools", async () => {
   const spy = spyOn(dag, "container");
   try {
-    expect(await validateForgeManifest(mockDirectory())).toEqual({
+    const validate = verb(forgeManifest(), "validate");
+    expect(await validate(mockDirectory())).toEqual({
       status: "skipped",
       reason: "manifest.yml is missing",
     });
@@ -215,11 +216,11 @@ test.each([
     const input = mockDirectory(new Map([["manifest.yml", "app: {}\n"]]));
     const spy = spyOn(dag, "container");
     try {
-      const result = await validateForgeManifest(
-        input,
-        credentials.email,
-        credentials.token,
+      const validate = verb(
+        forgeManifest(credentials.email, credentials.token),
+        "validate",
       );
+      const result = await validate(input);
       expect(result).toEqual({
         status: "failed",
         reason: expect.stringContaining(
@@ -297,9 +298,9 @@ test("validation runs pinned Forge lint on a read-only repo and keeps all diagno
       }),
     );
     try {
-      const report = await validateCapabilities(input, [
+      const report = (await validateCapabilities(input, [
         forgeManifest(email, token),
-      ]);
+      ])) as Awaited<ReturnType<typeof validateCapabilities>>;
       expect(report).toEqual([
         {
           capability: "forge-manifest",

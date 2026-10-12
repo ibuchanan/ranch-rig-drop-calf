@@ -33,12 +33,10 @@ try {
 }
 `;
 
-export async function validateVitest(
-  directory: Directory,
-  version: string = TOOL_VERSIONS.vitest,
-): Promise<Validation> {
+async function validateVitest(directory: Directory): Promise<Validation> {
   if (!(await directory.exists(VITEST_CONFIG)))
     return { status: "skipped", reason: `${VITEST_CONFIG} is missing` };
+  const version = TOOL_VERSIONS.vitest;
   const tools = bunTools(`vitest@${version}`, `@vitest/coverage-v8@${version}`);
   const repository = directory.withDirectory(
     "node_modules/vitest",
@@ -58,9 +56,8 @@ export async function validateVitest(
   return { status: "validated" };
 }
 
-export function vitestTesting(
-  version: string = TOOL_VERSIONS.vitest,
-): Capability {
+export function vitestTesting(): Capability {
+  const version = TOOL_VERSIONS.vitest;
   return {
     name: "test",
     documentation: {
@@ -89,6 +86,6 @@ export function vitestTesting(
     update: noOp(
       "Vitest configuration and test sources are owner-managed after init; its package.json contribution enforces the test scripts and keeps the seeded runner and coverage provider fresh.",
     ),
-    validate: (directory) => validateVitest(directory, version),
+    validate: validateVitest,
   };
 }

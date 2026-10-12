@@ -3,14 +3,10 @@ import { dag } from "@dagger.io/dagger";
 import { validateCapabilities } from "../src/capability.ts";
 import { DropCalf } from "../src/index.ts";
 import { TOOL_VERSIONS } from "../src/versions.ts";
-import {
-  VITEST_SCRIPTS,
-  validateVitest,
-  vitestTesting,
-} from "../src/vitest.ts";
+import { VITEST_SCRIPTS, vitestTesting } from "../src/vitest.ts";
+import { runUpdate, verb } from "./capability-fixtures.ts";
 import { mockContainer } from "./container-source.ts";
 import { mockDirectory, mockModuleSource } from "./module-source.ts";
-import { runUpdate } from "./capability-fixtures.ts";
 
 test("update converges scripts and matching tool pins while preserving owner configuration and unrelated fields", async () => {
   const config =
@@ -63,13 +59,13 @@ test("update leaves missing config and package absent and preserves matching pac
   const empty = mockDirectory();
   expect(await runUpdate(vitestTesting(), empty)).toBe(empty);
   const input = mockDirectory(new Map([["package.json", "{}"]]));
-  const output = await runUpdate(vitestTesting("4.0.7"), input);
+  const output = await runUpdate(vitestTesting(), input);
   expect(await output.exists("vitest.config.ts")).toBe(false);
   const pkg = JSON.parse(await output.file("package.json").contents());
   expect(pkg.devDependencies).toEqual(undefined);
   const text = JSON.stringify(pkg, null, 4);
   const matching = output.withNewFile("package.json", text);
-  expect(await runUpdate(vitestTesting("4.0.7"), matching)).toBe(matching);
+  expect(await runUpdate(vitestTesting(), matching)).toBe(matching);
   expect(await matching.file("package.json").contents()).toBe(text);
 });
 
@@ -121,19 +117,19 @@ test("composed Forge update preserves missing Vitest declaration and TypeScript 
   }
 });
 
-test("validation uses the selected pin with read-only mounts and no input edits", async () => {
+test("validation uses the default pin with read-only mounts and no input edits", async () => {
   const { spy, commands, mounts } = mockContainer();
   const input = mockDirectory(new Map([["vitest.config.ts", "owner config"]]));
   try {
     expect(
-      (await validateCapabilities(input, [vitestTesting("4.0.7")]))[0]?.status,
+      (await validateCapabilities(input, [vitestTesting()]))[0]?.status,
     ).toBe("validated");
     expect(commands).toContainEqual([
       "bun",
       "add",
       "--ignore-scripts",
-      "vitest@4.0.7",
-      "@vitest/coverage-v8@4.0.7",
+      `vitest@${TOOL_VERSIONS.vitest}`,
+      `@vitest/coverage-v8@${TOOL_VERSIONS.vitest}`,
     ]);
     expect(commands).toContainEqual([
       "bun",
@@ -150,7 +146,7 @@ test("validation uses the selected pin with read-only mounts and no input edits"
 });
 
 test("validation skips missing config and retains execution diagnostics", async () => {
-  expect(await validateVitest(mockDirectory())).toEqual({
+  expect(await verb(vitestTesting(), "validate")(mockDirectory())).toEqual({
     status: "skipped",
     reason: "vitest.config.ts is missing",
   });

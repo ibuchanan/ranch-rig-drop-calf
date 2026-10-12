@@ -1,6 +1,6 @@
 import type { Directory } from "@dagger.io/dagger";
-import { type Capability, noOp } from "./capability.ts";
-import { copyTemplate, templateTree } from "./templates.ts";
+import { type Capability, noOp, type Validation } from "./capability.ts";
+import { templateTree } from "./templates.ts";
 import { npmTools, REPOSITORY } from "./tool-run.ts";
 import { TOOL_VERSIONS } from "./versions.ts";
 
@@ -35,25 +35,16 @@ export const CHANGELOG_CONFIG = "cliff.toml";
  * them on every run, whereas regenerating is idempotent.
  */
 /**
- * The command `changelogToolchain` scripts and `validateChangelog` runs.
+ * The command the `changelog` script and validation both run.
  * Validation reuses it rather than repeating it, so the two cannot drift.
  */
 export const CHANGELOG_COMMAND = `git cliff --config ${CHANGELOG_CONFIG} --unreleased -o CHANGELOG.md`;
 
-/** The marker `validateChangelog` looks for after the command it ran. */
+/** The marker validation looks for after the command it ran. */
 const EXIT_MARKER = "git-cliff exit=";
 
-export function copyChangelog(
-  destination: Directory,
-  source: Directory,
-): Directory {
-  return copyTemplate(destination, source);
-}
-
 /** Every kind that releases installs this tool and renders through this command. */
-export function changelogToolchain(
-  cliffVersion: string = TOOL_VERSIONS.gitCliff,
-): Capability {
+export function changelogToolchain(): Capability {
   return {
     name: "changelog",
     documentation: {
@@ -70,7 +61,7 @@ export function changelogToolchain(
         "Validates cliff.toml policy and runs git-cliff command against repository commit history",
     },
     packageJson: {
-      seed: { devDependencies: { "git-cliff": cliffVersion } },
+      seed: { devDependencies: { "git-cliff": TOOL_VERSIONS.gitCliff } },
       policy: {
         scripts: { changelog: CHANGELOG_COMMAND },
       },
@@ -81,30 +72,23 @@ export function changelogToolchain(
     update: noOp(
       "Release policy and CHANGELOG.md are owner-managed after init; its package.json contribution enforces the changelog command and keeps the seeded git-cliff dependency fresh.",
     ),
-    validate: (directory) => validateChangelog(directory, cliffVersion),
+    validate: validateChangelog,
   };
 }
-
-export type ChangelogValidation =
-  | { status: "validated" }
-  | { status: "skipped"; reason: string };
 
 /**
  * Validate a repository's release command without changing its files.
  *
- * git-cliff is installed in a container at the version `changelogToolchain`
- * pins, so the verdict depends on the policy under review rather than on
- * whatever the host happens to have installed. The command writes
- * `CHANGELOG.md`, but only inside that throwaway container: the `Directory`
- * passed in is immutable, so the caller's repository is never touched.
+ * git-cliff is installed in a container at the pinned version, so the verdict
+ * depends on the policy under review rather than on whatever the host happens
+ * to have installed. The command writes `CHANGELOG.md`, but only inside that
+ * throwaway container: the `Directory` passed in is immutable, so the caller's
+ * repository is never touched.
  */
-export async function validateChangelog(
-  directory: Directory,
-  cliffVersion: string = TOOL_VERSIONS.gitCliff,
-): Promise<ChangelogValidation> {
+async function validateChangelog(directory: Directory): Promise<Validation> {
   if (!(await directory.exists(CHANGELOG_CONFIG)))
     return { status: "skipped", reason: `${CHANGELOG_CONFIG} is missing` };
-  const container = npmTools(`git-cliff@${cliffVersion}`)
+  const container = npmTools(`git-cliff@${TOOL_VERSIONS.gitCliff}`)
     // A mounted repository belongs to whoever cloned it, so git would refuse
     // to read it as "dubious ownership" without this.
     .withExec(["git", "config", "--global", "--add", "safe.directory", "*"])

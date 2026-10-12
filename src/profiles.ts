@@ -36,7 +36,7 @@ export const PROFILES: Record<string, Capability[]> = {
     changelogToolchain(),
     biomeToolchain(),
     libraryBuild(),
-    typeScriptToolchain(undefined, false),
+    typeScriptToolchain({ ownsBuild: false }),
     bunTesting(),
     bundleSize("Library bundle", "dist/index.mjs"),
     cleanBuild(),

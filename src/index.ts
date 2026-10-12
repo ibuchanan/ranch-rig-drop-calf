@@ -10,21 +10,33 @@ import {
   type Secret,
 } from "@dagger.io/dagger";
 import {
+  type Capability,
   updateCapabilities,
-  type Validation,
   validateCapabilities,
 } from "./capability.ts";
-import { validateCatalog } from "./catalog.ts";
-import { validateChangelog } from "./changelog.ts";
+import { catalog } from "./catalog.ts";
+import { changelogToolchain } from "./changelog.ts";
 import { forgeManifest } from "./forge-manifest.ts";
 import { adoptScaffoldTypeScript } from "./init.ts";
 import { mergeScaffoldPackage, scaffoldName } from "./package-json.ts";
 import { applyPreclean } from "./preclean.ts";
-import { validatePrelint } from "./prelint.ts";
+import { prelint } from "./prelint.ts";
 import { buildProject, resolveProfile } from "./profiles.ts";
 import { renderToDirectory } from "./project.ts";
 import { seedTemplates } from "./templates.ts";
 import { nodeContainer as buildNodeContainer } from "./tool-run.ts";
+
+/** One capability's verdict through the shared verb, so failures report as `validate` does. */
+async function validateOne(
+  directory: Directory,
+  capability: Capability,
+): Promise<string> {
+  const [{ capability: _, ...result }] = (await validateCapabilities(
+    directory,
+    [capability],
+  )) as [Awaited<ReturnType<typeof validateCapabilities>>[number]];
+  return JSON.stringify(result, null, 2);
+}
 
 @object()
 export class DropCalf {
@@ -40,7 +52,7 @@ export class DropCalf {
 
   @func()
   async validateCatalog(directory: Directory): Promise<string> {
-    return JSON.stringify(await validateCatalog(directory), null, 2);
+    return validateOne(directory, catalog());
   }
 
   /**
@@ -50,7 +62,7 @@ export class DropCalf {
    */
   @func()
   async validateChangelog(directory: Directory): Promise<string> {
-    return JSON.stringify(await validateChangelog(directory), null, 2);
+    return validateOne(directory, changelogToolchain());
   }
 
   /** Run Forge lint against an unchanged repository without registration or deployment. */
@@ -60,18 +72,13 @@ export class DropCalf {
     forgeEmail?: Secret,
     forgeApiToken?: Secret,
   ): Promise<string> {
-    // validateCapabilities reports tool failures as `failed`, as `validate` does.
-    const [{ capability: _, ...result }] = (await validateCapabilities(
-      directory,
-      [forgeManifest(forgeEmail, forgeApiToken)],
-    )) as [{ capability: string } & Validation];
-    return JSON.stringify(result, null, 2);
+    return validateOne(directory, forgeManifest(forgeEmail, forgeApiToken));
   }
 
   /** Prelint has no local configuration to validate; report its explicit skip reason. */
   @func()
   async validatePrelint(directory: Directory): Promise<string> {
-    return JSON.stringify(await validatePrelint(directory), null, 2);
+    return validateOne(directory, prelint());
   }
 
   @func()

@@ -10,8 +10,8 @@ import { buildProject } from "../src/profiles.ts";
 import { createBlueprint } from "../src/project.ts";
 import { bundleSize, SIZE_LIMIT_COMMAND } from "../src/size-limit.ts";
 import { TOOL_VERSIONS } from "../src/versions.ts";
+import { runInit, runUpdate } from "./capability-fixtures.ts";
 import { mockDirectory, mockModuleSource } from "./module-source.ts";
-import { runUpdate, runInit } from "./capability-fixtures.ts";
 
 const validationReason =
   "Size Limit has no supported configuration-only validation interface. Measurement requires build artifacts and belongs to the size workflow; validation does not build the project or assess potentially stale output.";
@@ -56,7 +56,7 @@ test("library and Forge seed an owned size command, paired pins and matching bud
 });
 
 test("init seeds the selected budget and update maintains only the selected paired pin and command", async () => {
-  const capability = bundleSize("Selected bundle", "build/main.js", "11.1.0");
+  const capability = bundleSize("Selected bundle", "build/main.js");
   const project = createBlueprint("sample", "", "tester");
   project.packageJson["size-limit"] = [
     { name: "scaffold", path: "old.js", limit: "1 kB" },
@@ -66,8 +66,8 @@ test("init seeds the selected budget and update maintains only the selected pair
     { name: "Selected bundle", path: "build/main.js", limit: "10 kB" },
   ]);
   expect(project.packageJson.devDependencies).toEqual({
-    "size-limit": "11.1.0",
-    "@size-limit/file": "11.1.0",
+    "size-limit": TOOL_VERSIONS.sizeLimit,
+    "@size-limit/file": TOOL_VERSIONS.sizeLimit,
   });
   expect(project.files.size).toBe(0);
   expect(project.templates.map((template) => template.path)).toEqual([]);
@@ -102,8 +102,8 @@ test("init seeds the selected budget and update maintains only the selected pair
     name: "owner",
     scripts: { size: SIZE_LIMIT_COMMAND, build: "owner build", custom: "keep" },
     devDependencies: {
-      "size-limit": "11.1.0",
-      "@size-limit/file": "11.1.0",
+      "size-limit": TOOL_VERSIONS.sizeLimit,
+      "@size-limit/file": TOOL_VERSIONS.sizeLimit,
       owner: "1",
     },
     dependencies: { keep: "1" },

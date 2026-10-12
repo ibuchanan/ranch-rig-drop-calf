@@ -1,6 +1,6 @@
 import type { Directory } from "@dagger.io/dagger";
 import { type Capability, noOp, type Validation } from "./capability.ts";
-import { copyTemplate, templateTree } from "./templates.ts";
+import { templateTree } from "./templates.ts";
 import { npmTools, REPOSITORY } from "./tool-run.ts";
 import { TOOL_VERSIONS } from "./versions.ts";
 
@@ -12,17 +12,8 @@ export const GIT_HOOKS_SCRIPTS = {
   check: "lefthook run pre-push --force",
 } as const;
 
-export function copyGitHooks(
-  destination: Directory,
-  source: Directory,
-): Directory {
-  return copyTemplate(destination, source);
-}
-
 /** Git-hooks alone owns lint; other capabilities contribute named subtasks. */
-export function gitHooks(
-  lefthookVersion: string = TOOL_VERSIONS.lefthook,
-): Capability {
+export function gitHooks(): Capability {
   return {
     name: "git-hooks",
     documentation: {
@@ -45,7 +36,7 @@ export function gitHooks(
         "Run lefthook validate with isolated Git metadata; never install or execute hooks.",
     },
     packageJson: {
-      seed: { devDependencies: { lefthook: lefthookVersion } },
+      seed: { devDependencies: { lefthook: TOOL_VERSIONS.lefthook } },
       policy: {
         scripts: GIT_HOOKS_SCRIPTS,
       },
@@ -56,18 +47,15 @@ export function gitHooks(
     update: noOp(
       "Hook configuration is owner-managed after init; its package.json contribution enforces the dispatch scripts and keeps the seeded Lefthook dependency fresh.",
     ),
-    validate: (directory) => validateGitHooks(directory, lefthookVersion),
+    validate: validateGitHooks,
   };
 }
 
 /** Tool acceptance only: never install/run hooks or compare against seed policy. */
-export async function validateGitHooks(
-  directory: Directory,
-  lefthookVersion: string = TOOL_VERSIONS.lefthook,
-): Promise<Validation> {
+async function validateGitHooks(directory: Directory): Promise<Validation> {
   if (!(await directory.exists("lefthook.yml")))
     return { status: "skipped", reason: "lefthook.yml is missing" };
-  const container = npmTools(`lefthook@${lefthookVersion}`)
+  const container = npmTools(`lefthook@${TOOL_VERSIONS.lefthook}`)
     // Lefthook needs Git metadata even for validate. Keep it outside the read-only
     // mount so source .git files, worktree pointers and hooks cannot be modified.
     .withExec(["git", "init", "/lefthook-worktree"])

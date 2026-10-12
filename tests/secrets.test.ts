@@ -13,11 +13,10 @@ import {
   SECRETS_ASSETS,
   SECRETS_EXECUTABLES,
   transformSecretsTemplate,
-  validateSecrets,
 } from "../src/secrets.ts";
+import { runUpdate, verb } from "./capability-fixtures.ts";
 import { mockDirectory, mockModuleSource } from "./module-source.ts";
 import { secretsTemplates } from "./templates-source.ts";
-import { runUpdate } from "./capability-fixtures.ts";
 
 test("only the project name is derived, and only in the config", () => {
   expect(
@@ -183,7 +182,8 @@ test("fresh composed Forge init/update is unchanged and does not recreate owner 
     );
     expect(await initialized.file(FORGE_VARIABLE_KEYS).contents()).toBe("[]\n");
     expect(await module.update(initialized, "forge-app")).toBe(initialized);
-    expect(await validateSecrets(initialized)).toEqual({ status: "validated" });
+    const validate = verb(forgeSecrets(), "validate");
+    expect(await validate(initialized)).toEqual({ status: "validated" });
     const deleted = initialized
       .withoutFile("secretspec.toml")
       .withoutFile(FORGE_VARIABLE_KEYS);
@@ -339,17 +339,18 @@ test.each([
 );
 
 test("validation reports absence, missing helpers, non-executable modes and redacts TOML diagnostics", async () => {
-  expect(await validateSecrets(mockDirectory())).toEqual({
+  const validate = verb(forgeSecrets(), "validate");
+  expect(await validate(mockDirectory())).toEqual({
     status: "skipped",
     reason: "secretspec.toml is missing",
   });
   for (const path of [FORGE_VARIABLE_KEYS, ...SECRETS_EXECUTABLES])
-    await expect(
-      validateSecrets(seededSecrets().withoutFile(path)),
-    ).rejects.toThrow(`${path} is missing`);
+    await expect(validate(seededSecrets().withoutFile(path))).rejects.toThrow(
+      `${path} is missing`,
+    );
   for (const path of SECRETS_EXECUTABLES)
     await expect(
-      validateSecrets(seededSecrets().withNewFile(path, "owner")),
+      validate(seededSecrets().withNewFile(path, "owner")),
     ).rejects.toThrow("not executable");
   const result = await validateCapabilities(
     seededSecrets().withNewFile(
@@ -368,10 +369,9 @@ test("TOML project-name substitution escapes quotes and newlines", async () => {
     secretTemplate("secretspec.toml"),
     name,
   );
+  const validate = verb(forgeSecrets(), "validate");
   expect(
-    await validateSecrets(
-      seededSecrets().withNewFile("secretspec.toml", contents),
-    ),
+    await validate(seededSecrets().withNewFile("secretspec.toml", contents)),
   ).toEqual({ status: "validated" });
 });
 

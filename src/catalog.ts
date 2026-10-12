@@ -115,9 +115,7 @@ export async function copyCatalog(
 }
 
 /** Structural acceptance only: no policy comparison or external reference lookup. */
-export async function validateCatalog(
-  directory: Directory,
-): Promise<Validation> {
+async function validateCatalog(directory: Directory): Promise<Validation> {
   if (!(await directory.exists(CATALOG_FILE)))
     return { status: "skipped", reason: `${CATALOG_FILE} is missing` };
   const contents = await directory.file(CATALOG_FILE).contents();

@@ -15,7 +15,7 @@ export const NODE_NVMRC = `${NODE_MAJOR}\n`;
 export const NPM_REGISTRY = "https://registry.npmjs.org/";
 export const NPMRC = `# Use the public npm registry (not the default for internal Atlassians)\nregistry=${NPM_REGISTRY}\n`;
 /** Whole-file pins and catalog license are policy; dependencies remain owner-managed. */
-export async function updateNode(directory: Directory): Promise<Directory> {
+async function updateNode(directory: Directory): Promise<Directory> {
   let result = directory;
   // The license comes from repository content, so no contribution can express it.
   if (await readPackageJson(directory)) {
@@ -43,7 +43,7 @@ export async function updateNode(directory: Directory): Promise<Directory> {
 }
 
 /** Tool acceptance only; no policy comparison, host shell change, or repository export. */
-export async function validateNode(directory: Directory): Promise<Validation> {
+async function validateNode(directory: Directory): Promise<Validation> {
   if (!(await directory.exists(".nvmrc")))
     return { status: "skipped", reason: ".nvmrc is missing" };
   const platform = await dag.defaultPlatform();

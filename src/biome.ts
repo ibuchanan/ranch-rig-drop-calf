@@ -2,7 +2,7 @@ import type { Container, Directory } from "@dagger.io/dagger";
 import ts from "typescript";
 import type { Capability, Validation } from "./capability.ts";
 import { ParseError } from "./errors.ts";
-import { copyTemplate, templateTree } from "./templates.ts";
+import { templateTree } from "./templates.ts";
 import { npmTools, REPOSITORY, runTool } from "./tool-run.ts";
 import { TOOL_VERSIONS } from "./versions.ts";
 
@@ -14,21 +14,14 @@ export const BIOME_SCRIPTS = {
   "lint:fix": "biome lint --write",
 } as const;
 
-export function copyBiome(
-  destination: Directory,
-  source: Directory,
-): Directory {
-  return copyTemplate(destination, source);
-}
-
 async function configPath(directory: Directory): Promise<string | undefined> {
   for (const path of ["biome.json", "biome.jsonc"])
     if (await directory.exists(path)) return path;
   return undefined;
 }
 
-function biomeContainer(version: string): Container {
-  return npmTools(`@biomejs/biome@${version}`);
+function biomeContainer(): Container {
+  return npmTools(`@biomejs/biome@${TOOL_VERSIONS.biome}`);
 }
 
 function runBiome(
@@ -43,10 +36,7 @@ function runBiome(
 }
 
 /** Let Biome migrate an existing root config in isolation; package.json is contributed. */
-export async function updateBiome(
-  directory: Directory,
-  version: string = TOOL_VERSIONS.biome,
-): Promise<Directory> {
+async function updateBiome(directory: Directory): Promise<Directory> {
   const path = await configPath(directory);
   if (!path) return directory;
   const contents = await directory.file(path).contents();
@@ -64,7 +54,7 @@ export async function updateBiome(
   )
     throw new ParseError(path, "expected an object");
   const migrated = await runBiome(
-    biomeContainer(version)
+    biomeContainer()
       .withMountedDirectory(REPOSITORY, directory)
       .withWorkdir(REPOSITORY),
     ["migrate", "--write", `--config-path=${path}`],
@@ -77,10 +67,7 @@ export async function updateBiome(
 }
 
 /** Load the root config and its references, without scanning or enforcing source-code quality. */
-export async function validateBiome(
-  directory: Directory,
-  version: string = TOOL_VERSIONS.biome,
-): Promise<Validation> {
+async function validateBiome(directory: Directory): Promise<Validation> {
   const path = await configPath(directory);
   if (!path)
     return {
@@ -88,7 +75,7 @@ export async function validateBiome(
       reason: "biome.json and biome.jsonc are missing",
     };
   await runBiome(
-    biomeContainer(version)
+    biomeContainer()
       .withMountedDirectory(REPOSITORY, directory, { readOnly: true })
       .withWorkdir(REPOSITORY),
     [
@@ -106,9 +93,7 @@ export async function validateBiome(
 }
 
 /** Configuration and EditorConfig are owner-managed after init; only Biome migrates the root config. */
-export function biomeToolchain(
-  biomeVersion: string = TOOL_VERSIONS.biome,
-): Capability {
+export function biomeToolchain(): Capability {
   return {
     name: "biome",
     documentation: {
@@ -127,7 +112,7 @@ export function biomeToolchain(
         "Load the root config and references with Biome, without scanning source quality.",
     },
     packageJson: {
-      seed: { devDependencies: { "@biomejs/biome": biomeVersion } },
+      seed: { devDependencies: { "@biomejs/biome": TOOL_VERSIONS.biome } },
       policy: {
         scripts: BIOME_SCRIPTS,
       },
@@ -135,7 +120,7 @@ export function biomeToolchain(
     init(project) {
       project.templates.push(templateTree(BIOME_TEMPLATE));
     },
-    update: (directory) => updateBiome(directory, biomeVersion),
-    validate: (directory) => validateBiome(directory, biomeVersion),
+    update: updateBiome,
+    validate: validateBiome,
   };
 }

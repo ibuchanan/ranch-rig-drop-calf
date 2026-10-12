@@ -14,6 +14,7 @@ import {
 import { createBlueprint } from "../src/project.ts";
 import { SECRETS_ASSETS } from "../src/secrets.ts";
 import { TOOL_VERSIONS } from "../src/versions.ts";
+import { runInit } from "./capability-fixtures.ts";
 import { mockDirectory, mockModuleSource } from "./module-source.ts";
 import {
   biomeTemplates,
@@ -22,7 +23,6 @@ import {
   typescriptTemplates,
   vitestTemplates,
 } from "./templates-source.ts";
-import { runInit } from "./capability-fixtures.ts";
 
 let moduleSource: ReturnType<typeof mockModuleSource>;
 beforeEach(() => {
@@ -93,7 +93,7 @@ test.each(["library", "forge-app", "tool", "agent-skill"])(
 describe("biomeToolchain capability", () => {
   test("adds format and lint scripts and dependency without authoring config", () => {
     const project = createBlueprint("my-package", "", "");
-    const capability = biomeToolchain("2.5.13");
+    const capability = biomeToolchain();
     runInit(capability, project);
     expect(project.packageJson.scripts.format).toBe("biome format --write");
     expect(project.packageJson.scripts["format:check"]).toBe("biome format");
@@ -101,7 +101,7 @@ describe("biomeToolchain capability", () => {
     expect(project.packageJson.scripts.lint).toBeUndefined();
     expect(project.packageJson.scripts["lint:fix"]).toBe("biome lint --write");
     expect(project.packageJson.devDependencies["@biomejs/biome"]).toBe(
-      "2.5.13",
+      TOOL_VERSIONS.biome,
     );
     expect(project.files.has("biome.jsonc")).toBe(false);
   });

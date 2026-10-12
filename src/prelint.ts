@@ -1,4 +1,3 @@
-import type { Directory } from "@dagger.io/dagger";
 import { type Capability, noOp } from "./capability.ts";
 import { TOOL_VERSIONS } from "./versions.ts";
 
@@ -15,14 +14,7 @@ export const PRELINT_SCRIPTS = {
   "lint:forge": "forge lint",
 } as const;
 
-const PRELINT_VALIDATION = noOp(
-  "Prelint has no repository-local configuration to validate; its rules ship in the dependency package. Source scanning belongs to the lint workflow.",
-);
-
-export function prelint(
-  astGrepVersion: string = TOOL_VERSIONS.astGrep,
-  rulesPackage: string = TOOL_VERSIONS.forgePrelint,
-): Capability {
+export function prelint(): Capability {
   return {
     name: "prelint",
     documentation: {
@@ -45,8 +37,8 @@ export function prelint(
     packageJson: {
       seed: {
         devDependencies: {
-          [AST_GREP_PACKAGE]: astGrepVersion,
-          [PRELINT_PACKAGE]: rulesPackage,
+          [AST_GREP_PACKAGE]: TOOL_VERSIONS.astGrep,
+          [PRELINT_PACKAGE]: TOOL_VERSIONS.forgePrelint,
         },
       },
       policy: {
@@ -59,15 +51,8 @@ export function prelint(
     update: noOp(
       "Prelint owns no files; its package.json contribution enforces the lint subtasks and keeps the seeded ast-grep dependency fresh; the @forge-ahead/prelint GitHub reference is owner-managed.",
     ),
-    validate: PRELINT_VALIDATION,
+    validate: noOp(
+      "Prelint has no repository-local configuration to validate; its rules ship in the dependency package. Source scanning belongs to the lint workflow.",
+    ),
   };
-}
-
-export type PrelintValidation = { status: "skipped"; reason: string };
-
-/** Compatibility entry point: report the same explicit no-op without reading the repository. */
-export async function validatePrelint(
-  _directory: Directory,
-): Promise<PrelintValidation> {
-  return { status: "skipped", reason: PRELINT_VALIDATION.reason };
 }

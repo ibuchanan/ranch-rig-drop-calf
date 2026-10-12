@@ -1,13 +1,13 @@
 import { expect, spyOn, test } from "bun:test";
 import { dag } from "@dagger.io/dagger";
-import { mergeScaffoldPackage } from "../src/package-json.ts";
-import { NODE_NVMRC, NPMRC, nodeBaseline, validateNode } from "../src/node.ts";
 import { ParseError } from "../src/errors.ts";
+import { NODE_NVMRC, NPMRC, nodeBaseline } from "../src/node.ts";
+import { mergeScaffoldPackage } from "../src/package-json.ts";
 import { buildProject } from "../src/profiles.ts";
 import { TOOL_VERSIONS } from "../src/versions.ts";
+import { runUpdate, verb } from "./capability-fixtures.ts";
 import { mockContainer } from "./container-source.ts";
 import { mockDirectory } from "./module-source.ts";
-import { runUpdate } from "./capability-fixtures.ts";
 
 const kinds = ["library", "forge-app", "tool", "agent-skill"];
 const licenseCatalog =
@@ -19,7 +19,7 @@ test.each(kinds)(
     const capability = nodeBaseline(kind);
     expect(typeof capability.init).toBe("function");
     expect(typeof capability.update).toBe("function");
-    expect(capability.validate).toBe(validateNode);
+    expect(typeof capability.validate).toBe("function");
     const project = buildProject(kind, "sample", "tester");
     const input = mockDirectory(
       new Map([
@@ -152,7 +152,8 @@ test("scaffold merge removes only the Node engine and drops empty engines", () =
 });
 
 test("validation skips missing .nvmrc without contacting an engine", async () => {
-  expect(await validateNode(mockDirectory())).toEqual({
+  const validate = verb(nodeBaseline("library"), "validate");
+  expect(await validate(mockDirectory())).toEqual({
     status: "skipped",
     reason: ".nvmrc is missing",
   });
@@ -181,7 +182,8 @@ test.each(["linux/amd64", "linux/arm64"])(
     );
     const httpSpy = spyOn(dag, "http").mockReturnValue({} as never);
     try {
-      expect(await validateNode(input)).toEqual({ status: "validated" });
+      const validate = verb(nodeBaseline("library"), "validate");
+      expect(await validate(input)).toEqual({ status: "validated" });
       expect(httpSpy).toHaveBeenCalledWith(
         `https://github.com/Schniz/fnm/releases/download/v${TOOL_VERSIONS.fnm}/${platform.endsWith("amd64") ? "fnm-linux" : "fnm-arm64"}.zip`,
       );
@@ -197,15 +199,13 @@ test.each(["linux/amd64", "linux/arm64"])(
       const failure = spyOn(container, "stdout").mockRejectedValue(
         new Error("fnm: version unavailable"),
       );
-      await expect(validateNode(input)).rejects.toThrow(
-        "fnm: version unavailable",
-      );
+      await expect(validate(input)).rejects.toThrow("fnm: version unavailable");
       failure.mockRejectedValue(
         Object.assign(new Error("exit code: 1"), {
           stderr: "error: Can't install Node v999999\n",
         }),
       );
-      await expect(validateNode(input)).rejects.toThrow(
+      await expect(validate(input)).rejects.toThrow(
         "node: fnm validation execution failed: error: Can't install Node v999999",
       );
       failure.mockRestore();

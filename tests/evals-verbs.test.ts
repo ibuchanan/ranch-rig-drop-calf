@@ -6,24 +6,24 @@ import {
   EVALS_SCRIPTS,
   EVALS_TEMPLATE,
   evals,
-  validateEvals,
 } from "../src/evals.ts";
 import { DropCalf } from "../src/index.ts";
 import { createBlueprint } from "../src/project.ts";
+import { TOOL_VERSIONS } from "../src/versions.ts";
+import { runInit, runUpdate, verb } from "./capability-fixtures.ts";
 import { mockContainer } from "./container-source.ts";
 import { mockDirectory, mockModuleSource } from "./module-source.ts";
 import { promptfooTemplates } from "./templates-source.ts";
-import { runUpdate, runInit } from "./capability-fixtures.ts";
-
-const version = "0.116.7";
 
 test("evals init seeds the selected tooling and declares the owner-content tree", () => {
   const project = createBlueprint("sample", "description", "tester");
-  const capability = evals(version);
+  const capability = evals();
   if (typeof capability.init !== "function") throw new Error("init required");
   runInit(capability, project);
   expect(project.packageJson.scripts).toMatchObject(EVALS_SCRIPTS);
-  expect(project.packageJson.devDependencies.promptfoo).toBe(version);
+  expect(project.packageJson.devDependencies.promptfoo).toBe(
+    TOOL_VERSIONS.promptfoo,
+  );
   expect(project.templates.map((template) => template.path)).toContain(
     EVALS_TEMPLATE,
   );
@@ -50,7 +50,7 @@ test("evals update owns only the tool and scripts, preserving every edited seed 
   files.set("bun.lock", "owner lockfile\n");
   const input = mockDirectory(files);
   const before = [...input.files];
-  const output = await runUpdate(evals(version), input);
+  const output = await runUpdate(evals(), input);
   const pkg = JSON.parse(await output.file("package.json").contents());
   expect(pkg).toEqual({
     name: "owner-name",
@@ -62,14 +62,14 @@ test("evals update owns only the tool and scripts, preserving every edited seed 
     if (path !== "package.json")
       expect(await output.file(path).contents()).toBe(contents);
   expect([...input.files]).toEqual(before);
-  expect(await runUpdate(evals(version), output)).toBe(output);
+  expect(await runUpdate(evals(), output)).toBe(output);
 });
 
 test("evals update creates missing scripts but never re-adds removed seed dependencies", async () => {
   const empty = mockDirectory();
-  expect(await runUpdate(evals(version), empty)).toBe(empty);
+  expect(await runUpdate(evals(), empty)).toBe(empty);
   const output = await runUpdate(
-    evals(version),
+    evals(),
     mockDirectory(new Map([["package.json", "{}"]])),
   );
   expect(JSON.parse(await output.file("package.json").contents())).toEqual({
@@ -83,13 +83,13 @@ test("evals update retains matching package bytes and rejects malformed consumed
   const contents = `${JSON.stringify(
     {
       scripts: EVALS_SCRIPTS,
-      devDependencies: { promptfoo: version },
+      devDependencies: { promptfoo: TOOL_VERSIONS.promptfoo },
     },
     null,
     4,
   )}\r\n`;
   const matching = mockDirectory(new Map([["package.json", contents]]));
-  expect(await runUpdate(evals(version), matching)).toBe(matching);
+  expect(await runUpdate(evals(), matching)).toBe(matching);
   for (const text of [
     "{",
     "null",
@@ -102,9 +102,7 @@ test("evals update retains matching package bytes and rejects malformed consumed
     '{"devDependencies":"wrong"}',
   ]) {
     const input = mockDirectory(new Map([["package.json", text]]));
-    await expect(runUpdate(evals(version), input)).rejects.toThrow(
-      "package.json",
-    );
+    await expect(runUpdate(evals(), input)).rejects.toThrow("package.json");
     expect(await input.file("package.json").contents()).toBe(text);
   }
 });
@@ -204,11 +202,16 @@ test("evals validation uses native tool acceptance, not owner package policy or 
   const { commands, environment, newFiles, mounts, mounted, spy } =
     mockContainer();
   try {
-    expect(await validateCapabilities(input, [evals(version)])).toEqual([
+    expect(await validateCapabilities(input, [evals()])).toEqual([
       { capability: "evals", status: "validated" },
     ]);
     expect(commands).toEqual([
-      ["bun", "add", "--ignore-scripts", `promptfoo@${version}`],
+      [
+        "bun",
+        "add",
+        "--ignore-scripts",
+        `promptfoo@${TOOL_VERSIONS.promptfoo}`,
+      ],
       ["bun", "run", "--no-install", "/tools/validate.mjs"],
     ]);
     expect(newFiles["/tools/validate.mjs"]).toContain("commands/validate.js");
@@ -234,7 +237,8 @@ test("evals validation skips absent config before installing tools", async () =>
     throw new Error("must not install");
   });
   try {
-    expect(await validateEvals(mockDirectory())).toEqual({
+    const validate = verb(evals(), "validate");
+    expect(await validate(mockDirectory())).toEqual({
       status: "skipped",
       reason: `${EVALS_CONFIG} is missing`,
     });

@@ -17,13 +17,10 @@ import { doValidate } from '/tools/node_modules/promptfoo/dist/src/commands/vali
 await doValidate({ config: ['/repo/${EVALS_CONFIG}'], envPath: '/dev/null' }, {});
 `;
 
-export async function validateEvals(
-  directory: Directory,
-  version: string = TOOL_VERSIONS.promptfoo,
-): Promise<Validation> {
+async function validateEvals(directory: Directory): Promise<Validation> {
   if (!(await directory.exists(EVALS_CONFIG)))
     return { status: "skipped", reason: `${EVALS_CONFIG} is missing` };
-  const container = bunTools(`promptfoo@${version}`)
+  const container = bunTools(`promptfoo@${TOOL_VERSIONS.promptfoo}`)
     .withEnvVariable("PROMPTFOO_DISABLE_TELEMETRY", "1")
     .withEnvVariable("PROMPTFOO_DISABLE_UPDATE", "1")
     .withEnvVariable("PROMPTFOO_CONFIG_DIR", "/tmp/promptfoo")
@@ -36,7 +33,7 @@ export async function validateEvals(
   return { status: "validated" };
 }
 
-export function evals(version: string = TOOL_VERSIONS.promptfoo): Capability {
+export function evals(): Capability {
   return {
     name: "evals",
     documentation: {
@@ -54,7 +51,7 @@ export function evals(version: string = TOOL_VERSIONS.promptfoo): Capability {
     },
     selection: { with: true, without: true, default: false },
     packageJson: {
-      seed: { devDependencies: { promptfoo: version } },
+      seed: { devDependencies: { promptfoo: TOOL_VERSIONS.promptfoo } },
       policy: {
         scripts: EVALS_SCRIPTS,
       },
@@ -65,6 +62,6 @@ export function evals(version: string = TOOL_VERSIONS.promptfoo): Capability {
     update: noOp(
       "The eval suite is owner-managed after init, including deletions; its package.json contribution enforces the eval/view scripts and keeps the seeded Promptfoo dependency fresh.",
     ),
-    validate: (directory) => validateEvals(directory, version),
+    validate: validateEvals,
   };
 }

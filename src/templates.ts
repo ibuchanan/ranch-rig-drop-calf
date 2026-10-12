@@ -8,20 +8,14 @@ export type TemplateSeed = {
   ): Directory | Promise<Directory>;
 };
 
-/** Plain authored-tree overlay; specialized seed policy belongs to its capability. */
-export function copyTemplate(
-  destination: Directory,
-  source: Directory,
-): Directory {
-  return destination.withDirectory(".", source);
-}
-
+/** Seed an authored tree; the default is a plain overlay, and specialized policy belongs to its capability. */
 export function templateTree(
   path: string,
   copy: (
     destination: Directory,
     source: Directory,
-  ) => Directory | Promise<Directory> = copyTemplate,
+  ) => Directory | Promise<Directory> = (destination, source) =>
+    destination.withDirectory(".", source),
 ): TemplateSeed {
   return {
     path,

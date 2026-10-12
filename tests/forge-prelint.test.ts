@@ -12,12 +12,11 @@ import {
   PRELINT_PACKAGE,
   PRELINT_SCRIPTS,
   prelint,
-  validatePrelint,
 } from "../src/prelint.ts";
 import { buildProject } from "../src/profiles.ts";
 import { TOOL_VERSIONS } from "../src/versions.ts";
-import { mockDirectory, mockModuleSource } from "./module-source.ts";
 import { runUpdate } from "./capability-fixtures.ts";
+import { mockDirectory, mockModuleSource } from "./module-source.ts";
 
 const updateReason =
   "Prelint owns no files; its package.json contribution enforces the lint subtasks and keeps the seeded ast-grep dependency fresh; the @forge-ahead/prelint GitHub reference is owner-managed.";
@@ -55,7 +54,7 @@ test("prelint init and validate are explicit no-ops with enumerable reasons", ()
 });
 
 test("update enforces selected dependencies and scripts while preserving unrelated values and files", async () => {
-  const capability = prelint("0.45.1", "github:example/rules#revision");
+  const capability = prelint();
   const input = mockDirectory(
     new Map([
       [
@@ -90,7 +89,7 @@ test("update enforces selected dependencies and scripts while preserving unrelat
     name: "owner",
     scripts: { ...PRELINT_SCRIPTS, lint: "owner lint", custom: "keep" },
     devDependencies: {
-      [AST_GREP_PACKAGE]: "0.45.1",
+      [AST_GREP_PACKAGE]: TOOL_VERSIONS.astGrep,
       [PRELINT_PACKAGE]: "github:example/rules#revision",
       custom: "1",
     },
@@ -240,7 +239,6 @@ test("capability and standalone validation skip without reading files or startin
     expect(await validateCapabilities(input, [prelint()])).toEqual([
       { capability: "prelint", ...skipped },
     ]);
-    expect(await validatePrelint(input)).toEqual(skipped);
     expect(JSON.parse(await new DropCalf().validatePrelint(input))).toEqual(
       skipped,
     );

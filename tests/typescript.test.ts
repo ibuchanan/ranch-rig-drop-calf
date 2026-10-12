@@ -10,13 +10,12 @@ import {
   TYPESCRIPT_CONFIGS,
   TYPESCRIPT_SCRIPTS,
   typeScriptToolchain,
-  validateTypeScript,
 } from "../src/typescript.ts";
 import { NODE_MAJOR, TOOL_VERSIONS } from "../src/versions.ts";
+import { runInit, runUpdate, verb } from "./capability-fixtures.ts";
 import { mockContainer } from "./container-source.ts";
 import { mockDirectory, mockModuleSource } from "./module-source.ts";
 import { typescriptTemplates, vitestTemplates } from "./templates-source.ts";
-import { runUpdate, runInit } from "./capability-fixtures.ts";
 
 const parsed = (contents: string) =>
   ts.parseConfigFileTextToJson("config.json", contents).config;
@@ -166,7 +165,7 @@ test("owner comments, unrelated settings and package fields survive; trigger rem
       ]),
     );
     const output = await runUpdate(
-      typeScriptToolchain(undefined, false),
+      typeScriptToolchain({ ownsBuild: false }),
       input,
     );
     for (const path of TYPESCRIPT_CONFIGS) {
@@ -186,9 +185,9 @@ test("owner comments, unrelated settings and package fields survive; trigger rem
         typescript: TOOL_VERSIONS.typescript,
       },
     });
-    expect(await runUpdate(typeScriptToolchain(undefined, false), output)).toBe(
-      output,
-    );
+    expect(
+      await runUpdate(typeScriptToolchain({ ownsBuild: false }), output),
+    ).toBe(output);
     delete updated.devDependencies.vitest;
     delete updated.devDependencies.tsdown;
     const removed = await runUpdate(
@@ -213,7 +212,7 @@ test("owner comments, unrelated settings and package fields survive; trigger rem
     ).toBe(TYPESCRIPT_SCRIPTS.build);
     expect(await runUpdate(typeScriptToolchain(), removed)).toBe(removed);
     const library = await runUpdate(
-      typeScriptToolchain(undefined, false),
+      typeScriptToolchain({ ownsBuild: false }),
       input.withNewFile(
         "package.json",
         '{"scripts":{"build":"owner library"}}',
@@ -227,7 +226,7 @@ test("owner comments, unrelated settings and package fields survive; trigger rem
   }
 });
 
-test("only development declarations trigger policy and a custom compiler pin is enforced", async () => {
+test("default compiler pin is enforced", async () => {
   const source = mockModuleSource();
   try {
     const input = mockDirectory(
@@ -241,7 +240,7 @@ test("only development declarations trigger policy and a custom compiler pin is 
         ],
       ]),
     );
-    const output = await runUpdate(typeScriptToolchain("5.9.3"), input);
+    const output = await runUpdate(typeScriptToolchain(), input);
     expect(
       parsed(await output.file("tsconfig.json").contents()).compilerOptions
         .moduleResolution,
@@ -252,8 +251,8 @@ test("only development declarations trigger policy and a custom compiler pin is 
     expect(
       JSON.parse(await output.file("package.json").contents()).devDependencies
         .typescript,
-    ).toBe("5.9.3");
-    expect(await runUpdate(typeScriptToolchain("5.9.3"), output)).toBe(output);
+    ).toBe(TOOL_VERSIONS.typescript);
+    expect(await runUpdate(typeScriptToolchain(), output)).toBe(output);
   } finally {
     source.mockRestore();
   }
@@ -316,7 +315,7 @@ test.each([
   expect(input.files.size).toBe(1);
 });
 
-test("validation uses the selected compiler and two read-only showConfig commands without enforcing policy", async () => {
+test("validation uses the default compiler and two read-only showConfig commands without enforcing policy", async () => {
   const { spy, commands, mounts } = mockContainer();
   // Only the two baseline configs are supplied.
   const input = mockDirectory(
@@ -328,7 +327,7 @@ test("validation uses the selected compiler and two read-only showConfig command
     ),
   );
   try {
-    const capability = typeScriptToolchain("5.9.3");
+    const capability = typeScriptToolchain();
     expect((await validateCapabilities(input, [capability]))[0]?.status).toBe(
       "validated",
     );
@@ -338,7 +337,7 @@ test("validation uses the selected compiler and two read-only showConfig command
       "--global",
       "--no-fund",
       "--no-audit",
-      "typescript@5.9.3",
+      `typescript@${TOOL_VERSIONS.typescript}`,
     ]);
     // No declaration config exists to validate.
     for (const path of ["tsconfig.json", "tsconfig.typecheck.json"])
@@ -356,12 +355,15 @@ test("validation uses the selected compiler and two read-only showConfig command
 });
 
 test("validation skips both missing configs, fails a partial pair, and retains compiler stdout diagnostics", async () => {
-  expect((await validateTypeScript(mockDirectory())).status).toBe("skipped");
+  expect(
+    (await verb(typeScriptToolchain(), "validate")(mockDirectory())).status,
+  ).toBe("skipped");
   expect(
     (
-      await validateTypeScript(
-        mockDirectory(new Map([["tsconfig.json", "{}"]])),
-      )
+      await verb(
+        typeScriptToolchain(),
+        "validate",
+      )(mockDirectory(new Map([["tsconfig.json", "{}"]])))
     ).status,
   ).toBe("failed");
   const { spy } = mockContainer({

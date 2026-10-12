@@ -10,9 +10,7 @@ import {
 import { editPackageJson, readPackageJson } from "./package-json.ts";
 
 /** Catalog-derived identity; kind policy is contributed, release versions owner-managed. */
-export async function updatePackageMetadata(
-  directory: Directory,
-): Promise<Directory> {
+async function updatePackageMetadata(directory: Directory): Promise<Directory> {
   if (!(await readPackageJson(directory))) return directory;
   const catalog = await readCatalog(directory, "package-metadata");
   const name = catalog.getIn(["metadata", "annotations", PACKAGE_NAME]);
@@ -39,7 +37,7 @@ export async function updatePackageMetadata(
 }
 
 /** Structural rules only: no recommended preset, baseline comparison, or autofix. */
-export async function validatePackageMetadata(
+async function validatePackageMetadata(
   directory: Directory,
 ): Promise<Validation> {
   if (!(await directory.exists("package.json")))

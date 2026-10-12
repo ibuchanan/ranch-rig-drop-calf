@@ -5,26 +5,27 @@ import {
   GIT_HOOKS_SCRIPTS,
   GIT_HOOKS_TEMPLATE,
   gitHooks,
-  validateGitHooks,
 } from "../src/git-hooks.ts";
 import { DropCalf } from "../src/index.ts";
 import { buildProject, resolveProfile } from "../src/profiles.ts";
 import { createBlueprint } from "../src/project.ts";
 import { TOOL_VERSIONS } from "../src/versions.ts";
+import { runInit, runUpdate, verb } from "./capability-fixtures.ts";
 import { mockContainer } from "./container-source.ts";
 import { mockDirectory, mockModuleSource } from "./module-source.ts";
 import { gitHooksTemplates } from "./templates-source.ts";
-import { runUpdate, runInit } from "./capability-fixtures.ts";
 
 test("init and update enforce only the selected pin and hook dispatch scripts", async () => {
-  const capability = gitHooks("2.1.4");
+  const capability = gitHooks();
   const project = createBlueprint("sample", "", "tester");
   if (typeof capability.init !== "function") throw new Error("missing init");
   runInit(capability, project);
   expect(project.templates.map((template) => template.path)).toEqual([
     GIT_HOOKS_TEMPLATE,
   ]);
-  expect(project.packageJson.devDependencies.lefthook).toBe("2.1.4");
+  expect(project.packageJson.devDependencies.lefthook).toBe(
+    TOOL_VERSIONS.lefthook,
+  );
   expect(project.packageJson.scripts).toEqual(GIT_HOOKS_SCRIPTS);
   const input = mockDirectory(
     new Map([
@@ -51,14 +52,14 @@ test("init and update enforce only the selected pin and hook dispatch scripts", 
   expect(JSON.parse(await output.file("package.json").contents())).toEqual({
     name: "owner",
     scripts: { ...GIT_HOOKS_SCRIPTS, custom: "keep" },
-    devDependencies: { lefthook: "2.1.4", custom: "1" },
+    devDependencies: { lefthook: TOOL_VERSIONS.lefthook, custom: "1" },
     dependencies: { keep: "1" },
   });
   for (const [path, text] of input.files)
     if (path !== "package.json")
       expect(await output.file(path).contents()).toBe(text);
   expect([...input.files]).toEqual(before);
-  expect(await updateCapabilities(output, [capability])).toBe(output);
+  expect(await updateCapabilities(output, [gitHooks()])).toBe(output);
 });
 
 test("update does not create missing dependencies but enforces scripts when package.json exists", async () => {
@@ -154,7 +155,8 @@ test("git-hooks is the only capability that contributes lint, regardless of comp
 test("validation skips missing lefthook.yml before starting a container", async () => {
   const { commands, spy } = mockContainer();
   try {
-    expect(await validateGitHooks(mockDirectory())).toEqual({
+    const validate = verb(gitHooks(), "validate");
+    expect(await validate(mockDirectory())).toEqual({
       status: "skipped",
       reason: "lefthook.yml is missing",
     });
@@ -189,7 +191,7 @@ test.each([
     );
     const before = [...input.files];
     try {
-      const [result] = await validateCapabilities(input, [gitHooks("2.1.4")]);
+      const [result] = await validateCapabilities(input, [gitHooks()]);
       expect(result?.status).toBe(status);
       if (result?.status === "failed") expect(result.reason).toContain(report);
       expect(commands).toEqual([
@@ -199,7 +201,7 @@ test.each([
           "--global",
           "--no-fund",
           "--no-audit",
-          "lefthook@2.1.4",
+          `lefthook@${TOOL_VERSIONS.lefthook}`,
         ],
         ["git", "init", "/lefthook-worktree"],
         ["sh", "-c", 'lefthook validate 2>&1; echo "lefthook exit=$?"'],

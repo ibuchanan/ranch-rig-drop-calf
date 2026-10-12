@@ -10,9 +10,7 @@ export const LIBRARY_BUILD_SCRIPT = "scripts/build.sh";
 export const LIBRARY_BUILD_COMMAND = "sh scripts/build.sh";
 
 /** Keep the managed JSON pipeline and build script; package.json is contributed. */
-export async function updateLibraryBuild(
-  directory: Directory,
-): Promise<Directory> {
+async function updateLibraryBuild(directory: Directory): Promise<Directory> {
   const pkg = await readPackageJson(directory);
   if (!pkg) return directory;
   // Do not silently shadow executable owner configs with a new JSON config.
@@ -52,9 +50,7 @@ export async function updateLibraryBuild(
   return result;
 }
 
-export function libraryBuild(
-  version: string = TOOL_VERSIONS.tsdown,
-): Capability {
+export function libraryBuild(): Capability {
   return {
     name: "library-build",
     documentation: {
@@ -72,7 +68,7 @@ export function libraryBuild(
     },
     packageJson: {
       seed: {
-        devDependencies: { tsdown: version },
+        devDependencies: { tsdown: TOOL_VERSIONS.tsdown },
         main: "dist/index.mjs",
         types: "dist/index.d.ts",
         exports: {

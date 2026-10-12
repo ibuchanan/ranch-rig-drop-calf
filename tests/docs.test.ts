@@ -1,21 +1,7 @@
 import { expect, test } from "bun:test";
-import type { Directory } from "@dagger.io/dagger";
-import { copyDocs } from "../src/docs.ts";
 import { buildProject } from "../src/profiles.ts";
 import { TOOL_VERSIONS } from "../src/versions.ts";
 import { docsTemplates } from "./templates-source.ts";
-
-test("Dagger copies the docs tree verbatim", () => {
-  const source = {} as Directory;
-  const destination = {
-    withDirectory: (path: string, directory: Directory) => {
-      expect(path).toBe(".");
-      expect(directory).toBe(source);
-      return destination;
-    },
-  } as unknown as Directory;
-  expect(copyDocs(destination, source)).toBe(destination);
-});
 
 test("docs template paths do not overlap other generated files", () => {
   for (const kind of ["library", "forge-app", "tool", "agent-skill"]) {
