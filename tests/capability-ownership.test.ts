@@ -210,7 +210,6 @@ test.each(kinds)(
           "tester",
           "sample",
           "A sample project",
-          "",
           [],
           [],
           preset,

@@ -11,8 +11,9 @@ import { join } from "node:path";
 
 const enabled = process.env.DROP_CALF_FORGE_MANIFEST_E2E === "1";
 const repo = join(import.meta.dir, "../..");
-function report(directory: string): { status: string; reason?: string } {
-  return JSON.parse(
+type Entry = { capability: string; status: string; reason?: string };
+function report(directory: string): Entry {
+  const entries: Entry[] = JSON.parse(
     execFileSync(
       "dagger",
       [
@@ -21,9 +22,11 @@ function report(directory: string): { status: string; reason?: string } {
         "call",
         "-m",
         repo,
-        "validate-forge-manifest",
+        "validate",
         "--directory",
         directory,
+        "--profile",
+        "forge-app",
       ],
       {
         cwd: repo,
@@ -34,6 +37,9 @@ function report(directory: string): { status: string; reason?: string } {
       },
     ),
   );
+  const entry = entries.find((item) => item.capability === "forge-manifest");
+  if (!entry) throw new Error("validate reported no forge-manifest entry");
+  return entry;
 }
 // This covers the credential prerequisite, not authenticated Forge acceptance.
 // No host credentials are read or forwarded implicitly.
@@ -76,6 +82,7 @@ permissions:
       expect(readFileSync(join(root, ".nvmrc"), "utf8")).toBe("24\n");
       rmSync(join(root, "manifest.yml"));
       expect(report(root)).toEqual({
+        capability: "forge-manifest",
         status: "skipped",
         reason: "manifest.yml is missing",
       });

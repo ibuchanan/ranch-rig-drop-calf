@@ -81,19 +81,8 @@ test("evals marks the shared prompt and leaves manifest wiring to the app owner"
 });
 
 test("Forge evals selection and all preset declare the same seed tree without authoring its files", () => {
-  const selected = buildProject("forge-app", "sample", "tester", "", "", [
-    "evals",
-  ]);
-  const all = buildProject(
-    "forge-app",
-    "sample",
-    "tester",
-    "",
-    "",
-    [],
-    [],
-    "all",
-  );
+  const selected = buildProject("forge-app", "sample", "tester", "", ["evals"]);
+  const all = buildProject("forge-app", "sample", "tester", "", [], [], "all");
   expect(all.packageJson).toEqual(selected.packageJson);
   expect(all.files).toEqual(selected.files);
   expect(all.templates.map((template) => template.path)).toEqual(
@@ -117,7 +106,6 @@ test("Forge evals selection and all preset declare the same seed tree without au
     "forge-app",
     "sample",
     "tester",
-    "",
     "",
     [],
     ["evals"],
@@ -153,7 +141,6 @@ test("init seeds every Promptfoo byte only when evals is selected", async () => 
         "forge-app",
         "tester",
         "sample",
-        "",
         "",
         [...withFunctions],
         [...withoutFunctions],

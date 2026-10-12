@@ -2,100 +2,25 @@ import { basename } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   type Changeset,
-  type Container,
   type Directory,
   dag,
   func,
   object,
   type Secret,
 } from "@dagger.io/dagger";
-import {
-  type Capability,
-  updateCapabilities,
-  type ValidationContext,
-  validateCapabilities,
-} from "./capability.ts";
-import { catalog } from "./catalog.ts";
-import { changelogToolchain } from "./changelog.ts";
-import { forgeManifest } from "./forge-manifest.ts";
+import { updateCapabilities, validateCapabilities } from "./capability.ts";
 import { mergeScaffoldPackage, scaffoldName } from "./package-json.ts";
-import { applyPreclean } from "./preclean.ts";
-import { prelint } from "./prelint.ts";
-import { buildProject, resolveProfile, scaffoldSteps } from "./profiles.ts";
+import {
+  blueprintFor,
+  type ProjectProfile,
+  resolveProfile,
+  scaffoldSteps,
+} from "./profiles.ts";
 import { renderToDirectory } from "./project.ts";
 import { seedTemplates } from "./templates.ts";
-import { nodeContainer as buildNodeContainer } from "./tool-run.ts";
-
-/** One capability's verdict through the shared verb, so failures report as `validate` does. */
-async function validateOne(
-  directory: Directory,
-  capability: Capability,
-  context: ValidationContext = {},
-): Promise<string> {
-  const [{ capability: _, ...result }] = (await validateCapabilities(
-    directory,
-    [capability],
-    context,
-  )) as [Awaited<ReturnType<typeof validateCapabilities>>[number]];
-  return JSON.stringify(result, null, 2);
-}
 
 @object()
 export class DropCalf {
-  /**
-   * The Node baseline as a native Dagger container. Containerized tools run the
-   * same major the file pins promise rather than whatever the host has
-   * installed.
-   */
-  @func()
-  nodeContainer(): Container {
-    return buildNodeContainer();
-  }
-
-  @func()
-  async validateCatalog(directory: Directory): Promise<string> {
-    return validateOne(directory, catalog());
-  }
-
-  /**
-   * Check git-cliff acceptance by rendering the canonical command in isolation.
-   * Does not compare owner policy or package scripts with the baseline. Reports
-   * `skipped` when the policy or Git history is unavailable.
-   */
-  @func()
-  async validateChangelog(directory: Directory): Promise<string> {
-    return validateOne(directory, changelogToolchain());
-  }
-
-  /** Run Forge lint against an unchanged repository without registration or deployment. */
-  @func()
-  async validateForgeManifest(
-    directory: Directory,
-    forgeEmail?: Secret,
-    forgeApiToken?: Secret,
-  ): Promise<string> {
-    return validateOne(directory, forgeManifest(), {
-      forgeEmail,
-      forgeApiToken,
-    });
-  }
-
-  /** Prelint has no local configuration to validate; report its explicit skip reason. */
-  @func()
-  async validatePrelint(directory: Directory): Promise<string> {
-    return validateOne(directory, prelint());
-  }
-
-  @func()
-  async removeScaffold(directory: Directory): Promise<Directory> {
-    return applyPreclean(directory);
-  }
-
-  @func()
-  async removeScaffoldChanges(directory: Directory): Promise<Changeset> {
-    return (await this.removeScaffold(directory)).changes(directory);
-  }
-
   /**
    * First-time setup of an empty directory or a `forge create` repository.
    * Refuse when catalog-info.yaml or .atlassian/OWNER exists at the project root;
@@ -107,8 +32,7 @@ export class DropCalf {
    * contents or relaxing strict checks.
    * Normalize the manifest runtime from .nvmrc in the final update pass.
    * Package naming: explicit name, nonblank scaffold name, workspace basename.
-   * Catalog owns package identity; the legacy author argument is ignored in favor
-   * of its owner staff ID.
+   * Catalog owns package identity; the owner staff ID is the package author.
    */
   @func()
   async init(
@@ -117,12 +41,16 @@ export class DropCalf {
     owner: string,
     packageName?: string,
     description = "",
-    author = "",
     withFunctions: string[] = [],
     withoutFunctions: string[] = [],
     preset?: string,
   ): Promise<Directory> {
-    resolveProfile(profile, withFunctions, withoutFunctions, preset);
+    const capabilities = resolveProfile(
+      profile,
+      withFunctions,
+      withoutFunctions,
+      preset,
+    );
     for (const marker of ["catalog-info.yaml", ".atlassian/OWNER"])
       if (await directory.exists(marker))
         throw new Error(
@@ -132,21 +60,13 @@ export class DropCalf {
       ? await directory.file("package.json").contents()
       : undefined;
     let cleaned = directory;
-    for (const step of scaffoldSteps(profile)) cleaned = await step(cleaned);
+    for (const step of scaffoldSteps(profile as ProjectProfile))
+      cleaned = await step(cleaned);
     const name =
       packageName ??
       scaffoldName(scaffold) ??
       basename(fileURLToPath(await dag.currentWorkspace().address()));
-    const project = buildProject(
-      profile,
-      name,
-      owner,
-      description,
-      author,
-      withFunctions,
-      withoutFunctions,
-      preset,
-    );
+    const project = blueprintFor(capabilities, name, owner, description);
     let rendered = renderToDirectory(project);
     if (await cleaned.exists(".gitignore"))
       rendered = rendered.withNewFile(
@@ -170,13 +90,33 @@ export class DropCalf {
           await seeded.file("package.json").contents(),
         ),
       );
-    return this.update(
-      initialized,
-      profile,
-      withFunctions,
-      withoutFunctions,
-      preset,
-    );
+    return updateCapabilities(initialized, capabilities);
+  }
+
+  /** `init` as a changeset, so deleted scaffold files are deleted on export. */
+  @func()
+  async initChanges(
+    directory: Directory,
+    profile: string,
+    owner: string,
+    packageName?: string,
+    description = "",
+    withFunctions: string[] = [],
+    withoutFunctions: string[] = [],
+    preset?: string,
+  ): Promise<Changeset> {
+    return (
+      await this.init(
+        directory,
+        profile,
+        owner,
+        packageName,
+        description,
+        withFunctions,
+        withoutFunctions,
+        preset,
+      )
+    ).changes(directory);
   }
 
   /** Apply only the selected capabilities' update policies; never run scaffold steps. */
@@ -219,38 +159,5 @@ export class DropCalf {
       null,
       2,
     );
-  }
-
-  /** `init` as a changeset, so deleted scaffold files are deleted on export. */
-  @func()
-  async initChanges(
-    directory: Directory,
-    profile: string,
-    owner: string,
-    packageName?: string,
-    description = "",
-    author = "",
-    withFunctions: string[] = [],
-    withoutFunctions: string[] = [],
-    preset?: string,
-  ): Promise<Changeset> {
-    return (
-      await this.init(
-        directory,
-        profile,
-        owner,
-        packageName,
-        description,
-        author,
-        withFunctions,
-        withoutFunctions,
-        preset,
-      )
-    ).changes(directory);
-  }
-
-  @func()
-  async export(directory: Directory, path: string): Promise<string> {
-    return await directory.export(path);
   }
 }

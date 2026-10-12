@@ -7,16 +7,7 @@ test("docs template paths do not overlap other generated files", () => {
   for (const kind of ["library", "forge-app", "tool", "agent-skill"]) {
     const generated = new Set([
       "package.json",
-      ...buildProject(
-        kind,
-        "sample",
-        "tester",
-        "",
-        "",
-        [],
-        [],
-        "all",
-      ).files.keys(),
+      ...buildProject(kind, "sample", "tester", "", [], [], "all").files.keys(),
     ]);
     for (const path of docsTemplates().keys())
       expect(generated.has(path)).toBe(false);

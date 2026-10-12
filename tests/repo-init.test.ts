@@ -52,7 +52,6 @@ test.each(["library", "forge-app", "tool", "agent-skill"])(
           "tester",
           "sample",
           "",
-          "",
           [],
           [],
           preset,
@@ -149,21 +148,13 @@ describe("kind selection", () => {
       );
     }
     expect(() =>
-      buildProject("forge-app", "sample", "tester", "", "", ["unknown"]),
+      buildProject("forge-app", "sample", "tester", "", ["unknown"]),
     ).toThrow(/unknown/);
     expect(() =>
-      buildProject(
-        "forge-app",
-        "sample",
-        "tester",
-        "",
-        "",
-        ["evals"],
-        ["evals"],
-      ),
+      buildProject("forge-app", "sample", "tester", "", ["evals"], ["evals"]),
     ).toThrow(/evals/);
     expect(() =>
-      buildProject("library", "sample", "tester", "", "", [], ["test"]),
+      buildProject("library", "sample", "tester", "", [], ["test"]),
     ).toThrow(/test/);
   });
 
@@ -177,7 +168,7 @@ describe("kind selection", () => {
       ),
     ).rejects.toBeInstanceOf(InvalidOptionsError);
     await expect(
-      new DropCalf().init(mockDirectory(), "tool", "tester", "sample", "", "", [
+      new DropCalf().init(mockDirectory(), "tool", "tester", "sample", "", [
         "evals",
       ]),
     ).rejects.toBeInstanceOf(InvalidOptionsError);
@@ -187,7 +178,6 @@ describe("kind selection", () => {
         "library",
         "tester",
         "sample",
-        "",
         "",
         [],
         ["lint"],
@@ -279,7 +269,7 @@ describe("profiles", () => {
   test("evals is opt-in without removing mandatory slots", () => {
     const base = buildProject("forge-app", "sample", "tester");
     expect(base.packageJson.scripts.eval).toBeUndefined();
-    const selected = buildProject("forge-app", "sample", "tester", "", "", [
+    const selected = buildProject("forge-app", "sample", "tester", "", [
       "evals",
     ]);
     expect(selected.packageJson.scripts.eval).toBeDefined();
@@ -292,7 +282,6 @@ describe("profiles", () => {
       "sample",
       "tester",
       "",
-      "",
       [],
       [],
       "all",
@@ -303,7 +292,6 @@ describe("profiles", () => {
       "sample",
       "tester",
       "",
-      "",
       [],
       ["evals"],
       "all",
@@ -313,11 +301,11 @@ describe("profiles", () => {
       "vitest run --passWithNoTests",
     );
     expect(() =>
-      buildProject("forge-app", "sample", "tester", "", "", [], [], "unknown"),
+      buildProject("forge-app", "sample", "tester", "", [], [], "unknown"),
     ).toThrow(InvalidOptionsError);
     expect(
-      buildProject("tool", "sample", "tester", "", "", [], [], "all")
-        .packageJson.scripts.eval,
+      buildProject("tool", "sample", "tester", "", [], [], "all").packageJson
+        .scripts.eval,
     ).toBeUndefined();
   });
 

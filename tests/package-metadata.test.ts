@@ -62,7 +62,6 @@ test.each(kinds)(
           "tester",
           "@scope/sample",
           "Catalog description",
-          "Ignored author",
         );
         expect(await manifest(output)).toMatchObject({
           name: "@scope/sample",
@@ -75,8 +74,7 @@ test.each(kinds)(
         expect(await new DropCalf().update(output, kind)).toBe(output);
       }
       expect(
-        buildProject(kind, "sample", "tester", "", "Ignored author").packageJson
-          .author,
+        buildProject(kind, "sample", "tester", "").packageJson.author,
       ).toBe("tester");
     } finally {
       empty.mockRestore();

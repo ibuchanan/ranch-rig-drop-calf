@@ -19,16 +19,7 @@ const kinds = ["library", "forge-app", "tool", "agent-skill"];
 
 test.each(kinds)("%s declares only its selected template trees", (kind) => {
   for (const preset of [undefined, "all"]) {
-    const project = buildProject(
-      kind,
-      "sample",
-      "tester",
-      "",
-      "",
-      [],
-      [],
-      preset,
-    );
+    const project = buildProject(kind, "sample", "tester", "", [], [], preset);
     expect(project.templates.map((template) => template.path).sort()).toEqual(
       [
         BIOME_TEMPLATE,

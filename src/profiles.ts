@@ -169,23 +169,32 @@ export function resolveProfile(
   );
 }
 
+/** Resolve the selection, then build its blueprint. */
 export function buildProject(
   profile: string | undefined,
   packageName: string,
   owner: string,
   description = "",
-  _author = "",
   withFunctions: string[] = [],
   withoutFunctions: string[] = [],
   preset?: string,
 ): ProjectBlueprint {
-  const capabilities = resolveProfile(
-    profile,
-    withFunctions,
-    withoutFunctions,
-    preset,
+  return blueprintFor(
+    resolveProfile(profile, withFunctions, withoutFunctions, preset),
+    packageName,
+    owner,
+    description,
   );
-  // Retain the public author input for compatibility; catalog owner wins.
+}
+
+/** Build the blueprint for an already-resolved capability selection. */
+export function blueprintFor(
+  capabilities: readonly Capability[],
+  packageName: string,
+  owner: string,
+  description = "",
+): ProjectBlueprint {
+  // Catalog owner is the package author.
   const project = createBlueprint(packageName, description, owner);
   seedPackage(project.packageJson, capabilities);
   for (const capability of capabilities) {

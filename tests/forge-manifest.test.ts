@@ -198,9 +198,6 @@ test("validation skips a missing manifest without allocating tools", async () =>
       reason: "manifest.yml is missing",
     });
     expect(spy).not.toHaveBeenCalled();
-    expect(
-      JSON.parse(await new DropCalf().validateForgeManifest(mockDirectory())),
-    ).toEqual({ status: "skipped", reason: "manifest.yml is missing" });
   } finally {
     spy.mockRestore();
   }
@@ -248,10 +245,11 @@ test("validation runs pinned Forge lint on a read-only repo and keeps all diagno
   });
   try {
     expect(
-      JSON.parse(
-        await new DropCalf().validateForgeManifest(input, email, token),
-      ),
-    ).toEqual({ status: "validated" });
+      await validateCapabilities(input, [forgeManifest()], {
+        forgeEmail: email,
+        forgeApiToken: token,
+      }),
+    ).toEqual([{ capability: "forge-manifest", status: "validated" }]);
     expect(secrets).toEqual([
       ["FORGE_EMAIL", email],
       ["FORGE_API_TOKEN", token],
@@ -305,18 +303,10 @@ test("validation runs pinned Forge lint on a read-only repo and keeps all diagno
         {
           capability: "forge-manifest",
           status: "failed",
-          reason: expect.stringContaining("manifest rejected\ninvalid runtime"),
+          reason:
+            "forge-manifest: forge lint execution failed: manifest rejected\ninvalid runtime",
         },
       ]);
-      expect(
-        JSON.parse(
-          await new DropCalf().validateForgeManifest(input, email, token),
-        ),
-      ).toEqual({
-        status: "failed",
-        reason:
-          "forge-manifest: forge lint execution failed: manifest rejected\ninvalid runtime",
-      });
       expect([...input.files]).toEqual(before);
     } finally {
       failure.mockRestore();

@@ -228,7 +228,7 @@ remain manual additions to the catalog entry. Copyright year is captured once at
 update does not increment it. The `forge-ranch/license` annotation is seeded as a literal
 string `Apache-2.0` at init and is consumed by `node` (for `package.json`) and
 `oss` (for template validation); Apache-only templates fail if the catalog license does
-not match. Standalone `validate-catalog` does not require `package.json`. Catalog
+not match. Catalog validation does not require `package.json`. Catalog
 init receives the selected project kind from its capability composition.
 
 ### `package-metadata`
@@ -257,9 +257,9 @@ capability's scope.
 
 Catalog is the source of truth for shared identity on both init and update. Direct
 package edits to `name`, `description`, and `author` are overwritten. Package names
-are never inferred from `metadata.name` or `metadata.title`. The legacy `author`
-argument is retained for CLI compatibility but ignored: author, OWNER, and catalog owner
-refer to the same staff ID. OSS synchronizes OWNER independently.
+are never inferred from `metadata.name` or `metadata.title`. There is no `author`
+argument: author, OWNER, and catalog owner refer to the same staff ID, supplied
+as `--owner`. OSS synchronizes OWNER independently.
 Template rendering and scaffold merging finish before the update pass derives the
 final package fields from the actual catalog bytes.
 
@@ -444,11 +444,11 @@ Forge-app-only capability that owns `manifest.yml`'s `app.runtime.name` key.
   Manifest substitutions needing host values are not supplied;
   declared defaults work.
   Validation does not compare against `.nvmrc` or baseline policy and does not prove
-  deployment readiness. `validate-forge-manifest` exposes the same standalone report.
+  deployment readiness.
 
 **Authentication:** Forge CLI 14.1.0 requires authentication even for `forge lint`
-and offers no offline flag. Standalone `validate-forge-manifest` and top-level
-`validate` accept optional `forgeEmail` and `forgeApiToken` Dagger Secret arguments.
+and offers no offline flag. Top-level `validate` accepts optional `forgeEmail` and
+`forgeApiToken` Dagger Secret arguments.
 Both must be supplied to lint an existing manifest; otherwise validation reports
 an execution prerequisite failure before allocating tools,
 not an acceptance verdict.
@@ -650,7 +650,7 @@ Under ticket 16's agreed policy:
   the whole script, not merged with owner arguments.
 - **validate** is an explicit no-op: "Prelint has no repository-local configuration to
   validate; its rules ship in the dependency package. Source scanning belongs to the
-  lint workflow." Both capability validation and standalone `validate-prelint` return
+  lint workflow." Capability validation returns
   skipped with that reason, without reading the repository, installing tools, scanning
   source, or running `forge lint`. This supersedes the previous container scan validator;
   Forge acceptance belongs to the separate `forge-manifest` validator.

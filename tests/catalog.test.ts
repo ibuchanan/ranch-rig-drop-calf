@@ -50,13 +50,7 @@ async function result(contents: string) {
 test.each(Object.keys(PROFILES))(
   "%s declares the catalog seed without authoring YAML",
   (kind) => {
-    const project = buildProject(
-      kind,
-      "example",
-      "tester",
-      "Description",
-      "An author",
-    );
+    const project = buildProject(kind, "example", "tester", "Description");
     expect(project.templates.map((template) => template.path)).toContain(
       CATALOG_TEMPLATE,
     );
@@ -256,7 +250,6 @@ test.each(Object.keys(PROFILES))(
         "tester",
         "@scope/example",
         "A description",
-        "",
         [],
         [],
         "all",

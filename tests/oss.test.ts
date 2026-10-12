@@ -58,7 +58,6 @@ describe("pinned OSS templates", () => {
         "example-project",
         "tester",
         "Example purpose",
-        "Example Owner",
       );
       expect(project.packageJson.license).toBeUndefined();
 
@@ -132,7 +131,6 @@ describe("pinned OSS templates", () => {
           "tester",
           "sample",
           "A sample project",
-          "",
           [],
           [],
           preset,
@@ -151,7 +149,6 @@ describe("pinned OSS templates", () => {
           "sample",
           "tester",
           "A sample project",
-          "",
           [],
           [],
           preset,

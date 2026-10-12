@@ -239,9 +239,6 @@ test("capability and standalone validation skip without reading files or startin
     expect(await validateCapabilities(input, [prelint()])).toEqual([
       { capability: "prelint", ...skipped },
     ]);
-    expect(JSON.parse(await new DropCalf().validatePrelint(input))).toEqual(
-      skipped,
-    );
     expect(read).not.toHaveBeenCalled();
     expect(file).not.toHaveBeenCalled();
     expect(container).not.toHaveBeenCalled();

@@ -69,7 +69,6 @@ test.each([undefined, "all"])(
           "tester",
           "sample",
           "",
-          "",
           [],
           without,
           preset,
@@ -83,7 +82,6 @@ test.each([undefined, "all"])(
               "forge-app",
               "sample",
               "tester",
-              "",
               "",
               [],
               [],
@@ -226,7 +224,6 @@ test.each([
         "tester",
         "sample",
         "",
-        "",
         [...selection.withFunctions],
         [...selection.withoutFunctions],
         selection.preset,
@@ -313,7 +310,6 @@ test.each([undefined, "all"])(
       "sample",
       "tester",
       "",
-      "",
       [],
       [],
       preset,
@@ -330,21 +326,15 @@ test.each([undefined, "all"])(
 test("excluding aidev prevents Forge guidance generation", () => {
   const without = ["aidev"];
   expect(
-    buildProject(
-      "forge-app",
-      "sample",
-      "tester",
-      "",
-      "",
-      [],
-      without,
-    ).files.has("AGENTS.md"),
+    buildProject("forge-app", "sample", "tester", "", [], without).files.has(
+      "AGENTS.md",
+    ),
   ).toBe(false);
   expect(() =>
-    buildProject("forge-app", "sample", "tester", "", "", ["aidev"], without),
+    buildProject("forge-app", "sample", "tester", "", ["aidev"], without),
   ).toThrow(InvalidOptionsError);
   expect(() =>
-    buildProject("library", "sample", "tester", "", "", [], without),
+    buildProject("library", "sample", "tester", "", [], without),
   ).toThrow(InvalidOptionsError);
 });
 

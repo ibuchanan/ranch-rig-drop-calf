@@ -13,7 +13,7 @@ import { mockDirectory, mockModuleSource } from "./module-source.ts";
 
 const NODE_FORGE_RUNTIME = forgeRuntimeFromNvmrc(NODE_NVMRC);
 
-/** The shape `forge create` leaves behind once `remove-scaffold` has run. */
+/** The shape `forge create` leaves behind once scaffold cleanup has run. */
 const precleaned = JSON.stringify({
   main: "index.js",
   private: true,
@@ -63,8 +63,12 @@ test("scaffoldName reads the scaffold's own package name", () => {
   expect(scaffoldName(undefined)).toBeUndefined();
 });
 
-test("the public module uses init instead of exposing files", () => {
-  expect("files" in new DropCalf()).toBe(false);
+test("the public module exposes only the capability verbs", () => {
+  expect(
+    Object.getOwnPropertyNames(DropCalf.prototype)
+      .filter((name) => name !== "constructor")
+      .sort(),
+  ).toEqual(["init", "initChanges", "update", "validate"]);
 });
 
 test.each([

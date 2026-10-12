@@ -1,5 +1,4 @@
 import { describe, expect, test } from "bun:test";
-import { DropCalf } from "../src/index.ts";
 import {
   EMPTY_SECTIONS,
   SCAFFOLD_FIELDS,
@@ -136,7 +135,7 @@ describe("stripScaffold", () => {
 describe("Forge bootstrap preclean", () => {
   test("deletes only present unwanted files through Dagger without changing the input", async () => {
     const { source, removed, written } = directory(starter);
-    const result = await new DropCalf().removeScaffold(source as never);
+    const result = await applyPreclean(source as never);
     expect(removed).toEqual([...UNWANTED]);
     expect(written).toEqual([]);
     expect((result as unknown as typeof source).entries()).toEqual([
@@ -149,7 +148,7 @@ describe("Forge bootstrap preclean", () => {
   test("rewrites package.json in place and leaves the source directory alone", async () => {
     const withScaffold = new Map([...starter, ["package.json", scaffolded]]);
     const { source, written } = directory(withScaffold);
-    const result = await new DropCalf().removeScaffold(source as never);
+    const result = await applyPreclean(source as never);
     const cleaned = stripScaffold(scaffolded);
     expect(written).toEqual([["package.json", cleaned]]);
     expect((result as unknown as typeof source).entries()).toContainEqual([
@@ -161,9 +160,7 @@ describe("Forge bootstrap preclean", () => {
 
   test("skips absent unwanted files and preserves an unchanged directory", async () => {
     const { source, removed, written } = directory(new Map(preserved));
-    expect(
-      (await new DropCalf().removeScaffold(source as never)) as unknown,
-    ).toBe(source);
+    expect((await applyPreclean(source as never)) as unknown).toBe(source);
     expect(removed).toEqual([]);
     expect(written).toEqual([]);
   });
@@ -172,15 +169,7 @@ describe("Forge bootstrap preclean", () => {
     const withoutPackage = new Map(preserved);
     withoutPackage.delete("package.json");
     const { source, written } = directory(withoutPackage);
-    await new DropCalf().removeScaffold(source as never);
+    await applyPreclean(source as never);
     expect(written).toEqual([]);
-  });
-
-  test("removeScaffoldChanges compares the cleaned snapshot to the original", async () => {
-    const { source, removed } = directory(starter);
-    expect(
-      (await new DropCalf().removeScaffoldChanges(source as never)) as unknown,
-    ).toEqual({ before: source, removed: [...UNWANTED], written: [] });
-    expect(removed).toEqual([...UNWANTED]);
   });
 });

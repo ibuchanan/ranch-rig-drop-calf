@@ -120,7 +120,6 @@ test("top-level update requires explicit evals selection, preserves edits and de
       "tester",
       "sample",
       "",
-      "",
       ["evals"],
     );
     const pkg = JSON.parse(await initialized.file("package.json").contents());

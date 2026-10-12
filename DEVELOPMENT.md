@@ -164,8 +164,8 @@ DROP_CALF_E2E=1 bun test tests/e2e
   `@ast-grep/cli` and `@forge-ahead/prelint` dependency references and the
   `lint:prelint`/`lint:forge` scripts. Git-hooks alone owns the `lint` dispatcher.
   Init and validation are explicit no-ops: the rules ship inside the package,
-  with no local config to seed or validate. Standalone `validate-prelint`
-  reports the same skip; source scanning belongs to the lint workflow.
+  with no local config to seed or validate; source scanning belongs to the
+  lint workflow.
 - `src/secrets.ts`: the Forge-only SecretSpec workflow. Init seeds owner-managed
   `secretspec.toml` and `forge-variable-keys.json`, substituting the TOML project
   name and marking both helpers executable. Update maintains the two helpers
@@ -218,7 +218,7 @@ DROP_CALF_E2E=1 bun test tests/e2e
   capability order, so Node establishes the runtime baseline before this
   capability reads it. The validator runs full Forge lint, including source checks;
   dependencies must be present in the supplied repository. Forge lint requires
-  authentication: both validation entry points accept `--forge-email` and
+  authentication: `validate` accepts `--forge-email` and
   `--forge-api-token` as Dagger Secrets and pass them to every validator in a
   `ValidationContext`; only this one reads them, injected only for lint. Credentials are
   never read from the host implicitly; missing credentials fail before tool setup.
@@ -232,11 +232,10 @@ DROP_CALF_E2E=1 bun test tests/e2e
   With credentials already supplied by the owner in the environment:
 
   ```sh
-  dagger call validate-forge-manifest --directory . \
+  dagger call validate --directory . --profile forge-app \
     --forge-email env://FORGE_EMAIL --forge-api-token env://FORGE_API_TOKEN
   ```
 
-  Top-level `validate --profile forge-app` accepts the same Secret arguments.
   Bun executes the pinned CLI; Forge warns that its Node version detection does
   not recognize Bun. Authenticated CLI compatibility remains unverified.
 - `src/profiles.ts`: ordered capability lists for the four supported profiles,

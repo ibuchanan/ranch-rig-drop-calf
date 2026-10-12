@@ -167,7 +167,8 @@ Common options:
 - Package naming for `init` and `init-changes`: explicit `--package-name`
   first, then a nonblank scaffold `package.json` name, then the Dagger
   workspace directory name (the current directory in the examples above).
-- `--description` and `--author` set package metadata.
+- `--description` sets the package and catalog description; `--owner` is also
+  the package author.
 - `--with-functions evals` or `--preset all` adds evaluation scripts on
   `forge-app`; `--without-functions evals` excludes them from `--preset all`.
 - `--without-functions aidev` omits the `AGENTS.md` guidance seed.
@@ -242,14 +243,13 @@ contains the same reference plus detailed ownership and preservation rules.
   Supply dependencies needed by lint; no app registration or deployment occurs.
   Forge lint requires explicit `--forge-email` and `--forge-api-token` Dagger
   Secret inputs; omitted credentials report a prerequisite failure.
-- `remove-scaffold-changes --directory .` is the cleanup step of
-  `init-changes` on its own. It deletes the fixed list in
-  [`src/preclean.ts`](src/preclean.ts) without backups.
-- Standalone `copy-*` functions have been removed. Use `init` for first-time
-  seeding and `update` for documented maintenance.
-  `validate-changelog` checks an existing repository;
-  `validate-prelint` reports skipped because prelint has no local configuration
-  to validate. Source scanning remains part of the lint workflow.
+- These four verbs (`init`, `init-changes`, `update`, `validate`) are the whole
+  interface. Standalone `copy-*`, `validate-*`, `remove-scaffold*`,
+  `node-container`, and `export` functions have been removed: use `init` for
+  first-time seeding (it runs the scaffold cleanup in
+  [`src/preclean.ts`](src/preclean.ts)), `update` for maintenance, `validate`
+  for every capability's report, and Dagger's own `export --path` on the
+  returned directory or changeset.
 
 Run `dagger call -m github.com/ibuchanan/ranch-rig-drop-calf --help` to list
 every function, and add `--help` after a function name for its arguments.
