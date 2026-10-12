@@ -33,9 +33,11 @@ indent_style = space
 indent_size = 2
 
 # Documentation (Markdown)
+# Preserve Markdown hard line breaks (two trailing spaces, allowed by MD009).
 [*.md]
 indent_style = space
 indent_size = 2
+trim_trailing_whitespace = false
 
 # Configuration
 [*.toml]
