@@ -14,7 +14,7 @@ import {
   validateTypeScript,
 } from "../src/typescript.ts";
 import { NODE_MAJOR, TOOL_VERSIONS } from "../src/versions.ts";
-import { mockBiomeContainer } from "./biome-source.ts";
+import { mockContainer } from "./container-source.ts";
 import { mockDirectory, mockModuleSource } from "./module-source.ts";
 import { typescriptTemplates, vitestTemplates } from "./templates-source.ts";
 
@@ -301,7 +301,7 @@ test.each([
 });
 
 test("validation uses the selected compiler and two read-only showConfig commands without enforcing policy", async () => {
-  const { spy, commands, mounts } = mockBiomeContainer();
+  const { spy, commands, mounts } = mockContainer();
   const input = mockDirectory(
     new Map(
       TYPESCRIPT_CONFIGS.map((path) => [
@@ -346,13 +346,12 @@ test("validation skips both missing configs, fails a partial pair, and retains c
       )
     ).status,
   ).toBe("failed");
-  const { spy } = mockBiomeContainer(
-    undefined,
-    Object.assign(new Error("exec failed"), {
+  const { spy } = mockContainer({
+    failure: Object.assign(new Error("exec failed"), {
       stdout: "error TS18003: No inputs were found",
       stderr: "",
     }),
-  );
+  });
   try {
     const report = await validateCapabilities(mockDirectory(configs), [
       typeScriptToolchain(),

@@ -1,5 +1,4 @@
-import { describe, expect, spyOn, test } from "bun:test";
-import { dag } from "@dagger.io/dagger";
+import { describe, expect, test } from "bun:test";
 import { parseDocument } from "yaml";
 import {
   applyForgeRuntime,
@@ -11,6 +10,7 @@ import {
 import { ParseError } from "../src/preclean.ts";
 import { buildProject } from "../src/profiles.ts";
 import { mockDirectory } from "./module-source.ts";
+import { mockContainer } from "./container-source.ts";
 
 describe("node baseline", () => {
   test.each(["library", "forge-app", "tool", "agent-skill"])(
@@ -153,14 +153,7 @@ describe("Forge runtime Dagger boundary", () => {
 });
 
 test("nodeContainer builds the baseline image through native Dagger", () => {
-  const images: string[] = [];
-  const container = {
-    from: (image: string) => {
-      images.push(image);
-      return container;
-    },
-  };
-  const spy = spyOn(dag, "container").mockReturnValue(container as never);
+  const { container, images, spy } = mockContainer();
   try {
     expect(nodeContainer()).toBe(container as never);
     expect(images).toEqual(["node:24"]);

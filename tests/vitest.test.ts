@@ -9,7 +9,7 @@ import {
   validateVitest,
   vitestTesting,
 } from "../src/vitest.ts";
-import { mockBiomeContainer } from "./biome-source.ts";
+import { mockContainer } from "./container-source.ts";
 import { mockDirectory, mockModuleSource } from "./module-source.ts";
 
 test("update converges scripts and matching tool pins while preserving owner configuration and unrelated fields", async () => {
@@ -123,7 +123,7 @@ test("composed Forge update restores missing Vitest declaration before TypeScrip
 });
 
 test("validation uses the selected pin with read-only mounts and no input edits", async () => {
-  const { spy, commands, mounts } = mockBiomeContainer();
+  const { spy, commands, mounts } = mockContainer();
   const input = mockDirectory(new Map([["vitest.config.ts", "owner config"]]));
   try {
     expect(
@@ -155,13 +155,12 @@ test("validation skips missing config and retains execution diagnostics", async 
     status: "skipped",
     reason: "vitest.config.ts is missing",
   });
-  const { spy } = mockBiomeContainer(
-    undefined,
-    Object.assign(new Error("exec failed"), {
+  const { spy } = mockContainer({
+    failure: Object.assign(new Error("exec failed"), {
       stdout: "",
       stderr: "coverage provider mismatch",
     }),
-  );
+  });
   try {
     const [report] = await validateCapabilities(
       mockDirectory(new Map([["vitest.config.ts", "config"]])),

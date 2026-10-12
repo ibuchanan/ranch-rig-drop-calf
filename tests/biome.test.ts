@@ -9,7 +9,7 @@ import { validateCapabilities } from "../src/capability.ts";
 import { ParseError } from "../src/preclean.ts";
 import { buildProject } from "../src/profiles.ts";
 import { TOOL_VERSIONS } from "../src/versions.ts";
-import { mockBiomeContainer } from "./biome-source.ts";
+import { mockContainer } from "./container-source.ts";
 import { mockDirectory } from "./module-source.ts";
 import { biomeTemplates } from "./templates-source.ts";
 
@@ -29,7 +29,7 @@ test.each(kinds)(
         ["package.json", JSON.stringify(project.packageJson)],
       ]),
     );
-    const { spy, commands } = mockBiomeContainer();
+    const { spy, commands } = mockContainer();
     try {
       expect(await updateBiome(input)).toBe(input);
       expect(await updateBiome(input)).toBe(input);
@@ -69,7 +69,7 @@ test.each(["biome.json", "biome.jsonc"])(
       ]),
     );
     const before = [...input.files];
-    const { spy, reads } = mockBiomeContainer(() => migrated);
+    const { spy, reads } = mockContainer({ transform: () => migrated });
     try {
       const output = await updateBiome(input);
       expect(JSON.parse(await output.file("package.json").contents())).toEqual({
@@ -95,7 +95,7 @@ test.each(["biome.json", "biome.jsonc"])(
 );
 
 test("update seeds missing package sections but never missing package, config, or EditorConfig", async () => {
-  const { spy, commands } = mockBiomeContainer();
+  const { spy, commands } = mockContainer();
   try {
     const empty = mockDirectory();
     expect(await updateBiome(empty)).toBe(empty);
@@ -131,7 +131,7 @@ test.each([
 test.each(["{", "[]", "null"])(
   "update rejects malformed config before invoking migration: %s",
   async (contents) => {
-    const { spy, commands } = mockBiomeContainer();
+    const { spy, commands } = mockContainer();
     try {
       await expect(
         updateBiome(mockDirectory(new Map([["biome.jsonc", contents]]))),
@@ -151,7 +151,7 @@ test("root JSON takes precedence over JSONC and custom pins apply to both update
       ["package.json", "{}"],
     ]),
   );
-  const { spy, reads, commands } = mockBiomeContainer();
+  const { spy, reads, commands } = mockContainer();
   try {
     const output = await updateBiome(input, "2.5.13");
     expect(
@@ -182,7 +182,7 @@ test("root JSON takes precedence over JSONC and custom pins apply to both update
 });
 
 test("standalone validation skips a missing config without starting a container", async () => {
-  const { spy } = mockBiomeContainer();
+  const { spy } = mockContainer();
   try {
     expect(await validateBiome(mockDirectory())).toEqual({
       status: "skipped",
@@ -195,7 +195,7 @@ test("standalone validation skips a missing config without starting a container"
 });
 
 test("validation uses the capability pin, read-only mount, and config-only command with no source checks", async () => {
-  const { spy, mounts, commands, reads } = mockBiomeContainer();
+  const { spy, mounts, commands, reads } = mockContainer();
   const input = mockDirectory(
     new Map([
       ["biome.jsonc", "{}"],
@@ -239,7 +239,7 @@ test("migration and validation retain tool diagnostics without changing the inpu
   const failure = Object.assign(new Error("exec failed"), {
     stderr: "unknown configuration key",
   });
-  const { spy } = mockBiomeContainer(undefined, failure);
+  const { spy } = mockContainer({ failure });
   const input = mockDirectory(new Map([["biome.jsonc", "{}"]]));
   try {
     await expect(updateBiome(input)).rejects.toThrow(

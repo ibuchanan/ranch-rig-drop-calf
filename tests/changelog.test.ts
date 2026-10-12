@@ -14,29 +14,14 @@ import { buildProject } from "../src/profiles.ts";
 import { createBlueprint } from "../src/project.ts";
 import { TOOL_VERSIONS } from "../src/versions.ts";
 import { mockDirectory, mockModuleSource } from "./module-source.ts";
+import { mockContainer } from "./container-source.ts";
 import { changelogTemplates } from "./templates-source.ts";
 
-/**
- * Stand in for `dag.container()` so the validation paths are exercised without
- * an engine. `outputs` maps a command to what the container writes back.
- */
-function mockContainer(outputs: Record<string, string>) {
-  const commands: string[][] = [];
-  const container = {
-    from: () => container,
-    withExec: (args: string[]) => {
-      commands.push(args);
-      return container;
-    },
-    withMountedDirectory: () => container,
-    withWorkdir: () => container,
-    stdout: async () => outputs[commands.at(-1)?.join(" ") ?? ""] ?? "",
-  };
-  return {
-    commands,
-    spy: spyOn(dag, "container").mockReturnValue(container as never),
-  };
-}
+/** Map each command to what the container writes back. */
+const containerFor = (outputs: Record<string, string>) =>
+  mockContainer({
+    stdout: (commands) => outputs[commands.at(-1)?.join(" ") ?? ""] ?? "",
+  });
 
 const directory = (present: boolean) =>
   ({ exists: async () => present }) as unknown as Parameters<
@@ -193,7 +178,7 @@ test.each(["library", "forge-app", "tool"])(
 );
 
 test("capability validation uses the selected pin and canonical command, leaving owner files untouched", async () => {
-  const { commands, spy } = mockContainer({
+  const { commands, spy } = containerFor({
     "sh -c git rev-list --count HEAD 2>/dev/null || true": "1\n",
     [`sh -c ${CHANGELOG_COMMAND} 2>&1; echo "git-cliff exit=$?"`]:
       "owner rendering\ngit-cliff exit=0",
@@ -223,7 +208,7 @@ test("capability validation uses the selected pin and canonical command, leaving
 });
 
 test("validation skips a repository with no policy", async () => {
-  const { spy } = mockContainer({});
+  const { spy } = containerFor({});
   try {
     expect(await validateChangelog(directory(false))).toEqual({
       status: "skipped",
@@ -235,7 +220,7 @@ test("validation skips a repository with no policy", async () => {
 });
 
 test("validation runs the scripted command at the pinned version", async () => {
-  const { commands, spy } = mockContainer({
+  const { commands, spy } = containerFor({
     "sh -c git rev-list --count HEAD 2>/dev/null || true": "42\n",
     [`sh -c ${CHANGELOG_COMMAND} 2>&1; echo "git-cliff exit=$?"`]:
       "## What's Changed\ngit-cliff exit=0",
@@ -264,7 +249,7 @@ test("validation runs the scripted command at the pinned version", async () => {
 
 test("validation skips a repository with no commits to render", async () => {
   for (const history of ["", "fatal: bad revision 'HEAD'\n"]) {
-    const { spy } = mockContainer({
+    const { spy } = containerFor({
       "sh -c git rev-list --count HEAD 2>/dev/null || true": history,
     });
     try {
@@ -279,7 +264,7 @@ test("validation skips a repository with no commits to render", async () => {
 });
 
 test("validation reports the command's own output when the policy fails", async () => {
-  const { spy } = mockContainer({
+  const { spy } = containerFor({
     "sh -c git rev-list --count HEAD 2>/dev/null || true": "1\n",
     [`sh -c ${CHANGELOG_COMMAND} 2>&1; echo "git-cliff exit=$?"`]:
       "error: invalid type\ngit-cliff exit=1",

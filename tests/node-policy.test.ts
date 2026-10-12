@@ -13,6 +13,7 @@ import { ParseError } from "../src/preclean.ts";
 import { buildProject } from "../src/profiles.ts";
 import { TOOL_VERSIONS } from "../src/versions.ts";
 import { mockDirectory } from "./module-source.ts";
+import { mockContainer } from "./container-source.ts";
 
 const kinds = ["library", "forge-app", "tool", "agent-skill"];
 const licenseCatalog =
@@ -172,41 +173,25 @@ test.each(["linux/amd64", "linux/arm64"])(
       ]),
     );
     const before = [...input.files];
-    const commands: string[][] = [];
-    const copied: string[] = [];
-    const variables = new Map<string, string>();
-    const container = {
-      from: () => container,
-      withExec: (args: string[]) => {
-        commands.push(args);
-        return container;
-      },
-      withFile: (path: string) => {
-        copied.push(path);
-        return container;
-      },
-      withEnvVariable: (name: string, value: string) => {
-        variables.set(name, value);
-        return container;
-      },
-      withWorkdir: () => container,
-      stdout: async () => "Using Node v22.0.0\n",
-    };
+    const {
+      container,
+      commands,
+      copied,
+      environment,
+      spy: containerSpy,
+    } = mockContainer({ stdout: () => "Using Node v22.0.0\n" });
     const platformSpy = spyOn(dag, "defaultPlatform").mockResolvedValue(
       platform as never,
     );
     const httpSpy = spyOn(dag, "http").mockReturnValue({} as never);
-    const containerSpy = spyOn(dag, "container").mockReturnValue(
-      container as never,
-    );
     try {
       expect(await validateNode(input)).toEqual({ status: "validated" });
       expect(httpSpy).toHaveBeenCalledWith(
         `https://github.com/Schniz/fnm/releases/download/v${TOOL_VERSIONS.fnm}/${platform.endsWith("amd64") ? "fnm-linux" : "fnm-arm64"}.zip`,
       );
       expect(copied).toEqual(["/tmp/fnm.zip", "/repo/.nvmrc"]);
-      expect(variables.get("FNM_RESOLVE_ENGINES")).toBe("false");
-      expect(variables.get("FNM_VERSION_FILE_STRATEGY")).toBe("local");
+      expect(environment.FNM_RESOLVE_ENGINES).toBe("false");
+      expect(environment.FNM_VERSION_FILE_STRATEGY).toBe("local");
       expect(commands.at(-1)).toEqual([
         "bash",
         "-ec",
