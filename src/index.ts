@@ -13,12 +13,9 @@ import { updateCapabilities, validateCapabilities } from "./capability.ts";
 import { validateCatalog } from "./catalog.ts";
 import { validateChangelog } from "./changelog.ts";
 import { forgeManifest, validateForgeManifest } from "./forge-manifest.ts";
-import {
-  adoptScaffoldTypeScript,
-  mergeScaffoldPackage,
-  scaffoldName,
-} from "./init.ts";
+import { adoptScaffoldTypeScript } from "./init.ts";
 import { nodeContainer as buildNodeContainer } from "./node.ts";
+import { mergeScaffoldPackage, scaffoldName } from "./package-json.ts";
 import { applyPreclean } from "./preclean.ts";
 import { validatePrelint } from "./prelint.ts";
 import { buildProject, resolveProfile } from "./profiles.ts";

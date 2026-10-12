@@ -1,11 +1,7 @@
 import { type Directory, dag } from "@dagger.io/dagger";
 import { parse as parseToml } from "smol-toml";
-import sortPackageJson from "sort-package-json";
 import ts from "typescript";
 import type { Capability, Validation } from "./capability.ts";
-import { parseObject } from "./init.ts";
-import { ParseError } from "./preclean.ts";
-import type { ProjectBlueprint } from "./project.ts";
 import { templateTree } from "./templates.ts";
 
 /** Owner declarations are init-only; helpers and the six dispatch scripts track policy. */
@@ -118,29 +114,6 @@ export async function updateSecrets(directory: Directory): Promise<Directory> {
   const helper = SECRETS_EXECUTABLES[1];
   if (await directory.exists(helper))
     guardLegacyAllowlist(await directory.file(helper).contents());
-  let packageContents: string | undefined;
-  if (await directory.exists("package.json")) {
-    const contents = await directory.file("package.json").contents();
-    const pkg = parseObject("package.json", contents);
-    const existing = pkg.scripts;
-    if (
-      existing !== undefined &&
-      (existing === null ||
-        typeof existing !== "object" ||
-        Array.isArray(existing))
-    )
-      throw new ParseError("package.json", "scripts must be an object");
-    const scripts = (existing ?? {}) as Record<string, unknown>;
-    if (
-      Object.entries(FORGE_SECRETS_SCRIPTS).some(
-        ([key, value]) => scripts[key] !== value,
-      )
-    ) {
-      Object.assign(scripts, FORGE_SECRETS_SCRIPTS);
-      pkg.scripts = scripts;
-      packageContents = sortPackageJson(`${JSON.stringify(pkg, null, 2)}\n`);
-    }
-  }
   const source = dag.currentModule().source().directory(SECRETS_TEMPLATE);
   let result = directory;
   for (const path of SECRETS_EXECUTABLES) {
@@ -152,9 +125,7 @@ export async function updateSecrets(directory: Directory): Promise<Directory> {
     )
       result = result.withNewFile(path, wanted, { permissions: 0o755 });
   }
-  return packageContents === undefined
-    ? result
-    : result.withNewFile("package.json", packageContents);
+  return result;
 }
 
 function parseForgeVariableKeys(contents: string): string[] {
@@ -268,9 +239,6 @@ export async function validateSecrets(
 }
 
 export function forgeSecrets(): Capability {
-  const seed: (project: ProjectBlueprint) => void = (project) => {
-    Object.assign(project.packageJson.scripts, FORGE_SECRETS_SCRIPTS);
-  };
   return {
     name: "secrets",
     documentation: {
@@ -290,12 +258,12 @@ export function forgeSecrets(): Capability {
       ],
       init: "Seed owner SecretSpec declarations and app-variable allowlist, executable helpers, and six Forge dispatch scripts.",
       update:
-        "Enforce helper contents/modes and dispatch scripts; preserve declarations/allowlist, rejecting unmigrated embedded keys.",
+        "Enforce helper contents/modes; preserve declarations/allowlist, rejecting unmigrated embedded keys.",
       validate:
         "Parse TOML and allowlist, check helper presence and executable modes; no secret resolution or Forge execution.",
     },
+    packageJson: { policy: { scripts: FORGE_SECRETS_SCRIPTS } },
     init(project) {
-      seed(project);
       const name = project.packageJson.name;
       project.templates.push(
         templateTree(SECRETS_TEMPLATE, (destination, source) =>

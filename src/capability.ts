@@ -1,4 +1,8 @@
 import type { Directory } from "@dagger.io/dagger";
+import {
+  enforcePackagePolicy,
+  type PackageContribution,
+} from "./package-json.ts";
 import type { ProjectBlueprint } from "./project.ts";
 
 export type NoOp = { readonly reason: string };
@@ -23,6 +27,9 @@ export type Capability = {
     update?: string;
     validate?: string;
   };
+  /** Seed and policy for the shared package.json, applied by the package-json module. */
+  packageJson?: PackageContribution;
+  /** Verbs act on the files this capability owns; package.json is contributed instead. */
   init: ((project: ProjectBlueprint) => void) | NoOp;
   update: ((directory: Directory) => Directory | Promise<Directory>) | NoOp;
   validate: ((directory: Directory) => Promise<Validation>) | NoOp;
@@ -45,7 +52,8 @@ export async function updateCapabilities(
   directory: Directory,
   capabilities: readonly Capability[],
 ): Promise<Directory> {
-  let result = directory;
+  // Package policy first, so verbs that read package.json see the result.
+  let result = await enforcePackagePolicy(directory, capabilities);
   for (const capability of capabilities) {
     if (typeof capability.update === "function")
       result = await capability.update(result);

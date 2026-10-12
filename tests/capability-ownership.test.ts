@@ -3,6 +3,7 @@ import { type Directory, dag, type File } from "@dagger.io/dagger";
 import { type Capability, noOpReasons } from "../src/capability.ts";
 import { DropCalf } from "../src/index.ts";
 import { buildProject, PROFILES, resolveProfile } from "../src/profiles.ts";
+import { seedPackage } from "../src/package-json.ts";
 import { createBlueprint } from "../src/project.ts";
 import { seedTemplates } from "../src/templates.ts";
 import { mockDirectory, mockModuleSource } from "./module-source.ts";
@@ -113,7 +114,19 @@ async function outputOwners(capabilities: Capability[], kind: string) {
 
   for (const capability of capabilities) {
     owner = capability.name;
+    // Declared contributions are claims, recorded even when assembly would reject them.
+    const { seed, policy, remove } = capability.packageJson ?? {};
+    for (const fields of [seed, policy])
+      for (const name of packageOutputs(fields ?? {}).keys()) claim(name);
+    for (const field of remove ?? []) claim(`package.json#${field}`);
     if (typeof capability.init === "function") capability.init(project);
+  }
+  // Assemble outside the tracking proxy; a collision is already recorded above.
+  const pkg = JSON.parse(JSON.stringify(project.packageJson));
+  try {
+    seedPackage(pkg, capabilities);
+  } catch {
+    // Reported through the owners map instead.
   }
   // Start from intentionally stale package identity to observe catalog-derived ownership.
   let directory = trackDirectory(
@@ -122,7 +135,7 @@ async function outputOwners(capabilities: Capability[], kind: string) {
         [
           "package.json",
           JSON.stringify({
-            ...project.packageJson,
+            ...pkg,
             name: "old",
             author: "old",
             description: "old",
@@ -226,9 +239,9 @@ test("ownership checks detect two capabilities writing the same output even with
   const seed = (name: string): Capability => ({
     name,
     documentation: { tools: [] },
+    packageJson: { policy: { scripts: { duplicate: "same" } } },
     init(project) {
       project.files.set("duplicate.txt", "same");
-      project.packageJson.scripts.duplicate = "same";
     },
     update: { reason: "No update policy." },
     validate: { reason: "No consuming tool." },

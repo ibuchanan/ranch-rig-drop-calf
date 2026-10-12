@@ -1,17 +1,13 @@
 import { expect, test } from "bun:test";
-import {
-  BIOME_SCRIPTS,
-  biomeToolchain,
-  updateBiome,
-  validateBiome,
-} from "../src/biome.ts";
+import { BIOME_SCRIPTS, biomeToolchain, validateBiome } from "../src/biome.ts";
 import { validateCapabilities } from "../src/capability.ts";
-import { ParseError } from "../src/preclean.ts";
+import { ParseError } from "../src/errors.ts";
 import { buildProject } from "../src/profiles.ts";
 import { TOOL_VERSIONS } from "../src/versions.ts";
 import { mockContainer } from "./container-source.ts";
 import { mockDirectory } from "./module-source.ts";
 import { biomeTemplates } from "./templates-source.ts";
+import { runUpdate } from "./capability-fixtures.ts";
 
 const kinds = ["library", "forge-app", "tool", "agent-skill"];
 
@@ -31,8 +27,8 @@ test.each(kinds)(
     );
     const { spy, commands } = mockContainer();
     try {
-      expect(await updateBiome(input)).toBe(input);
-      expect(await updateBiome(input)).toBe(input);
+      expect(await runUpdate(biomeToolchain(), input)).toBe(input);
+      expect(await runUpdate(biomeToolchain(), input)).toBe(input);
       expect(commands).toContainEqual([
         "biome",
         "migrate",
@@ -71,7 +67,7 @@ test.each(["biome.json", "biome.jsonc"])(
     const before = [...input.files];
     const { spy, reads } = mockContainer({ transform: () => migrated });
     try {
-      const output = await updateBiome(input);
+      const output = await runUpdate(biomeToolchain(), input);
       expect(JSON.parse(await output.file("package.json").contents())).toEqual({
         ...pkg,
         devDependencies: {
@@ -85,7 +81,7 @@ test.each(["biome.json", "biome.jsonc"])(
         expect(await output.file(owner).contents()).toBe(
           input.files.get(owner) ?? "",
         );
-      expect(await updateBiome(output)).toBe(output);
+      expect(await runUpdate(biomeToolchain(), output)).toBe(output);
       expect(reads).toEqual([`/repo/${path}`, `/repo/${path}`]);
       expect([...input.files]).toEqual(before);
     } finally {
@@ -98,8 +94,9 @@ test("update seeds missing package sections but never missing package, config, o
   const { spy, commands } = mockContainer();
   try {
     const empty = mockDirectory();
-    expect(await updateBiome(empty)).toBe(empty);
-    const output = await updateBiome(
+    expect(await runUpdate(biomeToolchain(), empty)).toBe(empty);
+    const output = await runUpdate(
+      biomeToolchain(),
       mockDirectory(new Map([["package.json", "{}"]])),
     );
     expect(JSON.parse(await output.file("package.json").contents())).toEqual({
@@ -108,7 +105,7 @@ test("update seeds missing package sections but never missing package, config, o
     });
     expect(await output.exists("biome.jsonc")).toBe(false);
     expect(await output.exists(".editorconfig")).toBe(false);
-    expect(await updateBiome(output)).toBe(output);
+    expect(await runUpdate(biomeToolchain(), output)).toBe(output);
     expect(commands).toEqual([]);
   } finally {
     spy.mockRestore();
@@ -124,7 +121,10 @@ test.each([
   '{"devDependencies":"bad"}',
 ])("update rejects malformed shared package: %s", async (contents) => {
   await expect(
-    updateBiome(mockDirectory(new Map([["package.json", contents]]))),
+    runUpdate(
+      biomeToolchain(),
+      mockDirectory(new Map([["package.json", contents]])),
+    ),
   ).rejects.toThrow(ParseError);
 });
 
@@ -134,7 +134,10 @@ test.each(["{", "[]", "null"])(
     const { spy, commands } = mockContainer();
     try {
       await expect(
-        updateBiome(mockDirectory(new Map([["biome.jsonc", contents]]))),
+        runUpdate(
+          biomeToolchain(),
+          mockDirectory(new Map([["biome.jsonc", contents]])),
+        ),
       ).rejects.toThrow(ParseError);
       expect(commands).toEqual([]);
     } finally {
@@ -153,7 +156,7 @@ test("root JSON takes precedence over JSONC and custom pins apply to both update
   );
   const { spy, reads, commands } = mockContainer();
   try {
-    const output = await updateBiome(input, "2.5.13");
+    const output = await runUpdate(biomeToolchain("2.5.13"), input);
     expect(
       JSON.parse(await output.file("package.json").contents()).devDependencies[
         "@biomejs/biome"
@@ -242,7 +245,7 @@ test("migration and validation retain tool diagnostics without changing the inpu
   const { spy } = mockContainer({ failure });
   const input = mockDirectory(new Map([["biome.jsonc", "{}"]]));
   try {
-    await expect(updateBiome(input)).rejects.toThrow(
+    await expect(runUpdate(biomeToolchain(), input)).rejects.toThrow(
       "biome: migration execution failed: unknown configuration key",
     );
     expect(await validateCapabilities(input, [biomeToolchain()])).toEqual([

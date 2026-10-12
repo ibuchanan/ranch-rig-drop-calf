@@ -1,10 +1,6 @@
 import { type Directory, dag } from "@dagger.io/dagger";
-import sortPackageJson from "sort-package-json";
-import type { Capability, Validation } from "./capability.ts";
-import { parseObject } from "./init.ts";
+import { type Capability, noOp, type Validation } from "./capability.ts";
 import { nodeContainer } from "./node.ts";
-import { ParseError } from "./preclean.ts";
-import type { ProjectBlueprint } from "./project.ts";
 import { templateTree } from "./templates.ts";
 import { TOOL_VERSIONS } from "./versions.ts";
 
@@ -14,44 +10,6 @@ export const EVALS_SCRIPTS = {
   eval: "promptfoo eval",
   view: "promptfoo view",
 } as const;
-
-export async function updateEvals(
-  directory: Directory,
-  version: string = TOOL_VERSIONS.promptfoo,
-): Promise<Directory> {
-  if (!(await directory.exists("package.json"))) return directory;
-  const pkg = parseObject(
-    "package.json",
-    await directory.file("package.json").contents(),
-  );
-  let changed = false;
-  for (const [section, wanted] of [
-    ["scripts", EVALS_SCRIPTS],
-    ["devDependencies", { promptfoo: version }],
-  ] as const) {
-    const existing = pkg[section];
-    if (
-      existing !== undefined &&
-      (existing === null ||
-        typeof existing !== "object" ||
-        Array.isArray(existing))
-    )
-      throw new ParseError("package.json", `${section} must be an object`);
-    const fields = (existing ?? {}) as Record<string, unknown>;
-    for (const [key, value] of Object.entries(wanted)) {
-      if (fields[key] === value) continue;
-      fields[key] = value;
-      changed = true;
-    }
-    pkg[section] = fields;
-  }
-  return changed
-    ? directory.withNewFile(
-        "package.json",
-        sortPackageJson(`${JSON.stringify(pkg, null, 2)}\n`),
-      )
-    : directory;
-}
 
 // Use the CLI's handler without its database migrations or command telemetry.
 const EVALS_VALIDATOR = `
@@ -105,10 +63,6 @@ export async function validateEvals(
 }
 
 export function evals(version: string = TOOL_VERSIONS.promptfoo): Capability {
-  const seed: (project: ProjectBlueprint) => void = (project) => {
-    Object.assign(project.packageJson.scripts, EVALS_SCRIPTS);
-    project.packageJson.devDependencies.promptfoo = version;
-  };
   return {
     name: "evals",
     documentation: {
@@ -121,17 +75,22 @@ export function evals(version: string = TOOL_VERSIONS.promptfoo): Capability {
         },
       ],
       init: "Seed Promptfoo, eval/view scripts, and the config/prompts/tests/data/guide tree; no manifest wiring.",
-      update:
-        "Enforce Promptfoo and eval/view scripts; preserve the owner-managed suite and its deletions.",
       validate:
         "Use Promptfoo's native config/schema validator to load suite references; no model calls or assertion execution.",
     },
     selection: { with: true, without: true, default: false },
+    packageJson: {
+      policy: {
+        scripts: EVALS_SCRIPTS,
+        devDependencies: { promptfoo: version },
+      },
+    },
     init(project) {
-      seed(project);
       project.templates.push(templateTree(EVALS_TEMPLATE));
     },
-    update: (directory) => updateEvals(directory, version),
+    update: noOp(
+      "The eval suite is owner-managed after init, including deletions; its package.json contribution enforces Promptfoo and the eval/view scripts.",
+    ),
     validate: (directory) => validateEvals(directory, version),
   };
 }

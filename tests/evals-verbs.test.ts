@@ -6,7 +6,6 @@ import {
   EVALS_SCRIPTS,
   EVALS_TEMPLATE,
   evals,
-  updateEvals,
   validateEvals,
 } from "../src/evals.ts";
 import { DropCalf } from "../src/index.ts";
@@ -14,6 +13,7 @@ import { createBlueprint } from "../src/project.ts";
 import { TOOL_VERSIONS } from "../src/versions.ts";
 import { mockDirectory, mockModuleSource } from "./module-source.ts";
 import { promptfooTemplates } from "./templates-source.ts";
+import { runUpdate, runInit } from "./capability-fixtures.ts";
 
 const version = "0.116.7";
 
@@ -21,7 +21,7 @@ test("evals init seeds the selected tooling and declares the owner-content tree"
   const project = createBlueprint("sample", "description", "tester");
   const capability = evals(version);
   if (typeof capability.init !== "function") throw new Error("init required");
-  capability.init(project);
+  runInit(capability, project);
   expect(project.packageJson.scripts).toMatchObject(EVALS_SCRIPTS);
   expect(project.packageJson.devDependencies.promptfoo).toBe(version);
   expect(project.templates.map((template) => template.path)).toContain(
@@ -50,7 +50,7 @@ test("evals update owns only the tool and scripts, preserving every edited seed 
   files.set("bun.lock", "owner lockfile\n");
   const input = mockDirectory(files);
   const before = [...input.files];
-  const output = await updateEvals(input, version);
+  const output = await runUpdate(evals(version), input);
   const pkg = JSON.parse(await output.file("package.json").contents());
   expect(pkg).toEqual({
     name: "owner-name",
@@ -62,15 +62,15 @@ test("evals update owns only the tool and scripts, preserving every edited seed 
     if (path !== "package.json")
       expect(await output.file(path).contents()).toBe(contents);
   expect([...input.files]).toEqual(before);
-  expect(await updateEvals(output, version)).toBe(output);
+  expect(await runUpdate(evals(version), output)).toBe(output);
 });
 
 test("evals update creates missing tooling but never seeds a suite or missing package", async () => {
   const empty = mockDirectory();
-  expect(await updateEvals(empty, version)).toBe(empty);
-  const output = await updateEvals(
+  expect(await runUpdate(evals(version), empty)).toBe(empty);
+  const output = await runUpdate(
+    evals(version),
     mockDirectory(new Map([["package.json", "{}"]])),
-    version,
   );
   expect(JSON.parse(await output.file("package.json").contents())).toEqual({
     scripts: EVALS_SCRIPTS,
@@ -90,7 +90,7 @@ test("evals update retains matching package bytes and rejects malformed consumed
     4,
   )}\r\n`;
   const matching = mockDirectory(new Map([["package.json", contents]]));
-  expect(await updateEvals(matching, version)).toBe(matching);
+  expect(await runUpdate(evals(version), matching)).toBe(matching);
   for (const text of [
     "{",
     "null",
@@ -103,7 +103,9 @@ test("evals update retains matching package bytes and rejects malformed consumed
     '{"devDependencies":"wrong"}',
   ]) {
     const input = mockDirectory(new Map([["package.json", text]]));
-    await expect(updateEvals(input, version)).rejects.toThrow("package.json");
+    await expect(runUpdate(evals(version), input)).rejects.toThrow(
+      "package.json",
+    );
     expect(await input.file("package.json").contents()).toBe(text);
   }
 });

@@ -1,11 +1,8 @@
 import type { Container, Directory } from "@dagger.io/dagger";
-import sortPackageJson from "sort-package-json";
 import ts from "typescript";
 import type { Capability, Validation } from "./capability.ts";
-import { parseObject } from "./init.ts";
+import { ParseError } from "./errors.ts";
 import { nodeContainer } from "./node.ts";
-import { ParseError } from "./preclean.ts";
-import type { ProjectBlueprint } from "./project.ts";
 import { copyTemplate, templateTree } from "./templates.ts";
 import { TOOL_VERSIONS } from "./versions.ts";
 
@@ -66,44 +63,13 @@ async function runBiome(
   return result;
 }
 
-/** Enforce only the dependency and four owned scripts; migrate owner configuration in isolation. */
+/** Let Biome migrate an existing root config in isolation; package.json is contributed. */
 export async function updateBiome(
   directory: Directory,
   version: string = TOOL_VERSIONS.biome,
 ): Promise<Directory> {
-  let result = directory;
-  if (await directory.exists("package.json")) {
-    const contents = await directory.file("package.json").contents();
-    const pkg = parseObject("package.json", contents);
-    let changed = false;
-    for (const [section, wanted] of [
-      ["devDependencies", { "@biomejs/biome": version }],
-      ["scripts", BIOME_SCRIPTS],
-    ] as const) {
-      const existing = pkg[section];
-      if (
-        existing !== undefined &&
-        (existing === null ||
-          typeof existing !== "object" ||
-          Array.isArray(existing))
-      )
-        throw new ParseError("package.json", `${section} must be an object`);
-      const fields = (existing ?? {}) as Record<string, unknown>;
-      for (const [key, value] of Object.entries(wanted)) {
-        if (fields[key] === value) continue;
-        fields[key] = value;
-        changed = true;
-      }
-      pkg[section] = fields;
-    }
-    if (changed)
-      result = result.withNewFile(
-        "package.json",
-        sortPackageJson(`${JSON.stringify(pkg, null, 2)}\n`),
-      );
-  }
   const path = await configPath(directory);
-  if (!path) return result;
+  if (!path) return directory;
   const contents = await directory.file(path).contents();
   // migrate does not reject malformed JSONC when no migration rule matches it.
   const parsed = ts.parseConfigFileTextToJson(path, contents);
@@ -126,7 +92,9 @@ export async function updateBiome(
     "migration",
   );
   const updated = await migrated.file(`${REPOSITORY}/${path}`).contents();
-  return updated === contents ? result : result.withNewFile(path, updated);
+  return updated === contents
+    ? directory
+    : directory.withNewFile(path, updated);
 }
 
 /** Load the root config and its references, without scanning or enforcing source-code quality. */
@@ -162,10 +130,6 @@ export async function validateBiome(
 export function biomeToolchain(
   biomeVersion: string = TOOL_VERSIONS.biome,
 ): Capability {
-  const seed: (project: ProjectBlueprint) => void = (project) => {
-    project.packageJson.devDependencies["@biomejs/biome"] = biomeVersion;
-    Object.assign(project.packageJson.scripts, BIOME_SCRIPTS);
-  };
   return {
     name: "biome",
     documentation: {
@@ -179,12 +143,17 @@ export function biomeToolchain(
       ],
       init: "Seed Biome, formatting/lint subtasks, biome.jsonc, and .editorconfig.",
       update:
-        "Enforce the tool and four subtasks; let Biome migrate an existing root config, preserving EditorConfig.",
+        "Let Biome migrate an existing root config, preserving EditorConfig.",
       validate:
         "Load the root config and references with Biome, without scanning source quality.",
     },
+    packageJson: {
+      policy: {
+        scripts: BIOME_SCRIPTS,
+        devDependencies: { "@biomejs/biome": biomeVersion },
+      },
+    },
     init(project) {
-      seed(project);
       project.templates.push(templateTree(BIOME_TEMPLATE));
     },
     update: (directory) => updateBiome(directory, biomeVersion),

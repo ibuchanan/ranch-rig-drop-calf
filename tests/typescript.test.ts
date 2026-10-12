@@ -10,13 +10,13 @@ import {
   TYPESCRIPT_CONFIGS,
   TYPESCRIPT_SCRIPTS,
   typeScriptToolchain,
-  updateTypeScript,
   validateTypeScript,
 } from "../src/typescript.ts";
 import { NODE_MAJOR, TOOL_VERSIONS } from "../src/versions.ts";
 import { mockContainer } from "./container-source.ts";
 import { mockDirectory, mockModuleSource } from "./module-source.ts";
 import { typescriptTemplates, vitestTemplates } from "./templates-source.ts";
+import { runUpdate, runInit } from "./capability-fixtures.ts";
 
 const parsed = (contents: string) =>
   ts.parseConfigFileTextToJson("config.json", contents).config;
@@ -38,7 +38,7 @@ for (const dependencies of [
           ["package.json", JSON.stringify({ devDependencies: dependencies })],
         ]),
       );
-      const output = await updateTypeScript(input);
+      const output = await runUpdate(typeScriptToolchain(), input);
       const base = parsed(await output.file("tsconfig.json").contents());
       const check = parsed(
         await output.file("tsconfig.typecheck.json").contents(),
@@ -57,7 +57,7 @@ for (const dependencies of [
           ? ["test", "tests", "vitest.config.ts"]
           : []),
       ]);
-      expect(await updateTypeScript(output)).toBe(output);
+      expect(await runUpdate(typeScriptToolchain(), output)).toBe(output);
       expect(await input.file("tsconfig.json").contents()).toBe(
         baseline("tsconfig.json"),
       );
@@ -113,7 +113,7 @@ test("every TypeScript output has exactly one init contributor per profile", () 
     const owners = new Map<string, string[]>();
     for (const capability of capabilities) {
       const project = createBlueprint("sample", "", "tester");
-      if (typeof capability.init === "function") capability.init(project);
+      runInit(capability, project);
       const paths = [
         ...(project.packageJson.devDependencies.typescript
           ? ["typescript"]
@@ -165,7 +165,10 @@ test("owner comments, unrelated settings and package fields survive; trigger rem
         ...TYPESCRIPT_CONFIGS.map((path): [string, string] => [path, owner]),
       ]),
     );
-    const output = await updateTypeScript(input);
+    const output = await runUpdate(
+      typeScriptToolchain(undefined, false),
+      input,
+    );
     for (const path of TYPESCRIPT_CONFIGS) {
       const text = await output.file(path).contents();
       expect(text).toContain("// keep owner comment");
@@ -183,10 +186,13 @@ test("owner comments, unrelated settings and package fields survive; trigger rem
         typescript: TOOL_VERSIONS.typescript,
       },
     });
-    expect(await updateTypeScript(output)).toBe(output);
+    expect(await runUpdate(typeScriptToolchain(undefined, false), output)).toBe(
+      output,
+    );
     delete updated.devDependencies.vitest;
     delete updated.devDependencies.tsdown;
-    const removed = await updateTypeScript(
+    const removed = await runUpdate(
+      typeScriptToolchain(),
       output.withNewFile("package.json", JSON.stringify(updated)),
     );
     expect(
@@ -205,14 +211,13 @@ test("owner comments, unrelated settings and package fields survive; trigger rem
     expect(
       JSON.parse(await removed.file("package.json").contents()).scripts.build,
     ).toBe(TYPESCRIPT_SCRIPTS.build);
-    expect(await updateTypeScript(removed)).toBe(removed);
-    const library = await updateTypeScript(
+    expect(await runUpdate(typeScriptToolchain(), removed)).toBe(removed);
+    const library = await runUpdate(
+      typeScriptToolchain(undefined, false),
       input.withNewFile(
         "package.json",
         '{"scripts":{"build":"owner library"}}',
       ),
-      undefined,
-      false,
     );
     expect(
       JSON.parse(await library.file("package.json").contents()).scripts.build,
@@ -233,7 +238,7 @@ test("only development declarations trigger policy and a custom compiler pin is 
         ],
       ]),
     );
-    const output = await updateTypeScript(input, "5.9.3");
+    const output = await runUpdate(typeScriptToolchain("5.9.3"), input);
     expect(
       parsed(await output.file("tsconfig.json").contents()).compilerOptions
         .moduleResolution,
@@ -245,7 +250,7 @@ test("only development declarations trigger policy and a custom compiler pin is 
       JSON.parse(await output.file("package.json").contents()).devDependencies
         .typescript,
     ).toBe("5.9.3");
-    expect(await updateTypeScript(output, "5.9.3")).toBe(output);
+    expect(await runUpdate(typeScriptToolchain("5.9.3"), output)).toBe(output);
   } finally {
     source.mockRestore();
   }
@@ -254,18 +259,19 @@ test("only development declarations trigger policy and a custom compiler pin is 
 test("missing configs are recreated; missing package is not; matching package bytes are retained", async () => {
   const source = mockModuleSource();
   try {
-    const output = await updateTypeScript(mockDirectory());
+    const output = await runUpdate(typeScriptToolchain(), mockDirectory());
     // declarations config only created when tsdown is present
     expect(await output.exists("tsconfig.json")).toBe(true);
     expect(await output.exists("tsconfig.typecheck.json")).toBe(true);
     expect(await output.exists("tsconfig.declarations.json")).toBe(false);
     expect(await output.exists("package.json")).toBe(false);
-    expect(await updateTypeScript(output)).toBe(output);
+    expect(await runUpdate(typeScriptToolchain(), output)).toBe(output);
     const pkg = JSON.stringify({
       devDependencies: { typescript: TOOL_VERSIONS.typescript },
       scripts: TYPESCRIPT_SCRIPTS,
     });
-    const matching = await updateTypeScript(
+    const matching = await runUpdate(
+      typeScriptToolchain(),
       output.withNewFile("package.json", pkg),
     );
     expect(await matching.file("package.json").contents()).toBe(pkg);
@@ -301,7 +307,9 @@ test.each([
   '{"devDependencies":"bad"}',
 ])("unsafe package fails before writes: %s", async (contents) => {
   const input = mockDirectory(new Map([["package.json", contents]]));
-  await expect(updateTypeScript(input)).rejects.toThrow("package.json");
+  await expect(runUpdate(typeScriptToolchain(), input)).rejects.toThrow(
+    "package.json",
+  );
   expect(input.files.size).toBe(1);
 });
 

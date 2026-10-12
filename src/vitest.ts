@@ -1,10 +1,6 @@
 import { type Directory, dag } from "@dagger.io/dagger";
-import sortPackageJson from "sort-package-json";
-import type { Capability, Validation } from "./capability.ts";
-import { parseObject } from "./init.ts";
+import { type Capability, noOp, type Validation } from "./capability.ts";
 import { nodeContainer } from "./node.ts";
-import { ParseError } from "./preclean.ts";
-import type { ProjectBlueprint } from "./project.ts";
 import { templateTree } from "./templates.ts";
 import { TOOL_VERSIONS } from "./versions.ts";
 
@@ -15,42 +11,6 @@ export const VITEST_SCRIPTS = {
   "test:watch": "vitest watch --passWithNoTests",
   "test:coverage": "vitest run --coverage --passWithNoTests",
 } as const;
-
-export async function updateVitest(
-  directory: Directory,
-  version: string = TOOL_VERSIONS.vitest,
-): Promise<Directory> {
-  if (!(await directory.exists("package.json"))) return directory;
-  const contents = await directory.file("package.json").contents();
-  const pkg = parseObject("package.json", contents);
-  let changed = false;
-  for (const [section, wanted] of [
-    ["scripts", VITEST_SCRIPTS],
-    ["devDependencies", { vitest: version, "@vitest/coverage-v8": version }],
-  ] as const) {
-    const existing = pkg[section];
-    if (
-      existing !== undefined &&
-      (existing === null ||
-        typeof existing !== "object" ||
-        Array.isArray(existing))
-    )
-      throw new ParseError("package.json", `${section} must be an object`);
-    const fields = (existing ?? {}) as Record<string, unknown>;
-    for (const [key, value] of Object.entries(wanted)) {
-      if (fields[key] === value) continue;
-      fields[key] = value;
-      changed = true;
-    }
-    pkg[section] = fields;
-  }
-  return changed
-    ? directory.withNewFile(
-        "package.json",
-        sortPackageJson(`${JSON.stringify(pkg, null, 2)}\n`),
-      )
-    : directory;
-}
 
 // Use Vitest's file-discovery API, never collect/import test modules or run coverage cleanup.
 const VITEST_VALIDATOR = `
@@ -133,13 +93,6 @@ export async function validateVitest(
 export function vitestTesting(
   version: string = TOOL_VERSIONS.vitest,
 ): Capability {
-  const seed: (project: ProjectBlueprint) => void = (project) => {
-    Object.assign(project.packageJson.scripts, VITEST_SCRIPTS);
-    Object.assign(project.packageJson.devDependencies, {
-      vitest: version,
-      "@vitest/coverage-v8": version,
-    });
-  };
   return {
     name: "test",
     documentation: {
@@ -151,16 +104,21 @@ export function vitestTesting(
         },
       ],
       init: "Seed Vitest, matching V8 coverage, test/watch/coverage scripts, and vitest.config.ts; no sample tests.",
-      update:
-        "Enforce runner/coverage references and test scripts; preserve owner configuration and test sources.",
       validate:
         "Load Vitest config, discover test files, and initialize coverage configuration without executing tests.",
     },
+    packageJson: {
+      policy: {
+        scripts: VITEST_SCRIPTS,
+        devDependencies: { vitest: version, "@vitest/coverage-v8": version },
+      },
+    },
     init(project) {
-      seed(project);
       project.templates.push(templateTree(VITEST_TEMPLATE));
     },
-    update: (directory) => updateVitest(directory, version),
+    update: noOp(
+      "Vitest configuration and test sources are owner-managed after init; its package.json contribution enforces the runner, matching coverage provider, and test scripts.",
+    ),
     validate: (directory) => validateVitest(directory, version),
   };
 }

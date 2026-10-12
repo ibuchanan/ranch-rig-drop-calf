@@ -1,19 +1,19 @@
 import { expect, spyOn, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { dag } from "@dagger.io/dagger";
-import { libraryBuild } from "../src/capabilities.ts";
 import { updateCapabilities, validateCapabilities } from "../src/capability.ts";
 import { DropCalf } from "../src/index.ts";
 import {
   LIBRARY_BUILD_COMMAND,
   LIBRARY_BUILD_CONFIG,
   LIBRARY_BUILD_SCRIPT,
-  updateLibraryBuild,
+  libraryBuild,
 } from "../src/library-build.ts";
 import { buildProject, resolveProfile } from "../src/profiles.ts";
 import { TOOL_VERSIONS } from "../src/versions.ts";
 import { mockDirectory, mockModuleSource } from "./module-source.ts";
 import { libraryBuildTemplates } from "./templates-source.ts";
+import { runUpdate } from "./capability-fixtures.ts";
 
 const templates = libraryBuildTemplates();
 
@@ -87,7 +87,7 @@ test("update enforces pipeline and formats while preserving the example's entrie
         ["bun.lock", "owner lockfile"],
       ]),
     );
-    const output = (await updateLibraryBuild(input)) as typeof input;
+    const output = (await runUpdate(libraryBuild(), input)) as typeof input;
     const updated = JSON.parse(await output.file("package.json").contents());
     pkg.scripts.build = LIBRARY_BUILD_COMMAND;
     pkg.devDependencies.tsdown = TOOL_VERSIONS.tsdown;
@@ -108,7 +108,7 @@ test("update enforces pipeline and formats while preserving the example's entrie
       expect(await output.file(path).contents()).toEqual(
         input.files.get(path) ?? "",
       );
-    expect(await updateLibraryBuild(output)).toBe(output);
+    expect(await runUpdate(libraryBuild(), output)).toBe(output);
   } finally {
     source.mockRestore();
   }
@@ -126,11 +126,12 @@ test("matching package/config bytes and owner deletions are retained; missing po
         [LIBRARY_BUILD_CONFIG, config],
       ]),
     );
-    const output = (await updateLibraryBuild(input)) as typeof input;
+    const output = (await runUpdate(libraryBuild(), input)) as typeof input;
     expect(await output.file("package.json").contents()).toEqual(pkg);
     expect(await output.file(LIBRARY_BUILD_CONFIG).contents()).toEqual(config);
-    expect(await updateLibraryBuild(output)).toBe(output);
-    const missing = await updateLibraryBuild(
+    expect(await runUpdate(libraryBuild(), output)).toBe(output);
+    const missing = await runUpdate(
+      libraryBuild(),
       mockDirectory(new Map([["package.json", "{}"]])),
     );
     expect(await missing.file(LIBRARY_BUILD_CONFIG).contents()).toEqual(
@@ -140,7 +141,7 @@ test("matching package/config bytes and owner deletions are retained; missing po
       JSON.parse(await missing.file("package.json").contents()).exports,
     ).toBeUndefined();
     const absent = mockDirectory();
-    expect(await updateLibraryBuild(absent)).toBe(absent);
+    expect(await runUpdate(libraryBuild(), absent)).toBe(absent);
   } finally {
     source.mockRestore();
   }
@@ -156,7 +157,9 @@ test.each([
   "update rejects malformed shared metadata before writes: %s",
   async (contents) => {
     const input = mockDirectory(new Map([["package.json", contents]]));
-    await expect(updateLibraryBuild(input)).rejects.toThrow("package.json");
+    await expect(runUpdate(libraryBuild(), input)).rejects.toThrow(
+      "package.json",
+    );
     expect(input.files).toEqual(new Map([["package.json", contents]]));
   },
 );
@@ -172,7 +175,7 @@ test.each(["{broken", "null", "[]"])(
           [LIBRARY_BUILD_CONFIG, contents],
         ]),
       );
-      await expect(updateLibraryBuild(input)).rejects.toThrow(
+      await expect(runUpdate(libraryBuild(), input)).rejects.toThrow(
         LIBRARY_BUILD_CONFIG,
       );
       expect(input.files.size).toBe(2);
@@ -186,7 +189,8 @@ test("executable or package config conflicts fail with migration guidance, never
   for (const extension of ["ts", "mts", "cts", "js", "mjs", "cjs"]) {
     const path = `tsdown.config.${extension}`;
     await expect(
-      updateLibraryBuild(
+      runUpdate(
+        libraryBuild(),
         mockDirectory(
           new Map([
             ["package.json", "{}"],
@@ -197,7 +201,8 @@ test("executable or package config conflicts fail with migration guidance, never
     ).rejects.toThrow(`remove ${path}`);
   }
   await expect(
-    updateLibraryBuild(
+    runUpdate(
+      libraryBuild(),
       mockDirectory(new Map([["package.json", '{"tsdown":{}}']])),
     ),
   ).rejects.toThrow("package.json#tsdown");

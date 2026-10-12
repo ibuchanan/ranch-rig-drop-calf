@@ -11,6 +11,7 @@ import {
 } from "../src/profiles.ts";
 import { createBlueprint } from "../src/project.ts";
 import { mockDirectory, mockModuleSource } from "./module-source.ts";
+import { runInit } from "./capability-fixtures.ts";
 
 const kinds = ["library", "forge-app", "tool", "agent-skill"];
 
@@ -28,7 +29,7 @@ test.each(kinds)(
     ).toHaveLength(1);
     const project = createBlueprint("sample", "", "tester");
     const before = structuredClone(project);
-    if (typeof capability.init === "function") capability.init(project);
+    runInit(capability, project);
     expect(project.packageJson).toEqual(before.packageJson);
     expect(project.templates.map((template) => template.path)).toEqual(
       before.templates.map((template) => template.path),
@@ -298,7 +299,7 @@ test("a promptfoo dependency alone does not select eval guidance", () => {
   const project = createBlueprint("sample", "", "tester");
   project.packageJson.devDependencies.promptfoo = "owner";
   const capability = aidev("forge-app");
-  if (typeof capability.init === "function") capability.init(project);
+  runInit(capability, project);
   expect(project.files.get("AGENTS.md")).not.toContain("## Prompt evaluations");
 });
 

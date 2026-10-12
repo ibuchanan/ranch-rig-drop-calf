@@ -5,9 +5,9 @@ import {
   reconcileForgeRuntime,
 } from "../src/forge-manifest.ts";
 import { DropCalf } from "../src/index.ts";
-import { mergeScaffoldPackage, scaffoldName } from "../src/init.ts";
+import { mergeScaffoldPackage, scaffoldName } from "../src/package-json.ts";
 import { NODE_NVMRC } from "../src/node.ts";
-import { ParseError } from "../src/preclean.ts";
+import { ParseError } from "../src/errors.ts";
 import { buildProject } from "../src/profiles.ts";
 import { mockDirectory, mockModuleSource } from "./module-source.ts";
 

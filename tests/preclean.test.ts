@@ -1,12 +1,11 @@
 import { describe, expect, test } from "bun:test";
 import { DropCalf } from "../src/index.ts";
 import {
-  applyPreclean,
   EMPTY_SECTIONS,
   SCAFFOLD_FIELDS,
   stripScaffold,
-  UNWANTED,
-} from "../src/preclean.ts";
+} from "../src/package-json.ts";
+import { applyPreclean, UNWANTED } from "../src/preclean.ts";
 
 function directory(files: Map<string, string>) {
   const removed: string[] = [];

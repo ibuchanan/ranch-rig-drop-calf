@@ -30,6 +30,10 @@ directly; each declares a contribution of **seed** and **policy** entries (see
 - Rules that depend on repository contents, such as the license derived from
   the catalog, stay in the owning capability's `update` and use the module's
   low-level edit primitive.
+- Capability verbs act only on files the capability owns; `package.json` is
+  contributed. A capability whose only output is its contribution declares
+  `update`, and `init` when it seeds no files, as a no-op whose reason
+  describes the contribution.
 
 Pins live in `pins/package.json`, a private manifest that is never installed.
 Its `devDependencies` list every npm-installable pin as an exact version, so

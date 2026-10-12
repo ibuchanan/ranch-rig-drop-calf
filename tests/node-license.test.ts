@@ -1,6 +1,7 @@
 import { expect, test } from "bun:test";
-import { updateNode } from "../src/node.ts";
 import { mockDirectory } from "./module-source.ts";
+import { nodeBaseline } from "../src/node.ts";
+import { runUpdate } from "./capability-fixtures.ts";
 
 const catalog =
   "metadata:\n  annotations:\n    forge-ranch/license: Apache-2.0\n";
@@ -20,13 +21,13 @@ test.each(["library", "forge-app", "tool", "agent-skill"])(
         ["catalog-info.yaml", catalog],
       ]),
     );
-    const output = await updateNode(input, kind);
+    const output = await runUpdate(nodeBaseline(kind), input);
     expect(JSON.parse(await output.file("package.json").contents())).toEqual({
       ...pkg,
       license: "Apache-2.0",
     });
     expect(await output.file("catalog-info.yaml").contents()).toBe(catalog);
-    expect(await updateNode(output, kind)).toBe(output);
+    expect(await runUpdate(nodeBaseline(kind), output)).toBe(output);
     expect(await input.file("package.json").contents()).toBe(
       JSON.stringify(pkg),
     );
@@ -34,14 +35,14 @@ test.each(["library", "forge-app", "tool", "agent-skill"])(
 );
 
 test("Node adds a missing package license from catalog without adding dependencies", async () => {
-  const output = await updateNode(
+  const output = await runUpdate(
+    nodeBaseline("tool"),
     mockDirectory(
       new Map([
         ["package.json", "{}"],
         ["catalog-info.yaml", catalog],
       ]),
     ),
-    "tool",
   );
   expect(JSON.parse(await output.file("package.json").contents())).toEqual({
     license: "Apache-2.0",
@@ -60,13 +61,13 @@ test.each([
   async (contents) => {
     const files = new Map([["package.json", "{}"]]);
     if (contents !== undefined) files.set("catalog-info.yaml", contents);
-    await expect(updateNode(mockDirectory(files), "tool")).rejects.toThrow(
-      "catalog-info.yaml",
-    );
+    await expect(
+      runUpdate(nodeBaseline("tool"), mockDirectory(files)),
+    ).rejects.toThrow("catalog-info.yaml");
   },
 );
 
 test("Node does not require catalog or create package.json when package is absent", async () => {
-  const output = await updateNode(mockDirectory(), "tool");
+  const output = await runUpdate(nodeBaseline("tool"), mockDirectory());
   expect(await output.exists("package.json")).toBe(false);
 });

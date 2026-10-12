@@ -22,6 +22,7 @@ import {
   typescriptTemplates,
   vitestTemplates,
 } from "./templates-source.ts";
+import { runInit } from "./capability-fixtures.ts";
 
 let moduleSource: ReturnType<typeof mockModuleSource>;
 beforeEach(() => {
@@ -93,7 +94,7 @@ describe("biomeToolchain capability", () => {
   test("adds format and lint scripts and dependency without authoring config", () => {
     const project = createBlueprint("my-package", "", "");
     const capability = biomeToolchain("2.5.13");
-    if (typeof capability.init === "function") capability.init(project);
+    runInit(capability, project);
     expect(project.packageJson.scripts.format).toBe("biome format --write");
     expect(project.packageJson.scripts["format:check"]).toBe("biome format");
     expect(project.packageJson.scripts["lint:check"]).toBe("biome lint");
@@ -220,19 +221,29 @@ describe("profiles", () => {
   });
 
   test.each([
-    ["library", "lefthook run lint", "sh scripts/build.sh", undefined],
+    [
+      "library",
+      "lefthook run lint",
+      "sh scripts/build.sh",
+      "bun test --pass-with-no-tests",
+    ],
     [
       "forge-app",
       "lefthook run lint",
       "tsc --project tsconfig.json",
       "vitest run --passWithNoTests",
     ],
-    ["tool", "lefthook run lint", "tsc --project tsconfig.json", undefined],
+    [
+      "tool",
+      "lefthook run lint",
+      "tsc --project tsconfig.json",
+      "bun test --pass-with-no-tests",
+    ],
     [
       "agent-skill",
       "lefthook run lint",
       "tsc --project tsconfig.json",
-      undefined,
+      "bun test --pass-with-no-tests",
     ],
   ])("%s fills the stable developer slots", (kind, lint, build, testScript) => {
     const { packageJson } = buildProject(kind, "sample", "tester");
@@ -242,7 +253,7 @@ describe("profiles", () => {
       typecheck: "tsc --project tsconfig.typecheck.json --noEmit",
       build,
     });
-    expect(packageJson.scripts.clean).toBeUndefined();
+    expect(packageJson.scripts.clean).toBe("rm -rf dist");
     expect(packageJson.scripts.test).toBe(testScript);
     if (kind === "library") {
       expect(packageJson.devDependencies.tsdown).toBeDefined();
@@ -357,11 +368,13 @@ describe("profiles", () => {
     }
   });
 
-  test("agent-skill selects Bun testing with an update policy, not a no-testing slot", () => {
+  test("agent-skill selects Bun testing with a package policy, not a no-testing slot", () => {
     const testing = PROFILES["agent-skill"]?.find(
       (capability) => capability.name === "test",
     );
     expect(typeof testing?.init).not.toBe("function");
-    expect(typeof testing?.update).toBe("function");
+    expect(testing?.packageJson?.policy?.scripts).toMatchObject({
+      test: "bun test --pass-with-no-tests",
+    });
   });
 });

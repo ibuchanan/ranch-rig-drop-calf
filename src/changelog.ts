@@ -1,10 +1,6 @@
 import type { Directory } from "@dagger.io/dagger";
-import sortPackageJson from "sort-package-json";
-import type { Capability } from "./capability.ts";
-import { parseObject } from "./init.ts";
+import { type Capability, noOp } from "./capability.ts";
 import { nodeContainer } from "./node.ts";
-import { ParseError } from "./preclean.ts";
-import type { ProjectBlueprint } from "./project.ts";
 import { copyTemplate, templateTree } from "./templates.ts";
 import { TOOL_VERSIONS } from "./versions.ts";
 
@@ -56,51 +52,10 @@ export function copyChangelog(
   return copyTemplate(destination, source);
 }
 
-/** Maintain only the tool pin and command; release policy and output are init-only. */
-export async function updateChangelog(
-  directory: Directory,
-  cliffVersion: string = TOOL_VERSIONS.gitCliff,
-): Promise<Directory> {
-  if (!(await directory.exists("package.json"))) return directory;
-  const contents = await directory.file("package.json").contents();
-  const pkg = parseObject("package.json", contents);
-  let changed = false;
-  for (const [section, wanted] of [
-    ["devDependencies", { "git-cliff": cliffVersion }],
-    ["scripts", { changelog: CHANGELOG_COMMAND }],
-  ] as const) {
-    const existing = pkg[section];
-    if (
-      existing !== undefined &&
-      (existing === null ||
-        typeof existing !== "object" ||
-        Array.isArray(existing))
-    )
-      throw new ParseError("package.json", `${section} must be an object`);
-    const fields = (existing ?? {}) as Record<string, unknown>;
-    for (const [key, value] of Object.entries(wanted)) {
-      if (fields[key] === value) continue;
-      fields[key] = value;
-      changed = true;
-    }
-    pkg[section] = fields;
-  }
-  return changed
-    ? directory.withNewFile(
-        "package.json",
-        sortPackageJson(`${JSON.stringify(pkg, null, 2)}\n`),
-      )
-    : directory;
-}
-
 /** Every kind that releases installs this tool and renders through this command. */
 export function changelogToolchain(
   cliffVersion: string = TOOL_VERSIONS.gitCliff,
 ): Capability {
-  const seed: (project: ProjectBlueprint) => void = (project) => {
-    project.packageJson.devDependencies["git-cliff"] = cliffVersion;
-    project.packageJson.scripts.changelog = CHANGELOG_COMMAND;
-  };
   return {
     name: "changelog",
     documentation: {
@@ -113,16 +68,21 @@ export function changelogToolchain(
         },
       ],
       init: "Seeds cliff.toml release policy and CHANGELOG.md from templates; adds changelog script to package.json",
-      update:
-        "Maintains git-cliff dependency version and changelog command in package.json",
       validate:
         "Validates cliff.toml policy and runs git-cliff command against repository commit history",
     },
+    packageJson: {
+      policy: {
+        devDependencies: { "git-cliff": cliffVersion },
+        scripts: { changelog: CHANGELOG_COMMAND },
+      },
+    },
     init(project) {
-      seed(project);
       project.templates.push(templateTree(CHANGELOG_TEMPLATE));
     },
-    update: (directory) => updateChangelog(directory, cliffVersion),
+    update: noOp(
+      "Release policy and CHANGELOG.md are owner-managed after init; its package.json contribution maintains the git-cliff dependency and changelog command.",
+    ),
     validate: (directory) => validateChangelog(directory, cliffVersion),
   };
 }

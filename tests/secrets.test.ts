@@ -13,11 +13,11 @@ import {
   SECRETS_ASSETS,
   SECRETS_EXECUTABLES,
   transformSecretsTemplate,
-  updateSecrets,
   validateSecrets,
 } from "../src/secrets.ts";
 import { mockDirectory, mockModuleSource } from "./module-source.ts";
 import { secretsTemplates } from "./templates-source.ts";
+import { runUpdate } from "./capability-fixtures.ts";
 
 test("only the project name is derived, and only in the config", () => {
   expect(
@@ -159,7 +159,7 @@ test("update preserves owner declarations byte-for-byte and replaces only owned 
       scripts: { ...FORGE_SECRETS_SCRIPTS, "forge:custom": "keep" },
       custom: true,
     });
-    expect(await updateSecrets(output)).toBe(output);
+    expect(await runUpdate(forgeSecrets(), output)).toBe(output);
     expect(await input.file("scripts/env-var.sh").contents()).toBe(
       "# owner wrapper\n",
     );
@@ -203,11 +203,11 @@ test("update restores a missing helper and executable permissions without seedin
         SECRETS_EXECUTABLES[1],
         secretTemplate(SECRETS_EXECUTABLES[1]),
       );
-    const output = await updateSecrets(input);
+    const output = await runUpdate(forgeSecrets(), input);
     for (const path of SECRETS_EXECUTABLES)
       expect(await output.stat(path).permissions()).toBe(0o755);
-    expect(await updateSecrets(output)).toBe(output);
-    const empty = await updateSecrets(mockDirectory());
+    expect(await runUpdate(forgeSecrets(), output)).toBe(output);
+    const empty = await runUpdate(forgeSecrets(), mockDirectory());
     expect(await empty.exists("secretspec.toml")).toBe(false);
     expect(await empty.exists(FORGE_VARIABLE_KEYS)).toBe(false);
     expect(await empty.exists("package.json")).toBe(false);
@@ -226,7 +226,7 @@ test.each([
   const input = seededSecrets().withNewFile(SECRETS_EXECUTABLES[1], helper);
   const write = spyOn(input, "withNewFile");
   try {
-    await expect(updateSecrets(input)).rejects.toThrow(
+    await expect(runUpdate(forgeSecrets(), input)).rejects.toThrow(
       `Move the keys to ${FORGE_VARIABLE_KEYS}`,
     );
     expect(write).not.toHaveBeenCalled();
@@ -245,7 +245,7 @@ test("empty legacy allowlist is safe to replace, but missing owner JSON is not i
         SECRETS_EXECUTABLES[1],
         "const APP_VARIABLE_KEYS = []; if (APP_VARIABLE_KEYS.length === 0) {} for (const key of APP_VARIABLE_KEYS) {}",
       );
-    const output = await updateSecrets(input);
+    const output = await runUpdate(forgeSecrets(), input);
     expect(await output.file(SECRETS_EXECUTABLES[1]).contents()).toBe(
       secretTemplate(SECRETS_EXECUTABLES[1]),
     );
@@ -261,7 +261,9 @@ test.each(["{", "null", "[]", '{"scripts":null}', '{"scripts":[]}'])(
     const input = seededSecrets().withNewFile("package.json", contents);
     const write = spyOn(input, "withNewFile");
     try {
-      await expect(updateSecrets(input)).rejects.toThrow("package.json");
+      await expect(runUpdate(forgeSecrets(), input)).rejects.toThrow(
+        "package.json",
+      );
       expect(write).not.toHaveBeenCalled();
     } finally {
       write.mockRestore();

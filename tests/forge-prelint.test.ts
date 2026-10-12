@@ -12,12 +12,12 @@ import {
   PRELINT_PACKAGE,
   PRELINT_SCRIPTS,
   prelint,
-  updatePrelint,
   validatePrelint,
 } from "../src/prelint.ts";
 import { buildProject } from "../src/profiles.ts";
 import { TOOL_VERSIONS } from "../src/versions.ts";
 import { mockDirectory, mockModuleSource } from "./module-source.ts";
+import { runUpdate } from "./capability-fixtures.ts";
 
 const validationReason =
   "Prelint has no repository-local configuration to validate; its rules ship in the dependency package. Source scanning belongs to the lint workflow.";
@@ -29,15 +29,25 @@ test("prelint init and validate are explicit no-ops with enumerable reasons", ()
       capability: "prelint",
       verb: "init",
       reason:
-        "Prelint has no repository-local configuration to seed; its rules ship in the dependency package, and update maintains the tool dependencies and scripts.",
+        "Prelint has no repository-local configuration to seed; its rules ship in the dependency package, and its package.json contribution supplies the tool dependencies and scripts.",
+    },
+    {
+      capability: "prelint",
+      verb: "update",
+      reason:
+        "Prelint owns no files; its package.json contribution enforces the ast-grep and @forge-ahead/prelint dependencies and lint subtasks.",
     },
     { capability: "prelint", verb: "validate", reason: validationReason },
   ]);
   const project = buildProject("forge-app", "sample", "tester");
-  expect(project.packageJson.scripts["lint:prelint"]).toBeUndefined();
-  expect(project.packageJson.scripts["lint:forge"]).toBeUndefined();
-  expect(project.packageJson.devDependencies[AST_GREP_PACKAGE]).toBeUndefined();
-  expect(project.packageJson.devDependencies[PRELINT_PACKAGE]).toBeUndefined();
+  // Init shows the contribution's full intent: seed, then policy.
+  expect(project.packageJson.scripts).toMatchObject(PRELINT_SCRIPTS);
+  expect(project.packageJson.devDependencies[AST_GREP_PACKAGE]).toBe(
+    TOOL_VERSIONS.astGrep,
+  );
+  expect(project.packageJson.devDependencies[PRELINT_PACKAGE]).toBe(
+    TOOL_VERSIONS.forgePrelint,
+  );
   expect(project.templates.some(({ path }) => path.includes("prelint"))).toBe(
     false,
   );
@@ -98,8 +108,9 @@ test("update enforces selected dependencies and scripts while preserving unrelat
 
 test("update creates missing sections and owned keys, but not a missing package or hook config", async () => {
   const empty = mockDirectory();
-  expect(await updatePrelint(empty)).toBe(empty);
-  const output = await updatePrelint(
+  expect(await runUpdate(prelint(), empty)).toBe(empty);
+  const output = await runUpdate(
+    prelint(),
     mockDirectory(new Map([["package.json", "{}"]])),
   );
   const pkg = JSON.parse(await output.file("package.json").contents());
@@ -113,7 +124,7 @@ test("update creates missing sections and owned keys, but not a missing package 
   expect(await output.exists("lefthook.yml")).toBe(false);
   const text = `${JSON.stringify(pkg, null, 4)}\r\n`;
   const matching = output.withNewFile("package.json", text);
-  expect(await updatePrelint(matching)).toBe(matching);
+  expect(await runUpdate(prelint(), matching)).toBe(matching);
   expect(await matching.file("package.json").contents()).toBe(text);
 });
 
@@ -134,7 +145,7 @@ test.each([
     const input = mockDirectory(new Map([["package.json", contents]]));
     const write = spyOn(input, "withNewFile");
     try {
-      await expect(updatePrelint(input)).rejects.toThrow("package.json");
+      await expect(runUpdate(prelint(), input)).rejects.toThrow("package.json");
       expect(write).not.toHaveBeenCalled();
       expect(await input.file("package.json").contents()).toBe(contents);
     } finally {
@@ -249,11 +260,12 @@ test("capability and standalone validation skip without reading files or startin
   }
 });
 
-test("Forge blueprints seed only API types; errors and logging belong to update", () => {
+test("Forge blueprints carry API types as seed and errors and logging as policy", () => {
   const pkg = buildProject("forge-app", "sample", "tester").packageJson;
   expect(pkg.dependencies).toEqual({
-    "@forge-ahead/atlassian-api-types":
-      "github:ibuchanan/forge-ahead-atlassian-api-types",
+    "@forge-ahead/atlassian-api-types": TOOL_VERSIONS.forgeAheadApiTypes,
+    "@forge-ahead/errors": TOOL_VERSIONS.forgeAheadErrors,
+    "@forge-ahead/logging": TOOL_VERSIONS.forgeAheadLogging,
   });
   for (const kind of ["library", "tool", "agent-skill"]) {
     expect(

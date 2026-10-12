@@ -5,7 +5,6 @@ import {
   GIT_HOOKS_SCRIPTS,
   GIT_HOOKS_TEMPLATE,
   gitHooks,
-  updateGitHooks,
   validateGitHooks,
 } from "../src/git-hooks.ts";
 import { DropCalf } from "../src/index.ts";
@@ -15,12 +14,13 @@ import { TOOL_VERSIONS } from "../src/versions.ts";
 import { mockContainer } from "./container-source.ts";
 import { mockDirectory, mockModuleSource } from "./module-source.ts";
 import { gitHooksTemplates } from "./templates-source.ts";
+import { runUpdate, runInit } from "./capability-fixtures.ts";
 
 test("init and update enforce only the selected pin and hook dispatch scripts", async () => {
   const capability = gitHooks("2.1.4");
   const project = createBlueprint("sample", "", "tester");
   if (typeof capability.init !== "function") throw new Error("missing init");
-  capability.init(project);
+  runInit(capability, project);
   expect(project.templates.map((template) => template.path)).toEqual([
     GIT_HOOKS_TEMPLATE,
   ]);
@@ -63,8 +63,9 @@ test("init and update enforce only the selected pin and hook dispatch scripts", 
 
 test("update creates missing owned keys but not a missing package or hook config", async () => {
   const empty = mockDirectory();
-  expect(await updateGitHooks(empty)).toBe(empty);
-  const output = await updateGitHooks(
+  expect(await runUpdate(gitHooks(), empty)).toBe(empty);
+  const output = await runUpdate(
+    gitHooks(),
     mockDirectory(new Map([["package.json", "{}"]])),
   );
   const pkg = JSON.parse(await output.file("package.json").contents());
@@ -75,7 +76,7 @@ test("update creates missing owned keys but not a missing package or hook config
   expect(await output.exists("lefthook.yml")).toBe(false);
   const text = JSON.stringify(pkg, null, 4);
   const matching = output.withNewFile("package.json", text);
-  expect(await updateGitHooks(matching)).toBe(matching);
+  expect(await runUpdate(gitHooks(), matching)).toBe(matching);
   expect(await matching.file("package.json").contents()).toBe(text);
 });
 
@@ -92,7 +93,7 @@ test.each([
   "update rejects unsafe package shape without writes: %s",
   async (contents) => {
     const input = mockDirectory(new Map([["package.json", contents]]));
-    await expect(updateGitHooks(input)).rejects.toThrow("package.json");
+    await expect(runUpdate(gitHooks(), input)).rejects.toThrow("package.json");
     expect(await input.file("package.json").contents()).toBe(contents);
   },
 );
@@ -145,7 +146,7 @@ test.each(["library", "forge-app", "tool", "agent-skill"])(
 test("git-hooks is the only capability that contributes lint, regardless of composition order", () => {
   const owners = resolveProfile("forge-app").filter((capability) => {
     const project = createBlueprint("sample", "", "tester");
-    if (typeof capability.init === "function") capability.init(project);
+    runInit(capability, project);
     return Object.hasOwn(project.packageJson.scripts, "lint");
   });
   expect(owners.map((capability) => capability.name)).toEqual(["git-hooks"]);

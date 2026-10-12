@@ -8,13 +8,10 @@ import {
 import { DropCalf } from "../src/index.ts";
 import { buildProject } from "../src/profiles.ts";
 import { createBlueprint } from "../src/project.ts";
-import {
-  bundleSize,
-  SIZE_LIMIT_COMMAND,
-  updateSizeLimit,
-} from "../src/size-limit.ts";
+import { bundleSize, SIZE_LIMIT_COMMAND } from "../src/size-limit.ts";
 import { TOOL_VERSIONS } from "../src/versions.ts";
 import { mockDirectory, mockModuleSource } from "./module-source.ts";
+import { runUpdate, runInit } from "./capability-fixtures.ts";
 
 const validationReason =
   "Size Limit has no supported configuration-only validation interface. Measurement requires build artifacts and belongs to the size workflow; validation does not build the project or assess potentially stale output.";
@@ -64,8 +61,7 @@ test("init seeds the selected budget and update maintains only the selected pair
   project.packageJson["size-limit"] = [
     { name: "scaffold", path: "old.js", limit: "1 kB" },
   ];
-  if (typeof capability.init !== "function") throw new Error("missing init");
-  capability.init(project);
+  runInit(capability, project);
   expect(project.packageJson["size-limit"]).toEqual([
     { name: "Selected bundle", path: "build/main.js", limit: "10 kB" },
   ]);
@@ -122,8 +118,11 @@ test("init seeds the selected budget and update maintains only the selected pair
 
 test("update creates missing owned keys but not a missing package or budget, retaining matching bytes", async () => {
   const empty = mockDirectory();
-  expect(await updateSizeLimit(empty)).toBe(empty);
-  const output = await updateSizeLimit(
+  expect(await runUpdate(bundleSize("sample", "dist/index.mjs"), empty)).toBe(
+    empty,
+  );
+  const output = await runUpdate(
+    bundleSize("sample", "dist/index.mjs"),
     mockDirectory(new Map([["package.json", "{}"]])),
   );
   const pkg = JSON.parse(await output.file("package.json").contents());
@@ -136,7 +135,9 @@ test("update creates missing owned keys but not a missing package or budget, ret
   });
   const text = `${JSON.stringify(pkg, null, 4)}\r\n`;
   const matching = output.withNewFile("package.json", text);
-  expect(await updateSizeLimit(matching)).toBe(matching);
+  expect(
+    await runUpdate(bundleSize("sample", "dist/index.mjs"), matching),
+  ).toBe(matching);
   expect(await matching.file("package.json").contents()).toBe(text);
 });
 
@@ -148,7 +149,8 @@ test.each([
 ])(
   "update does not validate or repair an owner budget: %j",
   async ({ budget }) => {
-    const output = await updateSizeLimit(
+    const output = await runUpdate(
+      bundleSize("sample", "dist/index.mjs"),
       mockDirectory(
         new Map([["package.json", JSON.stringify({ "size-limit": budget })]]),
       ),
@@ -156,7 +158,9 @@ test.each([
     expect(
       JSON.parse(await output.file("package.json").contents())["size-limit"],
     ).toEqual(budget);
-    expect(await updateSizeLimit(output)).toBe(output);
+    expect(
+      await runUpdate(bundleSize("sample", "dist/index.mjs"), output),
+    ).toBe(output);
   },
 );
 
@@ -174,7 +178,9 @@ test.each([
   "update rejects unsafe package shape without writes: %s",
   async (contents) => {
     const input = mockDirectory(new Map([["package.json", contents]]));
-    await expect(updateSizeLimit(input)).rejects.toThrow("package.json");
+    await expect(
+      runUpdate(bundleSize("sample", "dist/index.mjs"), input),
+    ).rejects.toThrow("package.json");
     expect(await input.file("package.json").contents()).toBe(contents);
   },
 );
@@ -229,7 +235,9 @@ test.each(["library", "forge-app"])(
 
 test("validation is an enumerable no-op without repository reads, tools or measurement", async () => {
   const capability = bundleSize("Unused", "unused.js");
-  expect(noOpReasons([capability])).toEqual([
+  expect(
+    noOpReasons([capability]).filter((entry) => entry.verb === "validate"),
+  ).toEqual([
     { capability: "size-limit", verb: "validate", reason: validationReason },
   ]);
   const input = new Proxy({} as Directory, {

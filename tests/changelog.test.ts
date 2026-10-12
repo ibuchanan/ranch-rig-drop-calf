@@ -6,7 +6,6 @@ import {
   CHANGELOG_CONFIG,
   CHANGELOG_TEMPLATE,
   changelogToolchain,
-  updateChangelog,
   validateChangelog,
 } from "../src/changelog.ts";
 import { DropCalf } from "../src/index.ts";
@@ -16,6 +15,7 @@ import { TOOL_VERSIONS } from "../src/versions.ts";
 import { mockContainer } from "./container-source.ts";
 import { mockDirectory, mockModuleSource } from "./module-source.ts";
 import { changelogTemplates } from "./templates-source.ts";
+import { runUpdate, runInit } from "./capability-fixtures.ts";
 
 /** Map each command to what the container writes back. */
 const containerFor = (outputs: Record<string, string>) =>
@@ -57,7 +57,7 @@ test("init and update use the selected pin without claiming unrelated package fi
   const capability = changelogToolchain("2.0.0");
   const project = createBlueprint("sample", "", "tester");
   if (typeof capability.init !== "function") throw new Error("missing init");
-  capability.init(project);
+  runInit(capability, project);
   expect(project.templates.map((template) => template.path)).toEqual([
     CHANGELOG_TEMPLATE,
   ]);
@@ -99,9 +99,9 @@ test("init and update use the selected pin without claiming unrelated package fi
 
 test("update creates missing package sections but leaves missing seed files and package absent", async () => {
   const empty = mockDirectory();
-  expect(await updateChangelog(empty)).toBe(empty);
+  expect(await runUpdate(changelogToolchain(), empty)).toBe(empty);
   const input = mockDirectory(new Map([["package.json", "{}"]]));
-  const output = await updateChangelog(input);
+  const output = await runUpdate(changelogToolchain(), input);
   expect(JSON.parse(await output.file("package.json").contents())).toEqual({
     scripts: { changelog: CHANGELOG_COMMAND },
     devDependencies: { "git-cliff": TOOL_VERSIONS.gitCliff },
@@ -114,7 +114,7 @@ test("update creates missing package sections but leaves missing seed files and 
     4,
   );
   const matching = output.withNewFile("package.json", text);
-  expect(await updateChangelog(matching)).toBe(matching);
+  expect(await runUpdate(changelogToolchain(), matching)).toBe(matching);
   expect(await matching.file("package.json").contents()).toBe(text);
 });
 
@@ -128,7 +128,9 @@ test.each([
   '{"devDependencies":null}',
 ])("update rejects an unsafe package without writes: %s", async (contents) => {
   const input = mockDirectory(new Map([["package.json", contents]]));
-  await expect(updateChangelog(input)).rejects.toThrow("package.json");
+  await expect(runUpdate(changelogToolchain(), input)).rejects.toThrow(
+    "package.json",
+  );
   expect(await input.file("package.json").contents()).toBe(contents);
 });
 

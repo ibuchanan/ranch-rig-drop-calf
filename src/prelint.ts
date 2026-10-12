@@ -1,8 +1,5 @@
 import type { Directory } from "@dagger.io/dagger";
-import sortPackageJson from "sort-package-json";
 import { type Capability, noOp } from "./capability.ts";
-import { parseObject } from "./init.ts";
-import { ParseError } from "./preclean.ts";
 import { TOOL_VERSIONS } from "./versions.ts";
 
 /** The rules ship in a package; only dependency references and scripts are maintained. */
@@ -21,49 +18,6 @@ export const PRELINT_SCRIPTS = {
 const PRELINT_VALIDATION = noOp(
   "Prelint has no repository-local configuration to validate; its rules ship in the dependency package. Source scanning belongs to the lint workflow.",
 );
-
-/** Enforce only the tool dependencies and named subtasks; git-hooks alone owns lint. */
-export async function updatePrelint(
-  directory: Directory,
-  astGrepVersion: string = TOOL_VERSIONS.astGrep,
-  rulesPackage: string = TOOL_VERSIONS.forgePrelint,
-): Promise<Directory> {
-  if (!(await directory.exists("package.json"))) return directory;
-  const pkg = parseObject(
-    "package.json",
-    await directory.file("package.json").contents(),
-  );
-  let changed = false;
-  for (const [section, wanted] of [
-    [
-      "devDependencies",
-      { [AST_GREP_PACKAGE]: astGrepVersion, [PRELINT_PACKAGE]: rulesPackage },
-    ],
-    ["scripts", PRELINT_SCRIPTS],
-  ] as const) {
-    const existing = pkg[section];
-    if (
-      existing !== undefined &&
-      (existing === null ||
-        typeof existing !== "object" ||
-        Array.isArray(existing))
-    )
-      throw new ParseError("package.json", `${section} must be an object`);
-    const fields = (existing ?? {}) as Record<string, unknown>;
-    for (const [key, value] of Object.entries(wanted)) {
-      if (fields[key] === value) continue;
-      fields[key] = value;
-      changed = true;
-    }
-    pkg[section] = fields;
-  }
-  return changed
-    ? directory.withNewFile(
-        "package.json",
-        sortPackageJson(`${JSON.stringify(pkg, null, 2)}\n`),
-      )
-    : directory;
-}
 
 export function prelint(
   astGrepVersion: string = TOOL_VERSIONS.astGrep,
@@ -86,14 +40,23 @@ export function prelint(
             "Forge app linting rules for manifest, module wiring, and handler patterns",
         },
       ],
-      update:
-        "Maintains ast-grep and @forge-ahead/prelint dependency versions and lint commands",
+    },
+    // Git-hooks alone owns lint; prelint contributes only named subtasks.
+    packageJson: {
+      policy: {
+        scripts: PRELINT_SCRIPTS,
+        devDependencies: {
+          [AST_GREP_PACKAGE]: astGrepVersion,
+          [PRELINT_PACKAGE]: rulesPackage,
+        },
+      },
     },
     init: noOp(
-      "Prelint has no repository-local configuration to seed; its rules ship in the dependency package, and update maintains the tool dependencies and scripts.",
+      "Prelint has no repository-local configuration to seed; its rules ship in the dependency package, and its package.json contribution supplies the tool dependencies and scripts.",
     ),
-    update: (directory) =>
-      updatePrelint(directory, astGrepVersion, rulesPackage),
+    update: noOp(
+      "Prelint owns no files; its package.json contribution enforces the ast-grep and @forge-ahead/prelint dependencies and lint subtasks.",
+    ),
     validate: PRELINT_VALIDATION,
   };
 }

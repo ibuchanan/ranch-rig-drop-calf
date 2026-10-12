@@ -2,7 +2,7 @@ import { type Directory, dag, type Secret } from "@dagger.io/dagger";
 import { isCollection, isMap, isScalar, parseDocument, visit } from "yaml";
 import { type Capability, noOp, type Validation } from "./capability.ts";
 import { nodeContainer } from "./node.ts";
-import { ParseError } from "./preclean.ts";
+import { ParseError } from "./errors.ts";
 import { TOOL_VERSIONS } from "./versions.ts";
 
 /** Only numeric pins have a deterministic Forge runtime major without version resolution. */

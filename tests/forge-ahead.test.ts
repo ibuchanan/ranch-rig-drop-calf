@@ -7,28 +7,25 @@ import { DropCalf } from "../src/index.ts";
 import { createBlueprint } from "../src/project.ts";
 import { TOOL_VERSIONS } from "../src/versions.ts";
 import { mockDirectory, mockModuleSource } from "./module-source.ts";
+import { runInit, runUpdate } from "./capability-fixtures.ts";
 
 const apiTypes = "@forge-ahead/atlassian-api-types";
 const authoritative = {
   "@forge-ahead/errors": TOOL_VERSIONS.forgeAheadErrors,
   "@forge-ahead/logging": TOOL_VERSIONS.forgeAheadLogging,
 };
-const update = async (directory: Directory) => {
-  const operation = forgeAhead().update;
-  if (typeof operation !== "function")
-    throw new Error("Forge Ahead update is missing");
-  return operation(directory);
-};
+const update = (directory: Directory) => runUpdate(forgeAhead(), directory);
 
 test("Forge Ahead init seeds only API types without replacing other dependencies", () => {
   const project = createBlueprint("sample", "", "tester");
   const dependencies = { "@forge/api": "^7", "@forge-ahead/errors": "owner" };
   project.packageJson.dependencies = { ...dependencies };
   const capability = forgeAhead();
-  expect(typeof capability.init).toBe("function");
-  if (typeof capability.init === "function") capability.init(project);
+  expect(typeof capability.init).not.toBe("function");
+  runInit(capability, project);
   expect(project.packageJson.dependencies).toEqual({
     ...dependencies,
+    ...authoritative,
     [apiTypes]: TOOL_VERSIONS.forgeAheadApiTypes,
   });
   expect(project.packageJson.devDependencies).toEqual({});
@@ -131,7 +128,9 @@ test.each([
 test("Forge Ahead validation is an explicit no-op without reading or installing", async () => {
   const capability = forgeAhead();
   expect(typeof capability.validate).not.toBe("function");
-  const [reason] = noOpReasons([capability]);
+  const reason = noOpReasons([capability]).find(
+    (entry) => entry.verb === "validate",
+  );
   if (!reason) throw new Error("Forge Ahead validation reason is missing");
   expect(reason).toMatchObject({
     capability: "forge-ahead",

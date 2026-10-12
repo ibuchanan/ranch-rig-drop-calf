@@ -1,3 +1,4 @@
+import { BUN_TEST_SCRIPTS } from "../src/capabilities.ts";
 import { expect, test } from "bun:test";
 import { buildProject } from "../src/profiles.ts";
 import { TOOL_VERSIONS } from "../src/versions.ts";
@@ -52,12 +53,10 @@ test("only Forge apps declare a Vitest template, without embedding config in the
 });
 
 test.each(["library", "tool", "agent-skill"])(
-  "%s leaves Bun test scripts to update without seeding a runner dependency or config",
+  "%s seeds Bun test scripts without a runner dependency or config",
   (kind) => {
     const { packageJson, files } = buildProject(kind, "sample", "tester");
-    expect(packageJson.scripts.test).toBeUndefined();
-    expect(packageJson.scripts["test:watch"]).toBeUndefined();
-    expect(packageJson.scripts["test:coverage"]).toBeUndefined();
+    expect(packageJson.scripts).toMatchObject(BUN_TEST_SCRIPTS);
     expect(packageJson.devDependencies.vitest).toBeUndefined();
     expect(files.has("vitest.config.ts")).toBe(false);
     expect(files.has("bunfig.toml")).toBe(false);

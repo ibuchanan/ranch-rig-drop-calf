@@ -1,24 +1,19 @@
 import type { Directory } from "@dagger.io/dagger";
 import { NpmPackageJsonLint } from "npm-package-json-lint";
-import sortPackageJson from "sort-package-json";
-import type { Capability, Validation } from "./capability.ts";
+import { type Capability, noOp, type Validation } from "./capability.ts";
 import {
   CATALOG_FILE,
   catalogOwnerId,
   PACKAGE_NAME,
   readCatalog,
 } from "./catalog.ts";
-import { parseObject } from "./init.ts";
-import type { ProjectBlueprint } from "./project.ts";
+import { editPackageJson, readPackageJson } from "./package-json.ts";
 
-/** Catalog-derived identity and kind policy; release versions remain owner-managed. */
+/** Catalog-derived identity; kind policy is contributed, release versions owner-managed. */
 export async function updatePackageMetadata(
   directory: Directory,
-  kind: string,
 ): Promise<Directory> {
-  if (!(await directory.exists("package.json"))) return directory;
-  const contents = await directory.file("package.json").contents();
-  const pkg = parseObject("package.json", contents);
+  if (!(await readPackageJson(directory))) return directory;
   const catalog = await readCatalog(directory, "package-metadata");
   const name = catalog.getIn(["metadata", "annotations", PACKAGE_NAME]);
   if (typeof name !== "string" || !name.trim())
@@ -34,24 +29,13 @@ export async function updatePackageMetadata(
     name,
     description,
     author: catalogOwnerId(catalog.getIn(["spec", "owner"])),
-    type: "module",
-    ...(kind === "forge-app" || kind === "agent-skill"
-      ? { private: true }
-      : {}),
   };
-  let changed = false;
-  for (const [field, value] of Object.entries(wanted)) {
-    if (pkg[field] === value) continue;
-    changed = true;
-    if (value === undefined) delete pkg[field];
-    else pkg[field] = value;
-  }
-  return changed
-    ? directory.withNewFile(
-        "package.json",
-        sortPackageJson(`${JSON.stringify(pkg, null, 2)}\n`),
-      )
-    : directory;
+  return editPackageJson(directory, (pkg) => {
+    for (const [field, value] of Object.entries(wanted)) {
+      if (value === undefined) delete pkg[field];
+      else pkg[field] = value;
+    }
+  });
 }
 
 /** Structural rules only: no recommended preset, baseline comparison, or autofix. */
@@ -60,10 +44,7 @@ export async function validatePackageMetadata(
 ): Promise<Validation> {
   if (!(await directory.exists("package.json")))
     return { status: "skipped", reason: "package.json is missing" };
-  const pkg = parseObject(
-    "package.json",
-    await directory.file("package.json").contents(),
-  );
+  const pkg = (await readPackageJson(directory)) ?? {};
   // The linter has no author-type rule; valid-values-author enforces an allowlist.
   if (
     pkg.author !== undefined &&
@@ -102,11 +83,10 @@ export async function validatePackageMetadata(
 
 /** Every kind starts private; only Forge apps and agent skills stay private by policy. */
 export function packageMetadata(kind: string): Capability {
-  const seed: (project: ProjectBlueprint) => void = (project) => {
-    project.packageJson.version = "0.1.0";
-    project.packageJson.type = "module";
-    project.packageJson.private = true;
-  };
+  const privacy = { private: true };
+  // createBlueprint starts at the same version; the seed records who owns it.
+  const version = { version: "0.1.0" };
+  const alwaysPrivate = kind === "forge-app" || kind === "agent-skill";
   return {
     name: "package-metadata",
     documentation: {
@@ -123,7 +103,6 @@ export function packageMetadata(kind: string): Capability {
           purpose: "Reference for package.json schema and metadata format",
         },
       ],
-      init: "Seed version 0.1.0, type module, and private true; top-level initialization supplies the initial package name.",
       update:
         kind === "forge-app" || kind === "agent-skill"
           ? "Derive name/description/author from catalog; enforce type module and private true, preserving release version."
@@ -131,8 +110,14 @@ export function packageMetadata(kind: string): Capability {
       validate:
         "Check metadata field types/formats with explicit structural rules, not policy compliance.",
     },
-    init: seed,
-    update: (directory) => updatePackageMetadata(directory, kind),
+    packageJson: {
+      seed: alwaysPrivate ? version : { ...version, ...privacy },
+      policy: { type: "module", ...(alwaysPrivate ? privacy : {}) },
+    },
+    init: noOp(
+      "Package metadata owns no files; its package.json contribution seeds version 0.1.0, type module, and private true; initialization supplies the initial package name.",
+    ),
+    update: updatePackageMetadata,
     validate: validatePackageMetadata,
   };
 }

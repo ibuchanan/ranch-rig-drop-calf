@@ -1,18 +1,13 @@
 import { expect, spyOn, test } from "bun:test";
 import { dag } from "@dagger.io/dagger";
-import { mergeScaffoldPackage } from "../src/init.ts";
-import {
-  NODE_NVMRC,
-  NPMRC,
-  nodeBaseline,
-  updateNode,
-  validateNode,
-} from "../src/node.ts";
-import { ParseError } from "../src/preclean.ts";
+import { mergeScaffoldPackage } from "../src/package-json.ts";
+import { NODE_NVMRC, NPMRC, nodeBaseline, validateNode } from "../src/node.ts";
+import { ParseError } from "../src/errors.ts";
 import { buildProject } from "../src/profiles.ts";
 import { TOOL_VERSIONS } from "../src/versions.ts";
 import { mockContainer } from "./container-source.ts";
 import { mockDirectory } from "./module-source.ts";
+import { runUpdate } from "./capability-fixtures.ts";
 
 const kinds = ["library", "forge-app", "tool", "agent-skill"];
 const licenseCatalog =
@@ -36,7 +31,7 @@ test.each(kinds)(
         ],
       ]),
     );
-    expect(await updateNode(input, kind)).toBe(input);
+    expect(await runUpdate(nodeBaseline(kind), input)).toBe(input);
   },
 );
 
@@ -67,7 +62,7 @@ test.each(kinds)(
       ]),
     );
     const before = [...input.files];
-    const output = await updateNode(input, kind);
+    const output = await runUpdate(nodeBaseline(kind), input);
     const result = JSON.parse(await output.file("package.json").contents());
     const { engines: _engines, ...withoutEngines } = pkg;
     expect(result).toEqual(kind === "forge-app" ? withoutEngines : pkg);
@@ -75,7 +70,7 @@ test.each(kinds)(
     expect(await output.file(".npmrc").contents()).toBe(NPMRC);
     expect(await output.file("README.md").contents()).toBe("owner text");
     expect(await output.file("manifest.yml").contents()).toBe(manifest);
-    expect(await updateNode(output, kind)).toBe(output);
+    expect(await runUpdate(nodeBaseline(kind), output)).toBe(output);
     expect([...input.files]).toEqual(before);
   },
 );
@@ -83,36 +78,36 @@ test.each(kinds)(
 test.each(kinds)(
   "%s update creates file pins but no package or manifest",
   async (kind) => {
-    const output = await updateNode(mockDirectory(), kind);
+    const output = await runUpdate(nodeBaseline(kind), mockDirectory());
     expect(await output.exists(".nvmrc")).toBe(true);
     expect(await output.exists(".npmrc")).toBe(true);
     expect(await output.exists("package.json")).toBe(false);
     expect(await output.exists("manifest.yml")).toBe(false);
-    expect(await updateNode(output, kind)).toBe(output);
+    expect(await runUpdate(nodeBaseline(kind), output)).toBe(output);
   },
 );
 
 test("update never adds a missing types dependency or rewrites an unowned package", async () => {
   const contents =
     '{"license":"Apache-2.0","devDependencies":{},"engines":{"node":">=18"}}';
-  const output = await updateNode(
+  const output = await runUpdate(
+    nodeBaseline("library"),
     mockDirectory(
       new Map([
         ["package.json", contents],
         ["catalog-info.yaml", licenseCatalog],
       ]),
     ),
-    "library",
   );
   expect(await output.file("package.json").contents()).toBe(contents);
-  const forge = await updateNode(
+  const forge = await runUpdate(
+    nodeBaseline("forge-app"),
     mockDirectory(
       new Map([
         ["package.json", '{"license":"Apache-2.0"}'],
         ["catalog-info.yaml", licenseCatalog],
       ]),
     ),
-    "forge-app",
   );
   expect(await forge.file("package.json").contents()).toBe(
     '{"license":"Apache-2.0"}',
@@ -123,9 +118,9 @@ test.each(["{", "[]", "null"])(
   "Forge update rejects malformed package input: %s",
   async (contents) => {
     await expect(
-      updateNode(
+      runUpdate(
+        nodeBaseline("forge-app"),
         mockDirectory(new Map([["package.json", contents]])),
-        "forge-app",
       ),
     ).rejects.toThrow(ParseError);
   },
@@ -135,7 +130,7 @@ test.each(kinds)(
   "%s Node update ignores even malformed manifests",
   async (kind) => {
     const input = mockDirectory(new Map([["manifest.yml", "app: [broken\n"]]));
-    const output = await updateNode(input, kind);
+    const output = await runUpdate(nodeBaseline(kind), input);
     expect(await output.file("manifest.yml").contents()).toBe("app: [broken\n");
   },
 );

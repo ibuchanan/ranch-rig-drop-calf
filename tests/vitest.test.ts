@@ -4,13 +4,13 @@ import { validateCapabilities } from "../src/capability.ts";
 import { DropCalf } from "../src/index.ts";
 import { TOOL_VERSIONS } from "../src/versions.ts";
 import {
-  updateVitest,
   VITEST_SCRIPTS,
   validateVitest,
   vitestTesting,
 } from "../src/vitest.ts";
 import { mockContainer } from "./container-source.ts";
 import { mockDirectory, mockModuleSource } from "./module-source.ts";
+import { runUpdate } from "./capability-fixtures.ts";
 
 test("update converges scripts and matching tool pins while preserving owner configuration and unrelated fields", async () => {
   const config =
@@ -42,7 +42,7 @@ test("update converges scripts and matching tool pins while preserving owner con
     ]),
   );
   const before = [...input.files];
-  const output = await updateVitest(input);
+  const output = await runUpdate(vitestTesting(), input);
   const pkg = JSON.parse(await output.file("package.json").contents());
   expect(pkg.scripts).toEqual({ ...VITEST_SCRIPTS, "test:unit": "custom" });
   expect(pkg.devDependencies).toEqual({
@@ -56,14 +56,14 @@ test("update converges scripts and matching tool pins while preserving owner con
     if (path !== "package.json")
       expect(await output.file(path).contents()).toBe(text);
   expect([...input.files]).toEqual(before);
-  expect(await updateVitest(output)).toBe(output);
+  expect(await runUpdate(vitestTesting(), output)).toBe(output);
 });
 
 test("update leaves missing config and package absent and preserves matching package bytes", async () => {
   const empty = mockDirectory();
-  expect(await updateVitest(empty)).toBe(empty);
+  expect(await runUpdate(vitestTesting(), empty)).toBe(empty);
   const input = mockDirectory(new Map([["package.json", "{}"]]));
-  const output = await updateVitest(input, "4.0.7");
+  const output = await runUpdate(vitestTesting("4.0.7"), input);
   expect(await output.exists("vitest.config.ts")).toBe(false);
   const pkg = JSON.parse(await output.file("package.json").contents());
   expect(pkg.devDependencies).toEqual({
@@ -72,7 +72,7 @@ test("update leaves missing config and package absent and preserves matching pac
   });
   const text = JSON.stringify(pkg, null, 4);
   const matching = output.withNewFile("package.json", text);
-  expect(await updateVitest(matching, "4.0.7")).toBe(matching);
+  expect(await runUpdate(vitestTesting("4.0.7"), matching)).toBe(matching);
   expect(await matching.file("package.json").contents()).toBe(text);
 });
 
@@ -85,7 +85,9 @@ test.each([
   '{"devDependencies":"bad"}',
 ])("unsafe package fails without changing input: %s", async (contents) => {
   const input = mockDirectory(new Map([["package.json", contents]]));
-  await expect(updateVitest(input)).rejects.toThrow("package.json");
+  await expect(runUpdate(vitestTesting(), input)).rejects.toThrow(
+    "package.json",
+  );
   expect(await input.file("package.json").contents()).toBe(contents);
 });
 

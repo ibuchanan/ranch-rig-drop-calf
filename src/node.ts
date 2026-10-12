@@ -1,9 +1,7 @@
 import { type Container, type Directory, dag } from "@dagger.io/dagger";
-import sortPackageJson from "sort-package-json";
 import type { Capability, Validation } from "./capability.ts";
 import { CATALOG_FILE, LICENSE, readCatalog } from "./catalog.ts";
-import { parseObject } from "./init.ts";
-import type { ProjectBlueprint } from "./project.ts";
+import { editPackageJson, readPackageJson } from "./package-json.ts";
 import { NODE_MAJOR, TOOL_VERSIONS } from "./versions.ts";
 
 /**
@@ -28,29 +26,19 @@ export function nodeContainer(): Container {
 }
 
 /** Whole-file pins and catalog license are policy; dependencies remain owner-managed. */
-export async function updateNode(
-  directory: Directory,
-  kind: string,
-): Promise<Directory> {
+export async function updateNode(directory: Directory): Promise<Directory> {
   let result = directory;
-  if (await result.exists("package.json")) {
-    const contents = await result.file("package.json").contents();
-    const pkg = parseObject("package.json", contents);
-    const catalog = await readCatalog(result, "node");
+  // The license comes from repository content, so no contribution can express it.
+  if (await readPackageJson(directory)) {
+    const catalog = await readCatalog(directory, "node");
     const license = catalog.getIn(["metadata", "annotations", LICENSE]);
     if (typeof license !== "string" || !license.trim())
       throw new Error(
         `node: ${CATALOG_FILE} ${LICENSE} must be a nonempty string; set the license annotation before updating.`,
       );
-    const removeEngines = kind === "forge-app" && Object.hasOwn(pkg, "engines");
-    if (pkg.license !== license || removeEngines) {
+    result = await editPackageJson(directory, (pkg) => {
       pkg.license = license;
-      if (removeEngines) delete pkg.engines;
-      result = result.withNewFile(
-        "package.json",
-        sortPackageJson(`${JSON.stringify(pkg, null, 2)}\n`),
-      );
-    }
+    });
   }
   for (const [path, wanted] of [
     [".nvmrc", NODE_NVMRC],
@@ -110,11 +98,6 @@ export async function validateNode(directory: Directory): Promise<Validation> {
 }
 
 export function nodeBaseline(kind: string): Capability {
-  const seed: (project: ProjectBlueprint) => void = (project) => {
-    project.packageJson.devDependencies["@types/node"] = NODE_MAJOR;
-    project.files.set(".nvmrc", NODE_NVMRC);
-    project.files.set(".npmrc", NPMRC);
-  };
   return {
     name: "node",
     documentation: {
@@ -140,8 +123,15 @@ export function nodeBaseline(kind: string): Capability {
       validate:
         "Use fnm to select .nvmrc (may download Node); no baseline, type-version, or deployment check.",
     },
-    init: seed,
-    update: (directory) => updateNode(directory, kind),
+    packageJson: {
+      seed: { devDependencies: { "@types/node": NODE_MAJOR } },
+      ...(kind === "forge-app" ? { remove: ["engines"] } : {}),
+    },
+    init(project) {
+      project.files.set(".nvmrc", NODE_NVMRC);
+      project.files.set(".npmrc", NPMRC);
+    },
+    update: updateNode,
     validate: validateNode,
   };
 }

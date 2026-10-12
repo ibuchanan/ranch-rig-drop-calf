@@ -1,10 +1,6 @@
 import { type Directory, dag } from "@dagger.io/dagger";
-import sortPackageJson from "sort-package-json";
-import type { Capability, Validation } from "./capability.ts";
-import { parseObject } from "./init.ts";
+import { type Capability, noOp, type Validation } from "./capability.ts";
 import { nodeContainer } from "./node.ts";
-import { ParseError } from "./preclean.ts";
-import type { ProjectBlueprint } from "./project.ts";
 import { copyTemplate, templateTree } from "./templates.ts";
 import { TOOL_VERSIONS } from "./versions.ts";
 
@@ -18,47 +14,6 @@ export const DOCS_CONFIGS = [
 
 export function copyDocs(destination: Directory, source: Directory): Directory {
   return copyTemplate(destination, source);
-}
-
-/** Documentation and lint configuration are owner-managed; only the tools and script track policy. */
-export async function updateDocs(
-  directory: Directory,
-  cspellVersion: string = TOOL_VERSIONS.cspell,
-  markdownlintVersion: string = TOOL_VERSIONS.markdownlintCli2,
-): Promise<Directory> {
-  if (!(await directory.exists("package.json"))) return directory;
-  const contents = await directory.file("package.json").contents();
-  const pkg = parseObject("package.json", contents);
-  let changed = false;
-  for (const [section, wanted] of [
-    ["scripts", { "lint:docs": DOCS_COMMAND }],
-    [
-      "devDependencies",
-      { cspell: cspellVersion, "markdownlint-cli2": markdownlintVersion },
-    ],
-  ] as const) {
-    const existing = pkg[section];
-    if (
-      existing !== undefined &&
-      (existing === null ||
-        typeof existing !== "object" ||
-        Array.isArray(existing))
-    )
-      throw new ParseError("package.json", `${section} must be an object`);
-    const fields = (existing ?? {}) as Record<string, unknown>;
-    for (const [key, value] of Object.entries(wanted)) {
-      if (fields[key] === value) continue;
-      fields[key] = value;
-      changed = true;
-    }
-    pkg[section] = fields;
-  }
-  return changed
-    ? directory.withNewFile(
-        "package.json",
-        sortPackageJson(`${JSON.stringify(pkg, null, 2)}\n`),
-      )
-    : directory;
 }
 
 /** Load the two root configs and their references, never lint documentation content. */
@@ -147,13 +102,6 @@ export function docsLinting(
   cspellVersion: string = TOOL_VERSIONS.cspell,
   markdownlintVersion: string = TOOL_VERSIONS.markdownlintCli2,
 ): Capability {
-  const seed: (project: ProjectBlueprint) => void = (project) => {
-    project.packageJson.scripts["lint:docs"] = DOCS_COMMAND;
-    Object.assign(project.packageJson.devDependencies, {
-      cspell: cspellVersion,
-      "markdownlint-cli2": markdownlintVersion,
-    });
-  };
   return {
     name: "docs",
     documentation: {
@@ -170,17 +118,24 @@ export function docsLinting(
         },
       ],
       init: "Seed Markdown/spelling tools and lint:docs, configs, DEVELOPMENT.md, and Diátaxis/spec starter documents.",
-      update:
-        "Enforce tool references and lint:docs; preserve owner config and documents, including deletions.",
       validate:
         "Load Markdown/spelling configs and references without scanning documentation quality.",
     },
+    packageJson: {
+      policy: {
+        scripts: { "lint:docs": DOCS_COMMAND },
+        devDependencies: {
+          cspell: cspellVersion,
+          "markdownlint-cli2": markdownlintVersion,
+        },
+      },
+    },
     init(project) {
-      seed(project);
       project.templates.push(templateTree(DOCS_TEMPLATE));
     },
-    update: (directory) =>
-      updateDocs(directory, cspellVersion, markdownlintVersion),
+    update: noOp(
+      "Docs configuration and documents are owner-managed after init, including deletions; its package.json contribution enforces the tool references and lint:docs.",
+    ),
     validate: (directory) =>
       validateDocs(directory, cspellVersion, markdownlintVersion),
   };

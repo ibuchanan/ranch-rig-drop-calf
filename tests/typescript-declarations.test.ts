@@ -1,8 +1,9 @@
 import { expect, test } from "bun:test";
 import { validateCapabilities } from "../src/capability.ts";
-import { typeScriptToolchain, updateTypeScript } from "../src/typescript.ts";
+import { typeScriptToolchain } from "../src/typescript.ts";
 import { mockContainer } from "./container-source.ts";
 import { mockDirectory, mockModuleSource } from "./module-source.ts";
+import { runUpdate } from "./capability-fixtures.ts";
 
 test("TypeScript enforces declaration emission and keeps owner compiler settings", async () => {
   const source = mockModuleSource();
@@ -19,7 +20,10 @@ test("TypeScript enforces declaration emission and keeps owner compiler settings
         ],
       ]),
     );
-    const output = await updateTypeScript(input);
+    const output = await runUpdate(
+      typeScriptToolchain(undefined, false),
+      input,
+    );
     const contents = await output.file("tsconfig.declarations.json").contents();
     expect(contents).toContain("// owner note");
     const { parseConfigFileTextToJson } = await import("typescript");
@@ -40,10 +44,12 @@ test("TypeScript enforces declaration emission and keeps owner compiler settings
     expect(
       JSON.parse(await output.file("package.json").contents()).scripts.build,
     ).toBe("sh scripts/build.sh");
-    expect(await updateTypeScript(output)).toBe(output);
+    expect(await runUpdate(typeScriptToolchain(undefined, false), output)).toBe(
+      output,
+    );
     const removed = output.withNewFile("package.json", "{}");
     expect(
-      await (await updateTypeScript(removed))
+      await (await runUpdate(typeScriptToolchain(), removed))
         .file("tsconfig.declarations.json")
         .contents(),
     ).toBe(contents);

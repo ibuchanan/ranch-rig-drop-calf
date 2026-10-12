@@ -6,7 +6,6 @@ import {
   DOCS_CONFIGS,
   DOCS_TEMPLATE,
   docsLinting,
-  updateDocs,
   validateDocs,
 } from "../src/docs.ts";
 import { DropCalf } from "../src/index.ts";
@@ -14,12 +13,13 @@ import { createBlueprint } from "../src/project.ts";
 import { TOOL_VERSIONS } from "../src/versions.ts";
 import { mockDirectory, mockModuleSource } from "./module-source.ts";
 import { docsTemplates } from "./templates-source.ts";
+import { runUpdate, runInit } from "./capability-fixtures.ts";
 
 test("init declares its template tree and selected tools without authoring docs", () => {
   const capability = docsLinting("10.3.0", "0.23.0");
   const project = createBlueprint("sample", "", "tester");
   if (typeof capability.init !== "function") throw new Error("missing init");
-  capability.init(project);
+  runInit(capability, project);
   expect(project.templates.map((template) => template.path)).toEqual([
     DOCS_TEMPLATE,
   ]);
@@ -82,8 +82,9 @@ test("update maintains only docs tools and script, preserving owner words, prose
 
 test("update creates missing package keys but not seed files or a missing package", async () => {
   const empty = mockDirectory();
-  expect(await updateDocs(empty)).toBe(empty);
-  const output = await updateDocs(
+  expect(await runUpdate(docsLinting(), empty)).toBe(empty);
+  const output = await runUpdate(
+    docsLinting(),
     mockDirectory(new Map([["package.json", "{}"]])),
   );
   const pkg = JSON.parse(await output.file("package.json").contents());
@@ -98,7 +99,7 @@ test("update creates missing package keys but not seed files or a missing packag
     expect(await output.exists(path)).toBe(false);
   const text = `${JSON.stringify(pkg, null, 4)}\r\n`;
   const matching = output.withNewFile("package.json", text);
-  expect(await updateDocs(matching)).toBe(matching);
+  expect(await runUpdate(docsLinting(), matching)).toBe(matching);
   expect(await matching.file("package.json").contents()).toBe(text);
 });
 
@@ -114,7 +115,9 @@ test.each([
   "update rejects unsafe package input without writes: %s",
   async (contents) => {
     const input = mockDirectory(new Map([["package.json", contents]]));
-    await expect(updateDocs(input)).rejects.toThrow("package.json");
+    await expect(runUpdate(docsLinting(), input)).rejects.toThrow(
+      "package.json",
+    );
     expect(await input.file("package.json").contents()).toBe(contents);
   },
 );

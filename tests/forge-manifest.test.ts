@@ -15,7 +15,7 @@ import {
 } from "../src/forge-manifest.ts";
 import { DropCalf } from "../src/index.ts";
 import { nodeBaseline } from "../src/node.ts";
-import { ParseError } from "../src/preclean.ts";
+import { ParseError } from "../src/errors.ts";
 import { resolveProfile } from "../src/profiles.ts";
 import { TOOL_VERSIONS } from "../src/versions.ts";
 import { mockDirectory } from "./module-source.ts";

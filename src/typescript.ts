@@ -8,12 +8,10 @@ import {
   parseTree,
   printParseErrorCode,
 } from "jsonc-parser";
-import sortPackageJson from "sort-package-json";
 import type { Capability, Validation } from "./capability.ts";
-import { parseObject } from "./init.ts";
+import { ParseError } from "./errors.ts";
 import { nodeContainer } from "./node.ts";
-import { ParseError } from "./preclean.ts";
-import type { ProjectBlueprint } from "./project.ts";
+import { readPackageJson } from "./package-json.ts";
 import { copyTemplate, templateTree } from "./templates.ts";
 import { TOOL_VERSIONS } from "./versions.ts";
 
@@ -132,44 +130,16 @@ export function reconcileTypeScriptConfig(
   return result;
 }
 
-/** Dependencies select compiler policy; library-build remains the sole owner of its build script. */
+/** Declared dependencies select compiler policy; package.json itself is contributed. */
 export async function updateTypeScript(
   directory: Directory,
-  version: string = TOOL_VERSIONS.typescript,
-  ownsBuild = true,
 ): Promise<Directory> {
   let result = directory;
-  let dependencies: Record<string, unknown> = {};
-  if (await directory.exists("package.json")) {
-    const contents = await directory.file("package.json").contents();
-    const pkg = parseObject("package.json", contents);
-    dependencies = object(
-      "package.json.devDependencies",
-      pkg.devDependencies === undefined ? {} : pkg.devDependencies,
-    );
-    const scripts = object(
-      "package.json.scripts",
-      pkg.scripts === undefined ? {} : pkg.scripts,
-    );
-    const wanted = {
-      typecheck: TYPESCRIPT_SCRIPTS.typecheck,
-      ...(ownsBuild && !Object.hasOwn(dependencies, "tsdown")
-        ? { build: TYPESCRIPT_SCRIPTS.build }
-        : {}),
-    };
-    const changed =
-      dependencies.typescript !== version ||
-      Object.entries(wanted).some(([key, value]) => scripts[key] !== value);
-    dependencies.typescript = version;
-    Object.assign(scripts, wanted);
-    pkg.devDependencies = dependencies;
-    pkg.scripts = scripts;
-    if (changed)
-      result = result.withNewFile(
-        "package.json",
-        sortPackageJson(`${JSON.stringify(pkg, null, 2)}\n`),
-      );
-  }
+  const pkg = await readPackageJson(directory);
+  const dependencies = object(
+    "package.json.devDependencies",
+    pkg?.devDependencies === undefined ? {} : pkg.devDependencies,
+  );
   const source = dag.currentModule().source().directory(TYPESCRIPT_TEMPLATE);
   const tsdown = Object.hasOwn(dependencies, "tsdown");
   for (const path of TYPESCRIPT_CONFIGS) {
@@ -250,11 +220,6 @@ export function typeScriptToolchain(
   tsVersion: string = TOOL_VERSIONS.typescript,
   ownsBuild = true,
 ): Capability {
-  const seed: (project: ProjectBlueprint) => void = (project) => {
-    project.packageJson.devDependencies.typescript = tsVersion;
-    project.packageJson.scripts.typecheck = TYPESCRIPT_SCRIPTS.typecheck;
-    if (ownsBuild) project.packageJson.scripts.build = TYPESCRIPT_SCRIPTS.build;
-  };
   return {
     name: "typescript",
     documentation: {
@@ -269,17 +234,25 @@ export function typeScriptToolchain(
       init: ownsBuild
         ? "Seed TypeScript, typecheck/build scripts, and compiler configuration (declarations config only with tsdown)."
         : "Seed TypeScript, typecheck, and compiler configuration including declarations; library-build owns build.",
-      update: ownsBuild
-        ? "Enforce TypeScript/typecheck and compiler policy; maintain tsc build unless tsdown is declared."
-        : "Enforce TypeScript/typecheck and dependency-selected compiler policy; leave build to library-build.",
+      update:
+        "Reconcile compiler configuration with policy selected by declared dependencies.",
       validate:
         "Run tsc --showConfig for applicable compiler configs, without compiling source or declarations.",
     },
+    packageJson: {
+      policy: {
+        scripts: {
+          typecheck: TYPESCRIPT_SCRIPTS.typecheck,
+          // library-build owns build when it is selected.
+          ...(ownsBuild ? { build: TYPESCRIPT_SCRIPTS.build } : {}),
+        },
+        devDependencies: { typescript: tsVersion },
+      },
+    },
     init(project) {
-      seed(project);
       project.templates.push(templateTree(TYPESCRIPT_TEMPLATE, copyTypeScript));
     },
-    update: (directory) => updateTypeScript(directory, tsVersion, ownsBuild),
+    update: updateTypeScript,
     validate: (directory) => validateTypeScript(directory, tsVersion),
   };
 }

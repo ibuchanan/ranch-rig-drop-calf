@@ -1,7 +1,7 @@
 import { type Directory, dag, type File } from "@dagger.io/dagger";
 import { type Capability, noOp } from "./capability.ts";
 import { InvalidOptionsError } from "./options.ts";
-import { ParseError } from "./preclean.ts";
+import { ParseError } from "./errors.ts";
 
 // gitignore.io redirects here; use the canonical host when refreshing the pin.
 export const GITIGNORE_ENDPOINT =

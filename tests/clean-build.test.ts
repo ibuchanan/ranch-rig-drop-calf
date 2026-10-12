@@ -6,22 +6,18 @@ import { noOpReasons, validateCapabilities } from "../src/capability.ts";
 import { DropCalf } from "../src/index.ts";
 import { createBlueprint } from "../src/project.ts";
 import { mockDirectory, mockModuleSource } from "./module-source.ts";
+import { runInit, runUpdate } from "./capability-fixtures.ts";
 
 const command = "rm -rf dist";
-const update = async (directory: Directory) => {
-  const operation = cleanBuild().update;
-  if (typeof operation !== "function")
-    throw new Error("Clean build update is missing");
-  return operation(directory);
-};
+const update = (directory: Directory) => runUpdate(cleanBuild(), directory);
 
 test("clean-build init and validate have explicit reasons and do no work", async () => {
   const capability = cleanBuild();
   const project = createBlueprint("sample", "", "tester");
   expect(typeof capability.init).not.toBe("function");
   expect(typeof capability.validate).not.toBe("function");
-  if (typeof capability.init === "function") capability.init(project);
-  expect(project.packageJson.scripts).toEqual({});
+  runInit(capability, project);
+  expect(project.packageJson.scripts).toEqual({ clean: command });
   expect(project.packageJson.devDependencies).toEqual({});
   expect(project.files.size).toBe(0);
   expect(project.templates.map((template) => template.path)).toEqual([]);
@@ -30,7 +26,13 @@ test("clean-build init and validate have explicit reasons and do no work", async
       capability: "clean-build",
       verb: "init",
       reason:
-        "Clean build has no files, dependencies, or initial settings to seed; update maintains the clean script.",
+        "Clean build owns no files to seed; its package.json contribution supplies the clean script.",
+    },
+    {
+      capability: "clean-build",
+      verb: "update",
+      reason:
+        "Clean build owns no files; its package.json contribution enforces scripts.clean as rm -rf dist and never executes it.",
     },
     {
       capability: "clean-build",

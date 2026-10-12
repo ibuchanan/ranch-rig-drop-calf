@@ -8,6 +8,7 @@ import { validateCapabilities } from "../src/capability.ts";
 import { DropCalf } from "../src/index.ts";
 import { createBlueprint } from "../src/project.ts";
 import { mockDirectory, mockModuleSource } from "./module-source.ts";
+import { runInit, runUpdate } from "./capability-fixtures.ts";
 
 const scripts = {
   test: "bun test --pass-with-no-tests",
@@ -15,19 +16,15 @@ const scripts = {
   "test:coverage": "bun test --coverage --pass-with-no-tests",
 };
 
-const update = async (directory: Directory) => {
-  const operation = bunTesting().update;
-  if (typeof operation !== "function") throw new Error("Bun update is missing");
-  return operation(directory);
-};
+const update = (directory: Directory) => runUpdate(bunTesting(), directory);
 
 test("Bun init and validate are explicit no-ops, without seeding or executing owner tests", async () => {
   const capability = bunTesting();
   const project = createBlueprint("sample", "", "tester");
   expect(typeof capability.init).not.toBe("function");
   expect(typeof capability.validate).not.toBe("function");
-  if (typeof capability.init === "function") capability.init(project);
-  expect(project.packageJson.scripts).toEqual({});
+  runInit(capability, project);
+  expect(project.packageJson.scripts).toEqual(scripts);
   expect(project.packageJson.devDependencies).toEqual({});
   expect(project.files.size).toBe(0);
   expect(project.templates.map((template) => template.path)).toEqual([]);

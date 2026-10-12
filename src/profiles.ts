@@ -18,6 +18,7 @@ import { gitignore } from "./gitignore.ts";
 import { nodeBaseline } from "./node.ts";
 import { InvalidOptionsError } from "./options.ts";
 import { oss, validateOssOwner } from "./oss.ts";
+import { seedPackage } from "./package-json.ts";
 import { packageMetadata } from "./package-metadata.ts";
 import { prelint } from "./prelint.ts";
 import { createBlueprint, type ProjectBlueprint } from "./project.ts";
@@ -160,6 +161,7 @@ export function buildProject(
   );
   // Retain the public author input for compatibility; catalog owner wins.
   const project = createBlueprint(packageName, description, owner);
+  seedPackage(project.packageJson, capabilities);
   for (const capability of capabilities) {
     if (typeof capability.init === "function") capability.init(project);
   }

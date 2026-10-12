@@ -1,9 +1,6 @@
 import { type Directory, dag } from "@dagger.io/dagger";
-import sortPackageJson from "sort-package-json";
 import { type Capability, noOp } from "./capability.ts";
-import { parseObject } from "./init.ts";
-import { ParseError } from "./preclean.ts";
-import type { ProjectBlueprint } from "./project.ts";
+import { parseJsonObject, readPackageJson } from "./package-json.ts";
 import { templateTree } from "./templates.ts";
 import { TOOL_VERSIONS } from "./versions.ts";
 
@@ -12,36 +9,12 @@ export const LIBRARY_BUILD_CONFIG = "tsdown.config.json";
 export const LIBRARY_BUILD_SCRIPT = "scripts/build.sh";
 export const LIBRARY_BUILD_COMMAND = "sh scripts/build.sh";
 
+/** Keep the managed JSON pipeline and build script; package.json is contributed. */
 export async function updateLibraryBuild(
   directory: Directory,
-  version: string = TOOL_VERSIONS.tsdown,
 ): Promise<Directory> {
-  if (!(await directory.exists("package.json"))) return directory;
-  const pkg = parseObject(
-    "package.json",
-    await directory.file("package.json").contents(),
-  );
-  let changed = false;
-  for (const [section, wanted] of [
-    ["scripts", { build: LIBRARY_BUILD_COMMAND }],
-    ["devDependencies", { tsdown: version }],
-  ] as const) {
-    const existing = pkg[section];
-    if (
-      existing !== undefined &&
-      (existing === null ||
-        typeof existing !== "object" ||
-        Array.isArray(existing))
-    )
-      throw new ParseError("package.json", `${section} must be an object`);
-    const fields = (existing ?? {}) as Record<string, unknown>;
-    for (const [key, value] of Object.entries(wanted)) {
-      if (fields[key] === value) continue;
-      fields[key] = value;
-      changed = true;
-    }
-    pkg[section] = fields;
-  }
+  const pkg = await readPackageJson(directory);
+  if (!pkg) return directory;
   // Do not silently shadow executable owner configs with a new JSON config.
   for (const extension of ["ts", "mts", "cts", "js", "mjs", "cjs"]) {
     const path = `tsdown.config.${extension}`;
@@ -59,17 +32,12 @@ export async function updateLibraryBuild(
   const contents = await (exists ? directory : source)
     .file(LIBRARY_BUILD_CONFIG)
     .contents();
-  const config = parseObject(LIBRARY_BUILD_CONFIG, contents);
+  const config = parseJsonObject(LIBRARY_BUILD_CONFIG, contents);
   const format = ["esm", "cjs"];
   const configChanged =
     JSON.stringify(config.format) !== JSON.stringify(format);
   config.format = format;
-  let result = changed
-    ? directory.withNewFile(
-        "package.json",
-        sortPackageJson(`${JSON.stringify(pkg, null, 2)}\n`),
-      )
-    : directory;
+  let result = directory;
   if (!exists || configChanged)
     result = result.withNewFile(
       LIBRARY_BUILD_CONFIG,
@@ -87,19 +55,6 @@ export async function updateLibraryBuild(
 export function libraryBuild(
   version: string = TOOL_VERSIONS.tsdown,
 ): Capability {
-  const seed: (project: ProjectBlueprint) => void = (project) => {
-    project.packageJson.scripts.build = LIBRARY_BUILD_COMMAND;
-    project.packageJson.devDependencies.tsdown = version;
-    project.packageJson.main = "dist/index.mjs";
-    project.packageJson.types = "dist/index.d.ts";
-    project.packageJson.exports = {
-      ".": {
-        import: { types: "./dist/index.d.ts", default: "./dist/index.mjs" },
-        require: { types: "./dist/index.d.cts", default: "./dist/index.cjs" },
-      },
-    };
-    project.packageJson.files = ["dist"];
-  };
   return {
     name: "library-build",
     documentation: {
@@ -113,13 +68,32 @@ export function libraryBuild(
       ],
       init: "Seed tsdown, the build pipeline/config, and publishing fields.",
       update:
-        "Enforce tsdown, the build command/script, and ESM/CommonJS formats; preserve owner entry/dependency settings and publishing fields.",
+        "Enforce the build script and ESM/CommonJS formats; preserve owner entry/dependency settings.",
+    },
+    packageJson: {
+      seed: {
+        main: "dist/index.mjs",
+        types: "dist/index.d.ts",
+        exports: {
+          ".": {
+            import: { types: "./dist/index.d.ts", default: "./dist/index.mjs" },
+            require: {
+              types: "./dist/index.d.cts",
+              default: "./dist/index.cjs",
+            },
+          },
+        },
+        files: ["dist"],
+      },
+      policy: {
+        scripts: { build: LIBRARY_BUILD_COMMAND },
+        devDependencies: { tsdown: version },
+      },
     },
     init(project) {
-      seed(project);
       project.templates.push(templateTree(LIBRARY_BUILD_TEMPLATE));
     },
-    update: (directory) => updateLibraryBuild(directory, version),
+    update: updateLibraryBuild,
     validate: noOp(
       "tsdown has no supported configuration-only validation interface: resolveUserConfig is internal and no-write still bundles source. Build and declaration emission belong to the build workflow; validation does not execute the pipeline or inspect stale artifacts.",
     ),

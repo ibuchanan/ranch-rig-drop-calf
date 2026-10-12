@@ -10,10 +10,9 @@ import { GIT_HOOKS_SCRIPTS } from "../src/git-hooks.ts";
 import { DropCalf } from "../src/index.ts";
 import {
   packageMetadata,
-  updatePackageMetadata,
   validatePackageMetadata,
 } from "../src/package-metadata.ts";
-import { ParseError } from "../src/preclean.ts";
+import { ParseError } from "../src/errors.ts";
 import { PRELINT_SCRIPTS } from "../src/prelint.ts";
 import { buildProject } from "../src/profiles.ts";
 import { FORGE_SECRETS_SCRIPTS } from "../src/secrets.ts";
@@ -23,6 +22,7 @@ import { TOOL_VERSIONS } from "../src/versions.ts";
 import { VITEST_SCRIPTS } from "../src/vitest.ts";
 import { mockDirectory, mockModuleSource } from "./module-source.ts";
 import { catalogTemplates } from "./templates-source.ts";
+import { runUpdate } from "./capability-fixtures.ts";
 
 const kinds = ["library", "forge-app", "tool", "agent-skill"];
 const catalog = () =>
@@ -43,7 +43,7 @@ const repository = (pkg: unknown, contents = catalog()) =>
 const manifest = async (
   directory:
     | ReturnType<typeof mockDirectory>
-    | Awaited<ReturnType<typeof updatePackageMetadata>>,
+    | Awaited<ReturnType<typeof runUpdate>>,
 ) => JSON.parse(await directory.file("package.json").contents());
 
 test.each(kinds)(
@@ -195,13 +195,13 @@ test.each(kinds)(
 test.each(["library", "tool"])(
   "%s update preserves removal of private for publication",
   async (kind) => {
-    const output = await updatePackageMetadata(
+    const output = await runUpdate(
+      packageMetadata(kind),
       repository({ version: "3.0.0" }),
-      kind,
     );
     expect(await manifest(output)).not.toHaveProperty("private");
     expect((await manifest(output)).version).toBe("3.0.0");
-    expect(await updatePackageMetadata(output, kind)).toBe(output);
+    expect(await runUpdate(packageMetadata(kind), output)).toBe(output);
   },
 );
 
@@ -248,9 +248,9 @@ test("catalog edits drive package metadata, not sanitized identity or display ti
   document.setIn(["metadata", "annotations", PACKAGE_NAME], "@new/renamed");
   document.setIn(["spec", "owner"], "user:another-namespace/new-owner");
   document.setIn(["metadata", "description"], "");
-  let output = await updatePackageMetadata(
+  let output = await runUpdate(
+    packageMetadata("tool"),
     repository({ description: "stale" }, document.toString()),
-    "tool",
   );
   expect(await manifest(output)).toMatchObject({
     name: "@new/renamed",
@@ -258,12 +258,12 @@ test("catalog edits drive package metadata, not sanitized identity or display ti
     author: "new-owner",
   });
   document.deleteIn(["metadata", "description"]);
-  output = await updatePackageMetadata(
+  output = await runUpdate(
+    packageMetadata("tool"),
     output.withNewFile(CATALOG_FILE, document.toString()),
-    "tool",
   );
   expect(await manifest(output)).not.toHaveProperty("description");
-  expect(await updatePackageMetadata(output, "tool")).toBe(output);
+  expect(await runUpdate(packageMetadata("tool"), output)).toBe(output);
 });
 
 test.each([
@@ -306,24 +306,24 @@ test.each([
   const doc = parseDocument(catalog());
   (edit as (doc: ReturnType<typeof parseDocument>) => unknown)(doc);
   await expect(
-    updatePackageMetadata(repository({}, doc.toString()), "tool"),
+    runUpdate(packageMetadata("tool"), repository({}, doc.toString())),
   ).rejects.toThrow(message as string);
 });
 
 test("update skips a missing package and rejects missing or malformed sources without inventing metadata", async () => {
   const empty = mockDirectory();
-  expect(await updatePackageMetadata(empty, "forge-app")).toBe(empty);
+  expect(await runUpdate(packageMetadata("forge-app"), empty)).toBe(empty);
   await expect(
-    updatePackageMetadata(
+    runUpdate(
+      packageMetadata("tool"),
       mockDirectory(new Map([["package.json", "{}"]])),
-      "tool",
     ),
   ).rejects.toThrow("catalog-info.yaml is missing");
   for (const pkg of ["{broken", "null", "[]"]) {
     await expect(
-      updatePackageMetadata(
+      runUpdate(
+        packageMetadata("tool"),
         repository({}).withNewFile("package.json", pkg),
-        "tool",
       ),
     ).rejects.toThrow(ParseError);
   }
@@ -333,7 +333,7 @@ test("update skips a missing package and rejects missing or malformed sources wi
     "metadata: {}\nmetadata: {}\n",
   ]) {
     await expect(
-      updatePackageMetadata(repository({}, yaml), "tool"),
+      runUpdate(packageMetadata("tool"), repository({}, yaml)),
     ).rejects.toThrow(ParseError);
   }
 });

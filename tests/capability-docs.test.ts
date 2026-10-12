@@ -76,12 +76,15 @@ test("reference includes exact no-op reasons and distinguishes Bun/Vitest and se
 test("changes to capability descriptions, reasons, or membership produce documentation drift", () => {
   const original = bunTesting();
   const baseline = renderCapabilityReference({ sample: [original] });
-  const reason = { ...original, init: { reason: "Changed no-op reason" } };
+  const reason = { ...original, update: { reason: "Changed no-op reason" } };
   const description = {
     ...original,
     documentation: {
       ...original.documentation,
-      update: "Changed update policy",
+      tools: original.documentation.tools.map((tool) => ({
+        ...tool,
+        purpose: "Changed tool purpose",
+      })),
     },
   };
   for (const changed of [reason, description])
