@@ -1,22 +1,27 @@
+import pins from "../pins/package.json" with { type: "json" };
+
+const pin = pins.devDependencies;
+
 export const NODE_MAJOR = "24";
 
+/** npm pins come from `pins/package.json`; the rest are not npm packages. */
 export const TOOL_VERSIONS = {
   bun: "1.4.2",
   fnm: "1.38.1",
-  forgeCli: "14.1.0",
-  biome: "2.5.15",
-  typescript: "^5.9.3",
-  tsdown: "^0.23",
-  sizeLimit: "11.2.0",
-  cspell: "^10.3",
-  markdownlintCli2: "^0.23",
-  vitest: "5.0.3",
-  promptfoo: "^0.116.0",
-  gitCliff: "^2.13",
-  lefthook: "^2.1",
-  astGrep: "^0.45",
-  forgePrelint: "github:ibuchanan/tool-forge-prelint-ast-grep",
-  forgeAheadApiTypes: "github:ibuchanan/forge-ahead-atlassian-api-types",
-  forgeAheadErrors: "github:ibuchanan/forge-ahead-errors",
-  forgeAheadLogging: "github:ibuchanan/forge-ahead-logging",
+  forgeCli: pin["@forge/cli"],
+  biome: pin["@biomejs/biome"],
+  typescript: pin.typescript,
+  tsdown: pin.tsdown,
+  sizeLimit: pin["size-limit"],
+  cspell: pin.cspell,
+  markdownlintCli2: pin["markdownlint-cli2"],
+  vitest: pin.vitest,
+  promptfoo: pin.promptfoo,
+  gitCliff: pin["git-cliff"],
+  lefthook: pin.lefthook,
+  astGrep: pin["@ast-grep/cli"],
+  forgePrelint: pin["@forge-ahead/prelint"],
+  forgeAheadApiTypes: pin["@forge-ahead/atlassian-api-types"],
+  forgeAheadErrors: pin["@forge-ahead/errors"],
+  forgeAheadLogging: pin["@forge-ahead/logging"],
 } as const;

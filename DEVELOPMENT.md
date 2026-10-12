@@ -435,6 +435,19 @@ read-only acceptance without linting or fixing Markdown content:
 DROP_CALF_DOCS_E2E=1 bun test tests/e2e/docs.e2e.test.ts
 ```
 
+## Refreshing tool pins
+
+`pins/package.json` lists the exact npm versions Drop Calf seeds; it is never
+installed. `src/versions.ts` reads it into `TOOL_VERSIONS` and also holds the
+pins that are not npm packages (Bun image, fnm, Node major). Dependabot opens
+weekly pull requests against `/pins`; to check locally, run:
+
+```bash
+bun run pins:outdated
+```
+
+After changing a pin, run `bun test --update-snapshots` and review the diff.
+
 ## The generated `.gitignore`
 
 `src/gitignore.ts` assembles `.gitignore` from the gitignore.io templates in

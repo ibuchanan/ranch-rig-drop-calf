@@ -1,0 +1,10 @@
+version: 2
+updates:
+  # Pins Drop Calf seeds into generated repositories (see docs/adr/0002).
+  - package-ecosystem: npm
+    directory: /pins
+    schedule:
+      interval: weekly
+    versioning-strategy: increase
+    commit-message:
+      prefix: feat(pins)

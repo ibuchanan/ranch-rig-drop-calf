@@ -3,6 +3,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import ts from "typescript";
 import { buildProject } from "../src/profiles.ts";
+import { TOOL_VERSIONS } from "../src/versions.ts";
 import {
   reconcileTypeScriptConfig,
   TYPESCRIPT_CONFIGS,
@@ -35,7 +36,7 @@ test("every kind seeds the TypeScript configs its scripts invoke", () => {
   // The scripts name these two files; their settings are the template's call.
   config(configs.get("tsconfig.json"));
   const check = config(configs.get("tsconfig.typecheck.json"));
-  expect(pkg.devDependencies.typescript).toMatch(/^\^5\./);
+  expect(pkg.devDependencies.typescript).toBe(TOOL_VERSIONS.typescript);
   expect(pkg.devDependencies.tsdown).toBeUndefined();
   expect(pkg.main).toBeUndefined();
   expect(pkg.types).toBeUndefined();

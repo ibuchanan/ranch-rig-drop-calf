@@ -668,7 +668,7 @@ ESM and CJS, TypeScript emits declarations, and the build script copies every
 
 | Resource | Init | Update |
 |---|---|---|
-| `devDependencies.tsdown` | Seed `TOOL_VERSIONS.tsdown` (`^0.23`) | Enforce selected range |
+| `devDependencies.tsdown` | Seed `TOOL_VERSIONS.tsdown` (`0.23.1`) | Enforce the pin |
 | `scripts.build` | Seed `sh scripts/build.sh` | Enforce command |
 | `scripts/build.sh` | Overlay reviewed template | Enforce whole template |
 | `tsdown.config.json` | Overlay reviewed template | Enforce `format: ["esm", "cjs"]`; preserve all other settings |
@@ -1020,8 +1020,8 @@ an evals result. `--without evals` excludes it from the all preset.
   may execute while the tool resolves configuration; validation is not a sandbox
   for arbitrary owner code.
 
-The current registry reference is `^0.116.0`, a version range rather than an exact
-pin. Validation uses the same capability-selected reference, not the version in the
+The current pin is the exact version `0.116.2` from `pins/package.json`.
+Validation uses the same capability-selected reference, not the version in the
 owner's package or lockfile. The internal handler is version-sensitive and is covered
 by an opt-in live acceptance test.
 

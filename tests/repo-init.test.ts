@@ -260,7 +260,9 @@ describe("profiles", () => {
       expect(packageJson.exports).toBeUndefined();
     }
     if (kind === "forge-app")
-      expect(packageJson.devDependencies.typescript).toMatch(/^\^5/);
+      expect(packageJson.devDependencies.typescript).toBe(
+        TOOL_VERSIONS.typescript,
+      );
   });
 
   test("evals is opt-in without removing mandatory slots", () => {

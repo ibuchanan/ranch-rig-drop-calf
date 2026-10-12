@@ -117,8 +117,7 @@ test("update enforces pipeline and formats while preserving the example's entrie
 test("matching package/config bytes and owner deletions are retained; missing policy files are restored", async () => {
   const source = mockModuleSource();
   try {
-    const pkg =
-      '{ "devDependencies": { "tsdown": "^0.23" }, "scripts": { "build": "sh scripts/build.sh" } }';
+    const pkg = `{ "devDependencies": { "tsdown": "${TOOL_VERSIONS.tsdown}" }, "scripts": { "build": "sh scripts/build.sh" } }`;
     const config =
       '{ "entry": {"custom":"./src/custom.ts"}, "format": ["esm","cjs"] }';
     const input = mockDirectory(
