@@ -201,6 +201,9 @@ exports[`agent-skill generated output has the selected functions: agent-skill 1`
       "lint:docs": "markdownlint-cli2 \\"**/*.md\\" && cspell lint \\"**/*.md\\"",
       "lint:fix": "biome lint --write",
       "prepare": "lefthook install || true",
+      "test": "bun test --pass-with-no-tests",
+      "test:coverage": "bun test --coverage --pass-with-no-tests",
+      "test:watch": "bun test --watch --pass-with-no-tests",
       "typecheck": "tsc --project tsconfig.typecheck.json --noEmit"
     },
     "devDependencies": {

@@ -7,13 +7,13 @@ import { biomeToolchain } from "../src/biome.ts";
 import { DropCalf } from "../src/index.ts";
 import { OSS_ASSETS } from "../src/oss.ts";
 import { prelint } from "../src/prelint.ts";
-import { SECRETS_ASSETS } from "../src/secrets.ts";
 import {
   buildProject,
   InvalidOptionsError,
   PROFILES,
 } from "../src/profiles.ts";
 import { buildReadme, createBlueprint } from "../src/project.ts";
+import { SECRETS_ASSETS } from "../src/secrets.ts";
 import { TOOL_VERSIONS } from "../src/versions.ts";
 import { mockDirectory, mockModuleSource } from "./module-source.ts";
 import {
@@ -272,19 +272,14 @@ describe("profiles", () => {
   });
 
   test.each([
-    ["library", "lefthook run lint", "tsdown", "bun test --pass-with-no-tests"],
+    ["library", "lefthook run lint", "tsdown", undefined],
     [
       "forge-app",
       "lefthook run lint",
       "tsc --project tsconfig.json",
       "vitest run --passWithNoTests",
     ],
-    [
-      "tool",
-      "lefthook run lint",
-      "tsc --project tsconfig.json",
-      "bun test --pass-with-no-tests",
-    ],
+    ["tool", "lefthook run lint", "tsc --project tsconfig.json", undefined],
     [
       "agent-skill",
       "lefthook run lint",
@@ -361,7 +356,7 @@ describe("profiles", () => {
     ).toBeUndefined();
   });
 
-  test("agent-skill contains no test scripts and all kinds keep a complete blueprint", async () => {
+  test("all kinds expose testing workflows and keep a complete blueprint", async () => {
     const stub = spyOn(dag, "directory").mockImplementation(() =>
       mockDirectory(),
     );
@@ -397,18 +392,18 @@ describe("profiles", () => {
             Object.keys(packageJson.scripts).some((key) =>
               key.startsWith("test"),
             ),
-          ).toBe(false);
+          ).toBe(true);
       }
     } finally {
       stub.mockRestore();
     }
   });
 
-  test("agent-skill profile omits the test script", () => {
-    const project = createBlueprint("my-package", "", "");
-    for (const capability of PROFILES["agent-skill"] ?? []) {
-      capability.addTo(project);
-    }
-    expect(project.packageJson.scripts.test).toBeUndefined();
+  test("agent-skill selects Bun testing with an update policy, not a no-testing slot", () => {
+    const testing = PROFILES["agent-skill"]?.find(
+      (capability) => capability.name === "test",
+    );
+    expect(typeof testing?.init).not.toBe("function");
+    expect(typeof testing?.update).toBe("function");
   });
 });

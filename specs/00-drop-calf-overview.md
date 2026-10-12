@@ -60,7 +60,7 @@ Every non-empty capability slot contributes to the stable developer API. The exa
 | Linting | `lint`, `lint:fix` (optional) | `biome lint`, `forge lint` |
 | Formatting | `format`, `format:check` | `biome format --write`, `biome format` |
 | Type checking | `typecheck` | `tsc --noEmit` |
-| Testing | `test`, `test:watch`, `test:coverage` (or absent) | Bun (`library`, `tool`), Vitest (`forge-app`), both with a no-tests starter flag; absent for `agent-skill` |
+| Testing | `test`, `test:watch`, `test:coverage` | Bun (`library`, `tool`, `agent-skill`), Vitest (`forge-app`), both with a no-tests starter flag |
 | Build | `build` | `tsc` |
 | Clean | `clean` | `rm -rf dist` |
 
@@ -72,10 +72,10 @@ Profiles are defined in `src/profiles.ts` as arrays of capabilities.
 
 | Profile | Linting | Formatting | Type checking | Testing |
 |---|---|---|---|---|
-| `library` | biome | biome | tsc | bun test |
-| `forge-app` | forge lint | biome | forge-pinned tsc | vitest |
-| `tool` | biome | biome | tsc | bun test |
-| `agent-skill` | biome | biome | tsc | no testing |
+| `library` | biome | biome | tsc | bun test (with `--pass-with-no-tests`) |
+| `forge-app` | forge lint | biome | forge-pinned tsc | vitest (with `--passWithNoTests`) |
+| `tool` | biome | biome | tsc | bun test (with `--pass-with-no-tests`) |
+| `agent-skill` | biome | biome | tsc | bun test (with `--pass-with-no-tests`) |
 
 ### 7.2 Future profiles
 

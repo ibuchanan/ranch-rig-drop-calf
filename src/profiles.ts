@@ -6,7 +6,6 @@ import {
   docsLinting,
   forgeAhead,
   libraryBuild,
-  noTesting,
   vitestTesting,
 } from "./capabilities.ts";
 import type { Capability } from "./capability.ts";
@@ -84,7 +83,7 @@ export const PROFILES: Record<string, Capability[]> = {
     nodeBaseline("agent-skill"),
     biomeToolchain(),
     typeScriptToolchain(),
-    noTesting(),
+    bunTesting(),
     cleanBuild(),
     docsLinting(),
     gitHooks(),

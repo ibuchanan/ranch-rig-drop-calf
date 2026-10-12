@@ -44,23 +44,15 @@ test("only Forge apps declare a Vitest template, without embedding config in the
   }
 });
 
-test("library and tool keep Bun test, watch and coverage commands; agent skills have none", () => {
-  for (const kind of ["library", "tool"]) {
+test.each(["library", "tool", "agent-skill"])(
+  "%s leaves Bun test scripts to update without seeding a runner dependency or config",
+  (kind) => {
     const { packageJson, files } = buildProject(kind, "sample", "tester");
-    expect(packageJson.scripts.test).toBe("bun test --pass-with-no-tests");
-    expect(packageJson.scripts["test:watch"]).toBe(
-      "bun test --watch --pass-with-no-tests",
-    );
-    expect(packageJson.scripts["test:coverage"]).toBe(
-      "bun test --coverage --pass-with-no-tests",
-    );
+    expect(packageJson.scripts.test).toBeUndefined();
+    expect(packageJson.scripts["test:watch"]).toBeUndefined();
+    expect(packageJson.scripts["test:coverage"]).toBeUndefined();
     expect(packageJson.devDependencies.vitest).toBeUndefined();
     expect(files.has("vitest.config.ts")).toBe(false);
-  }
-  const agent = buildProject("agent-skill", "sample", "tester");
-  expect(
-    Object.keys(agent.packageJson.scripts).filter((key) =>
-      key.startsWith("test"),
-    ),
-  ).toEqual([]);
-});
+    expect(files.has("bunfig.toml")).toBe(false);
+  },
+);

@@ -293,8 +293,19 @@ DROP_CALF_TYPESCRIPT_E2E=1 bun test tests/e2e/typescript.e2e.test.ts
 
 Forge runs on Node, not Bun. Vitest matches that runtime, provides `vi.mock` for
 `@forge/*` modules, and matches the vendored Forge examples and architecture
-tests. `library` and `tool` keep Bun's runner; `agent-skill` has no test scripts.
-Both Vitest packages are pinned together through `TOOL_VERSIONS.vitest`.
+tests. `library`, `tool`, and `agent-skill` use Bun's built-in runner, including
+for tests of scripts shipped with agent skills. Both Vitest packages are pinned
+together through `TOOL_VERSIONS.vitest`.
+
+Bun needs no dependency, config, or sample-test seed, so its capability init is
+an explicit no-op. The update pass supplies and maintains `test`, `test:watch`,
+and `test:coverage` with `--pass-with-no-tests`; freshly initialized projects
+can run these workflows before owners add tests. Only those script keys are
+replaced: other scripts, test sources, owner configuration, and lockfiles survive.
+Bun capability validation is an explicit no-op because this capability owns no
+runner configuration to validate; actual test execution belongs to the test workflow.
+`bun test tests/bun-testing.test.ts` checks these policies and runs generated Bun
+scripts against empty, passing, and failing suites without Dagger or network access.
 
 The Vitest config starts from the OKF producer example's discovery exclusions.
 It deliberately uses explicit imports instead of globals so app code does not

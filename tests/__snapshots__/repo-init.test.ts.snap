@@ -1,6 +1,6 @@
 // Bun Snapshot v1, https://bun.sh/docs/test/snapshots
 
-exports[`profiles agent-skill contains no test scripts and all kinds keep a complete blueprint: library 1`] = `
+exports[`profiles all kinds expose testing workflows and keep a complete blueprint: library 1`] = `
 {
   "files": [
     ".atlassian/OWNER",
@@ -75,7 +75,7 @@ exports[`profiles agent-skill contains no test scripts and all kinds keep a comp
 }
 `;
 
-exports[`profiles agent-skill contains no test scripts and all kinds keep a complete blueprint: forge-app 1`] = `
+exports[`profiles all kinds expose testing workflows and keep a complete blueprint: forge-app 1`] = `
 {
   "files": [
     ".atlassian/OWNER",
@@ -163,7 +163,7 @@ exports[`profiles agent-skill contains no test scripts and all kinds keep a comp
 }
 `;
 
-exports[`profiles agent-skill contains no test scripts and all kinds keep a complete blueprint: tool 1`] = `
+exports[`profiles all kinds expose testing workflows and keep a complete blueprint: tool 1`] = `
 {
   "files": [
     ".atlassian/OWNER",
@@ -218,7 +218,7 @@ exports[`profiles agent-skill contains no test scripts and all kinds keep a comp
 }
 `;
 
-exports[`profiles agent-skill contains no test scripts and all kinds keep a complete blueprint: agent-skill 1`] = `
+exports[`profiles all kinds expose testing workflows and keep a complete blueprint: agent-skill 1`] = `
 {
   "files": [
     ".atlassian/OWNER",
@@ -258,6 +258,9 @@ exports[`profiles agent-skill contains no test scripts and all kinds keep a comp
       "lint:docs": "markdownlint-cli2 "**/*.md" && cspell lint "**/*.md"",
       "lint:fix": "biome lint --write",
       "prepare": "lefthook install || true",
+      "test": "bun test --pass-with-no-tests",
+      "test:coverage": "bun test --coverage --pass-with-no-tests",
+      "test:watch": "bun test --watch --pass-with-no-tests",
       "typecheck": "tsc --project tsconfig.typecheck.json --noEmit",
     },
     "type": "module",

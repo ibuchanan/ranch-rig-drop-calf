@@ -182,7 +182,13 @@ describe("pinned OSS templates", () => {
           ...project.packageJson,
           scripts: {
             ...project.packageJson.scripts,
-            ...(kind === "forge-app" ? PRELINT_SCRIPTS : {}),
+            ...(kind === "forge-app"
+              ? PRELINT_SCRIPTS
+              : {
+                  test: "bun test --pass-with-no-tests",
+                  "test:watch": "bun test --watch --pass-with-no-tests",
+                  "test:coverage": "bun test --coverage --pass-with-no-tests",
+                }),
           },
           devDependencies: {
             ...project.packageJson.devDependencies,

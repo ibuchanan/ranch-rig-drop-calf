@@ -24,7 +24,7 @@ Every kind:
 
 - has a unique `name` and is explicitly selected; there is no metadata-based default kind;
 - fills **every** capability slot with exactly one implementation or an explicit no-op
-  (a slot may be empty, but only deliberately — e.g., testing in `agent-skill`);
+  (a slot may be empty, but only deliberately);
 - is an **ordered** capability list; application order is part of the kind's contract and
   determines script/placeholder precedence;
 - must not rename the stable developer API (`lint`, `format`, `typecheck`, `test`,
@@ -40,7 +40,7 @@ Every kind:
 | Linting | biome | forge lint | biome | biome |
 | Formatting | biome | biome | biome | biome |
 | Type checking | tsc | tsc | tsc | tsc |
-| Testing | bun test (+ watch/coverage) | vitest (+ watch/coverage) | bun test (+ watch/coverage) | *no-op* |
+| Testing | bun test (+ watch/coverage) | vitest (+ watch/coverage) | bun test (+ watch/coverage) | bun test (+ watch/coverage) |
 | Build | tsdown | tsc | tsc | tsc |
 | Clean | rm -rf dist | rm -rf dist | rm -rf dist | rm -rf dist |
 
@@ -54,8 +54,9 @@ Kind-specific policies:
   to this kind and must not leak into others.
 - **`library`** owns the publishing profile: `tsdown` build and publishing fields (`main`,
   `types`, `exports`) that `forge-app` must not emit.
-- **`agent-skill`** is the only kind with a deliberate no-op testing slot; `test` and its
-  variants must be absent from `package.json`, and git hooks must not reference them.
+- **`agent-skill`** uses Bun testing like `library` and `tool`, including for shipped
+  scripts. Every kind exposes `test`, `test:watch`, and `test:coverage`; no testing
+  opt-out is provided.
 
 ## 4. Function composition per kind
 
@@ -67,7 +68,7 @@ Each kind additionally selects project-functions (see
 | `library` | catalog, package-metadata, oss, gitignore, node, changelog, format, typescript, aidev, test, size, git-hooks |
 | `forge-app` | catalog, package-metadata, oss, gitignore, node, forge-manifest, changelog, secrets, format, forge-prelint, typescript, forge-ahead, aidev, test, size, git-hooks (+ optional `evals`) |
 | `tool` | catalog, package-metadata, oss, gitignore, node, changelog, format, typescript, aidev, test, git-hooks |
-| `agent-skill` | catalog, package-metadata, oss, gitignore, node, format, typescript, aidev, git-hooks |
+| `agent-skill` | catalog, package-metadata, oss, gitignore, node, format, typescript, aidev, test, git-hooks |
 
 Notes:
 
@@ -105,7 +106,7 @@ Per kind, tests must assert:
 - every slot is filled or explicitly no-op (no accidental gaps);
 - the stable developer API scripts exist and match the kind's slot implementations;
 - kind-specific policy holds (e.g., `forge-app` has no `tsdown` dependency and no
-  publishing fields; `agent-skill` has no `test` scripts);
+  publishing fields; `agent-skill` has Bun test scripts);
 - the full generated blueprint matches a per-kind snapshot;
 - an unknown kind fails with `InvalidOptionsError` before any mutation.
 

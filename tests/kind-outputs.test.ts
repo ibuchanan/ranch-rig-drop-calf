@@ -53,7 +53,7 @@ test.each(["library", "forge-app", "tool", "agent-skill"])(
           2,
         ),
       ).toMatchSnapshot(kind);
-      expect(Boolean(scripts.test)).toBe(kind !== "agent-skill");
+      expect(Boolean(scripts.test)).toBe(true);
       expect(Boolean(scripts.size)).toBe(
         kind === "library" || kind === "forge-app",
       );

@@ -16,7 +16,7 @@ import { prelint, validatePrelint } from "../src/prelint.ts";
 import { buildProject, PROFILES, resolveProfile } from "../src/profiles.ts";
 import { createBlueprint, renderToDirectory } from "../src/project.ts";
 import { seedTemplates } from "../src/templates.ts";
-import { mockDirectory as tree, mockModuleSource } from "./module-source.ts";
+import { mockModuleSource, mockDirectory as tree } from "./module-source.ts";
 
 const kinds = ["library", "forge-app", "tool", "agent-skill"];
 const selections = (kind: string) => [
@@ -69,7 +69,8 @@ test("no-op reasons are enumerable data, including the deliberately inactive ini
   expect(reasons).toContainEqual({
     capability: "test",
     verb: "init",
-    reason: "The agent-skill profile does not seed a test runner.",
+    reason:
+      "Bun's built-in test runner needs no dependency or configuration seed; update maintains the test scripts, and test sources are owner-managed.",
   });
   expect(reasons.filter((item) => item.verb === "update")).toHaveLength(
     selected.filter((item) => typeof item.update !== "function").length,
@@ -103,8 +104,13 @@ test.each(kinds)(
           withoutFunctions,
           preset,
         );
-        // Prelint is now update-only; its retained addTo contribution is legacy-only.
+        // Update-only capabilities retain addTo solely for the legacy oracle.
         const legacyInitPackage = structuredClone(legacy.packageJson);
+        if (kind !== "forge-app") {
+          delete legacyInitPackage.scripts.test;
+          delete legacyInitPackage.scripts["test:watch"];
+          delete legacyInitPackage.scripts["test:coverage"];
+        }
         if (kind === "forge-app") {
           delete legacyInitPackage.devDependencies["@ast-grep/cli"];
           delete legacyInitPackage.devDependencies["@forge-ahead/prelint"];
@@ -142,8 +148,8 @@ test.each(kinds)(
               "secrets",
               "size-limit",
               "docs",
-            ].includes(capability.name) ||
-            (kind === "forge-app" && capability.name === "test")
+              "test",
+            ].includes(capability.name)
           )
             expect(typeof capability.update).toBe("function");
           else expect(typeof capability.update).not.toBe("function");

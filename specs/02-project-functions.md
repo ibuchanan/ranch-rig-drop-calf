@@ -686,18 +686,35 @@ Copy a versioned, Forge-focused `AGENTS.md` seed. Create-if-absent; guidance con
 not machine configuration.
 
 ### `test`
-The testing slot selects Bun's built-in runner for `library` and `tool`, Vitest
-for `forge-app`, and no test scripts for `agent-skill`.
+The testing slot selects Bun's built-in runner for `library`, `tool`, and
+`agent-skill`, and Vitest for `forge-app`. Agent skills can ship executable scripts;
+there is no no-testing implementation or testing opt-out.
+
+#### Bun verbs (`library`, `tool`, `agent-skill`)
 
 - Bun owns `test`, `test:watch`, and `test:coverage` with
   `bun test --pass-with-no-tests`, `bun test --watch --pass-with-no-tests`, and
   `bun test --coverage --pass-with-no-tests`. It needs no test-runner dependency
   or config.
-- Vitest owns the same scripts with `vitest run --passWithNoTests`,
-  `vitest watch --passWithNoTests`, and
-  `vitest run --coverage --passWithNoTests`. `vitest` and `@vitest/coverage-v8`
-  are devDependencies at the same exact version (`5.0.3`), both supplied by
-  `TOOL_VERSIONS.vitest` so coverage never prompts to install a provider.
+- **init** is an explicit no-op: "Bun's built-in test runner needs no dependency or
+  configuration seed; update maintains the test scripts, and test sources are
+  owner-managed." Top-level init includes the update pass.
+- **update** enforces only the three script keys above. A missing `package.json`
+  is left absent; missing scripts and owned keys are created. Malformed/non-object
+  JSON or non-object scripts fail before writes. Other scripts, fields, and
+  dependencies survive. Matching owned values preserve package bytes; changes use
+  sorted, two-space JSON with a trailing newline. A second update changes nothing.
+  Update never reads or changes `bunfig.toml`, test sources, or lockfiles, and does
+  not install dependencies or pin the host Bun runtime.
+- **validate** is an explicit no-op: "This capability owns no Bun test configuration
+  to validate. Test execution belongs to the test workflow; comparing scripts to
+  defaults would check policy, not tool acceptance."
+
+Vitest owns the same scripts with `vitest run --passWithNoTests`,
+`vitest watch --passWithNoTests`, and `vitest run --coverage --passWithNoTests`.
+`vitest` and `@vitest/coverage-v8` are devDependencies at the same exact version
+(`5.0.3`), both supplied by `TOOL_VERSIONS.vitest` so coverage never prompts to
+install a provider.
 
 #### Vitest verbs (`forge-app`)
 

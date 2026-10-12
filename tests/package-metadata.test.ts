@@ -129,7 +129,11 @@ test.each(kinds)(
                 ...PRELINT_SCRIPTS,
                 ...FORGE_SECRETS_SCRIPTS,
               }
-            : {}),
+            : {
+                test: "bun test --pass-with-no-tests",
+                "test:watch": "bun test --watch --pass-with-no-tests",
+                "test:coverage": "bun test --coverage --pass-with-no-tests",
+              }),
         },
         devDependencies: {
           "@biomejs/biome": TOOL_VERSIONS.biome,
