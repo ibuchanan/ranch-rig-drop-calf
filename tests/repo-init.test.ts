@@ -1,18 +1,17 @@
 import { afterEach, beforeEach, describe, expect, spyOn, test } from "bun:test";
 import * as childProcess from "node:child_process";
 import * as fs from "node:fs";
-import { type Directory, dag } from "@dagger.io/dagger";
+import { dag } from "@dagger.io/dagger";
 import ts from "typescript";
 import { biomeToolchain } from "../src/biome.ts";
 import { DropCalf } from "../src/index.ts";
 import { OSS_ASSETS } from "../src/oss.ts";
-import { prelint } from "../src/prelint.ts";
 import {
   buildProject,
   InvalidOptionsError,
   PROFILES,
 } from "../src/profiles.ts";
-import { buildReadme, createBlueprint } from "../src/project.ts";
+import { createBlueprint } from "../src/project.ts";
 import { SECRETS_ASSETS } from "../src/secrets.ts";
 import { TOOL_VERSIONS } from "../src/versions.ts";
 import { mockDirectory, mockModuleSource } from "./module-source.ts";
@@ -90,50 +89,11 @@ test.each(["library", "forge-app", "tool", "agent-skill"])(
   },
 );
 
-test("copyBiome seeds only EditorConfig defaults and the Markdown hard-break override", () => {
-  const writes = new Map<string, string>();
-  const directory = {
-    withDirectory: (_path: string, source: { files: Map<string, string> }) => {
-      for (const [path, content] of source.files) writes.set(path, content);
-      return directory;
-    },
-  } as unknown as Directory;
-
-  new DropCalf().copyBiome(directory);
-
-  const editorconfig = writes.get(".editorconfig");
-  expect(editorconfig).toBe(biomeTemplates().get(".editorconfig"));
-  expect(
-    editorconfig
-      ?.split("\n")
-      .filter((line) => !line.startsWith("#"))
-      .join("\n")
-      .trim(),
-  ).toBe(`root = true
-
-[*]
-charset = utf-8
-end_of_line = lf
-insert_final_newline = true
-trim_trailing_whitespace = true
-indent_style = space
-indent_size = 2
-
-[*.md]
-trim_trailing_whitespace = false`);
-});
-
-describe("buildReadme", () => {
-  test("uses the package name as the title", () => {
-    const readme = buildReadme("my-package", "");
-    expect(readme).toContain("# my-package");
-  });
-});
-
 describe("biomeToolchain capability", () => {
   test("adds format and lint scripts and dependency without authoring config", () => {
     const project = createBlueprint("my-package", "", "");
-    biomeToolchain("2.5.13").addTo(project);
+    const capability = biomeToolchain("2.5.13");
+    if (typeof capability.init === "function") capability.init(project);
     expect(project.packageJson.scripts.format).toBe("biome format --write");
     expect(project.packageJson.scripts["format:check"]).toBe("biome format");
     expect(project.packageJson.scripts["lint:check"]).toBe("biome lint");
@@ -169,18 +129,6 @@ test("the pinned Biome template schema matches the version registry", () => {
   expect(parsed.config.$schema).toBe(
     `https://biomejs.dev/schemas/${TOOL_VERSIONS.biome}/schema.json`,
   );
-});
-
-describe("prelint capability", () => {
-  test("uses forge lint without adding biome", () => {
-    const project = createBlueprint("my-package", "", "");
-    prelint().addTo(project);
-    expect(project.packageJson.scripts["lint:forge"]).toBe("forge lint");
-    expect(
-      project.packageJson.devDependencies["@biomejs/biome"],
-    ).toBeUndefined();
-    expect(project.files.has("biome.jsonc")).toBe(false);
-  });
 });
 
 describe("kind selection", () => {

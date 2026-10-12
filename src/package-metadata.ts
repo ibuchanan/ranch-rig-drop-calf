@@ -1,3 +1,4 @@
+import type { ProjectBlueprint } from "./project.ts";
 import type { Directory } from "@dagger.io/dagger";
 import { NpmPackageJsonLint } from "npm-package-json-lint";
 import sortPackageJson from "sort-package-json";
@@ -101,14 +102,13 @@ export async function validatePackageMetadata(
 
 /** Every kind starts private; only Forge apps and agent skills stay private by policy. */
 export function packageMetadata(kind: string): Capability {
-  const seed: Capability["addTo"] = (project) => {
+  const seed: (project: ProjectBlueprint) => void = (project) => {
     project.packageJson.version = "0.1.0";
     project.packageJson.type = "module";
     project.packageJson.private = true;
   };
   return {
     name: "package-metadata",
-    addTo: seed,
     init: seed,
     update: (directory) => updatePackageMetadata(directory, kind),
     validate: validatePackageMetadata,

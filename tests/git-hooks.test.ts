@@ -20,7 +20,9 @@ test("init and update enforce only the selected pin and hook dispatch scripts", 
   const project = createBlueprint("sample", "", "tester");
   if (typeof capability.init !== "function") throw new Error("missing init");
   capability.init(project);
-  expect(project.templates).toEqual([GIT_HOOKS_TEMPLATE]);
+  expect(project.templates.map((template) => template.path)).toEqual([
+    GIT_HOOKS_TEMPLATE,
+  ]);
   expect(project.packageJson.devDependencies.lefthook).toBe("2.1.4");
   expect(project.packageJson.scripts).toEqual(GIT_HOOKS_SCRIPTS);
   const input = mockDirectory(
@@ -142,7 +144,7 @@ test.each(["library", "forge-app", "tool", "agent-skill"])(
 test("git-hooks is the only capability that contributes lint, regardless of composition order", () => {
   const owners = resolveProfile("forge-app").filter((capability) => {
     const project = createBlueprint("sample", "", "tester");
-    capability.addTo(project);
+    if (typeof capability.init === "function") capability.init(project);
     return Object.hasOwn(project.packageJson.scripts, "lint");
   });
   expect(owners.map((capability) => capability.name)).toEqual(["git-hooks"]);

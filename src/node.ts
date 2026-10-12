@@ -1,3 +1,4 @@
+import type { ProjectBlueprint } from "./project.ts";
 import { type Container, type Directory, dag } from "@dagger.io/dagger";
 import sortPackageJson from "sort-package-json";
 import type { Capability, Validation } from "./capability.ts";
@@ -109,14 +110,13 @@ export async function validateNode(directory: Directory): Promise<Validation> {
 }
 
 export function nodeBaseline(kind: string): Capability {
-  const seed: Capability["addTo"] = (project) => {
+  const seed: (project: ProjectBlueprint) => void = (project) => {
     project.packageJson.devDependencies["@types/node"] = NODE_MAJOR;
     project.files.set(".nvmrc", NODE_NVMRC);
     project.files.set(".npmrc", NPMRC);
   };
   return {
     name: "node",
-    addTo: seed,
     init: seed,
     update: (directory) => updateNode(directory, kind),
     validate: validateNode,

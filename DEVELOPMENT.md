@@ -107,8 +107,6 @@ DROP_CALF_E2E=1 bun test tests/e2e
   Apache-2.0 license without editing the catalog or reading the clock. Missing
   required values fail; document validation is a manual-inspection no-op. See
   [Refreshing the pinned OSS templates](#refreshing-the-pinned-oss-templates).
-  Standalone `copy-oss --directory ...` reads the same catalog and re-seeds all
-  six files, including README.
 - `src/docs.ts`: the documentation workflow, separate from OSS. Init seeds
   `templates/docs/`, including the Diátaxis placeholders, `DEVELOPMENT.md`, spec,
   and both lint configs. Update maintains only `lint:docs` and the CSpell and
@@ -118,9 +116,10 @@ DROP_CALF_E2E=1 bun test tests/e2e
   Markdown style, full schemas, or dictionary availability. See the
   [docs policy](specs/02-project-functions.md#docs). Both configs are dotfiles:
   Dagger's `glob` matches them, but a shell glob will not.
-- `src/templates.ts`: `copyTemplate`, the shared tree overlay, and
-  `seedTemplates`, which reads the template paths selected by capabilities and
-  preserves SecretSpec substitutions and helper permissions.
+- `src/templates.ts`: `copyTemplate`, the shared tree overlay, `templateTree`,
+  and `seedTemplates`, which executes ordered seed steps declared by capability
+  init. Substitution, exclusions, and executable modes belong to capabilities;
+  the seeding loop has no capability-specific branches.
 - `src/changelog.ts`: the release workflow — the `git-cliff` devDependency and
   the `changelog` script, plus `copyChangelog` for
   `templates/changelog/`. `validateChangelog` renders an unreleased changelog
@@ -130,7 +129,7 @@ DROP_CALF_E2E=1 bun test tests/e2e
   tsconfigs. Init seeds templates; update enforces compiler settings selected by
   declared Vitest/tsdown dependencies with comment-preserving JSONC edits.
   Library-build owns library `build`. Validation runs read-only `tsc --showConfig`.
-  Standalone `copyTypeScript` deliberately overlays the uncomposed seed pair.
+  The internal `copyTypeScript` helper overlays the uncomposed seed pair.
 - `src/evals.ts`: optional Promptfoo toolchain — the `promptfoo` devDependency
   and `eval`/`view` scripts. It declares `templates/promptfoo/`, which holds
   the config, shared prompt, cases, synthetic contexts, and Rovo wiring guide;
@@ -165,11 +164,13 @@ DROP_CALF_E2E=1 bun test tests/e2e
   pinned gitignore.io response and additional defaults, preserving bytes outside
   those blocks. `gitignore()` declares the pin at init and recovers topic selections
   from block URLs during update; validation is an explicit no-op.
-  `copyGitignoreAssets` also backs standalone `copy-gitignore`.
-- `src/capabilities.ts`: adapters that add scripts, development dependencies,
-  and configuration to the blueprint. A capability's optional `templates`
-  array names zero or more module-source trees; `buildProject` collects those
-  paths in `ProjectBlueprint.templates` without reading the files.
+  `copyGitignoreAssets` is an internal helper used by the capability.
+- `src/capabilities.ts`: capability implementations and re-exports. Every
+  capability has required `init`, `update`, and `validate` verbs; an inactive
+  verb carries a deliberate no-op reason. Init contributes blueprint values
+  and seed steps in `ProjectBlueprint.templates` without reading module files.
+  Optional selection policy lives with the capability; profile resolution
+  checks that data without naming individual capabilities.
   `docsLinting()` is re-exported from `src/docs.ts` for compatibility; its
   dedicated module owns documentation initialization, update, and validation.
 - `src/node.ts`: the Node baseline. `nodeBaseline(kind)` seeds `.nvmrc`, `.npmrc`,
@@ -346,18 +347,23 @@ means it needs a live engine, which is why its tests fake `dag.container()`
 rather than starting one.
 
 A capability's blueprint init cannot read the module source. It declares
-seed template paths as data instead; update may read pinned templates through
-Dagger when its authoritative policy needs them.
-`init` seeds those selected trees through `seedTemplates`, with no profile
-checks in the seeding entry point. Changelog templates belong to
-`changelogToolchain()`, and SecretSpec templates belong to `forgeSecrets()`.
-OSS declares its seed tree after catalog and has its own update policy.
-Gitignore remains a base asset pending its policy migration.
+seed steps with source paths and deferred copy operations instead; update may
+read pinned templates through Dagger when its authoritative policy needs them.
+`init` executes those steps through `seedTemplates` in profile order. Catalog
+rendering precedes OSS metadata substitution. SecretSpec owns TOML substitution
+and helper modes; gitignore owns pinned block assembly and scaffold-rule retention.
+The seeding entry point contains no profile or capability checks.
 
-The standalone `copy-docs`, `copy-typescript`, `copy-changelog`, `copy-git-hooks`,
-`copy-secrets`, and `copy-biome` Dagger functions remain available for deliberate
-re-seeding of one tree in an existing repository without generating a package or
-selecting a whole profile. They are not steps in the `init` pipeline.
+Standalone `copy-*` Dagger functions have been removed. Use `init` for first-time
+seeding and `update` for maintenance; internal copy helpers implement capability
+policy but are not independent Dagger operations.
+
+`tests/capability-ownership.test.ts` records actual init assignments, seed writes,
+and update mutations and requires one owner per generated file or package field.
+Scripts and dependency keys are checked individually, not as a whole package.
+Update probes share a stale input so identical policy values cannot mask two
+owners. Owner-supplied source, app identity, and initial seed inputs are not
+separate generated outputs.
 
 Every kind's `biomeToolchain()` declares `templates/biome`. Generation seeds its
 `biome.jsonc` verbatim, without invoking a local Biome binary or creating a
@@ -383,7 +389,7 @@ DROP_CALF_BIOME_E2E=1 bun test tests/e2e/biome.e2e.test.ts
 ```
 
 `templates/biome/.editorconfig` is the only EditorConfig source for generated
-repositories. Both generation and standalone `copy-biome` seed it verbatim. The
+repositories. Capability init seeds it verbatim. The
 seeded source survives rather than the generated text so editor settings remain
 reviewable beside the formatter config, without a second definition or a seeding
 exception. Only `[*]` defaults and the Markdown override remain; file-specific
@@ -407,7 +413,7 @@ DROP_CALF_DOCS_E2E=1 bun test tests/e2e/docs.e2e.test.ts
 `GITIGNORE_TEMPLATES` (`visualstudiocode`, `linux`, `macos`, `windows`,
 `node`, and `turbo`), de-duplicating rules on first occurrence, then appends
 `ADDITIONAL_IGNORES`: `.fallow/`, `.scratch/`, `.session/`, and
-`/.cocoindex_code/`. `copy-gitignore --sets node,turbo` selects a subset by
+`/.cocoindex_code/`. The internal gitignore seed helper selects a subset by
 gitignore.io name; the default is all of them, and an unknown name fails before
 anything is written. The generated URLs record the selected subset, not every
 available topic in the pin.

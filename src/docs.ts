@@ -1,10 +1,11 @@
+import type { ProjectBlueprint } from "./project.ts";
 import { type Directory, dag } from "@dagger.io/dagger";
 import sortPackageJson from "sort-package-json";
 import type { Capability, Validation } from "./capability.ts";
 import { parseObject } from "./init.ts";
 import { nodeContainer } from "./node.ts";
 import { ParseError } from "./preclean.ts";
-import { copyTemplate } from "./templates.ts";
+import { copyTemplate, templateTree } from "./templates.ts";
 import { TOOL_VERSIONS } from "./versions.ts";
 
 export const DOCS_TEMPLATE = "templates/docs";
@@ -146,7 +147,7 @@ export function docsLinting(
   cspellVersion: string = TOOL_VERSIONS.cspell,
   markdownlintVersion: string = TOOL_VERSIONS.markdownlintCli2,
 ): Capability {
-  const seed: Capability["addTo"] = (project) => {
+  const seed: (project: ProjectBlueprint) => void = (project) => {
     project.packageJson.scripts["lint:docs"] = DOCS_COMMAND;
     Object.assign(project.packageJson.devDependencies, {
       cspell: cspellVersion,
@@ -155,11 +156,9 @@ export function docsLinting(
   };
   return {
     name: "docs",
-    templates: [DOCS_TEMPLATE],
-    addTo: seed,
     init(project) {
       seed(project);
-      project.templates.push(DOCS_TEMPLATE);
+      project.templates.push(templateTree(DOCS_TEMPLATE));
     },
     update: (directory) =>
       updateDocs(directory, cspellVersion, markdownlintVersion),

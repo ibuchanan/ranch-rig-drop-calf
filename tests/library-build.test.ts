@@ -24,7 +24,9 @@ test("init seeds reference-style conditional exports, config and shared pipeline
   );
   try {
     const project = buildProject("library", "sample", "tester");
-    expect(project.templates).toContain("templates/library-build");
+    expect(project.templates.map((template) => template.path)).toContain(
+      "templates/library-build",
+    );
     expect(project.files.has(LIBRARY_BUILD_CONFIG)).toBe(false);
     const module = new DropCalf();
     const output = (await module.init(

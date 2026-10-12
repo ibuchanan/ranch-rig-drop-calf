@@ -16,7 +16,6 @@ import {
   validatePrelint,
 } from "../src/prelint.ts";
 import { buildProject } from "../src/profiles.ts";
-import { createBlueprint } from "../src/project.ts";
 import { TOOL_VERSIONS } from "../src/versions.ts";
 import { mockDirectory, mockModuleSource } from "./module-source.ts";
 
@@ -39,25 +38,9 @@ test("prelint init and validate are explicit no-ops with enumerable reasons", ()
   expect(project.packageJson.scripts["lint:forge"]).toBeUndefined();
   expect(project.packageJson.devDependencies[AST_GREP_PACKAGE]).toBeUndefined();
   expect(project.packageJson.devDependencies[PRELINT_PACKAGE]).toBeUndefined();
-  expect(project.templates.some((path) => path.includes("prelint"))).toBe(
+  expect(project.templates.some(({ path }) => path.includes("prelint"))).toBe(
     false,
   );
-});
-
-test("legacy prelint contributions retain named subtasks without owning lint or config", () => {
-  const project = createBlueprint("sample", "", "tester");
-  project.packageJson.scripts.lint = "owner lint";
-  prelint("0.45.1", "github:example/rules#revision").addTo(project);
-  expect(project.packageJson.scripts).toEqual({
-    ...PRELINT_SCRIPTS,
-    lint: "owner lint",
-  });
-  expect(project.packageJson.devDependencies).toEqual({
-    [AST_GREP_PACKAGE]: "0.45.1",
-    [PRELINT_PACKAGE]: "github:example/rules#revision",
-  });
-  expect(project.templates).toEqual([]);
-  expect(project.files.size).toBe(0);
 });
 
 test("update enforces selected dependencies and scripts while preserving unrelated values and files", async () => {

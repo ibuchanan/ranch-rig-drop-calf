@@ -121,7 +121,7 @@ test("every TypeScript output has exactly one init contributor per profile", () 
         ...Object.keys(project.packageJson.scripts).filter(
           (key) => key === "build" || key === "typecheck",
         ),
-        ...project.templates.flatMap((tree) =>
+        ...project.templates.flatMap(({ path: tree }) =>
           tree === "templates/typescript"
             ? [...configs.keys()]
             : tree === "templates/vitest"

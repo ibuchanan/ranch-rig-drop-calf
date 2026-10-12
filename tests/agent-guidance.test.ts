@@ -30,7 +30,9 @@ test.each(kinds)(
     const before = structuredClone(project);
     if (typeof capability.init === "function") capability.init(project);
     expect(project.packageJson).toEqual(before.packageJson);
-    expect(project.templates).toEqual(before.templates);
+    expect(project.templates.map((template) => template.path)).toEqual(
+      before.templates.map((template) => template.path),
+    );
     expect([...project.files.keys()]).toEqual(
       kind === "forge-app" ? ["AGENTS.md"] : [],
     );

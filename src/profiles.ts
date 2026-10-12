@@ -27,7 +27,7 @@ import { typeScriptToolchain } from "./typescript.ts";
 
 export const PROFILES: Record<string, Capability[]> = {
   library: [
-    catalog(),
+    catalog("library"),
     packageMetadata("library"),
     oss(),
     gitignore(),
@@ -44,7 +44,7 @@ export const PROFILES: Record<string, Capability[]> = {
     aidev("library"),
   ],
   "forge-app": [
-    catalog(),
+    catalog("forge-app"),
     packageMetadata("forge-app"),
     oss(),
     gitignore(),
@@ -62,9 +62,10 @@ export const PROFILES: Record<string, Capability[]> = {
     docsLinting(),
     gitHooks(),
     aidev("forge-app"),
+    evals(),
   ],
   tool: [
-    catalog(),
+    catalog("tool"),
     packageMetadata("tool"),
     oss(),
     gitignore(),
@@ -79,7 +80,7 @@ export const PROFILES: Record<string, Capability[]> = {
     aidev("tool"),
   ],
   "agent-skill": [
-    catalog(),
+    catalog("agent-skill"),
     packageMetadata("agent-skill"),
     oss(),
     gitignore(),
@@ -115,39 +116,30 @@ export function resolveProfile(
       `Unknown preset ${JSON.stringify(preset)}; use all or omit --preset.`,
     );
   }
-  for (const name of [...withFunctions, ...withoutFunctions]) {
-    if (
-      name === "aidev" &&
-      !withFunctions.includes(name) &&
-      profile === "forge-app"
-    )
-      continue;
-    if (name !== "evals") {
-      throw new InvalidOptionsError(
-        `Cannot select optional function ${JSON.stringify(name)}; only evals and --without-functions aidev on forge-app are supported; kind slots are mandatory.`,
-      );
-    }
-    if (profile !== "forge-app") {
-      throw new InvalidOptionsError(
-        `Function evals is only available for forge-app, not ${profile}.`,
-      );
+  for (const [verb, names] of [
+    ["with", withFunctions],
+    ["without", withoutFunctions],
+  ] as const) {
+    for (const name of names) {
+      const capability = capabilities.find((item) => item.name === name);
+      if (!capability?.selection?.[verb])
+        throw new InvalidOptionsError(
+          `Cannot select optional function ${JSON.stringify(name)} with --${verb} on ${profile}; kind slots are mandatory unless their capability allows selection.`,
+        );
+      if (withFunctions.includes(name) && withoutFunctions.includes(name))
+        throw new InvalidOptionsError(
+          `Function ${name} cannot appear in both --with and --without.`,
+        );
     }
   }
-  if (withFunctions.includes("evals") && withoutFunctions.includes("evals")) {
-    throw new InvalidOptionsError(
-      "Function evals cannot appear in both --with and --without.",
-    );
-  }
-  return [
-    ...capabilities.filter(
-      (capability) => !withoutFunctions.includes(capability.name),
-    ),
-    ...(profile === "forge-app" &&
-    (preset === "all" || withFunctions.includes("evals")) &&
-    !withoutFunctions.includes("evals")
-      ? [evals()]
-      : []),
-  ];
+  return capabilities.filter(
+    (capability) =>
+      !withoutFunctions.includes(capability.name) &&
+      (!capability.selection ||
+        capability.selection.default ||
+        preset === "all" ||
+        withFunctions.includes(capability.name)),
+  );
 }
 
 export function buildProject(
@@ -166,7 +158,7 @@ export function buildProject(
     withoutFunctions,
     preset,
   );
-  // The legacy author input remains accepted during expansion; catalog owner wins.
+  // Retain the public author input for compatibility; catalog owner wins.
   const project = createBlueprint(packageName, description, owner);
   for (const capability of capabilities) {
     if (typeof capability.init === "function") capability.init(project);

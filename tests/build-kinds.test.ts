@@ -60,7 +60,9 @@ test("library build publishes the same entry and declarations that tsdown emits"
   });
   expect(pkg.files).toEqual(["dist"]);
   // tsdown.config.json and scripts/build.sh are provided by the library-build template
-  expect(project.templates).toContain("templates/library-build");
+  expect(project.templates.map((template) => template.path)).toContain(
+    "templates/library-build",
+  );
 });
 
 test("generated TypeScript configs typecheck and compile a sample entry", () => {

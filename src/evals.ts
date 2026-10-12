@@ -1,3 +1,5 @@
+import type { ProjectBlueprint } from "./project.ts";
+import { templateTree } from "./templates.ts";
 import { type Directory, dag } from "@dagger.io/dagger";
 import sortPackageJson from "sort-package-json";
 import type { Capability, Validation } from "./capability.ts";
@@ -103,17 +105,16 @@ export async function validateEvals(
 }
 
 export function evals(version: string = TOOL_VERSIONS.promptfoo): Capability {
-  const seed: Capability["addTo"] = (project) => {
+  const seed: (project: ProjectBlueprint) => void = (project) => {
     Object.assign(project.packageJson.scripts, EVALS_SCRIPTS);
     project.packageJson.devDependencies.promptfoo = version;
   };
   return {
     name: "evals",
-    templates: [EVALS_TEMPLATE],
-    addTo: seed,
+    selection: { with: true, without: true, default: false },
     init(project) {
       seed(project);
-      project.templates.push(EVALS_TEMPLATE);
+      project.templates.push(templateTree(EVALS_TEMPLATE));
     },
     update: (directory) => updateEvals(directory, version),
     validate: (directory) => validateEvals(directory, version),

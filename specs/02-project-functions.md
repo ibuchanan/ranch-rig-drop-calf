@@ -35,6 +35,21 @@ Every function:
 - documents which outputs are init-only, updated authoritatively, or changed
   selectively within shared resources.
 
+The capability contract contains only these three operations; `addTo`,
+capability-level template declarations, and the expansion adapter are removed.
+Init declares deferred template seed steps on its blueprint. Generic assembly
+executes them in order; catalog rendering, OSS substitution, TypeScript exclusions,
+gitignore blocks, and SecretSpec executable modes are owned by their capabilities.
+Optional CLI selection is capability data, including default inclusion and whether
+`--with` or `--without` is permitted. Profile assembly does not name capabilities
+when selecting or executing them. Standalone `copy-*` Dagger actions are removed;
+internal copy helpers remain implementation details of init or update.
+
+Tests reject placeholder migration reasons and require exactly one capability
+owner for every generated file, package field, script, and dependency key across
+init, seed execution, and update. The README seed belongs to OSS; there is no
+separate README generator.
+
 ### Scaffold source adoption (top-level init only)
 
 On `forge-app`, top-level `init` automatically renames root `src/**/*.js` to
@@ -156,10 +171,8 @@ remain manual additions to the catalog entry. Copyright year is captured once at
 update does not increment it. The `forge-ranch/license` annotation is seeded as a literal
 string `Apache-2.0` at init and is consumed by `node` (for `package.json`) and
 `oss` (for template validation); Apache-only templates fail if the catalog license does
-not match. Standalone `copy-catalog` and `validate-catalog` functions do not require
-`package.json`; `copy-catalog` accepts a component type independently of the currently
-supported project kinds. Standalone `copy-oss` takes a directory only and requires the
-catalog to be present and valid.
+not match. Standalone `validate-catalog` does not require `package.json`. Catalog
+init receives the selected project kind from its capability composition.
 
 ### `package-metadata`
 
@@ -181,7 +194,7 @@ capability's scope.
 Catalog is the source of truth for shared identity on both init and update. Direct
 package edits to `name`, `description`, and `author` are overwritten. Package names
 are never inferred from `metadata.name` or `metadata.title`. The legacy `author`
-argument is retained during expansion but ignored: author, OWNER, and catalog owner
+argument is retained for CLI compatibility but ignored: author, OWNER, and catalog owner
 refer to the same staff ID. OSS synchronizes OWNER independently.
 Template rendering and scaffold merging finish before the update pass derives the
 final package fields from the actual catalog bytes.
@@ -242,9 +255,7 @@ Under ticket 06's agreed policy:
 
 OSS never changes catalog or package metadata. Missing or malformed consumed
 values fail before asset writes. Owner references accepted by catalog, including
-`user:tester` and `user:other-namespace/tester`, yield the same staff ID. Standalone
-`copy-oss` takes only a directory containing catalog and deliberately re-seeds all
-six files, including README; it is not the maintenance update operation. Upstream
+`user:tester` and `user:other-namespace/tester`, yield the same staff ID. Upstream
 changes reach repositories through a deliberate `bun run refresh:oss`, followed
 by update using that new pin; OSS never fetches upstream during init or update.
 
@@ -401,8 +412,7 @@ The release workflow owns `devDependencies["git-cliff"]` at
 
 - **init** seeds the tool pin and command and overlays `templates/changelog` for
   `cliff.toml` and `CHANGELOG.md`. Init is fresh-repository setup, not a maintenance
-  rerun. Standalone `copy-changelog` deliberately overlays both files without
-  changing package metadata; it is not update.
+  rerun.
 - **update** enforces only the tool pin and canonical script in an existing
   `package.json`, creating missing sections and owned keys. A missing package is
   not created. Malformed/non-object JSON and non-object scripts/devDependencies
@@ -440,9 +450,9 @@ never installs them or injects secret values.
   name is substituted with string escaping; the helpers are seeded executable
   (`0755`). The JSON allowlist starts as `[]`. `FORGE_SITE` is required, with no
   assumed site. Init is first-time setup, not create-if-absent maintenance: an
-  existing asset is replaced. Standalone `copy-secrets` has the same overlay
-  behavior. The special seeding branch is retained for TOML name substitution
-  and explicit executable permissions; ordinary template overlays do neither.
+  existing asset is replaced. The capability declares its seed step for TOML
+  name substitution and explicit executable permissions; generic assembly
+  executes the step without knowing either policy.
 - **update** preserves both owner files byte-for-byte, including permissions,
   edits and deletions. It authoritatively replaces or restores both helpers with
   template bytes and `0755` permissions. It maintains only six package scripts:
@@ -496,7 +506,6 @@ scripts: `format` (`biome format --write`), `format:check` (`biome format`),
   every kind. Its authored `biome.jsonc` schema matches the registry pin, enforced
   by a test. `.editorconfig` contains `[*]` defaults and a Markdown
   `trim_trailing_whitespace = false` override, preserving two-space hard line breaks.
-  Standalone `copy-biome` deliberately seeds the same template bytes; it is not update.
 - **update** enforces the dependency and four scripts in an existing `package.json`,
   creating missing sections and owned keys while preserving unrelated field values.
   Malformed/non-object JSON and non-object scripts/devDependencies fail before writes.
@@ -539,8 +548,7 @@ Every kind includes the documentation workflow: `devDependencies.cspell` at
 - **init** seeds both tool pins and the command and overlays `templates/docs`.
   The tree includes the four Diátaxis placeholders, `DEVELOPMENT.md`, `specs/spec.md`,
   `.markdownlint-cli2.jsonc`, and `.cspell.jsonc`. These are starting content, not
-  continuing policy. Standalone `copy-docs` deliberately overlays the same tree;
-  it is not maintenance update.
+  continuing policy.
 - **update** enforces only the two tool pins and canonical script in an existing
   `package.json`, creating missing sections and owned keys. Missing package stays
   absent; malformed/non-object JSON and non-object scripts/devDependencies fail
@@ -607,8 +615,7 @@ Under ticket 16's agreed policy:
 
 Prelint never writes `lint` or `lefthook.yml`. Git-hooks alone owns `lint`, and its
 seeded config dispatches both named subtasks with `--if-present`; owner hook edits
-remain owner-managed. The legacy `addTo` contribution remains during expansion but
-is not the new init verb.
+remain owner-managed.
 
 ### `library-build`
 
@@ -759,8 +766,7 @@ separate lifecycles:
 
 Repository URLs are supported dependency specs. The current registry values are
 GitHub references without a commit or tag; update enforces the reference strings,
-not immutable resolved versions. The legacy `addTo` contribution remains during
-expansion and merges all three keys without replacing unrelated dependencies.
+not immutable resolved versions.
 
 ### `aidev`
 
@@ -999,8 +1005,6 @@ and `lint:forge` without writing `lint`; ownership does not depend on pass order
   formatting under `lint`; pre-commit runs gitleaks and formatting; pre-push runs
   lint, tests, and size checks. npm script calls use `--if-present` so omitted
   subtasks are no-ops. Init is fresh-repository setup, not maintenance adoption.
-  Standalone `copy-git-hooks` deliberately overlays the seed without changing
-  package metadata; it is not update.
 - **update** enforces only the runner pin and three canonical scripts in an
   existing package, replacing owner edits and creating missing sections/keys.
   Missing `package.json` is not created. Malformed/non-object JSON and non-object

@@ -57,7 +57,9 @@ test.each(Object.keys(PROFILES))(
       "Description",
       "An author",
     );
-    expect(project.templates).toContain(CATALOG_TEMPLATE);
+    expect(project.templates.map((template) => template.path)).toContain(
+      CATALOG_TEMPLATE,
+    );
     expect(project.files.has(CATALOG_FILE)).toBe(false);
   },
 );
@@ -269,29 +271,3 @@ test.each(Object.keys(PROFILES))(
     }
   },
 );
-
-test("standalone catalog functions work without package.json or a current project kind", async () => {
-  const source = mockModuleSource();
-  try {
-    const module = new DropCalf();
-    const output = await module.copyCatalog(
-      mockDirectory(),
-      "python-project",
-      "tester",
-      "python-library",
-      "",
-      "2020-2024",
-    );
-    expect(await output.exists("package.json")).toBe(false);
-    expect(JSON.parse(await module.validateCatalog(output))).toEqual({
-      status: "validated",
-    });
-    expect(
-      parse(await output.file(CATALOG_FILE).contents()).metadata.annotations[
-        COPYRIGHT_DATE
-      ],
-    ).toBe("2020-2024");
-  } finally {
-    source.mockRestore();
-  }
-});

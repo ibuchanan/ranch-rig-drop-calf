@@ -35,12 +35,16 @@ test("Forge pre-push checks reach the typecheck command through lint", () => {
 
 test("only Forge apps declare a Vitest template, without embedding config in the blueprint", () => {
   const forge = buildProject("forge-app", "sample", "tester");
-  expect(forge.templates).toContain("templates/vitest");
+  expect(forge.templates.map((template) => template.path)).toContain(
+    "templates/vitest",
+  );
   expect(forge.files.has("vitest.config.ts")).toBe(false);
   for (const kind of ["library", "tool", "agent-skill"]) {
-    expect(buildProject(kind, "sample", "tester").templates).not.toContain(
-      "templates/vitest",
-    );
+    expect(
+      buildProject(kind, "sample", "tester").templates.map(
+        (template) => template.path,
+      ),
+    ).not.toContain("templates/vitest");
   }
 });
 

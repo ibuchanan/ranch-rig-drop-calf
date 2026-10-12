@@ -1,3 +1,4 @@
+import type { ProjectBlueprint } from "./project.ts";
 import { type Directory, dag } from "@dagger.io/dagger";
 import {
   applyEdits,
@@ -13,7 +14,7 @@ import type { Capability, Validation } from "./capability.ts";
 import { parseObject } from "./init.ts";
 import { nodeContainer } from "./node.ts";
 import { ParseError } from "./preclean.ts";
-import { copyTemplate } from "./templates.ts";
+import { copyTemplate, templateTree } from "./templates.ts";
 import { TOOL_VERSIONS } from "./versions.ts";
 
 export const TYPESCRIPT_TEMPLATE = "templates/typescript";
@@ -249,18 +250,16 @@ export function typeScriptToolchain(
   tsVersion: string = TOOL_VERSIONS.typescript,
   ownsBuild = true,
 ): Capability {
-  const seed: Capability["addTo"] = (project) => {
+  const seed: (project: ProjectBlueprint) => void = (project) => {
     project.packageJson.devDependencies.typescript = tsVersion;
     project.packageJson.scripts.typecheck = TYPESCRIPT_SCRIPTS.typecheck;
     if (ownsBuild) project.packageJson.scripts.build = TYPESCRIPT_SCRIPTS.build;
   };
   return {
     name: "typescript",
-    templates: [TYPESCRIPT_TEMPLATE],
-    addTo: seed,
     init(project) {
       seed(project);
-      project.templates.push(TYPESCRIPT_TEMPLATE);
+      project.templates.push(templateTree(TYPESCRIPT_TEMPLATE, copyTypeScript));
     },
     update: (directory) => updateTypeScript(directory, tsVersion, ownsBuild),
     validate: (directory) => validateTypeScript(directory, tsVersion),

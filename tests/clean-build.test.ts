@@ -24,7 +24,7 @@ test("clean-build init and validate have explicit reasons and do no work", async
   expect(project.packageJson.scripts).toEqual({});
   expect(project.packageJson.devDependencies).toEqual({});
   expect(project.files.size).toBe(0);
-  expect(project.templates).toEqual([]);
+  expect(project.templates.map((template) => template.path)).toEqual([]);
   expect(noOpReasons([capability])).toEqual([
     {
       capability: "clean-build",

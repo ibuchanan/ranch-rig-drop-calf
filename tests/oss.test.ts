@@ -84,34 +84,6 @@ describe("pinned OSS templates", () => {
     },
   );
 
-  test("copyOss exposes the module's OSS templates through Dagger", async () => {
-    const module = mockOssSource();
-    try {
-      const writes = new Map<string, string>();
-      const destination = mockDirectory(
-        new Map([
-          [
-            "catalog-info.yaml",
-            "metadata:\n  title: sample\n  annotations:\n    forge-ranch/license: Apache-2.0\n    forge-ranch/copyright-date: '2024'\nspec:\n  owner: user:default/tester\n",
-          ],
-        ]),
-      );
-      const output = await new DropCalf().copyOss(destination);
-      for (const [path, contents] of (
-        output as ReturnType<typeof mockDirectory>
-      ).files)
-        writes.set(path, contents);
-      expect(writes.get("README.md")).toBe(
-        ossTemplates().get("README.md")?.replaceAll("[Project name]", "sample"),
-      );
-      expect(writes.get("CODE_OF_CONDUCT.md")).toBe(
-        ossTemplates().get("CODE_OF_CONDUCT.md"),
-      );
-    } finally {
-      module.mockRestore();
-    }
-  });
-
   test.each(
     ["library", "forge-app", "tool", "agent-skill"].flatMap((kind) =>
       [undefined, "all"].map((preset) => ({

@@ -33,30 +33,19 @@ test.skipIf(!enabled)(
       });
     try {
       const empty = join(root, "empty");
-      const catalog = join(root, "catalog");
       const seed = join(root, "seed");
       const first = join(root, "first");
       const second = join(root, "second");
       mkdirSync(empty);
       call(
-        "copy-catalog",
+        "init",
         "--directory",
         empty,
-        "--name",
-        "sample",
+        "--profile",
+        "forge-app",
         "--owner",
         "tester",
-        "--type",
-        "forge-app",
-        "export",
-        "--path",
-        catalog,
-      );
-      call(
-        "copy-secrets",
-        "--directory",
-        catalog,
-        "--name",
+        "--package-name",
         "sample",
         "export",
         "--path",

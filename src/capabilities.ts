@@ -47,14 +47,6 @@ async function updateForgeAhead(directory: Directory): Promise<Directory> {
 export function forgeAhead(): Capability {
   return {
     name: "forge-ahead",
-    // Retain the legacy contribution until ticket 26 contracts the old shape.
-    addTo(project) {
-      project.packageJson.dependencies = {
-        ...project.packageJson.dependencies,
-        "@forge-ahead/atlassian-api-types": TOOL_VERSIONS.forgeAheadApiTypes,
-        ...FORGE_AHEAD_DEPENDENCIES,
-      };
-    },
     init(project) {
       project.packageJson.dependencies = {
         ...project.packageJson.dependencies,
@@ -98,10 +90,6 @@ async function updateCleanBuild(directory: Directory): Promise<Directory> {
 export function cleanBuild(): Capability {
   return {
     name: "clean-build",
-    // Retain the legacy contribution until ticket 26 contracts the old shape.
-    addTo(project) {
-      project.packageJson.scripts.clean = CLEAN_BUILD_COMMAND;
-    },
     init: noOp(
       "Clean build has no files, dependencies, or initial settings to seed; update maintains the clean script.",
     ),
@@ -149,10 +137,6 @@ async function updateBunTesting(directory: Directory): Promise<Directory> {
 export function bunTesting(): Capability {
   return {
     name: "test",
-    // Retain the legacy contribution until ticket 26 contracts the old shape.
-    addTo(project) {
-      Object.assign(project.packageJson.scripts, BUN_TEST_SCRIPTS);
-    },
     init: noOp(
       "Bun's built-in test runner needs no dependency or configuration seed; update maintains the test scripts, and test sources are owner-managed.",
     ),

@@ -5,37 +5,25 @@ import {
   type Container,
   type Directory,
   dag,
-  type File,
   func,
   object,
   type Secret,
 } from "@dagger.io/dagger";
-import { BIOME_TEMPLATE, copyBiome } from "./biome.ts";
 import { updateCapabilities, validateCapabilities } from "./capability.ts";
-import { CATALOG_TEMPLATE, copyCatalog, validateCatalog } from "./catalog.ts";
-import {
-  CHANGELOG_TEMPLATE,
-  copyChangelog,
-  validateChangelog,
-} from "./changelog.ts";
-import { copyDocs, DOCS_TEMPLATE } from "./docs.ts";
+import { validateCatalog } from "./catalog.ts";
+import { validateChangelog } from "./changelog.ts";
 import { forgeManifest, validateForgeManifest } from "./forge-manifest.ts";
-import { copyGitHooks, GIT_HOOKS_TEMPLATE } from "./git-hooks.ts";
-import { copyGitignoreAssets, PINNED_GITIGNORE } from "./gitignore.ts";
 import {
   adoptScaffoldTypeScript,
   mergeScaffoldPackage,
   scaffoldName,
 } from "./init.ts";
 import { nodeContainer as buildNodeContainer } from "./node.ts";
-import { copyOssAssets, PINNED_OSS } from "./oss.ts";
 import { applyPreclean } from "./preclean.ts";
 import { validatePrelint } from "./prelint.ts";
 import { buildProject, resolveProfile } from "./profiles.ts";
 import { renderToDirectory } from "./project.ts";
-import { copySecretsAssets, SECRETS_TEMPLATE } from "./secrets.ts";
 import { seedTemplates } from "./templates.ts";
-import { copyTypeScript, TYPESCRIPT_TEMPLATE } from "./typescript.ts";
 @object()
 export class DropCalf {
   /**
@@ -48,83 +36,9 @@ export class DropCalf {
     return buildNodeContainer();
   }
 
-  /**
-   * The pinned gitignore.io response. Reading it through the module source keeps
-   * generation deterministic and offline; refresh it with
-   * `bun run refresh:gitignore` and review the diff.
-   */
-  private gitignoreSource(): File {
-    return dag.currentModule().source().file(PINNED_GITIGNORE);
-  }
-
-  @func()
-  copyDocs(directory: Directory): Directory {
-    return copyDocs(
-      directory,
-      dag.currentModule().source().directory(DOCS_TEMPLATE),
-    );
-  }
-
-  @func()
-  copyTypeScript(directory: Directory): Directory {
-    return copyTypeScript(
-      directory,
-      dag.currentModule().source().directory(TYPESCRIPT_TEMPLATE),
-    );
-  }
-
-  @func()
-  copyBiome(directory: Directory): Directory {
-    return copyBiome(
-      directory,
-      dag.currentModule().source().directory(BIOME_TEMPLATE),
-    );
-  }
-
-  @func()
-  copyChangelog(directory: Directory): Directory {
-    return copyChangelog(
-      directory,
-      dag.currentModule().source().directory(CHANGELOG_TEMPLATE),
-    );
-  }
-
-  @func()
-  copyGitHooks(directory: Directory): Directory {
-    return copyGitHooks(
-      directory,
-      dag.currentModule().source().directory(GIT_HOOKS_TEMPLATE),
-    );
-  }
-
-  @func()
-  async copyCatalog(
-    directory: Directory,
-    name: string,
-    owner: string,
-    type: string,
-    description = "",
-    copyrightDate?: string,
-  ): Promise<Directory> {
-    return copyCatalog(
-      directory,
-      dag.currentModule().source().directory(CATALOG_TEMPLATE),
-      { name, owner, type, description, copyrightDate },
-    );
-  }
-
   @func()
   async validateCatalog(directory: Directory): Promise<string> {
     return JSON.stringify(await validateCatalog(directory), null, 2);
-  }
-
-  @func()
-  async copySecrets(directory: Directory, name: string): Promise<Directory> {
-    return copySecretsAssets(
-      directory,
-      dag.currentModule().source().directory(SECRETS_TEMPLATE),
-      name,
-    );
   }
 
   /**
@@ -155,22 +69,6 @@ export class DropCalf {
   @func()
   async validatePrelint(directory: Directory): Promise<string> {
     return JSON.stringify(await validatePrelint(directory), null, 2);
-  }
-
-  @func()
-  async copyGitignore(
-    directory: Directory,
-    sets?: string[],
-  ): Promise<Directory> {
-    return copyGitignoreAssets(directory, this.gitignoreSource(), sets);
-  }
-
-  @func()
-  async copyOss(directory: Directory): Promise<Directory> {
-    return copyOssAssets(
-      directory,
-      dag.currentModule().source().directory(PINNED_OSS),
-    );
   }
 
   @func()
@@ -246,8 +144,6 @@ export class DropCalf {
       rendered,
       dag.currentModule().source(),
       project.templates,
-      name,
-      { name, owner, type: profile, description },
     );
     const kept = (await cleaned.exists("package.json"))
       ? await cleaned.file("package.json").contents()
@@ -346,5 +242,3 @@ export class DropCalf {
     return await directory.export(path);
   }
 }
-
-export { buildReadme } from "./project.ts";

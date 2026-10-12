@@ -20,7 +20,9 @@ test("init declares its template tree and selected tools without authoring docs"
   const project = createBlueprint("sample", "", "tester");
   if (typeof capability.init !== "function") throw new Error("missing init");
   capability.init(project);
-  expect(project.templates).toEqual([DOCS_TEMPLATE]);
+  expect(project.templates.map((template) => template.path)).toEqual([
+    DOCS_TEMPLATE,
+  ]);
   expect(project.files.size).toBe(0);
   expect(project.packageJson.scripts["lint:docs"]).toBe(DOCS_COMMAND);
   expect(project.packageJson.devDependencies).toEqual({

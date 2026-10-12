@@ -73,7 +73,9 @@ test("init and update use the selected pin without claiming unrelated package fi
   const project = createBlueprint("sample", "", "tester");
   if (typeof capability.init !== "function") throw new Error("missing init");
   capability.init(project);
-  expect(project.templates).toEqual([CHANGELOG_TEMPLATE]);
+  expect(project.templates.map((template) => template.path)).toEqual([
+    CHANGELOG_TEMPLATE,
+  ]);
   expect(project.packageJson.devDependencies["git-cliff"]).toBe("2.0.0");
   expect(project.packageJson.scripts.changelog).toBe(CHANGELOG_COMMAND);
 

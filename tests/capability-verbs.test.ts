@@ -2,18 +2,15 @@ import { expect, spyOn, test } from "bun:test";
 import { type Directory, dag } from "@dagger.io/dagger";
 import {
   type Capability,
-  expandCapability,
   noOp,
-  noOpReasons,
   updateCapabilities,
   validateCapabilities,
 } from "../src/capability.ts";
 import { changelogToolchain, validateChangelog } from "../src/changelog.ts";
-import { evals } from "../src/evals.ts";
 import { DropCalf } from "../src/index.ts";
 import { prelint, validatePrelint } from "../src/prelint.ts";
 import { buildProject, PROFILES, resolveProfile } from "../src/profiles.ts";
-import { createBlueprint, renderToDirectory } from "../src/project.ts";
+import { renderToDirectory } from "../src/project.ts";
 import { seedTemplates } from "../src/templates.ts";
 import { mockModuleSource, mockDirectory as tree } from "./module-source.ts";
 
@@ -35,153 +32,47 @@ const contents = (directory: Directory) =>
     ([a], [b]) => a.localeCompare(b),
   );
 
-// The pre-expansion assembly, kept as an independent compatibility oracle.
-function legacyProject(
-  kind: string,
-  withFunctions: string[],
-  withoutFunctions: string[],
-  preset?: string,
-) {
-  const project = createBlueprint("sample", "A sample project", "tester");
-  const add = (capability: Capability) => {
-    capability.addTo(project);
-    project.templates.push(...(capability.templates ?? []));
-  };
-  for (const capability of PROFILES[kind] ?? []) {
-    if (!withoutFunctions.includes(capability.name)) add(capability);
-  }
-  if (
-    kind === "forge-app" &&
-    (preset === "all" || withFunctions.includes("evals")) &&
-    !withoutFunctions.includes("evals")
-  )
-    add(evals());
-  return project;
-}
-
-test.each(["", " ", "\n\t"])("no-op rejects an empty reason: %j", (reason) => {
-  expect(() => noOp(reason)).toThrow("non-empty reason");
-});
-
-test("no-op reasons are enumerable data, including the deliberately inactive init", () => {
-  const selected = resolveProfile("agent-skill");
-  const reasons = noOpReasons(selected);
-  expect(reasons).toContainEqual({
-    capability: "test",
-    verb: "init",
-    reason:
-      "Bun's built-in test runner needs no dependency or configuration seed; update maintains the test scripts, and test sources are owner-managed.",
-  });
-  expect(reasons.filter((item) => item.verb === "update")).toHaveLength(
-    selected.filter((item) => typeof item.update !== "function").length,
-  );
-  for (const item of reasons) expect(item.reason.trim()).not.toBe("");
-  expect(() => JSON.stringify(reasons)).not.toThrow();
+const inactive = noOp("The test capability has no outputs for this verb.");
+const capability = (
+  name: string,
+  operations: Partial<Capability> = {},
+): Capability => ({
+  name,
+  init: inactive,
+  update: inactive,
+  validate: inactive,
+  ...operations,
 });
 
 test.each(kinds)(
-  "%s required verbs preserve initialized legacy output and update leaves init unchanged",
+  "%s init equals seed-then-update and maintenance is idempotent",
   async (kind) => {
     const source = mockModuleSource();
     const empty = spyOn(dag, "directory").mockImplementation(() => tree());
     try {
-      for (const { withFunctions, withoutFunctions, preset } of selections(
-        kind,
-      )) {
-        const legacy = legacyProject(
-          kind,
-          withFunctions,
-          withoutFunctions,
-          preset,
-        );
+      for (const selection of selections(kind)) {
         const project = buildProject(
           kind,
           "sample",
           "tester",
           "A sample project",
-          "Tester",
-          withFunctions,
-          withoutFunctions,
-          preset,
+          "",
+          selection.withFunctions,
+          selection.withoutFunctions,
+          selection.preset,
         );
-        // Update-only capabilities retain addTo solely for the legacy oracle.
-        const legacyInitPackage = structuredClone(legacy.packageJson);
-        delete legacyInitPackage.scripts.clean;
-        if (kind !== "forge-app") {
-          delete legacyInitPackage.scripts.test;
-          delete legacyInitPackage.scripts["test:watch"];
-          delete legacyInitPackage.scripts["test:coverage"];
-        }
-        if (kind === "forge-app") {
-          if (legacyInitPackage.dependencies) {
-            delete legacyInitPackage.dependencies["@forge-ahead/errors"];
-            delete legacyInitPackage.dependencies["@forge-ahead/logging"];
-          }
-          delete legacyInitPackage.devDependencies["@ast-grep/cli"];
-          delete legacyInitPackage.devDependencies["@forge-ahead/prelint"];
-          delete legacyInitPackage.scripts["lint:prelint"];
-          delete legacyInitPackage.scripts["lint:forge"];
-        }
-        expect(project.packageJson).toEqual(legacyInitPackage);
-        expect([...project.files]).toEqual([...legacy.files]);
-        expect(project.templates).toEqual(legacy.templates);
-        const capabilities = resolveProfile(
-          kind,
-          withFunctions,
-          withoutFunctions,
-          preset,
-        );
-        expect(new Set(capabilities.map((item) => item.name)).size).toBe(
-          capabilities.length,
-        );
-        for (const capability of capabilities) {
-          expect(capability.init).toBeDefined();
-          expect(capability.update).toBeDefined();
-          expect(capability.validate).toBeDefined();
-          if (
-            [
-              "package-metadata",
-              "oss",
-              "gitignore",
-              "node",
-              "forge-manifest",
-              "changelog",
-              "git-hooks",
-              "prelint",
-              "forge-ahead",
-              "biome",
-              "typescript",
-              "library-build",
-              "clean-build",
-              "secrets",
-              "size-limit",
-              "docs",
-              "evals",
-              "test",
-            ].includes(capability.name)
-          )
-            expect(typeof capability.update).toBe("function");
-          else expect(typeof capability.update).not.toBe("function");
-        }
         const module = new DropCalf();
         const seeded = await seedTemplates(
-          renderToDirectory(legacy),
+          renderToDirectory(project),
           dag.currentModule().source(),
-          legacy.templates,
-          "sample",
-          {
-            name: "sample",
-            owner: "tester",
-            type: kind,
-            description: "A sample project",
-          },
+          project.templates,
         );
         const generated = await module.update(
-          await module.copyGitignore(seeded),
+          seeded,
           kind,
-          withFunctions,
-          withoutFunctions,
-          preset,
+          selection.withFunctions,
+          selection.withoutFunctions,
+          selection.preset,
         );
         const initialized = await module.init(
           tree(),
@@ -189,21 +80,32 @@ test.each(kinds)(
           "tester",
           "sample",
           "A sample project",
-          "Tester",
-          withFunctions,
-          withoutFunctions,
-          preset,
+          "",
+          selection.withFunctions,
+          selection.withoutFunctions,
+          selection.preset,
         );
         expect(contents(initialized)).toEqual(contents(generated));
         expect(
-          await module.update(
-            initialized,
-            kind,
-            withFunctions,
-            withoutFunctions,
-            preset,
+          contents(
+            await module.update(
+              initialized,
+              kind,
+              selection.withFunctions,
+              selection.withoutFunctions,
+              selection.preset,
+            ),
           ),
-        ).toBe(initialized);
+        ).toEqual(contents(initialized));
+        for (const item of resolveProfile(
+          kind,
+          selection.withFunctions,
+          selection.withoutFunctions,
+          selection.preset,
+        )) {
+          expect(item).not.toHaveProperty("addTo");
+          expect(item).not.toHaveProperty("templates");
+        }
       }
     } finally {
       empty.mockRestore();
@@ -223,8 +125,8 @@ test("standalone validators agree with capability validation results", async () 
 
 test("update composes in profile order and passes each result to the next capability", async () => {
   const input = tree();
-  const first = expandCapability("first", "test", { addTo() {} });
-  const second = expandCapability("second", "test", { addTo() {} });
+  const first = capability("first");
+  const second = capability("second");
   first.update = (directory) => directory.withNewFile("first", "done");
   second.update = async (directory) => {
     expect(await directory.file("first").contents()).toBe("done");
@@ -242,33 +144,31 @@ test("validate collects validated, skipped and failed results against the unchan
   const input = tree(new Map([["owner.txt", "unchanged"]]));
   const before = contents(input);
   const capabilities = [
-    expandCapability("passes", "test", { addTo() {} }, async (directory) => {
-      expect(directory).toBe(input);
-      return { status: "validated" };
-    }),
-    expandCapability("fails", "test", { addTo() {} }, async (directory) => {
-      expect(directory).toBe(input);
-      throw new Error("bad tool config");
-    }),
-    expandCapability(
-      "skips",
-      "test",
-      { addTo() {} },
-      noOp("No consuming tool"),
-    ),
-    expandCapability("missing", "test", { addTo() {} }, async (directory) => {
-      expect(directory).toBe(input);
-      return { status: "skipped", reason: "config is missing" };
-    }),
-    expandCapability(
-      "also-passes",
-      "test",
-      { addTo() {} },
-      async (directory) => {
+    capability("passes", {
+      validate: async (directory) => {
         expect(directory).toBe(input);
         return { status: "validated" };
       },
-    ),
+    }),
+    capability("fails", {
+      validate: async (directory) => {
+        expect(directory).toBe(input);
+        throw new Error("bad tool config");
+      },
+    }),
+    capability("skips", { validate: noOp("No consuming tool") }),
+    capability("missing", {
+      validate: async (directory) => {
+        expect(directory).toBe(input);
+        return { status: "skipped", reason: "config is missing" };
+      },
+    }),
+    capability("also-passes", {
+      validate: async (directory) => {
+        expect(directory).toBe(input);
+        return { status: "validated" };
+      },
+    }),
   ];
   expect(await validateCapabilities(input, capabilities)).toEqual([
     { capability: "passes", status: "validated" },
@@ -315,13 +215,13 @@ test.each(kinds)(
 test("init runs every update only after templates and scaffold merging are complete", async () => {
   const capabilities = PROFILES.tool;
   if (!capabilities) throw new Error("tool profile is missing");
-  const first = expandCapability("first", "test", {
-    addTo(project) {
+  const first = capability("first", {
+    init(project) {
       project.files.set("first.txt", "seeded");
     },
   });
-  const second = expandCapability("second", "test", {
-    addTo(project) {
+  const second = capability("second", {
+    init(project) {
       project.files.set("second.txt", "seeded");
     },
   });
@@ -392,7 +292,7 @@ test("new operations reject invalid selections before reading the input", async 
   );
   await expect(
     module.validate({} as Directory, "tool", ["evals"]),
-  ).rejects.toThrow("only available for forge-app");
+  ).rejects.toThrow("Cannot select optional function");
   await expect(
     module.update({} as Directory, "forge-app", ["evals"], ["evals"]),
   ).rejects.toThrow("both");

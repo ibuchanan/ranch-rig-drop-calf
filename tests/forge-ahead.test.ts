@@ -33,18 +33,7 @@ test("Forge Ahead init seeds only API types without replacing other dependencies
   });
   expect(project.packageJson.devDependencies).toEqual({});
   expect(project.files.size).toBe(0);
-  expect(project.templates).toEqual([]);
-});
-
-test("Forge Ahead legacy contribution also preserves unrelated dependencies", () => {
-  const project = createBlueprint("sample", "", "tester");
-  project.packageJson.dependencies = { "@forge/api": "^7" };
-  forgeAhead().addTo(project);
-  expect(project.packageJson.dependencies).toEqual({
-    "@forge/api": "^7",
-    [apiTypes]: TOOL_VERSIONS.forgeAheadApiTypes,
-    ...authoritative,
-  });
+  expect(project.templates.map((template) => template.path)).toEqual([]);
 });
 
 test.each([undefined, "^99", "github:example/api-types#revision"])(

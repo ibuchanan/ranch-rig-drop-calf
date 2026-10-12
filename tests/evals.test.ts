@@ -94,14 +94,20 @@ test("Forge evals selection and all preset declare the same seed tree without au
     [],
     "all",
   );
-  expect(all).toEqual(selected);
+  expect(all.packageJson).toEqual(selected.packageJson);
+  expect(all.files).toEqual(selected.files);
+  expect(all.templates.map((template) => template.path)).toEqual(
+    selected.templates.map((template) => template.path),
+  );
   expect(selected.packageJson.scripts).toMatchObject({
     eval: "promptfoo eval",
     view: "promptfoo view",
     test: "vitest run --passWithNoTests",
   });
   expect(selected.packageJson.devDependencies.promptfoo).toBeDefined();
-  expect(selected.templates).toContain(EVALS_TEMPLATE);
+  expect(selected.templates.map((template) => template.path)).toContain(
+    EVALS_TEMPLATE,
+  );
   for (const path of promptfooTemplates().keys())
     expect(selected.files.has(path)).toBe(false);
   expect(selected.files.has("manifest.yml")).toBe(false);
@@ -117,8 +123,14 @@ test("Forge evals selection and all preset declare the same seed tree without au
     ["evals"],
     "all",
   );
-  expect(excluded).toEqual(ordinary);
-  expect(ordinary.templates).not.toContain(EVALS_TEMPLATE);
+  expect(excluded.packageJson).toEqual(ordinary.packageJson);
+  expect(excluded.files).toEqual(ordinary.files);
+  expect(excluded.templates.map((template) => template.path)).toEqual(
+    ordinary.templates.map((template) => template.path),
+  );
+  expect(ordinary.templates.map((template) => template.path)).not.toContain(
+    EVALS_TEMPLATE,
+  );
   expect(ordinary.packageJson.scripts.eval).toBeUndefined();
   expect(ordinary.packageJson.scripts.view).toBeUndefined();
   expect(ordinary.packageJson.devDependencies.promptfoo).toBeUndefined();

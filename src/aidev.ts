@@ -1,3 +1,4 @@
+import type { ProjectBlueprint } from "./project.ts";
 import { type Capability, noOp } from "./capability.ts";
 
 // Authored guidance seed: keep this aligned with the generated Forge scripts.
@@ -15,13 +16,14 @@ deploying; do not deploy or install without approval.
 `;
 
 export function aidev(profile: string): Capability {
-  const seed: Capability["addTo"] = (project) => {
+  const seed: (project: ProjectBlueprint) => void = (project) => {
     if (profile === "forge-app") project.files.set("AGENTS.md", FORGE_GUIDANCE);
   };
   return {
     name: "aidev",
-    // Retain the legacy contribution until ticket 26 contracts the old shape.
-    addTo: seed,
+    ...(profile === "forge-app"
+      ? { selection: { without: true, default: true } }
+      : {}),
     init:
       profile === "forge-app"
         ? seed

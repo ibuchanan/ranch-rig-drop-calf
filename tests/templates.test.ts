@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test";
 import type { Directory } from "@dagger.io/dagger";
 import { BIOME_TEMPLATE } from "../src/biome.ts";
-import { type Capability, expandCapability } from "../src/capability.ts";
+import { type Capability, noOp } from "../src/capability.ts";
 import { CATALOG_TEMPLATE } from "../src/catalog.ts";
 import { CHANGELOG_TEMPLATE } from "../src/changelog.ts";
 import { DOCS_TEMPLATE } from "../src/docs.ts";
@@ -12,7 +12,7 @@ import { LIBRARY_BUILD_TEMPLATE } from "../src/library-build.ts";
 import { PINNED_OSS } from "../src/oss.ts";
 import { buildProject, PROFILES } from "../src/profiles.ts";
 import { SECRETS_TEMPLATE } from "../src/secrets.ts";
-import { seedTemplates } from "../src/templates.ts";
+import { seedTemplates, templateTree } from "../src/templates.ts";
 import { TYPESCRIPT_TEMPLATE } from "../src/typescript.ts";
 
 const kinds = ["library", "forge-app", "tool", "agent-skill"];
@@ -29,7 +29,7 @@ test.each(kinds)("%s declares only its selected template trees", (kind) => {
       [],
       preset,
     );
-    expect([...project.templates].sort()).toEqual(
+    expect(project.templates.map((template) => template.path).sort()).toEqual(
       [
         BIOME_TEMPLATE,
         CATALOG_TEMPLATE,
@@ -61,17 +61,31 @@ test("assembly collects zero or multiple trees from capabilities without reading
   const capabilities = PROFILES.tool;
   if (!capabilities) throw new Error("tool profile is missing");
   const added: Capability[] = [
-    expandCapability("custom-empty", "test", { addTo() {} }),
-    expandCapability("custom-trees", "test", {
-      templates: ["custom/first", "custom/second"],
-      addTo() {},
-    }),
+    {
+      name: "custom-empty",
+      init: noOp("No seed is needed."),
+      update: noOp("No outputs to maintain."),
+      validate: noOp("No consuming configuration."),
+    },
+    {
+      name: "custom-trees",
+      init(project) {
+        project.templates.push(
+          templateTree("custom/first"),
+          templateTree("custom/second"),
+        );
+      },
+      update: noOp("Owner-managed templates."),
+      validate: noOp("No consuming configuration."),
+    },
   ];
-  const before = buildProject("tool", "sample", "tester").templates;
+  const before = buildProject("tool", "sample", "tester").templates.map(
+    (template) => template.path,
+  );
   capabilities.push(...added);
   try {
     const project = buildProject("tool", "sample", "tester");
-    expect(project.templates).toEqual([
+    expect(project.templates.map((template) => template.path)).toEqual([
       ...before,
       "custom/first",
       "custom/second",
@@ -80,7 +94,51 @@ test("assembly collects zero or multiple trees from capabilities without reading
   } finally {
     capabilities.splice(-added.length);
   }
-  expect(buildProject("tool", "sample", "tester").templates).toEqual(before);
+  expect(
+    buildProject("tool", "sample", "tester").templates.map(
+      (template) => template.path,
+    ),
+  ).toEqual(before);
+});
+
+test("seeding awaits custom capability steps and threads their results in order", async () => {
+  const first = {} as Directory;
+  const second = {} as Directory;
+  const source = {} as Directory;
+  const calls: string[] = [];
+  expect(
+    await seedTemplates(first, source, [
+      {
+        path: "custom/file",
+        async seed(input, moduleSource) {
+          await Promise.resolve();
+          expect(input).toBe(first);
+          expect(moduleSource).toBe(source);
+          calls.push("first");
+          return second;
+        },
+      },
+      {
+        path: "custom/tree",
+        seed(input) {
+          expect(input).toBe(second);
+          calls.push("second");
+          return input;
+        },
+      },
+    ]),
+  ).toBe(second);
+  expect(calls).toEqual(["first", "second"]);
+  await expect(
+    seedTemplates(first, source, [
+      {
+        path: "bad",
+        seed() {
+          throw new Error("seed failed");
+        },
+      },
+    ]),
+  ).rejects.toThrow("seed failed");
 });
 
 test("seeding overlays every declared tree, or does nothing with no trees", async () => {
@@ -101,18 +159,14 @@ test("seeding overlays every declared tree, or does nothing with no trees", asyn
       return destination;
     },
   } as unknown as Directory;
-  expect(await seedTemplates(destination, source, [], "sample")).toBe(
-    destination,
-  );
+  expect(await seedTemplates(destination, source, [])).toBe(destination);
   expect(requested).toEqual([]);
   expect(copied).toEqual([]);
   expect(
-    await seedTemplates(
-      destination,
-      source,
-      ["custom/first", "custom/second"],
-      "sample",
-    ),
+    await seedTemplates(destination, source, [
+      templateTree("custom/first"),
+      templateTree("custom/second"),
+    ]),
   ).toBe(destination);
   expect(requested).toEqual(["custom/first", "custom/second"]);
   expect(copied).toEqual([first, second]);

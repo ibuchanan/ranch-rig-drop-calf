@@ -30,7 +30,7 @@ test("Bun init and validate are explicit no-ops, without seeding or executing ow
   expect(project.packageJson.scripts).toEqual({});
   expect(project.packageJson.devDependencies).toEqual({});
   expect(project.files.size).toBe(0);
-  expect(project.templates).toEqual([]);
+  expect(project.templates.map((template) => template.path)).toEqual([]);
   // Any attempt to read the repository must fail; no-op validation needs no I/O.
   const input = mockDirectory();
   input.exists = async () => {

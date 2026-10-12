@@ -158,7 +158,6 @@ export function forgeManifest(
 ): Capability {
   return {
     name: "forge-manifest",
-    addTo() {},
     init: noOp(
       "The Forge manifest is supplied by forge create or the owner; Drop Calf does not seed app identity or module wiring.",
     ),

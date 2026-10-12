@@ -16,8 +16,8 @@ from small capabilities
 rather than copying a fixed template.
 
 **Status:** Early implementation. Initialization, update, and read-only validation
-are available. Update policies currently cover package metadata and the Node
-baseline; other capabilities are still migrating. The broader project functions
+are available. Every current capability has an explicit init, update, and
+validate implementation or documented no-op. The broader project functions
 in the [specifications](specs/00-drop-calf-overview.md) are not all implemented.
 
 ## Choose the operation
@@ -161,8 +161,9 @@ Core profile capabilities cannot be removed.
 - `remove-scaffold-changes --directory .` is the cleanup step of
   `init-changes` on its own. It deletes the fixed list in
   [`src/preclean.ts`](src/preclean.ts) without backups.
-- `copy-*` functions copy one asset set (docs, TypeScript, OSS, changelog,
-  `.gitignore`, and more). `validate-changelog` checks an existing repository;
+- Standalone `copy-*` functions have been removed. Use `init` for first-time
+  seeding and `update` for documented maintenance.
+  `validate-changelog` checks an existing repository;
   `validate-prelint` reports skipped because prelint has no local configuration
   to validate. Source scanning remains part of the lint workflow.
 

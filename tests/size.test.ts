@@ -74,7 +74,7 @@ test("init seeds the selected budget and update maintains only the selected pair
     "@size-limit/file": "11.1.0",
   });
   expect(project.files.size).toBe(0);
-  expect(project.templates).toEqual([]);
+  expect(project.templates.map((template) => template.path)).toEqual([]);
   const input = mockDirectory(
     new Map([
       [

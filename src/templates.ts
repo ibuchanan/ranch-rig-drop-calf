@@ -1,17 +1,14 @@
 import type { Directory } from "@dagger.io/dagger";
-import { CATALOG_TEMPLATE, type CatalogSeed, copyCatalog } from "./catalog.ts";
-import { copyGitignoreAssets, PINNED_GITIGNORE } from "./gitignore.ts";
-import { copyOssAssets, PINNED_OSS } from "./oss.ts";
-import { copySecretsAssets, SECRETS_TEMPLATE } from "./secrets.ts";
-import { copyTypeScript, TYPESCRIPT_TEMPLATE } from "./typescript.ts";
 
-/**
- * Seed a template tree over a rendered directory.
- *
- * Templates live in the module source rather than in the blueprint so authored
- * content stays reviewable in a diff and assembly stays pure. Copying is a
- * plain overlay: a file already in the destination is replaced by the template.
- */
+export type TemplateSeed = {
+  path: string;
+  seed(
+    destination: Directory,
+    moduleSource: Directory,
+  ): Directory | Promise<Directory>;
+};
+
+/** Plain authored-tree overlay; specialized seed policy belongs to its capability. */
 export function copyTemplate(
   destination: Directory,
   source: Directory,
@@ -19,35 +16,28 @@ export function copyTemplate(
   return destination.withDirectory(".", source);
 }
 
-/** Seed selected capability trees; template-specific handling stays at this boundary. */
+export function templateTree(
+  path: string,
+  copy: (
+    destination: Directory,
+    source: Directory,
+  ) => Directory | Promise<Directory> = copyTemplate,
+): TemplateSeed {
+  return {
+    path,
+    seed: (destination, moduleSource) =>
+      copy(destination, moduleSource.directory(path)),
+  };
+}
+
+/** Execute capability-declared seeds in profile order without knowing their policies. */
 export async function seedTemplates(
   destination: Directory,
   moduleSource: Directory,
-  paths: readonly string[],
-  name: string,
-  catalogSeed?: CatalogSeed,
+  templates: readonly TemplateSeed[],
 ): Promise<Directory> {
   let result = destination;
-  for (const path of paths) {
-    if (path === PINNED_GITIGNORE) {
-      result = await copyGitignoreAssets(result, moduleSource.file(path));
-      continue;
-    }
-    const source = moduleSource.directory(path);
-    if (path === CATALOG_TEMPLATE) {
-      if (!catalogSeed)
-        throw new Error("Catalog template requires seed inputs");
-      result = await copyCatalog(result, source, catalogSeed);
-    } else if (path === TYPESCRIPT_TEMPLATE) {
-      result = copyTypeScript(result, source);
-    } else if (path === PINNED_OSS) {
-      result = await copyOssAssets(result, source);
-    } else {
-      result =
-        path === SECRETS_TEMPLATE
-          ? await copySecretsAssets(result, source, name)
-          : copyTemplate(result, source);
-    }
-  }
+  for (const template of templates)
+    result = await template.seed(result, moduleSource);
   return result;
 }

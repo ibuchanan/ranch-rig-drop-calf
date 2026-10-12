@@ -1,4 +1,5 @@
 import { type Directory, dag } from "@dagger.io/dagger";
+import type { TemplateSeed } from "./templates.ts";
 export type PackageJson = {
   name: string;
   version: string;
@@ -21,7 +22,7 @@ export type PackageJson = {
 export type ProjectBlueprint = {
   packageJson: PackageJson;
   files: Map<string, string>;
-  templates: string[];
+  templates: TemplateSeed[];
 };
 
 export function createBlueprint(
@@ -46,7 +47,7 @@ export function createBlueprint(
   // src/gitignore.ts. The node baseline (`.nvmrc`, `.npmrc`, `@types/node`)
   // is absent for a different reason: it belongs to the `node` capability, not
   // to every blueprint. See src/node.ts. Authored config trees belong to their
-  // capabilities: the blueprint carries only their paths, and generation reads
+  // capabilities: the blueprint carries their seed steps, and generation reads
   // them from the module source after rendering.
   return { packageJson, files, templates: [] };
 }
@@ -61,49 +62,4 @@ export function renderToDirectory(project: ProjectBlueprint): Directory {
     dir = dir.withNewFile(path, contents);
   }
   return dir;
-}
-
-export function buildReadme(
-  packageName: string,
-  description: string,
-  scripts: Record<string, string> = {},
-  profile?: string,
-): string {
-  const desc = description || "A TypeScript project.";
-  const forge =
-    profile === "forge-app"
-      ? " Scaffold your Forge manifest and app before deploying."
-      : "";
-  const test = scripts.test
-    ? "\n\n## Test\n\nRun `npm test` (which uses `bun test`). Add tests under `tests/` when ready.\n"
-    : "";
-  const evals = scripts.eval
-    ? "\n## Evaluations\n\nRun `npm run eval` to evaluate the supplied examples, then `npm run view` to inspect results.\n"
-    : "";
-  return `# ${packageName}
-
-${desc}
-
-<!-- drop-calf:usage start -->
-## Get started
-
-This is a configuration starter, not a complete application. Add \`src/index.ts\`
-before building.${forge} Install dependencies and use the scripts below after
-adding project source.
-
-\`\`\`bash
-npm install
-npm run build
-\`\`\`
-
-The build writes compiled files to \`dist/\`.${test}${evals}
-## Lint & format
-
-\`\`\`bash
-npm run lint
-npm run format:check
-npm run format
-\`\`\`
-<!-- drop-calf:usage end -->
-`;
 }

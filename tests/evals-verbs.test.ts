@@ -24,7 +24,9 @@ test("evals init seeds the selected tooling and declares the owner-content tree"
   capability.init(project);
   expect(project.packageJson.scripts).toMatchObject(EVALS_SCRIPTS);
   expect(project.packageJson.devDependencies.promptfoo).toBe(version);
-  expect(project.templates).toContain(EVALS_TEMPLATE);
+  expect(project.templates.map((template) => template.path)).toContain(
+    EVALS_TEMPLATE,
+  );
 });
 
 test("evals update owns only the tool and scripts, preserving every edited seed and unrelated field", async () => {

@@ -1,3 +1,4 @@
+import { templateTree } from "./templates.ts";
 import { type Directory, dag } from "@dagger.io/dagger";
 import { type Capability, noOp } from "./capability.ts";
 import {
@@ -93,10 +94,8 @@ export async function copyOssAssets(
 export function oss(): Capability {
   return {
     name: "oss",
-    templates: [PINNED_OSS],
-    addTo() {},
     init(project) {
-      project.templates.push(PINNED_OSS);
+      project.templates.push(templateTree(PINNED_OSS, copyOssAssets));
     },
     update: (directory) =>
       copyOssAssets(

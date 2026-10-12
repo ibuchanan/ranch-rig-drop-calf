@@ -1,3 +1,5 @@
+import type { ProjectBlueprint } from "./project.ts";
+import { templateTree } from "./templates.ts";
 import { type Directory, dag } from "@dagger.io/dagger";
 import { parse as parseToml } from "smol-toml";
 import sortPackageJson from "sort-package-json";
@@ -266,16 +268,19 @@ export async function validateSecrets(
 }
 
 export function forgeSecrets(): Capability {
-  const seed: Capability["addTo"] = (project) => {
+  const seed: (project: ProjectBlueprint) => void = (project) => {
     Object.assign(project.packageJson.scripts, FORGE_SECRETS_SCRIPTS);
   };
   return {
     name: "secrets",
-    templates: [SECRETS_TEMPLATE],
-    addTo: seed,
     init(project) {
       seed(project);
-      project.templates.push(SECRETS_TEMPLATE);
+      const name = project.packageJson.name;
+      project.templates.push(
+        templateTree(SECRETS_TEMPLATE, (destination, source) =>
+          copySecretsAssets(destination, source, name),
+        ),
+      );
     },
     update: updateSecrets,
     validate: validateSecrets,

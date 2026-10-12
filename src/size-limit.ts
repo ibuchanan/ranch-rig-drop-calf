@@ -1,3 +1,4 @@
+import type { ProjectBlueprint } from "./project.ts";
 import type { Directory } from "@dagger.io/dagger";
 import sortPackageJson from "sort-package-json";
 import { type Capability, noOp } from "./capability.ts";
@@ -56,7 +57,7 @@ export function bundleSize(
   path: string,
   version: string = TOOL_VERSIONS.sizeLimit,
 ): Capability {
-  const seed: Capability["addTo"] = (project) => {
+  const seed: (project: ProjectBlueprint) => void = (project) => {
     project.packageJson.scripts.size = SIZE_LIMIT_COMMAND;
     Object.assign(project.packageJson.devDependencies, {
       "size-limit": version,
@@ -68,7 +69,6 @@ export function bundleSize(
   };
   return {
     name: "size-limit",
-    addTo: seed,
     init: seed,
     update: (directory) => updateSizeLimit(directory, version),
     validate: noOp(

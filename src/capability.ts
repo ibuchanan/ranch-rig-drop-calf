@@ -19,29 +19,9 @@ export type Capability = {
   init: ((project: ProjectBlueprint) => void) | NoOp;
   update: ((directory: Directory) => Directory | Promise<Directory>) | NoOp;
   validate: ((directory: Directory) => Promise<Validation>) | NoOp;
-  // Retained during expansion; removed after the capability policy slices migrate.
-  templates?: readonly string[];
-  addTo(project: ProjectBlueprint): void;
+  /** Optional CLI selection policy; omission makes the kind slot mandatory. */
+  selection?: { with?: boolean; without?: boolean; default: boolean };
 };
-
-/** Bridge existing blueprint contributions and template declarations without changing output. */
-export function expandCapability(
-  name: string,
-  slice: string,
-  legacy: Pick<Capability, "addTo" | "templates">,
-  validate?: Capability["validate"],
-): Capability {
-  return {
-    ...legacy,
-    name,
-    init(project) {
-      legacy.addTo(project);
-      project.templates.push(...(legacy.templates ?? []));
-    },
-    update: noOp(`Update policy is deferred to ticket ${slice}.`),
-    validate: validate ?? noOp(`Validation is deferred to ticket ${slice}.`),
-  };
-}
 
 export function noOpReasons(capabilities: readonly Capability[]) {
   return capabilities.flatMap((capability) =>

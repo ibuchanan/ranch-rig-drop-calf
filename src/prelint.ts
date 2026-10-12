@@ -71,12 +71,6 @@ export function prelint(
 ): Capability {
   return {
     name: "prelint",
-    // Retain legacy blueprint contributions until the old shape is contracted.
-    addTo(project) {
-      project.packageJson.devDependencies[AST_GREP_PACKAGE] = astGrepVersion;
-      project.packageJson.devDependencies[PRELINT_PACKAGE] = rulesPackage;
-      Object.assign(project.packageJson.scripts, PRELINT_SCRIPTS);
-    },
     init: noOp(
       "Prelint has no repository-local configuration to seed; its rules ship in the dependency package, and update maintains the tool dependencies and scripts.",
     ),

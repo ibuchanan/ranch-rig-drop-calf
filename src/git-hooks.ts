@@ -1,10 +1,11 @@
+import type { ProjectBlueprint } from "./project.ts";
 import type { Directory } from "@dagger.io/dagger";
 import sortPackageJson from "sort-package-json";
 import type { Capability, Validation } from "./capability.ts";
 import { parseObject } from "./init.ts";
 import { nodeContainer } from "./node.ts";
 import { ParseError } from "./preclean.ts";
-import { copyTemplate } from "./templates.ts";
+import { copyTemplate, templateTree } from "./templates.ts";
 import { TOOL_VERSIONS } from "./versions.ts";
 
 /** Authored hook commands are seeded once and owner-managed after init. */
@@ -63,17 +64,15 @@ export async function updateGitHooks(
 export function gitHooks(
   lefthookVersion: string = TOOL_VERSIONS.lefthook,
 ): Capability {
-  const seed: Capability["addTo"] = (project) => {
+  const seed: (project: ProjectBlueprint) => void = (project) => {
     project.packageJson.devDependencies.lefthook = lefthookVersion;
     Object.assign(project.packageJson.scripts, GIT_HOOKS_SCRIPTS);
   };
   return {
     name: "git-hooks",
-    templates: [GIT_HOOKS_TEMPLATE],
-    addTo: seed,
     init(project) {
       seed(project);
-      project.templates.push(GIT_HOOKS_TEMPLATE);
+      project.templates.push(templateTree(GIT_HOOKS_TEMPLATE));
     },
     update: (directory) => updateGitHooks(directory, lefthookVersion),
     validate: (directory) => validateGitHooks(directory, lefthookVersion),

@@ -1,3 +1,4 @@
+import type { ProjectBlueprint } from "./project.ts";
 import type { Container, Directory } from "@dagger.io/dagger";
 import sortPackageJson from "sort-package-json";
 import ts from "typescript";
@@ -5,7 +6,7 @@ import type { Capability, Validation } from "./capability.ts";
 import { parseObject } from "./init.ts";
 import { nodeContainer } from "./node.ts";
 import { ParseError } from "./preclean.ts";
-import { copyTemplate } from "./templates.ts";
+import { copyTemplate, templateTree } from "./templates.ts";
 import { TOOL_VERSIONS } from "./versions.ts";
 
 export const BIOME_TEMPLATE = "templates/biome";
@@ -161,17 +162,15 @@ export async function validateBiome(
 export function biomeToolchain(
   biomeVersion: string = TOOL_VERSIONS.biome,
 ): Capability {
-  const seed: Capability["addTo"] = (project) => {
+  const seed: (project: ProjectBlueprint) => void = (project) => {
     project.packageJson.devDependencies["@biomejs/biome"] = biomeVersion;
     Object.assign(project.packageJson.scripts, BIOME_SCRIPTS);
   };
   return {
     name: "biome",
-    templates: [BIOME_TEMPLATE],
-    addTo: seed,
     init(project) {
       seed(project);
-      project.templates.push(BIOME_TEMPLATE);
+      project.templates.push(templateTree(BIOME_TEMPLATE));
     },
     update: (directory) => updateBiome(directory, biomeVersion),
     validate: (directory) => validateBiome(directory, biomeVersion),

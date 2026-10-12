@@ -1,3 +1,5 @@
+import type { ProjectBlueprint } from "./project.ts";
+import { templateTree } from "./templates.ts";
 import { type Directory, dag } from "@dagger.io/dagger";
 import sortPackageJson from "sort-package-json";
 import type { Capability, Validation } from "./capability.ts";
@@ -131,7 +133,7 @@ export async function validateVitest(
 export function vitestTesting(
   version: string = TOOL_VERSIONS.vitest,
 ): Capability {
-  const seed: Capability["addTo"] = (project) => {
+  const seed: (project: ProjectBlueprint) => void = (project) => {
     Object.assign(project.packageJson.scripts, VITEST_SCRIPTS);
     Object.assign(project.packageJson.devDependencies, {
       vitest: version,
@@ -140,11 +142,9 @@ export function vitestTesting(
   };
   return {
     name: "test",
-    templates: [VITEST_TEMPLATE],
-    addTo: seed,
     init(project) {
       seed(project);
-      project.templates.push(VITEST_TEMPLATE);
+      project.templates.push(templateTree(VITEST_TEMPLATE));
     },
     update: (directory) => updateVitest(directory, version),
     validate: (directory) => validateVitest(directory, version),

@@ -1,7 +1,6 @@
-import { expect, spyOn, test } from "bun:test";
-import { type Directory, dag } from "@dagger.io/dagger";
+import { expect, test } from "bun:test";
+import type { Directory } from "@dagger.io/dagger";
 import { copyDocs } from "../src/docs.ts";
-import { DropCalf } from "../src/index.ts";
 import { buildProject } from "../src/profiles.ts";
 import { TOOL_VERSIONS } from "../src/versions.ts";
 import { docsTemplates } from "./templates-source.ts";
@@ -16,30 +15,6 @@ test("Dagger copies the docs tree verbatim", () => {
     },
   } as unknown as Directory;
   expect(copyDocs(destination, source)).toBe(destination);
-});
-
-test("copyDocs exposes the module's documentation templates through Dagger", () => {
-  const docs = {} as Directory;
-  const module = spyOn(dag, "currentModule").mockReturnValue({
-    source: () => ({
-      directory: (path: string) => {
-        expect(path).toBe("templates/docs");
-        return docs;
-      },
-    }),
-  } as unknown as ReturnType<typeof dag.currentModule>);
-  try {
-    const destination = {
-      withDirectory: (path: string, source: Directory) => {
-        expect(path).toBe(".");
-        expect(source).toBe(docs);
-        return destination;
-      },
-    } as unknown as Directory;
-    expect(new DropCalf().copyDocs(destination)).toBe(destination);
-  } finally {
-    module.mockRestore();
-  }
 });
 
 test("docs template paths do not overlap other generated files", () => {

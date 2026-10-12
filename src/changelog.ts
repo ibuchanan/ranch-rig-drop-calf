@@ -1,10 +1,11 @@
+import type { ProjectBlueprint } from "./project.ts";
 import type { Directory } from "@dagger.io/dagger";
 import sortPackageJson from "sort-package-json";
 import type { Capability } from "./capability.ts";
 import { parseObject } from "./init.ts";
 import { nodeContainer } from "./node.ts";
 import { ParseError } from "./preclean.ts";
-import { copyTemplate } from "./templates.ts";
+import { copyTemplate, templateTree } from "./templates.ts";
 import { TOOL_VERSIONS } from "./versions.ts";
 
 /**
@@ -96,17 +97,15 @@ export async function updateChangelog(
 export function changelogToolchain(
   cliffVersion: string = TOOL_VERSIONS.gitCliff,
 ): Capability {
-  const seed: Capability["addTo"] = (project) => {
+  const seed: (project: ProjectBlueprint) => void = (project) => {
     project.packageJson.devDependencies["git-cliff"] = cliffVersion;
     project.packageJson.scripts.changelog = CHANGELOG_COMMAND;
   };
   return {
     name: "changelog",
-    templates: [CHANGELOG_TEMPLATE],
-    addTo: seed,
     init(project) {
       seed(project);
-      project.templates.push(CHANGELOG_TEMPLATE);
+      project.templates.push(templateTree(CHANGELOG_TEMPLATE));
     },
     update: (directory) => updateChangelog(directory, cliffVersion),
     validate: (directory) => validateChangelog(directory, cliffVersion),

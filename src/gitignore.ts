@@ -232,10 +232,12 @@ export async function copyGitignoreAssets(
 export function gitignore(): Capability {
   return {
     name: "gitignore",
-    templates: [PINNED_GITIGNORE],
-    addTo() {},
     init(project) {
-      project.templates.push(PINNED_GITIGNORE);
+      project.templates.push({
+        path: PINNED_GITIGNORE,
+        seed: (destination, source) =>
+          copyGitignoreAssets(destination, source.file(PINNED_GITIGNORE)),
+      });
     },
     async update(directory) {
       if (!(await directory.exists(".gitignore"))) return directory;

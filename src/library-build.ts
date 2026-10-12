@@ -1,3 +1,5 @@
+import type { ProjectBlueprint } from "./project.ts";
+import { templateTree } from "./templates.ts";
 import { type Directory, dag } from "@dagger.io/dagger";
 import sortPackageJson from "sort-package-json";
 import { type Capability, noOp } from "./capability.ts";
@@ -85,7 +87,7 @@ export async function updateLibraryBuild(
 export function libraryBuild(
   version: string = TOOL_VERSIONS.tsdown,
 ): Capability {
-  const seed: Capability["addTo"] = (project) => {
+  const seed: (project: ProjectBlueprint) => void = (project) => {
     project.packageJson.scripts.build = LIBRARY_BUILD_COMMAND;
     project.packageJson.devDependencies.tsdown = version;
     project.packageJson.main = "dist/index.mjs";
@@ -100,11 +102,9 @@ export function libraryBuild(
   };
   return {
     name: "library-build",
-    templates: [LIBRARY_BUILD_TEMPLATE],
-    addTo: seed,
     init(project) {
       seed(project);
-      project.templates.push(LIBRARY_BUILD_TEMPLATE);
+      project.templates.push(templateTree(LIBRARY_BUILD_TEMPLATE));
     },
     update: (directory) => updateLibraryBuild(directory, version),
     validate: noOp(

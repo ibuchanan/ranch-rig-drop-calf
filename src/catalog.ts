@@ -2,6 +2,7 @@ import type { Directory } from "@dagger.io/dagger";
 import { validate } from "@roadiehq/roadie-backstage-entity-validator";
 import { isMap, parseDocument, visit } from "yaml";
 import { type Capability, noOp, type Validation } from "./capability.ts";
+import { templateTree } from "./templates.ts";
 import { ParseError } from "./preclean.ts";
 
 export const CATALOG_FILE = "catalog-info.yaml";
@@ -136,13 +137,22 @@ export async function validateCatalog(
   return { status: "validated" };
 }
 
-export function catalog(): Capability {
+export function catalog(kind?: string): Capability {
   return {
     name: "catalog",
-    templates: [CATALOG_TEMPLATE],
-    addTo() {},
     init(project) {
-      project.templates.push(CATALOG_TEMPLATE);
+      if (!kind) throw new Error("Catalog init requires a project kind.");
+      const seed = {
+        name: project.packageJson.name,
+        owner: project.packageJson.author ?? "",
+        description: project.packageJson.description ?? "",
+        type: kind,
+      };
+      project.templates.push(
+        templateTree(CATALOG_TEMPLATE, (destination, source) =>
+          copyCatalog(destination, source, seed),
+        ),
+      );
     },
     update: noOp("Catalog owns the file, but no update policy is defined."),
     validate: validateCatalog,
