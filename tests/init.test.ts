@@ -7,12 +7,11 @@ import {
 import { DropCalf } from "../src/index.ts";
 import { mergeScaffoldPackage, scaffoldName } from "../src/init.ts";
 import { NODE_NVMRC } from "../src/node.ts";
-
-const NODE_FORGE_RUNTIME = forgeRuntimeFromNvmrc(NODE_NVMRC);
-
 import { ParseError } from "../src/preclean.ts";
 import { buildProject } from "../src/profiles.ts";
 import { mockDirectory, mockModuleSource } from "./module-source.ts";
+
+const NODE_FORGE_RUNTIME = forgeRuntimeFromNvmrc(NODE_NVMRC);
 
 /** The shape `forge create` leaves behind once `remove-scaffold` has run. */
 const precleaned = JSON.stringify({
