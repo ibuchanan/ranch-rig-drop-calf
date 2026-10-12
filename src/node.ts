@@ -9,7 +9,7 @@ import { NODE_MAJOR, TOOL_VERSIONS } from "./versions.ts";
  * Update owns .nvmrc and the whole .npmrc; Forge manifest updates are separate.
  * @types/node is seeded and kept fresh. No kind generates engines: a toolchain baseline
  * is not a library's compatibility promise, and engines has troubled forge deploy.
- * Forge update removes engines; other kinds preserve owner declarations.
+ * The engines option decides whether update removes or preserves owner declarations.
  */
 export const NODE_NVMRC = `${NODE_MAJOR}\n`;
 export const NPM_REGISTRY = "https://registry.npmjs.org/";
@@ -72,7 +72,14 @@ async function validateNode(directory: Directory): Promise<Validation> {
   return { status: "validated" };
 }
 
-export function nodeBaseline(kind: string): Capability {
+export type NodeBaselineOptions = {
+  /** `remove` for platforms whose deploy rejects engines; default preserves owner input. */
+  engines?: "preserve" | "remove";
+};
+
+export function nodeBaseline({
+  engines = "preserve",
+}: NodeBaselineOptions = {}): Capability {
   return {
     name: "node",
     documentation: {
@@ -92,7 +99,7 @@ export function nodeBaseline(kind: string): Capability {
       ],
       init: "Seed .nvmrc, public-registry .npmrc, and @types/node; no engines declaration.",
       update:
-        kind === "forge-app"
+        engines === "remove"
           ? "Replace .nvmrc/.npmrc, derive package license from catalog, and remove engines; keep @types/node fresh."
           : "Replace .nvmrc/.npmrc and derive package license from catalog; preserve engines and keep @types/node fresh.",
       validate:
@@ -100,7 +107,7 @@ export function nodeBaseline(kind: string): Capability {
     },
     packageJson: {
       seed: { devDependencies: { "@types/node": NODE_MAJOR } },
-      ...(kind === "forge-app" ? { remove: ["engines"] } : {}),
+      ...(engines === "remove" ? { remove: ["engines"] } : {}),
     },
     init(project) {
       project.files.set(".nvmrc", NODE_NVMRC);

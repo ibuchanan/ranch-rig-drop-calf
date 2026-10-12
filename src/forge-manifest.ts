@@ -1,6 +1,11 @@
-import type { Directory, Secret } from "@dagger.io/dagger";
+import type { Directory } from "@dagger.io/dagger";
 import { isCollection, isMap, isScalar, parseDocument, visit } from "yaml";
-import { type Capability, noOp, type Validation } from "./capability.ts";
+import {
+  type Capability,
+  noOp,
+  type Validation,
+  type ValidationContext,
+} from "./capability.ts";
 import { ParseError } from "./errors.ts";
 import { bunTools, REPOSITORY, runTool, TOOLS } from "./tool-run.ts";
 import { TOOL_VERSIONS } from "./versions.ts";
@@ -90,8 +95,7 @@ async function updateForgeManifest(directory: Directory): Promise<Directory> {
 /** Run the consuming tool as-is, not --fix or a comparison with the Node baseline. */
 async function validateForgeManifest(
   directory: Directory,
-  forgeEmail?: Secret,
-  forgeApiToken?: Secret,
+  { forgeEmail, forgeApiToken }: ValidationContext = {},
 ): Promise<Validation> {
   if (!(await directory.exists("manifest.yml")))
     return { status: "skipped", reason: "manifest.yml is missing" };
@@ -122,10 +126,7 @@ async function validateForgeManifest(
   return { status: "validated" };
 }
 
-export function forgeManifest(
-  forgeEmail?: Secret,
-  forgeApiToken?: Secret,
-): Capability {
+export function forgeManifest(): Capability {
   return {
     name: "forge-manifest",
     documentation: {
@@ -146,7 +147,6 @@ export function forgeManifest(
       "The Forge manifest is supplied by forge create or the owner; Drop Calf does not seed app identity or module wiring.",
     ),
     update: updateForgeManifest,
-    validate: (directory) =>
-      validateForgeManifest(directory, forgeEmail, forgeApiToken),
+    validate: validateForgeManifest,
   };
 }

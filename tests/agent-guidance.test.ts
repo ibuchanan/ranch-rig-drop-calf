@@ -1,6 +1,5 @@
 import { expect, spyOn, test } from "bun:test";
 import { dag } from "@dagger.io/dagger";
-import { aidev } from "../src/aidev.ts";
 import { noOpReasons, validateCapabilities } from "../src/capability.ts";
 import { DropCalf } from "../src/index.ts";
 import { applyPreclean } from "../src/preclean.ts";
@@ -10,8 +9,8 @@ import {
   resolveProfile,
 } from "../src/profiles.ts";
 import { createBlueprint } from "../src/project.ts";
+import { capabilityOf, runInit } from "./capability-fixtures.ts";
 import { mockDirectory, mockModuleSource } from "./module-source.ts";
-import { runInit } from "./capability-fixtures.ts";
 
 const kinds = ["library", "forge-app", "tool", "agent-skill"];
 
@@ -23,7 +22,7 @@ const validateReason =
 test.each(kinds)(
   "%s guidance has deliberate verbs and owns only its seed",
   (kind) => {
-    const capability = aidev(kind);
+    const capability = capabilityOf(kind, "aidev");
     expect(
       resolveProfile(kind).filter((item) => item.name === "aidev"),
     ).toHaveLength(1);
@@ -137,7 +136,9 @@ test.each(kinds)(
       ]),
     );
     const before = [...input.files];
-    expect(await validateCapabilities(input, [aidev(kind)])).toEqual([
+    expect(
+      await validateCapabilities(input, [capabilityOf(kind, "aidev")]),
+    ).toEqual([
       { capability: "aidev", status: "skipped", reason: validateReason },
     ]);
     const module = new DropCalf();
@@ -298,7 +299,7 @@ test.each([
 test("a promptfoo dependency alone does not select eval guidance", () => {
   const project = createBlueprint("sample", "", "tester");
   project.packageJson.devDependencies.promptfoo = "owner";
-  const capability = aidev("forge-app");
+  const capability = capabilityOf("forge-app", "aidev");
   runInit(capability, project);
   expect(project.files.get("AGENTS.md")).not.toContain("## Prompt evaluations");
 });

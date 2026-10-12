@@ -1,5 +1,5 @@
 import { expect, spyOn, test } from "bun:test";
-import { type Directory, dag } from "@dagger.io/dagger";
+import { type Directory, dag, type Secret } from "@dagger.io/dagger";
 import {
   type Capability,
   type NoOp,
@@ -10,8 +10,15 @@ import {
 } from "../src/capability.ts";
 import { changelogToolchain } from "../src/changelog.ts";
 import { DropCalf } from "../src/index.ts";
+import { adoptScaffoldTypeScript } from "../src/init.ts";
+import { applyPreclean } from "../src/preclean.ts";
 import { prelint } from "../src/prelint.ts";
-import { PROFILES, resolveProfile } from "../src/profiles.ts";
+import {
+  InvalidOptionsError,
+  PROFILES,
+  resolveProfile,
+  scaffoldSteps,
+} from "../src/profiles.ts";
 import { contents, kinds, selections, verb } from "./capability-fixtures.ts";
 import { mockModuleSource, mockDirectory as tree } from "./module-source.ts";
 
@@ -218,4 +225,44 @@ test("new operations reject invalid selections before reading the input", async 
   await expect(
     module.update({} as Directory, "forge-app", ["evals"], ["evals"]),
   ).rejects.toThrow("both");
+});
+
+test("validation hands one run context to every capability, not to one by name", async () => {
+  const context = { forgeEmail: {} as Secret, forgeApiToken: {} as Secret };
+  const seen: unknown[] = [];
+  const recorder = (name: string) =>
+    capability(name, {
+      validate: async (_directory, received) => {
+        seen.push(received);
+        return { status: "validated" };
+      },
+    });
+  await validateCapabilities(tree(), [recorder("a"), recorder("b")], context);
+  expect(seen).toHaveLength(2);
+  for (const received of seen) expect(received).toBe(context);
+});
+
+test.each(kinds)("%s scaffold steps end with preclean", (kind) => {
+  expect(scaffoldSteps(kind).at(-1)).toBe(applyPreclean);
+});
+
+test("only Forge apps adopt scaffold TypeScript, and unknown kinds have no steps", () => {
+  expect(
+    Object.keys(PROFILES).filter((kind) =>
+      scaffoldSteps(kind).includes(adoptScaffoldTypeScript),
+    ),
+  ).toEqual(["forge-app"]);
+  expect(() => scaffoldSteps("monorepo")).toThrow(InvalidOptionsError);
+});
+
+test("only profiles.ts names a project kind, so new kinds need no capability edits", async () => {
+  const src = new URL("../src/", import.meta.url).pathname;
+  const leaks: string[] = [];
+  for await (const path of new Bun.Glob("**/*.ts").scan(src)) {
+    if (path === "profiles.ts") continue;
+    const text = await Bun.file(src + path).text();
+    for (const kind of Object.keys(PROFILES))
+      if (text.includes(`"${kind}"`)) leaks.push(`${path}: ${kind}`);
+  }
+  expect(leaks).toEqual([]);
 });

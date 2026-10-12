@@ -1,5 +1,5 @@
-import type { Directory } from "@dagger.io/dagger";
-import { updatePackage, type PackageContribution } from "./package-json.ts";
+import type { Directory, Secret } from "@dagger.io/dagger";
+import { type PackageContribution, updatePackage } from "./package-json.ts";
 import type { ProjectBlueprint } from "./project.ts";
 
 export type NoOp = { readonly reason: string };
@@ -15,6 +15,12 @@ export type Validation =
   | { status: "skipped"; reason: string }
   | { status: "failed"; reason: string };
 
+/** Run-scoped inputs every validator may read; capabilities ignore what they do not need. */
+export type ValidationContext = {
+  forgeEmail?: Secret;
+  forgeApiToken?: Secret;
+};
+
 export type Capability = {
   name: string;
   /** Reference text lives with policy; inactive verbs use their NoOp reason instead. */
@@ -29,7 +35,12 @@ export type Capability = {
   /** Verbs act on the files this capability owns; package.json is contributed instead. */
   init: ((project: ProjectBlueprint) => void) | NoOp;
   update: ((directory: Directory) => Directory | Promise<Directory>) | NoOp;
-  validate: ((directory: Directory) => Promise<Validation>) | NoOp;
+  validate:
+    | ((
+        directory: Directory,
+        context?: ValidationContext,
+      ) => Promise<Validation>)
+    | NoOp;
   /** Optional CLI selection policy; omission makes the kind slot mandatory. */
   selection?: { with?: boolean; without?: boolean; default: boolean };
 };
@@ -62,6 +73,7 @@ export async function updateCapabilities(
 export async function validateCapabilities(
   directory: Directory,
   capabilities: readonly Capability[],
+  context: ValidationContext = {},
 ): Promise<({ capability: string } & Validation)[]> {
   return Promise.all(
     capabilities.map(async (capability) => {
@@ -69,7 +81,7 @@ export async function validateCapabilities(
       try {
         result =
           typeof capability.validate === "function"
-            ? await capability.validate(directory)
+            ? await capability.validate(directory, context)
             : { status: "skipped", reason: capability.validate.reason };
       } catch (error) {
         result = {

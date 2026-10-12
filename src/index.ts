@@ -12,16 +12,16 @@ import {
 import {
   type Capability,
   updateCapabilities,
+  type ValidationContext,
   validateCapabilities,
 } from "./capability.ts";
 import { catalog } from "./catalog.ts";
 import { changelogToolchain } from "./changelog.ts";
 import { forgeManifest } from "./forge-manifest.ts";
-import { adoptScaffoldTypeScript } from "./init.ts";
 import { mergeScaffoldPackage, scaffoldName } from "./package-json.ts";
 import { applyPreclean } from "./preclean.ts";
 import { prelint } from "./prelint.ts";
-import { buildProject, resolveProfile } from "./profiles.ts";
+import { buildProject, resolveProfile, scaffoldSteps } from "./profiles.ts";
 import { renderToDirectory } from "./project.ts";
 import { seedTemplates } from "./templates.ts";
 import { nodeContainer as buildNodeContainer } from "./tool-run.ts";
@@ -30,10 +30,12 @@ import { nodeContainer as buildNodeContainer } from "./tool-run.ts";
 async function validateOne(
   directory: Directory,
   capability: Capability,
+  context: ValidationContext = {},
 ): Promise<string> {
   const [{ capability: _, ...result }] = (await validateCapabilities(
     directory,
     [capability],
+    context,
   )) as [Awaited<ReturnType<typeof validateCapabilities>>[number]];
   return JSON.stringify(result, null, 2);
 }
@@ -72,7 +74,10 @@ export class DropCalf {
     forgeEmail?: Secret,
     forgeApiToken?: Secret,
   ): Promise<string> {
-    return validateOne(directory, forgeManifest(forgeEmail, forgeApiToken));
+    return validateOne(directory, forgeManifest(), {
+      forgeEmail,
+      forgeApiToken,
+    });
   }
 
   /** Prelint has no local configuration to validate; report its explicit skip reason. */
@@ -97,8 +102,9 @@ export class DropCalf {
    * use update for maintenance.
    * Otherwise remove the scaffold files Drop Calf replaces, generate the
    * profile's files over what is left, and keep the scaffold's runtime dependencies.
-   * On forge-app, adopt root src JavaScript as TypeScript and update matching
-   * resource paths without editing source contents or relaxing strict checks.
+   * Scaffold steps are declared per kind; forge-app adopts root src JavaScript as
+   * TypeScript and updates matching resource paths without editing source
+   * contents or relaxing strict checks.
    * Normalize the manifest runtime from .nvmrc in the final update pass.
    * Package naming: explicit name, nonblank scaffold name, workspace basename.
    * Catalog owns package identity; the legacy author argument is ignored in favor
@@ -125,11 +131,8 @@ export class DropCalf {
     const scaffold = (await directory.exists("package.json"))
       ? await directory.file("package.json").contents()
       : undefined;
-    const adopted =
-      profile === "forge-app"
-        ? await adoptScaffoldTypeScript(directory)
-        : directory;
-    const cleaned = await applyPreclean(adopted);
+    let cleaned = directory;
+    for (const step of scaffoldSteps(profile)) cleaned = await step(cleaned);
     const name =
       packageName ??
       scaffoldName(scaffold) ??
@@ -207,13 +210,12 @@ export class DropCalf {
       withFunctions,
       withoutFunctions,
       preset,
-    ).map((capability) =>
-      capability.name === "forge-manifest"
-        ? forgeManifest(forgeEmail, forgeApiToken)
-        : capability,
     );
     return JSON.stringify(
-      await validateCapabilities(directory, capabilities),
+      await validateCapabilities(directory, capabilities, {
+        forgeEmail,
+        forgeApiToken,
+      }),
       null,
       2,
     );

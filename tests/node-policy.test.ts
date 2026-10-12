@@ -1,11 +1,11 @@
 import { expect, spyOn, test } from "bun:test";
 import { dag } from "@dagger.io/dagger";
 import { ParseError } from "../src/errors.ts";
-import { NODE_NVMRC, NPMRC, nodeBaseline } from "../src/node.ts";
+import { NODE_NVMRC, NPMRC } from "../src/node.ts";
 import { mergeScaffoldPackage } from "../src/package-json.ts";
 import { buildProject } from "../src/profiles.ts";
 import { TOOL_VERSIONS } from "../src/versions.ts";
-import { runUpdate, verb } from "./capability-fixtures.ts";
+import { capabilityOf, runUpdate, verb } from "./capability-fixtures.ts";
 import { mockContainer } from "./container-source.ts";
 import { mockDirectory } from "./module-source.ts";
 
@@ -16,7 +16,7 @@ const licenseCatalog =
 test.each(kinds)(
   "%s Node verbs are active and initialized pins need no update",
   async (kind) => {
-    const capability = nodeBaseline(kind);
+    const capability = capabilityOf(kind, "node");
     expect(typeof capability.init).toBe("function");
     expect(typeof capability.update).toBe("function");
     expect(typeof capability.validate).toBe("function");
@@ -31,7 +31,7 @@ test.each(kinds)(
         ],
       ]),
     );
-    expect(await runUpdate(nodeBaseline(kind), input)).toBe(input);
+    expect(await runUpdate(capabilityOf(kind, "node"), input)).toBe(input);
   },
 );
 
@@ -62,7 +62,7 @@ test.each(kinds)(
       ]),
     );
     const before = [...input.files];
-    const output = await runUpdate(nodeBaseline(kind), input);
+    const output = await runUpdate(capabilityOf(kind, "node"), input);
     const result = JSON.parse(await output.file("package.json").contents());
     const expectedPkg = {
       ...pkg,
@@ -74,7 +74,7 @@ test.each(kinds)(
     expect(await output.file(".npmrc").contents()).toBe(NPMRC);
     expect(await output.file("README.md").contents()).toBe("owner text");
     expect(await output.file("manifest.yml").contents()).toBe(manifest);
-    expect(await runUpdate(nodeBaseline(kind), output)).toBe(output);
+    expect(await runUpdate(capabilityOf(kind, "node"), output)).toBe(output);
     expect([...input.files]).toEqual(before);
   },
 );
@@ -82,12 +82,12 @@ test.each(kinds)(
 test.each(kinds)(
   "%s update creates file pins but no package or manifest",
   async (kind) => {
-    const output = await runUpdate(nodeBaseline(kind), mockDirectory());
+    const output = await runUpdate(capabilityOf(kind, "node"), mockDirectory());
     expect(await output.exists(".nvmrc")).toBe(true);
     expect(await output.exists(".npmrc")).toBe(true);
     expect(await output.exists("package.json")).toBe(false);
     expect(await output.exists("manifest.yml")).toBe(false);
-    expect(await runUpdate(nodeBaseline(kind), output)).toBe(output);
+    expect(await runUpdate(capabilityOf(kind, "node"), output)).toBe(output);
   },
 );
 
@@ -95,7 +95,7 @@ test("update never adds a missing types dependency or rewrites an unowned packag
   const contents =
     '{"license":"Apache-2.0","devDependencies":{},"engines":{"node":">=18"}}';
   const output = await runUpdate(
-    nodeBaseline("library"),
+    capabilityOf("library", "node"),
     mockDirectory(
       new Map([
         ["package.json", contents],
@@ -105,7 +105,7 @@ test("update never adds a missing types dependency or rewrites an unowned packag
   );
   expect(await output.file("package.json").contents()).toBe(contents);
   const forge = await runUpdate(
-    nodeBaseline("forge-app"),
+    capabilityOf("forge-app", "node"),
     mockDirectory(
       new Map([
         ["package.json", '{"license":"Apache-2.0"}'],
@@ -123,7 +123,7 @@ test.each(["{", "[]", "null"])(
   async (contents) => {
     await expect(
       runUpdate(
-        nodeBaseline("forge-app"),
+        capabilityOf("forge-app", "node"),
         mockDirectory(new Map([["package.json", contents]])),
       ),
     ).rejects.toThrow(ParseError);
@@ -134,7 +134,7 @@ test.each(kinds)(
   "%s Node update ignores even malformed manifests",
   async (kind) => {
     const input = mockDirectory(new Map([["manifest.yml", "app: [broken\n"]]));
-    const output = await runUpdate(nodeBaseline(kind), input);
+    const output = await runUpdate(capabilityOf(kind, "node"), input);
     expect(await output.file("manifest.yml").contents()).toBe("app: [broken\n");
   },
 );
@@ -152,7 +152,7 @@ test("scaffold merge removes only the Node engine and drops empty engines", () =
 });
 
 test("validation skips missing .nvmrc without contacting an engine", async () => {
-  const validate = verb(nodeBaseline("library"), "validate");
+  const validate = verb(capabilityOf("library", "node"), "validate");
   expect(await validate(mockDirectory())).toEqual({
     status: "skipped",
     reason: ".nvmrc is missing",
@@ -182,7 +182,7 @@ test.each(["linux/amd64", "linux/arm64"])(
     );
     const httpSpy = spyOn(dag, "http").mockReturnValue({} as never);
     try {
-      const validate = verb(nodeBaseline("library"), "validate");
+      const validate = verb(capabilityOf("library", "node"), "validate");
       expect(await validate(input)).toEqual({ status: "validated" });
       expect(httpSpy).toHaveBeenCalledWith(
         `https://github.com/Schniz/fnm/releases/download/v${TOOL_VERSIONS.fnm}/${platform.endsWith("amd64") ? "fnm-linux" : "fnm-arm64"}.zip`,

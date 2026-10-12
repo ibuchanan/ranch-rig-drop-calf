@@ -51,17 +51,22 @@ const EVALS_GUIDANCE = `
 - Prompt evaluations do not replace deployed Rovo integration tests.
 `;
 
-export function aidev(profile: string): Capability {
+export type AidevOptions = {
+  /** Seed the authored Forge guidance; without it there is nothing to seed. */
+  forgeGuidance?: boolean;
+};
+
+export function aidev({
+  forgeGuidance = false,
+}: AidevOptions = {}): Capability {
   const seed: (project: ProjectBlueprint) => void = (project) => {
-    if (profile === "forge-app") {
-      const evalsSelected = project.templates.some(
-        (template) => template.path === EVALS_TEMPLATE,
-      );
-      project.files.set(
-        "AGENTS.md",
-        FORGE_GUIDANCE + (evalsSelected ? EVALS_GUIDANCE : ""),
-      );
-    }
+    const evalsSelected = project.templates.some(
+      (template) => template.path === EVALS_TEMPLATE,
+    );
+    project.files.set(
+      "AGENTS.md",
+      FORGE_GUIDANCE + (evalsSelected ? EVALS_GUIDANCE : ""),
+    );
   };
   return {
     name: "aidev",
@@ -74,19 +79,16 @@ export function aidev(profile: string): Capability {
             "Gives coding agents repository-specific instructions; human guidance, not executable config.",
         },
       ],
-      ...(profile === "forge-app"
+      ...(forgeGuidance
         ? { init: "Seed authored Forge agent guidance in AGENTS.md." }
         : {}),
     },
-    ...(profile === "forge-app"
-      ? { selection: { without: true, default: true } }
-      : {}),
-    init:
-      profile === "forge-app"
-        ? seed
-        : noOp(
-            "Only Forge apps have an authored agent guidance seed; other project kinds omit Forge-specific instructions.",
-          ),
+    ...(forgeGuidance ? { selection: { without: true, default: true } } : {}),
+    init: forgeGuidance
+      ? seed
+      : noOp(
+          "Only Forge apps have an authored agent guidance seed; other project kinds omit Forge-specific instructions.",
+        ),
     update: noOp(
       "Agent guidance is init-only and owner-managed; update preserves edits and does not restore a deleted AGENTS.md.",
     ),

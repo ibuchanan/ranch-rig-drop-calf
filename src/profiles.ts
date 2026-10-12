@@ -1,3 +1,4 @@
+import type { Directory } from "@dagger.io/dagger";
 import { aidev } from "./aidev.ts";
 import {
   biomeToolchain,
@@ -15,11 +16,13 @@ import { evals } from "./evals.ts";
 import { forgeManifest } from "./forge-manifest.ts";
 import { gitHooks } from "./git-hooks.ts";
 import { gitignore } from "./gitignore.ts";
+import { adoptScaffoldTypeScript } from "./init.ts";
 import { nodeBaseline } from "./node.ts";
 import { InvalidOptionsError } from "./options.ts";
 import { oss, validateOssOwner } from "./oss.ts";
 import { seedPackage } from "./package-json.ts";
 import { packageMetadata } from "./package-metadata.ts";
+import { applyPreclean } from "./preclean.ts";
 import { prelint } from "./prelint.ts";
 import { createBlueprint, type ProjectBlueprint } from "./project.ts";
 import { forgeSecrets } from "./secrets.ts";
@@ -29,10 +32,10 @@ import { typeScriptToolchain } from "./typescript.ts";
 export const PROFILES: Record<string, Capability[]> = {
   library: [
     catalog("library"),
-    packageMetadata("library"),
+    packageMetadata(),
     oss(),
     gitignore(),
-    nodeBaseline("library"),
+    nodeBaseline(),
     changelogToolchain(),
     biomeToolchain(),
     libraryBuild(),
@@ -42,14 +45,14 @@ export const PROFILES: Record<string, Capability[]> = {
     cleanBuild(),
     docsLinting(),
     gitHooks(),
-    aidev("library"),
+    aidev(),
   ],
   "forge-app": [
     catalog("forge-app"),
-    packageMetadata("forge-app"),
+    packageMetadata({ enforcePrivate: true }),
     oss(),
     gitignore(),
-    nodeBaseline("forge-app"),
+    nodeBaseline({ engines: "remove" }),
     forgeManifest(),
     changelogToolchain(),
     forgeSecrets(),
@@ -63,14 +66,14 @@ export const PROFILES: Record<string, Capability[]> = {
     docsLinting(),
     gitHooks(),
     evals(),
-    aidev("forge-app"),
+    aidev({ forgeGuidance: true }),
   ],
   tool: [
     catalog("tool"),
-    packageMetadata("tool"),
+    packageMetadata(),
     oss(),
     gitignore(),
-    nodeBaseline("tool"),
+    nodeBaseline(),
     changelogToolchain(),
     biomeToolchain(),
     typeScriptToolchain(),
@@ -78,25 +81,48 @@ export const PROFILES: Record<string, Capability[]> = {
     cleanBuild(),
     docsLinting(),
     gitHooks(),
-    aidev("tool"),
+    aidev(),
   ],
   "agent-skill": [
     catalog("agent-skill"),
-    packageMetadata("agent-skill"),
+    packageMetadata({ enforcePrivate: true }),
     oss(),
     gitignore(),
-    nodeBaseline("agent-skill"),
+    nodeBaseline(),
     biomeToolchain(),
     typeScriptToolchain(),
     bunTesting(),
     cleanBuild(),
     docsLinting(),
     gitHooks(),
-    aidev("agent-skill"),
+    aidev(),
   ],
 };
 
 export type ProjectProfile = keyof typeof PROFILES;
+
+/** Prepares fresh scaffolder output before capability init; never runs on update. */
+export type ScaffoldStep = (directory: Directory) => Promise<Directory>;
+
+// Order matters: Forge adoption renames scaffold source before preclean removes files.
+const SCAFFOLD_STEPS: Record<ProjectProfile, ScaffoldStep[]> = {
+  library: [applyPreclean],
+  "forge-app": [adoptScaffoldTypeScript, applyPreclean],
+  tool: [applyPreclean],
+  "agent-skill": [applyPreclean],
+};
+
+/** The selected kind's scaffold steps, in application order. */
+export function scaffoldSteps(
+  profile: ProjectProfile,
+): readonly ScaffoldStep[] {
+  const steps = SCAFFOLD_STEPS[profile];
+  if (!steps || !Object.hasOwn(SCAFFOLD_STEPS, profile))
+    throw new InvalidOptionsError(
+      `No scaffold steps are declared for project kind ${JSON.stringify(profile)}.`,
+    );
+  return steps;
+}
 
 export { InvalidOptionsError } from "./options.ts";
 

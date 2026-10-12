@@ -9,14 +9,13 @@ import { DOCS_COMMAND } from "../src/docs.ts";
 import { ParseError } from "../src/errors.ts";
 import { GIT_HOOKS_SCRIPTS } from "../src/git-hooks.ts";
 import { DropCalf } from "../src/index.ts";
-import { packageMetadata } from "../src/package-metadata.ts";
 import { PRELINT_SCRIPTS } from "../src/prelint.ts";
 import { buildProject } from "../src/profiles.ts";
 import { FORGE_SECRETS_SCRIPTS } from "../src/secrets.ts";
 import { SIZE_LIMIT_COMMAND } from "../src/size-limit.ts";
 import { TYPESCRIPT_SCRIPTS } from "../src/typescript.ts";
 import { VITEST_SCRIPTS } from "../src/vitest.ts";
-import { runUpdate, verb } from "./capability-fixtures.ts";
+import { capabilityOf, runUpdate, verb } from "./capability-fixtures.ts";
 import { mockDirectory, mockModuleSource } from "./module-source.ts";
 import { catalogTemplates } from "./templates-source.ts";
 
@@ -166,12 +165,14 @@ test.each(["library", "tool"])(
   "%s update preserves removal of private for publication",
   async (kind) => {
     const output = await runUpdate(
-      packageMetadata(kind),
+      capabilityOf(kind, "package-metadata"),
       repository({ version: "3.0.0" }),
     );
     expect(await manifest(output)).not.toHaveProperty("private");
     expect((await manifest(output)).version).toBe("3.0.0");
-    expect(await runUpdate(packageMetadata(kind), output)).toBe(output);
+    expect(
+      await runUpdate(capabilityOf(kind, "package-metadata"), output),
+    ).toBe(output);
   },
 );
 
@@ -219,7 +220,7 @@ test("catalog edits drive package metadata, not sanitized identity or display ti
   document.setIn(["spec", "owner"], "user:another-namespace/new-owner");
   document.setIn(["metadata", "description"], "");
   let output = await runUpdate(
-    packageMetadata("tool"),
+    capabilityOf("tool", "package-metadata"),
     repository({ description: "stale" }, document.toString()),
   );
   expect(await manifest(output)).toMatchObject({
@@ -229,11 +230,13 @@ test("catalog edits drive package metadata, not sanitized identity or display ti
   });
   document.deleteIn(["metadata", "description"]);
   output = await runUpdate(
-    packageMetadata("tool"),
+    capabilityOf("tool", "package-metadata"),
     output.withNewFile(CATALOG_FILE, document.toString()),
   );
   expect(await manifest(output)).not.toHaveProperty("description");
-  expect(await runUpdate(packageMetadata("tool"), output)).toBe(output);
+  expect(
+    await runUpdate(capabilityOf("tool", "package-metadata"), output),
+  ).toBe(output);
 });
 
 test.each([
@@ -276,23 +279,28 @@ test.each([
   const doc = parseDocument(catalog());
   (edit as (doc: ReturnType<typeof parseDocument>) => unknown)(doc);
   await expect(
-    runUpdate(packageMetadata("tool"), repository({}, doc.toString())),
+    runUpdate(
+      capabilityOf("tool", "package-metadata"),
+      repository({}, doc.toString()),
+    ),
   ).rejects.toThrow(message as string);
 });
 
 test("update skips a missing package and rejects missing or malformed sources without inventing metadata", async () => {
   const empty = mockDirectory();
-  expect(await runUpdate(packageMetadata("forge-app"), empty)).toBe(empty);
+  expect(
+    await runUpdate(capabilityOf("forge-app", "package-metadata"), empty),
+  ).toBe(empty);
   await expect(
     runUpdate(
-      packageMetadata("tool"),
+      capabilityOf("tool", "package-metadata"),
       mockDirectory(new Map([["package.json", "{}"]])),
     ),
   ).rejects.toThrow("catalog-info.yaml is missing");
   for (const pkg of ["{broken", "null", "[]"]) {
     await expect(
       runUpdate(
-        packageMetadata("tool"),
+        capabilityOf("tool", "package-metadata"),
         repository({}).withNewFile("package.json", pkg),
       ),
     ).rejects.toThrow(ParseError);
@@ -303,13 +311,13 @@ test("update skips a missing package and rejects missing or malformed sources wi
     "metadata: {}\nmetadata: {}\n",
   ]) {
     await expect(
-      runUpdate(packageMetadata("tool"), repository({}, yaml)),
+      runUpdate(capabilityOf("tool", "package-metadata"), repository({}, yaml)),
     ).rejects.toThrow(ParseError);
   }
 });
 
 test("standalone validation accepts owner choices without catalog or policy comparison", async () => {
-  const validate = verb(packageMetadata("tool"), "validate");
+  const validate = verb(capabilityOf("tool", "package-metadata"), "validate");
   for (const author of [
     "Another author",
     { name: "Another author", email: "person@example.com" },
@@ -349,7 +357,9 @@ test.each([
 ])("standalone validation rejects malformed field %j", async (pkg, reason) => {
   const input = repository(pkg);
   expect(
-    await validateCapabilities(input, [packageMetadata("forge-app")]),
+    await validateCapabilities(input, [
+      capabilityOf("forge-app", "package-metadata"),
+    ]),
   ).toEqual([
     {
       capability: "package-metadata",

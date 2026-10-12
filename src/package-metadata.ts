@@ -79,12 +79,18 @@ async function validatePackageMetadata(
   return { status: "validated" };
 }
 
-/** Every kind starts private; only Forge apps and agent skills stay private by policy. */
-export function packageMetadata(kind: string): Capability {
+export type PackageMetadataOptions = {
+  /** Enforce private true on update; otherwise it is only seeded, so owners may publish. */
+  enforcePrivate?: boolean;
+};
+
+/** Every package starts private; enforcePrivate keeps unpublishable packages that way. */
+export function packageMetadata({
+  enforcePrivate = false,
+}: PackageMetadataOptions = {}): Capability {
   const privacy = { private: true };
   // createBlueprint starts at the same version; the seed records who owns it.
   const version = { version: "0.1.0" };
-  const alwaysPrivate = kind === "forge-app" || kind === "agent-skill";
   return {
     name: "package-metadata",
     documentation: {
@@ -101,16 +107,15 @@ export function packageMetadata(kind: string): Capability {
           purpose: "Reference for package.json schema and metadata format",
         },
       ],
-      update:
-        kind === "forge-app" || kind === "agent-skill"
-          ? "Derive name/description/author from catalog; enforce type module and private true, preserving release version."
-          : "Derive name/description/author from catalog; enforce type module, preserving owner privacy and release version.",
+      update: enforcePrivate
+        ? "Derive name/description/author from catalog; enforce type module and private true, preserving release version."
+        : "Derive name/description/author from catalog; enforce type module, preserving owner privacy and release version.",
       validate:
         "Check metadata field types/formats with explicit structural rules, not policy compliance.",
     },
     packageJson: {
-      seed: alwaysPrivate ? version : { ...version, ...privacy },
-      policy: { type: "module", ...(alwaysPrivate ? privacy : {}) },
+      seed: enforcePrivate ? version : { ...version, ...privacy },
+      policy: { type: "module", ...(enforcePrivate ? privacy : {}) },
     },
     init: noOp(
       "Package metadata owns no files; its package.json contribution seeds version 0.1.0, type module, and private true; initialization supplies the initial package name.",

@@ -13,10 +13,9 @@ import {
   reconcileForgeRuntime,
 } from "../src/forge-manifest.ts";
 import { DropCalf } from "../src/index.ts";
-import { nodeBaseline } from "../src/node.ts";
 import { resolveProfile } from "../src/profiles.ts";
 import { TOOL_VERSIONS } from "../src/versions.ts";
-import { verb } from "./capability-fixtures.ts";
+import { capabilityOf, verb } from "./capability-fixtures.ts";
 import { mockContainer } from "./container-source.ts";
 import { mockDirectory } from "./module-source.ts";
 
@@ -166,14 +165,14 @@ test("Node first establishes its policy; manifest then reads the resulting .nvmr
     ]),
   );
   const output = await updateCapabilities(input, [
-    nodeBaseline("forge-app"),
+    capabilityOf("forge-app", "node"),
     forgeManifest(),
   ]);
   expect(await output.file(".nvmrc").contents()).toBe("24\n");
   expect(await output.file("manifest.yml").contents()).toContain("nodejs24.x");
   expect(
     await updateCapabilities(output, [
-      nodeBaseline("forge-app"),
+      capabilityOf("forge-app", "node"),
       forgeManifest(),
     ]),
   ).toBe(output);
@@ -216,11 +215,11 @@ test.each([
     const input = mockDirectory(new Map([["manifest.yml", "app: {}\n"]]));
     const spy = spyOn(dag, "container");
     try {
-      const validate = verb(
-        forgeManifest(credentials.email, credentials.token),
-        "validate",
-      );
-      const result = await validate(input);
+      const validate = verb(forgeManifest(), "validate");
+      const result = await validate(input, {
+        forgeEmail: credentials.email,
+        forgeApiToken: credentials.token,
+      });
       expect(result).toEqual({
         status: "failed",
         reason: expect.stringContaining(
@@ -298,9 +297,10 @@ test("validation runs pinned Forge lint on a read-only repo and keeps all diagno
       }),
     );
     try {
-      const report = (await validateCapabilities(input, [
-        forgeManifest(email, token),
-      ])) as Awaited<ReturnType<typeof validateCapabilities>>;
+      const report = (await validateCapabilities(input, [forgeManifest()], {
+        forgeEmail: email,
+        forgeApiToken: token,
+      })) as Awaited<ReturnType<typeof validateCapabilities>>;
       expect(report).toEqual([
         {
           capability: "forge-manifest",

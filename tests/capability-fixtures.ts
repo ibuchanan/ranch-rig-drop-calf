@@ -5,6 +5,7 @@ import {
   updateCapabilities,
 } from "../src/capability.ts";
 import { seedPackage } from "../src/package-json.ts";
+import { PROFILES } from "../src/profiles.ts";
 import type { ProjectBlueprint } from "../src/project.ts";
 
 export const kinds = ["library", "forge-app", "tool", "agent-skill"];
@@ -21,6 +22,13 @@ export const selections = (kind: string) => [
       ]
     : []),
 ];
+
+/** A kind's own configured capability, so tests exercise the policy options it declares. */
+export function capabilityOf(kind: string, name: string): Capability {
+  const capability = PROFILES[kind]?.find((item) => item.name === name);
+  if (!capability) throw new Error(`${kind} has no ${name} capability`);
+  return capability;
+}
 
 /** Sorted file entries of an in-memory mock directory. */
 export const contents = (directory: Directory) =>

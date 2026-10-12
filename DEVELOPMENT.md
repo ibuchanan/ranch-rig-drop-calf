@@ -187,15 +187,15 @@ DROP_CALF_E2E=1 bun test tests/e2e
   checks that data without naming individual capabilities.
   `docsLinting()` is re-exported from `src/docs.ts` for compatibility; its
   dedicated module owns documentation initialization, update, and validation.
-- `src/node.ts`: the Node baseline. `nodeBaseline(kind)` seeds `.nvmrc`, `.npmrc`,
+- `src/node.ts`: the Node baseline. `nodeBaseline(options)` seeds `.nvmrc`, `.npmrc`,
   and `@types/node`; update keeps the dependency fresh. Node also pulls catalog
   `forge-ranch/license` into an existing package's `license` field during update
   (including init's final update pass), preserving unrelated fields. Missing or
   malformed license metadata fails; no missing package is created.
   Update owns the whole `.nvmrc` and `.npmrc` files in every kind,
-  including replacing owner-added scoped registries and auth settings. Forge
-  updates remove the entire `engines` field; other kinds preserve owner engine
-  declarations. No kind generates `engines`: it has caused trouble with
+  including replacing owner-added scoped registries and auth settings. With
+  `engines: "remove"` (the Forge profile), update removes the entire `engines`
+  field; the default preserves owner engine declarations. No kind generates `engines`: it has caused trouble with
   `forge deploy`, and a development toolchain baseline is not a library's minimum
   supported runtime. Validation copies only `.nvmrc` into an isolated
   Dagger container with pinned fnm, initializes its shell, and runs
@@ -219,7 +219,8 @@ DROP_CALF_E2E=1 bun test tests/e2e
   capability reads it. The validator runs full Forge lint, including source checks;
   dependencies must be present in the supplied repository. Forge lint requires
   authentication: both validation entry points accept `--forge-email` and
-  `--forge-api-token` as Dagger Secrets, injected only for lint. Credentials are
+  `--forge-api-token` as Dagger Secrets and pass them to every validator in a
+  `ValidationContext`; only this one reads them, injected only for lint. Credentials are
   never read from the host implicitly; missing credentials fail before tool setup.
   Lint selects the development environment without prompting. Manifest substitutions
   needing other host variables are not forwarded; declared defaults work.
@@ -238,7 +239,10 @@ DROP_CALF_E2E=1 bun test tests/e2e
   Top-level `validate --profile forge-app` accepts the same Secret arguments.
   Bun executes the pinned CLI; Forge warns that its Node version detection does
   not recognize Bun. Authenticated CLI compatibility remains unverified.
-- `src/profiles.ts`: ordered capability lists for the four supported profiles.
+- `src/profiles.ts`: ordered capability lists for the four supported profiles,
+  each capability's policy options (for example `engines`, `enforcePrivate`,
+  `forgeGuidance`), and each kind's scaffold steps. Capabilities and `index.ts`
+  never branch on a kind or capability name.
 - `tests/repo-init.test.ts`: Bun unit tests for the pure blueprint/capability
   layer.
 - `specs/`: design targets; check implementation before documenting any item
