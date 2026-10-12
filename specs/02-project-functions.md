@@ -868,16 +868,64 @@ removes build output through this capability. The command removes only `dist` re
 to the package root when the owner explicitly runs the clean workflow.
 
 ### `evals` (optional; `--preset all` or `--with evals`)
-Add `promptfoo`; own `eval`/`view` scripts. Copy versioned Promptfoo config and example
-prompts/tests/data as seed assets; never overwrite an existing evaluation suite.
+
+Selection is explicit for all three verbs. Only `forge-app` supports this optional
+capability. Repository files, scripts, and dependency declarations do not select it;
+without selection, update does not modify evals tooling and validate does not report
+an evals result. `--without evals` excludes it from the all preset.
+
+| Resource | Init | Update |
+|---|---|---|
+| `devDependencies.promptfoo` | Seed `TOOL_VERSIONS.promptfoo` | Enforce the registry reference |
+| `scripts.eval`, `scripts.view` | Seed `promptfoo eval`, `promptfoo view` | Enforce the canonical commands |
+| `promptfooconfig.yaml`, prompts, tests, data, guide | Overlay `templates/promptfoo` | Preserve owner edits and deletions |
+| `manifest.yml` agent wiring | Owner-managed | No changes |
+
+- **init** seeds the dependency and scripts and overlays the authored template tree.
+  Initialization is first-time setup, not a safe rerun over an owner-authored suite;
+  use update for maintenance. All seeded suite content is init-only, including the
+  Promptfoo config's provider, prompts, and test references. No suite setting is
+  enforced on update.
+- **update** enforces only `scripts.eval`, `scripts.view`, and
+  `devDependencies.promptfoo` in an existing `package.json`, even if no config or
+  suite exists. Missing owned keys or sections are created; a missing package is
+  not created. Malformed/non-object JSON and non-object consumed sections fail
+  before writes. Other package fields, script keys, dependencies, files, and
+  lockfiles survive. Matching values retain package bytes; changes use sorted,
+  two-space JSON with a trailing newline. A second update changes nothing. No
+  dependency install, lockfile refresh, config repair, or seed restoration runs.
+- **validate** reports skipped when root `promptfooconfig.yaml` is missing, before
+  installing tools. Otherwise it installs the capability-selected Promptfoo reference
+  in an isolated Node-baseline container and uses Bun to invoke Promptfoo's native
+  `doValidate` handler from `dist/src/commands/validate.js`. This is the handler used
+  by `promptfoo validate --config`; it loads referenced prompts, tests, and providers
+  and checks the native config and test-suite schemas. An unmatched test-file glob
+  is accepted as an empty suite by Promptfoo 0.116.7; validation does not add stricter
+  reference-existence checks. Unknown assertion type names also pass native config
+  validation; runnable assertion semantics belong to evaluation. Owner config
+  accepted by the tool passes regardless of package pins, scripts, or template
+  defaults. Native failures report diagnostics through the top-level failed result.
+  The repository is mounted read-only, Promptfoo state and logs are outside it, and nothing is
+  exported. The CLI startup database migrations and command telemetry are bypassed;
+  update checks and telemetry are disabled. The handler's env path is `/dev/null`
+  so repository `.env` files are not loaded. No eval or view command runs, no model
+  credentials are forwarded, and the native validation handler does not call models
+  or execute assertions. Owner-authored loaders and custom provider constructors
+  may execute while the tool resolves configuration; validation is not a sandbox
+  for arbitrary owner code.
+
+The current registry reference is `^0.116.0`, a version range rather than an exact
+pin. Validation uses the same capability-selected reference, not the version in the
+owner's package or lockfile. The internal handler is version-sensitive and is covered
+by an opt-in live acceptance test.
 
 Manifest wiring is deliberately manual: Drop Calf does not edit `manifest.yml`
 for `evals`, because agent selection and behavior belong to the app owner.
 `prompts/agent-instructions.md` is the shared prompt source. Seed
 `docs/how-to/evaluate-rovo-agent.md` with a `rovo:agent` prompt-resource example
-that resolves to that file, already read by the Promptfoo test cases. Keep the
-translation example runnable without an agent. Evaluation is a prompt simulation
-through the configured provider, not a test of the deployed Rovo runtime.
+that resolves to that file, already read by the Promptfoo test cases. The translation
+example runs without an agent. Evaluation is a prompt simulation through the
+configured provider, not a test of the deployed Rovo runtime.
 
 ### `size`
 

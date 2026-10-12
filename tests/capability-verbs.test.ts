@@ -156,6 +156,7 @@ test.each(kinds)(
               "secrets",
               "size-limit",
               "docs",
+              "evals",
               "test",
             ].includes(capability.name)
           )
