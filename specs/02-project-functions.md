@@ -763,8 +763,30 @@ not immutable resolved versions. The legacy `addTo` contribution remains during
 expansion and merges all three keys without replacing unrelated dependencies.
 
 ### `aidev`
-Copy a versioned, Forge-focused `AGENTS.md` seed. Create-if-absent; guidance content,
-not machine configuration.
+
+Agent guidance is a capability in every kind's ordered composition. Only
+`forge-app` seeds the current authored `AGENTS.md`; other kinds omit Forge-only
+instructions with an explicit init no-op reason. The seed content is unchanged;
+expanding it is a separate concern.
+
+- **init** seeds the Forge guidance during first-time setup, replacing any Forge
+  scaffolder guidance removed by scaffold preparation. It is enabled by default
+  on `forge-app`; `--without aidev` excludes the capability from all three passes.
+  Explicit `--with aidev` and excluding it on non-Forge kinds remain invalid.
+  Non-Forge init is a no-op: "Only Forge apps have an authored agent guidance
+  seed; other project kinds omit Forge-specific instructions."
+- **update** is a no-op: "Agent guidance is init-only and owner-managed; update
+  preserves edits and does not restore a deleted AGENTS.md." No marked block is
+  maintained, and update does not create a missing guidance file.
+- **validate** is a no-op: "AGENTS.md is human guidance, not consuming-tool
+  configuration; checking referenced scripts would check guidance policy, not
+  tool acceptance." It does not parse guidance or compare named scripts with
+  `package.json`. Top-level validation reports a skipped result with this reason
+  whenever the capability is selected.
+
+Aidev owns only `AGENTS.md`; it contributes no package fields, scripts,
+dependencies, or template trees. Profile assembly invokes its verbs like any
+other capability rather than writing guidance separately.
 
 ### `test`
 The testing slot selects Bun's built-in runner for `library`, `tool`, and

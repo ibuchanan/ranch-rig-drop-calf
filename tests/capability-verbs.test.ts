@@ -1,6 +1,5 @@
 import { expect, spyOn, test } from "bun:test";
 import { type Directory, dag } from "@dagger.io/dagger";
-import { seedAgentGuidance } from "../src/aidev.ts";
 import {
   type Capability,
   expandCapability,
@@ -48,8 +47,9 @@ function legacyProject(
     capability.addTo(project);
     project.templates.push(...(capability.templates ?? []));
   };
-  for (const capability of PROFILES[kind] ?? []) add(capability);
-  if (!withoutFunctions.includes("aidev")) seedAgentGuidance(project, kind);
+  for (const capability of PROFILES[kind] ?? []) {
+    if (!withoutFunctions.includes(capability.name)) add(capability);
+  }
   if (
     kind === "forge-app" &&
     (preset === "all" || withFunctions.includes("evals")) &&

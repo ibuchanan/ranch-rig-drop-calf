@@ -76,6 +76,9 @@ Notes:
   dependency update must be visible to compiler-policy reconciliation on the first pass.
   The function table is an inventory, not an execution-order override.
 - `evals` is enabled by `--preset all` or `--with evals`, never by default.
+- `aidev` is composed in every kind, but seeds `AGENTS.md` only on `forge-app`;
+  non-Forge init is an explicit no-op. Forge can exclude it with `--without aidev`.
+  Update and validate are explicit no-ops in every kind.
 - `tool` and `agent-skill` are **new kinds** with no vendor parity target; their
   compositions above are provisional and should be revisited after first use.
 - Optional-function selection (`--with`/`--without`) applies on top of the kind; it cannot

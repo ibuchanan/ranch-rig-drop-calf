@@ -1,4 +1,4 @@
-import { seedAgentGuidance } from "./aidev.ts";
+import { aidev } from "./aidev.ts";
 import {
   biomeToolchain,
   bunTesting,
@@ -41,6 +41,7 @@ export const PROFILES: Record<string, Capability[]> = {
     cleanBuild(),
     docsLinting(),
     gitHooks(),
+    aidev("library"),
   ],
   "forge-app": [
     catalog(),
@@ -60,6 +61,7 @@ export const PROFILES: Record<string, Capability[]> = {
     cleanBuild(),
     docsLinting(),
     gitHooks(),
+    aidev("forge-app"),
   ],
   tool: [
     catalog(),
@@ -74,6 +76,7 @@ export const PROFILES: Record<string, Capability[]> = {
     cleanBuild(),
     docsLinting(),
     gitHooks(),
+    aidev("tool"),
   ],
   "agent-skill": [
     catalog(),
@@ -87,6 +90,7 @@ export const PROFILES: Record<string, Capability[]> = {
     cleanBuild(),
     docsLinting(),
     gitHooks(),
+    aidev("agent-skill"),
   ],
 };
 
@@ -135,7 +139,9 @@ export function resolveProfile(
     );
   }
   return [
-    ...capabilities,
+    ...capabilities.filter(
+      (capability) => !withoutFunctions.includes(capability.name),
+    ),
     ...(profile === "forge-app" &&
     (preset === "all" || withFunctions.includes("evals")) &&
     !withoutFunctions.includes("evals")
@@ -166,6 +172,5 @@ export function buildProject(
     if (typeof capability.init === "function") capability.init(project);
   }
   validateOssOwner(owner);
-  if (!withoutFunctions.includes("aidev")) seedAgentGuidance(project, profile);
   return project;
 }
