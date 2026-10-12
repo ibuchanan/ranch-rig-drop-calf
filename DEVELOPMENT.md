@@ -241,7 +241,16 @@ name is the explicit `--package-name`, then the nonblank scaffold name, then
 the Dagger workspace directory name. Without a scaffold, cleanup and manifest
 normalization do nothing. With a scaffold, `init` reads
 and cleans a scaffold, merges its package dependencies, and normalizes an existing
-Forge manifest runtime; synchronization of established projects is not implemented.
+Forge manifest runtime. Forge initialization also adopts root `src/` JavaScript
+as TypeScript using the pure plan in `src/init.ts`: `.js` becomes `.ts`, `.jsx`
+becomes `.tsx`, and matching resource-path scalars change in `manifest.yml`.
+Contents, function handlers without extensions, and Custom UI `static/` projects
+survive.
+Collisions refuse initialization. Strict errors are left for the owner to fix;
+this step never suppresses diagnostics or runs during `update`.
+`DROP_CALF_SCAFFOLD_E2E=1 bun test tests/e2e/scaffold-typescript.e2e.test.ts`
+checks in-place changeset export, compiler diagnostics, and update preservation
+without registering or deploying an app.
 `DROP_CALF_NODE_E2E=1 bun test tests/e2e/node.e2e.test.ts` verifies runtime
 normalization through a real Dagger init without registering or deploying an app.
 Generated projects have scripts and configs but no source tree, and the copied

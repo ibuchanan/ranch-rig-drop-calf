@@ -35,6 +35,20 @@ Every function:
 - documents which outputs are init-only, updated authoritatively, or changed
   selectively within shared resources.
 
+### Scaffold source adoption (top-level init only)
+
+On `forge-app`, top-level `init` automatically renames root `src/**/*.js` to
+`.ts` and `src/**/*.jsx` to `.tsx`. A pure planner receives file paths and optional
+manifest text; the Dagger boundary applies its plan. Matching `resources[].path`
+scalars are updated, while function handlers without extensions and unrelated
+manifest bytes are preserved. Destination collisions refuse initialization before
+cleanup.
+Source bytes remain unchanged; strict compiler settings are not relaxed and
+newly exposed type errors require owner fixes. Custom UI `static/` packages and
+other profiles are outside the conversion scope. An already-TypeScript tree
+plans no changes. `init-changes` includes source deletions and additions for
+review; `update` and standalone scaffold removal never run adoption.
+
 ## 3. Cross-cutting invariants
 
 - **Intent determines mutation behavior.** File type and generic merge rules do

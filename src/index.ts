@@ -22,7 +22,11 @@ import { copyDocs, DOCS_TEMPLATE } from "./docs.ts";
 import { forgeManifest, validateForgeManifest } from "./forge-manifest.ts";
 import { copyGitHooks, GIT_HOOKS_TEMPLATE } from "./git-hooks.ts";
 import { copyGitignoreAssets, PINNED_GITIGNORE } from "./gitignore.ts";
-import { mergeScaffoldPackage, scaffoldName } from "./init.ts";
+import {
+  adoptScaffoldTypeScript,
+  mergeScaffoldPackage,
+  scaffoldName,
+} from "./init.ts";
 import { nodeContainer as buildNodeContainer } from "./node.ts";
 import { copyOssAssets, PINNED_OSS } from "./oss.ts";
 import { applyPreclean } from "./preclean.ts";
@@ -185,8 +189,9 @@ export class DropCalf {
    * use update for maintenance.
    * Otherwise remove the scaffold files Drop Calf replaces, generate the
    * profile's files over what is left, and keep the scaffold's runtime dependencies.
-   * On forge-app, normalize the scaffold's manifest runtime from .nvmrc in the
-   * final update pass.
+   * On forge-app, adopt root src JavaScript as TypeScript and update matching
+   * resource paths without editing source contents or relaxing strict checks.
+   * Normalize the manifest runtime from .nvmrc in the final update pass.
    * Package naming: explicit name, nonblank scaffold name, workspace basename.
    * Catalog owns package identity; the legacy author argument is ignored in favor
    * of its owner staff ID.
@@ -212,7 +217,11 @@ export class DropCalf {
     const scaffold = (await directory.exists("package.json"))
       ? await directory.file("package.json").contents()
       : undefined;
-    const cleaned = await applyPreclean(directory);
+    const adopted =
+      profile === "forge-app"
+        ? await adoptScaffoldTypeScript(directory)
+        : directory;
+    const cleaned = await applyPreclean(adopted);
     const name =
       packageName ??
       scaffoldName(scaffold) ??

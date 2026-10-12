@@ -61,8 +61,12 @@ this repository.
    `dependencies`, `main`, `private`, and package name. Generated keys win on
    conflict. On `forge-app`, the scaffold's `app.runtime.name` is set to
    `nodejs24.x` to match the local Node baseline; the manifest's other settings
-   are preserved. `src/` is never touched. This is first-time setup, not an
-   update command.
+   are preserved. Root `src/` JavaScript files are renamed from `.js` to `.ts`
+   and `.jsx` to `.tsx`, with matching manifest resource paths updated. Source
+   contents and Custom UI `static/` projects are unchanged. Strict checking stays
+   enabled: fix any type errors the conversion exposes. Destination collisions
+   refuse initialization rather than overwrite files. This is first-time setup;
+   `update` never renames source.
 
 3. Apply the same changes to the working tree, then install:
 

@@ -37,8 +37,12 @@ export const mockDirectory = (
   const directory = {
     files,
     permissions,
+    glob: async () => [...files.keys()],
     exists: async (path: string) => files.has(path),
-    file: (path: string) => ({ contents: async () => files.get(path) }),
+    file: (path: string) => ({
+      text: files.get(path),
+      contents: async () => files.get(path),
+    }),
     stat: (path: string) => ({
       permissions: async () => permissions.get(path) ?? 0o644,
     }),

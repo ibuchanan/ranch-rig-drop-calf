@@ -1,13 +1,20 @@
 import { describe, expect, test } from "bun:test";
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
-import { tmpdir } from "node:os";
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+} from "node:fs";
 import { join } from "node:path";
 import {
   forgeRuntimeFromNvmrc,
   reconcileForgeRuntime,
 } from "../../src/forge-manifest.ts";
 import { NODE_NVMRC } from "../../src/node.ts";
+import { planScaffoldTypeScript } from "../../src/init.ts";
 
 /**
  * End to end: `forge create` -> `init-changes` -> export.
@@ -32,7 +39,8 @@ const readJson = (path: string) => JSON.parse(readFileSync(path, "utf8"));
 
 describe.skipIf(!enabled)("forge create then init", () => {
   test("a fresh scaffold becomes a Drop Calf project and keeps its app", () => {
-    const root = mkdtempSync(join(tmpdir(), "drop-calf-e2e-"));
+    mkdirSync(join(repo, ".scratch"), { recursive: true });
+    const root = mkdtempSync(join(repo, ".scratch/tmp_rovo_forge_create_"));
     const app = join(root, "app");
     try {
       run(
@@ -51,6 +59,16 @@ describe.skipIf(!enabled)("forge create then init", () => {
       );
       const scaffold = readJson(join(app, "package.json"));
       const manifest = readFileSync(join(app, "manifest.yml"), "utf8");
+      const sourcePaths = readdirSync(join(app, "src"), {
+        recursive: true,
+      }).map((path) => `src/${path}`);
+      const adoption = planScaffoldTypeScript(sourcePaths, manifest);
+      const sourceBytes = new Map(
+        adoption.renames.map(({ from }) => [
+          from,
+          readFileSync(join(app, from), "utf8"),
+        ]),
+      );
 
       run(
         "dagger",
@@ -80,8 +98,17 @@ describe.skipIf(!enabled)("forge create then init", () => {
         expect(result.dependencies[name]).toBe(version);
       expect(result.name).toBe(scaffold.name);
       expect(readFileSync(join(app, "manifest.yml"), "utf8")).toBe(
-        reconcileForgeRuntime(manifest, forgeRuntimeFromNvmrc(NODE_NVMRC)),
+        reconcileForgeRuntime(
+          adoption.manifest ?? manifest,
+          forgeRuntimeFromNvmrc(NODE_NVMRC),
+        ),
       );
+      for (const { from, to } of adoption.renames) {
+        expect(existsSync(join(app, from))).toBe(false);
+        expect(readFileSync(join(app, to), "utf8")).toBe(
+          sourceBytes.get(from) ?? "",
+        );
+      }
       // Drop Calf's files arrived, and the scaffold's replaced ones did not.
       for (const path of ["tsconfig.json", "lefthook.yml", ".gitignore"])
         expect(existsSync(join(app, path))).toBe(true);

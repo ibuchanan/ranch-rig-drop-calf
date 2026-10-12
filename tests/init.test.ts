@@ -183,7 +183,8 @@ test.each([
           ? undefined
           : reconcileForgeRuntime(manifest, NODE_FORGE_RUNTIME),
       );
-      expect(result.files.get("src/index.js")).toBe("export {};\n");
+      expect(result.files.has("src/index.js")).toBe(false);
+      expect(result.files.get("src/index.ts")).toBe("export {};\n");
       const pkg = JSON.parse(result.files.get("package.json") ?? "{}");
       expect(pkg.name).toBe("forge-blank");
       expect(pkg.main).toBe("index.js");
@@ -220,7 +221,7 @@ test.each(["library", "tool", "agent-skill"])(
   },
 );
 
-test("init rejects invalid Forge YAML during the final update pass without changing input", async () => {
+test("init rejects invalid Forge YAML without changing input", async () => {
   const scaffold = fake(new Map([["manifest.yml", "app: [unparseable\n"]]));
   const source = mockModuleSource();
   const spy = spyOn(dag, "directory").mockImplementation(() => mockDirectory());
@@ -306,6 +307,86 @@ test.each(["library", "forge-app", "tool", "agent-skill"])(
     }
   },
 );
+
+test("Forge init rewrites UI Kit resources and preserves Custom UI source bytes", async () => {
+  const manifest =
+    "modules:\n  function:\n    - key: resolver\n      handler: index.handler\nresources:\n  - key: main\n    path: src/frontend/index.jsx\n  - key: custom\n    path: static/app/build\n";
+  const input = fake(
+    new Map([
+      ["src/index.js", "export const handler = () => 1;\n"],
+      ["src/frontend/index.jsx", "export const App = () => null;\n"],
+      ["static/app/src/App.js", "export default () => null;\n"],
+      ["manifest.yml", manifest],
+    ]),
+  );
+  const before = [...input.files];
+  const source = mockModuleSource();
+  const directory = spyOn(dag, "directory").mockImplementation(() =>
+    mockDirectory(),
+  );
+  try {
+    const output = (await new DropCalf().init(
+      input,
+      "forge-app",
+      "tester",
+      "sample",
+    )) as Fake;
+    expect(output.files.get("src/index.ts")).toBe(
+      input.files.get("src/index.js"),
+    );
+    expect(output.files.get("src/frontend/index.tsx")).toBe(
+      input.files.get("src/frontend/index.jsx"),
+    );
+    expect(output.files.has("src/index.js")).toBe(false);
+    expect(output.files.has("src/frontend/index.jsx")).toBe(false);
+    expect(output.files.get("static/app/src/App.js")).toBe(
+      input.files.get("static/app/src/App.js"),
+    );
+    expect(output.files.get("manifest.yml")).toContain(
+      "path: src/frontend/index.tsx",
+    );
+    expect(output.files.get("manifest.yml")).toContain(
+      "path: static/app/build",
+    );
+    expect(output.files.get("manifest.yml")).toContain(
+      "handler: index.handler",
+    );
+    expect([...input.files]).toEqual(before);
+  } finally {
+    directory.mockRestore();
+    source.mockRestore();
+  }
+});
+
+test("Forge update never renames JavaScript source or rewrites its resource paths", async () => {
+  const manifest = `app:\n  runtime:\n    name: ${NODE_FORGE_RUNTIME}\nresources:\n  - key: main\n    path: src/frontend/index.jsx\n`;
+  const input = fake(
+    new Map([
+      [
+        "catalog-info.yaml",
+        "apiVersion: backstage.io/v1alpha1\nkind: Component\nmetadata:\n  name: sample\n  title: Sample\n  annotations:\n    forge-ranch/copyright-date: '2026'\n    forge-ranch/license: Apache-2.0\nspec:\n  type: forge-app\n  owner: user:default/tester\n",
+      ],
+      ["src/index.js", "export const run = () => 1;\n"],
+      ["src/frontend/index.jsx", "export const App = () => null;\n"],
+      ["manifest.yml", manifest],
+    ]),
+  );
+  const source = mockModuleSource();
+  try {
+    const output = (await new DropCalf().update(input, "forge-app")) as Fake;
+    expect(output.files.get("src/index.js")).toBe(
+      input.files.get("src/index.js"),
+    );
+    expect(output.files.get("src/frontend/index.jsx")).toBe(
+      input.files.get("src/frontend/index.jsx"),
+    );
+    expect(output.files.has("src/index.ts")).toBe(false);
+    expect(output.files.has("src/frontend/index.tsx")).toBe(false);
+    expect(output.files.get("manifest.yml")).toBe(manifest);
+  } finally {
+    source.mockRestore();
+  }
+});
 
 test("init rejects an invalid selection before touching the directory", async () => {
   await expect(
