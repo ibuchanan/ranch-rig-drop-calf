@@ -10,13 +10,13 @@ import {
   writeFileSync,
 } from "node:fs";
 import { join } from "node:path";
-import { BIOME_SCRIPTS } from "../../src/biome.ts";
 import { forgeRuntimeFromNvmrc } from "../../src/forge-manifest.ts";
 import { NODE_NVMRC, NPMRC } from "../../src/node.ts";
+import { assemblePackage } from "../../src/package-json.ts";
+import { resolveProfile } from "../../src/profiles.ts";
+import { NODE_MAJOR } from "../../src/versions.ts";
 
 const NODE_FORGE_RUNTIME = forgeRuntimeFromNvmrc(NODE_NVMRC);
-
-import { TOOL_VERSIONS } from "../../src/versions.ts";
 
 // Requires a Dagger engine, but never registers or deploys a Forge app.
 const enabled = process.env.DROP_CALF_NODE_E2E === "1";
@@ -119,15 +119,14 @@ for (const kind of ["library", "forge-app"]) {
           output,
         );
         const { engines: _engines, ...withoutEngines } = pkg;
+        const { policy } = assemblePackage(resolveProfile(kind));
         expect(
           JSON.parse(readFileSync(join(output, "package.json"), "utf8")),
         ).toEqual({
           ...(kind === "forge-app" ? withoutEngines : pkg),
-          devDependencies: {
-            ...pkg.devDependencies,
-            "@biomejs/biome": TOOL_VERSIONS.biome,
-          },
-          scripts: { ...pkg.scripts, ...BIOME_SCRIPTS },
+          // Seeded dependencies the owner still declares are kept fresh; removed ones stay removed.
+          devDependencies: { "@types/node": NODE_MAJOR },
+          scripts: { ...pkg.scripts, ...policy.scripts },
         });
         expect(readFileSync(join(output, ".atlassian/OWNER"), "utf8")).toBe(
           "tester",

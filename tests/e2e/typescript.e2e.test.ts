@@ -142,23 +142,22 @@ for (const kind of ["library", "forge-app", "tool", "agent-skill"]) {
           "--path",
           reset,
         );
+        // Update never re-adds removed tool dependencies, so removing the
+        // triggers selects the plain compiler policy in every kind.
         const check = ts.parseConfigFileTextToJson(
           "tsconfig.typecheck.json",
           readFileSync(join(reset, "tsconfig.typecheck.json"), "utf8"),
         ).config;
+        expect(
+          JSON.parse(readFileSync(join(reset, "package.json"), "utf8"))
+            .devDependencies,
+        ).not.toContainAnyKeys(["vitest", "tsdown"]);
         expect(check.compilerOptions).toMatchObject({
-          module:
-            kind === "library" || kind === "forge-app" ? "ESNext" : "CommonJS",
-          moduleResolution:
-            kind === "library" || kind === "forge-app" ? "Bundler" : "Node",
-          rootDir: kind === "library" || kind === "forge-app" ? "." : "src",
+          module: "CommonJS",
+          moduleResolution: "Node",
+          rootDir: "src",
         });
-        expect(check.include).toEqual([
-          "src",
-          ...(kind === "forge-app"
-            ? ["test", "tests", "vitest.config.ts"]
-            : []),
-        ]);
+        expect(check.include).toEqual(["src"]);
       } finally {
         rmSync(temporary, { recursive: true, force: true });
       }
