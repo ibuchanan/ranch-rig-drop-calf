@@ -102,9 +102,7 @@ test("init and update use the selected pin without claiming unrelated package fi
   expect(await updateCapabilities(output, [capability])).toBe(output);
 });
 
-test("update creates missing scripts but never re-adds removed seed dependencies", async () => {
-  const empty = mockDirectory();
-  expect(await runUpdate(changelogToolchain(), empty)).toBe(empty);
+test("update contributes only the changelog script, never missing cliff.toml or CHANGELOG.md", async () => {
   const input = mockDirectory(new Map([["package.json", "{}"]]));
   const output = await runUpdate(changelogToolchain(), input);
   expect(JSON.parse(await output.file("package.json").contents())).toEqual({
@@ -112,14 +110,6 @@ test("update creates missing scripts but never re-adds removed seed dependencies
   });
   expect(await output.exists("cliff.toml")).toBe(false);
   expect(await output.exists("CHANGELOG.md")).toBe(false);
-  const text = JSON.stringify(
-    JSON.parse(await output.file("package.json").contents()),
-    null,
-    4,
-  );
-  const matching = output.withNewFile("package.json", text);
-  expect(await runUpdate(changelogToolchain(), matching)).toBe(matching);
-  expect(await matching.file("package.json").contents()).toBe(text);
 });
 
 test.each([

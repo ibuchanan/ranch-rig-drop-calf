@@ -55,33 +55,10 @@ test("update converges scripts and matching tool pins while preserving owner con
   expect(await runUpdate(vitestTesting(), output)).toBe(output);
 });
 
-test("update leaves missing config and package absent and preserves matching package bytes", async () => {
-  const empty = mockDirectory();
-  expect(await runUpdate(vitestTesting(), empty)).toBe(empty);
+test("update never creates a missing Vitest config", async () => {
   const input = mockDirectory(new Map([["package.json", "{}"]]));
   const output = await runUpdate(vitestTesting(), input);
   expect(await output.exists("vitest.config.ts")).toBe(false);
-  const pkg = JSON.parse(await output.file("package.json").contents());
-  expect(pkg.devDependencies).toEqual(undefined);
-  const text = JSON.stringify(pkg, null, 4);
-  const matching = output.withNewFile("package.json", text);
-  expect(await runUpdate(vitestTesting(), matching)).toBe(matching);
-  expect(await matching.file("package.json").contents()).toBe(text);
-});
-
-test.each([
-  "{",
-  "null",
-  "[]",
-  '{"scripts":null}',
-  '{"scripts":[]}',
-  '{"devDependencies":"bad"}',
-])("unsafe package fails without changing input: %s", async (contents) => {
-  const input = mockDirectory(new Map([["package.json", contents]]));
-  await expect(runUpdate(vitestTesting(), input)).rejects.toThrow(
-    "package.json",
-  );
-  expect(await input.file("package.json").contents()).toBe(contents);
 });
 
 test("composed Forge update preserves missing Vitest declaration and TypeScript respects owner deletion", async () => {

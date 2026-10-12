@@ -101,19 +101,12 @@ test("gitignore update never creates missing blocks and validate explicitly skip
   }
 });
 
-/** Minimal stand-ins for the Dagger handles `copyGitignoreAssets` consumes. */
-const fakeDirectory = (writes: Map<string, string>) =>
-  ({
-    exists: async (path: string) => writes.has(path),
-    file: (path: string) => ({ contents: async () => writes.get(path) }),
-    withNewFile: (path: string, contents: string) => {
-      writes.set(path, contents);
-      return fakeDirectory(writes);
-    },
-  }) as unknown as Directory;
-
+/** The pinned template as the Dagger file handle `copyGitignoreAssets` consumes. */
 const fakeFile = (contents: string) =>
-  ({ contents: async () => contents }) as unknown as File;
+  mockDirectory(new Map([["pin", contents]])).file("pin") as unknown as File;
+
+const gitignoreOf = async (directory: Directory) =>
+  (directory as ReturnType<typeof mockDirectory>).files.get(".gitignore");
 
 test("the pinned artifact records the templates it was fetched from", () => {
   expect(PINNED_GITIGNORE).toBe("vendor/gitignore");
@@ -328,78 +321,88 @@ describe("updateGitignore", () => {
 
 describe("copyGitignoreAssets", () => {
   test("writes a generated .gitignore into the supplied directory", async () => {
-    const writes = new Map<string, string>();
-    await copyGitignoreAssets(fakeDirectory(writes), fakeFile(template));
-    expect(writes.get(".gitignore")).toBe(buildGitignore(template));
+    const output = await copyGitignoreAssets(
+      mockDirectory(),
+      fakeFile(template),
+    );
+    expect(await gitignoreOf(output)).toBe(buildGitignore(template));
   });
 
   test("defaults to every pinned template and honours an explicit subset", async () => {
-    const all = new Map<string, string>();
-    await copyGitignoreAssets(fakeDirectory(all), fakeFile(template));
-    const subset = new Map<string, string>();
-    await copyGitignoreAssets(fakeDirectory(subset), fakeFile(template), [
-      "node",
-    ]);
-    expect(subset.get(".gitignore")).toBe(buildGitignore(template, ["node"]));
-    expect(subset.get(".gitignore")).not.toBe(all.get(".gitignore"));
-    expect(subset.get(".gitignore")).not.toContain("### macOS ###");
+    const all = await gitignoreOf(
+      await copyGitignoreAssets(mockDirectory(), fakeFile(template)),
+    );
+    const subset = await gitignoreOf(
+      await copyGitignoreAssets(mockDirectory(), fakeFile(template), ["node"]),
+    );
+    expect(subset).toBe(buildGitignore(template, ["node"]));
+    expect(subset).not.toBe(all);
+    expect(subset).not.toContain("### macOS ###");
   });
 
   test("rejects an unknown set before touching the directory", async () => {
-    const writes = new Map<string, string>();
+    const input = mockDirectory();
+    const write = spyOn(input, "withNewFile");
     await expect(
-      copyGitignoreAssets(fakeDirectory(writes), fakeFile(template), ["nope"]),
+      copyGitignoreAssets(input, fakeFile(template), ["nope"]),
     ).rejects.toBeInstanceOf(InvalidOptionsError);
-    expect(writes.size).toBe(0);
+    expect(write).not.toHaveBeenCalled();
   });
 
   test("appends missing blocks without changing owner content, including EOF bytes", async () => {
     for (const owner of ["# owner\r\ncustom/\r\n", "# owner\ncustom/"]) {
-      const files = new Map([
-        [".gitignore", owner],
-        ["owner.txt", "untouched"],
-      ]);
-      const directory = fakeDirectory(files);
-      await copyGitignoreAssets(directory, fakeFile(template), ["node"]);
-      const wanted = `${owner}${owner.endsWith("\n") ? "" : "\n"}\n${buildGitignore(template, ["node"])}`;
-      expect(files.get(".gitignore")).toBe(wanted);
-      expect(files.get("owner.txt")).toBe("untouched");
-      expect(await copyGitignoreAssets(directory, fakeFile(template))).toBe(
-        directory,
+      const input = mockDirectory(
+        new Map([
+          [".gitignore", owner],
+          ["owner.txt", "untouched"],
+        ]),
       );
-      expect(files.get(".gitignore")).toBe(wanted);
+      const output = await copyGitignoreAssets(input, fakeFile(template), [
+        "node",
+      ]);
+      const wanted = `${owner}${owner.endsWith("\n") ? "" : "\n"}\n${buildGitignore(template, ["node"])}`;
+      expect(await gitignoreOf(output)).toBe(wanted);
+      expect(await output.file("owner.txt").contents()).toBe("untouched");
+      expect(await copyGitignoreAssets(output, fakeFile(template))).toBe(
+        output,
+      );
     }
   });
 
   test("an explicit subset replaces only the upstream block and records the chosen URL", async () => {
-    const files = new Map([
-      [".gitignore", `# owner\n${buildGitignore(template)}\n!keep\n`],
-    ]);
-    await copyGitignoreAssets(fakeDirectory(files), fakeFile(template), [
-      "linux",
-    ]);
-    expect(files.get(".gitignore")).toBe(
+    const output = await copyGitignoreAssets(
+      mockDirectory(
+        new Map([
+          [".gitignore", `# owner\n${buildGitignore(template)}\n!keep\n`],
+        ]),
+      ),
+      fakeFile(template),
+      ["linux"],
+    );
+    expect(await gitignoreOf(output)).toBe(
       `# owner\n${buildGitignore(template, ["linux"])}\n!keep\n`,
     );
-    expect(files.get(".gitignore")).not.toContain(
+    expect(await gitignoreOf(output)).not.toContain(
       `${GITIGNORE_ENDPOINT}/${GITIGNORE_QUERY}`,
     );
   });
 
   test("rejects malformed owned markers before writing", async () => {
     const old = `# Created by ${GITIGNORE_ENDPOINT}/node\ncustom/\n`;
-    const files = new Map([[".gitignore", old]]);
+    const input = mockDirectory(new Map([[".gitignore", old]]));
+    const write = spyOn(input, "withNewFile");
     await expect(
-      copyGitignoreAssets(fakeDirectory(files), fakeFile(template)),
+      copyGitignoreAssets(input, fakeFile(template)),
     ).rejects.toThrow(/end marker/);
-    expect(files.get(".gitignore")).toBe(old);
+    expect(write).not.toHaveBeenCalled();
   });
 
   test("propagates a missing pin instead of writing a partial file", async () => {
-    const writes = new Map<string, string>();
-    await expect(
-      copyGitignoreAssets(fakeDirectory(writes), fakeFile("")),
-    ).rejects.toThrow(/missing or malformed/);
-    expect(writes.size).toBe(0);
+    const input = mockDirectory();
+    const write = spyOn(input, "withNewFile");
+    await expect(copyGitignoreAssets(input, fakeFile(""))).rejects.toThrow(
+      /missing or malformed/,
+    );
+    expect(write).not.toHaveBeenCalled();
   });
 });

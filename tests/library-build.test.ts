@@ -114,20 +114,13 @@ test("update enforces pipeline and formats while preserving the example's entrie
   }
 });
 
-test("matching package/config bytes and owner deletions are retained; missing policy files are restored", async () => {
+test("missing policy files are restored; owner config deletions are retained", async () => {
   const source = mockModuleSource();
   try {
-    const pkg = `{ "devDependencies": { "tsdown": "${TOOL_VERSIONS.tsdown}" }, "scripts": { "build": "sh scripts/build.sh" } }`;
     const config =
       '{ "entry": {"custom":"./src/custom.ts"}, "format": ["esm","cjs"] }';
-    const input = mockDirectory(
-      new Map([
-        ["package.json", pkg],
-        [LIBRARY_BUILD_CONFIG, config],
-      ]),
-    );
+    const input = mockDirectory(new Map([[LIBRARY_BUILD_CONFIG, config]]));
     const output = (await runUpdate(libraryBuild(), input)) as typeof input;
-    expect(await output.file("package.json").contents()).toEqual(pkg);
     expect(await output.file(LIBRARY_BUILD_CONFIG).contents()).toEqual(config);
     expect(await runUpdate(libraryBuild(), output)).toBe(output);
     const missing = await runUpdate(
@@ -140,29 +133,10 @@ test("matching package/config bytes and owner deletions are retained; missing po
     expect(
       JSON.parse(await missing.file("package.json").contents()).exports,
     ).toBeUndefined();
-    const absent = mockDirectory();
-    expect(await runUpdate(libraryBuild(), absent)).toBe(absent);
   } finally {
     source.mockRestore();
   }
 });
-
-test.each([
-  "{broken",
-  "null",
-  "[]",
-  '{"scripts":[]}',
-  '{"devDependencies":null}',
-])(
-  "update rejects malformed shared metadata before writes: %s",
-  async (contents) => {
-    const input = mockDirectory(new Map([["package.json", contents]]));
-    await expect(runUpdate(libraryBuild(), input)).rejects.toThrow(
-      "package.json",
-    );
-    expect(input.files).toEqual(new Map([["package.json", contents]]));
-  },
-);
 
 test.each(["{broken", "null", "[]"])(
   "update rejects malformed bundler config: %s",

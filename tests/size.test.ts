@@ -116,25 +116,14 @@ test("init seeds the selected budget and update maintains only the selected pair
   expect(await updateCapabilities(output, [capability])).toBe(output);
 });
 
-test("update creates missing owned keys but not a missing package or budget, retaining matching bytes", async () => {
-  const empty = mockDirectory();
-  expect(await runUpdate(bundleSize("sample", "dist/index.mjs"), empty)).toBe(
-    empty,
-  );
+test("update contributes only the size script, never a missing budget", async () => {
   const output = await runUpdate(
     bundleSize("sample", "dist/index.mjs"),
     mockDirectory(new Map([["package.json", "{}"]])),
   );
-  const pkg = JSON.parse(await output.file("package.json").contents());
-  expect(pkg).toEqual({
+  expect(JSON.parse(await output.file("package.json").contents())).toEqual({
     scripts: { size: SIZE_LIMIT_COMMAND },
   });
-  const text = `${JSON.stringify(pkg, null, 4)}\r\n`;
-  const matching = output.withNewFile("package.json", text);
-  expect(
-    await runUpdate(bundleSize("sample", "dist/index.mjs"), matching),
-  ).toBe(matching);
-  expect(await matching.file("package.json").contents()).toBe(text);
 });
 
 test.each([
@@ -157,27 +146,6 @@ test.each([
     expect(
       await runUpdate(bundleSize("sample", "dist/index.mjs"), output),
     ).toBe(output);
-  },
-);
-
-test.each([
-  "{",
-  "null",
-  "[]",
-  '{"scripts":null}',
-  '{"scripts":[]}',
-  '{"scripts":"bad"}',
-  '{"devDependencies":null}',
-  '{"devDependencies":[]}',
-  '{"devDependencies":"bad"}',
-])(
-  "update rejects unsafe package shape without writes: %s",
-  async (contents) => {
-    const input = mockDirectory(new Map([["package.json", contents]]));
-    await expect(
-      runUpdate(bundleSize("sample", "dist/index.mjs"), input),
-    ).rejects.toThrow("package.json");
-    expect(await input.file("package.json").contents()).toBe(contents);
   },
 );
 

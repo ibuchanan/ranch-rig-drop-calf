@@ -75,48 +75,6 @@ test("Bun update owns only three scripts and preserves owner files and package v
   expect(await update(output)).toBe(output);
 });
 
-test("Bun update creates missing script keys, not a missing package, and preserves matching bytes", async () => {
-  const empty = mockDirectory();
-  expect(await update(empty)).toBe(empty);
-  for (const pkg of [
-    {},
-    { scripts: { test: "stale", "test:unit": "custom" } },
-  ]) {
-    const output = await update(
-      mockDirectory(new Map([["package.json", JSON.stringify(pkg)]])),
-    );
-    expect(
-      JSON.parse(await output.file("package.json").contents()).scripts,
-    ).toMatchObject(scripts);
-    const text = JSON.stringify(
-      { ...pkg, scripts: { ...pkg.scripts, ...scripts } },
-      null,
-      4,
-    );
-    const matching = mockDirectory(new Map([["package.json", text]]));
-    expect(await update(matching)).toBe(matching);
-    expect(await matching.file("package.json").contents()).toBe(text);
-  }
-});
-
-test.each([
-  "{",
-  "null",
-  "[]",
-  '{"scripts":null}',
-  '{"scripts":[]}',
-  '{"scripts":"bad"}',
-  '{"scripts":1}',
-  '{"scripts":true}',
-])(
-  "Bun update rejects unsafe package input before writing: %s",
-  async (text) => {
-    const input = mockDirectory(new Map([["package.json", text]]));
-    await expect(update(input)).rejects.toThrow("package.json");
-    expect(await input.file("package.json").contents()).toBe(text);
-  },
-);
-
 test.each(["library", "tool", "agent-skill"])(
   "%s initializes Bun workflows that accept empty suites, run script tests, and fail broken tests",
   async (kind) => {

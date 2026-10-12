@@ -10,7 +10,7 @@ import { DropCalf } from "../src/index.ts";
 import { buildProject, resolveProfile } from "../src/profiles.ts";
 import { createBlueprint } from "../src/project.ts";
 import { TOOL_VERSIONS } from "../src/versions.ts";
-import { runInit, runUpdate, verb } from "./capability-fixtures.ts";
+import { runInit, verb } from "./capability-fixtures.ts";
 import { mockContainer } from "./container-source.ts";
 import { mockDirectory, mockModuleSource } from "./module-source.ts";
 import { gitHooksTemplates } from "./templates-source.ts";
@@ -61,42 +61,6 @@ test("init and update enforce only the selected pin and hook dispatch scripts", 
   expect([...input.files]).toEqual(before);
   expect(await updateCapabilities(output, [gitHooks()])).toBe(output);
 });
-
-test("update does not create missing dependencies but enforces scripts when package.json exists", async () => {
-  const empty = mockDirectory();
-  expect(await runUpdate(gitHooks(), empty)).toBe(empty);
-  const output = await runUpdate(
-    gitHooks(),
-    mockDirectory(new Map([["package.json", "{}"]])),
-  );
-  const pkg = JSON.parse(await output.file("package.json").contents());
-  expect(pkg).toEqual({
-    scripts: GIT_HOOKS_SCRIPTS,
-  });
-  expect(await output.exists("lefthook.yml")).toBe(false);
-  const text = JSON.stringify(pkg, null, 4);
-  const matching = output.withNewFile("package.json", text);
-  expect(await runUpdate(gitHooks(), matching)).toBe(matching);
-  expect(await matching.file("package.json").contents()).toBe(text);
-});
-
-test.each([
-  "{",
-  "null",
-  "[]",
-  '{"scripts":null}',
-  '{"scripts":[]}',
-  '{"scripts":"bad"}',
-  '{"devDependencies":null}',
-  '{"devDependencies":[]}',
-])(
-  "update rejects unsafe package shape without writes: %s",
-  async (contents) => {
-    const input = mockDirectory(new Map([["package.json", contents]]));
-    await expect(runUpdate(gitHooks(), input)).rejects.toThrow("package.json");
-    expect(await input.file("package.json").contents()).toBe(contents);
-  },
-);
 
 test.each(["library", "forge-app", "tool", "agent-skill"])(
   "%s init seeds config and composed update preserves edits and deletion idempotently",

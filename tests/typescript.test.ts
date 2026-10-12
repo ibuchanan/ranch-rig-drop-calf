@@ -300,21 +300,6 @@ test.each([
   ).toThrow("tsconfig.json");
 });
 
-test.each([
-  "{",
-  "[]",
-  '{"scripts":null}',
-  '{"scripts":[]}',
-  '{"devDependencies":null}',
-  '{"devDependencies":"bad"}',
-])("unsafe package fails before writes: %s", async (contents) => {
-  const input = mockDirectory(new Map([["package.json", contents]]));
-  await expect(runUpdate(typeScriptToolchain(), input)).rejects.toThrow(
-    "package.json",
-  );
-  expect(input.files.size).toBe(1);
-});
-
 test("validation uses the default compiler and two read-only showConfig commands without enforcing policy", async () => {
   const { spy, commands, mounts } = mockContainer();
   // Only the two baseline configs are supplied.

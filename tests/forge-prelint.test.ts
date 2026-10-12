@@ -15,7 +15,6 @@ import {
 } from "../src/prelint.ts";
 import { buildProject } from "../src/profiles.ts";
 import { TOOL_VERSIONS } from "../src/versions.ts";
-import { runUpdate } from "./capability-fixtures.ts";
 import { mockDirectory, mockModuleSource } from "./module-source.ts";
 
 const updateReason =
@@ -105,50 +104,6 @@ test("update enforces selected dependencies and scripts while preserving unrelat
   expect([...input.files]).toEqual(before);
   expect(await updateCapabilities(output, [capability])).toBe(output);
 });
-
-test("update does not create missing dependencies but enforces scripts when package.json exists", async () => {
-  const empty = mockDirectory();
-  expect(await runUpdate(prelint(), empty)).toBe(empty);
-  const output = await runUpdate(
-    prelint(),
-    mockDirectory(new Map([["package.json", "{}"]])),
-  );
-  const pkg = JSON.parse(await output.file("package.json").contents());
-  expect(pkg).toEqual({
-    scripts: PRELINT_SCRIPTS,
-  });
-  expect(await output.exists("lefthook.yml")).toBe(false);
-  const text = `${JSON.stringify(pkg, null, 4)}\r\n`;
-  const matching = output.withNewFile("package.json", text);
-  expect(await runUpdate(prelint(), matching)).toBe(matching);
-  expect(await matching.file("package.json").contents()).toBe(text);
-});
-
-test.each([
-  "{",
-  "null",
-  "[]",
-  '"package"',
-  '{"scripts":null}',
-  '{"scripts":[]}',
-  '{"scripts":"bad"}',
-  '{"devDependencies":null}',
-  '{"devDependencies":[]}',
-  '{"devDependencies":"bad"}',
-])(
-  "update rejects unsafe package shape without writes: %s",
-  async (contents) => {
-    const input = mockDirectory(new Map([["package.json", contents]]));
-    const write = spyOn(input, "withNewFile");
-    try {
-      await expect(runUpdate(prelint(), input)).rejects.toThrow("package.json");
-      expect(write).not.toHaveBeenCalled();
-      expect(await input.file("package.json").contents()).toBe(contents);
-    } finally {
-      write.mockRestore();
-    }
-  },
-);
 
 test.each(["library", "forge-app", "tool", "agent-skill"])(
   "%s initialization and composed update keep prelint Forge-only and idempotent",

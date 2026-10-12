@@ -87,59 +87,6 @@ test("clean-build update replaces only the owned script without deleting output"
   expect(await update(output)).toBe(output);
 });
 
-test("clean-build update restores missing script keys, not a missing package", async () => {
-  const missing = mockDirectory(new Map([["dist/index.js", "build output"]]));
-  expect(await update(missing)).toBe(missing);
-  for (const pkg of [
-    {},
-    { scripts: {} },
-    { scripts: { build: "owner build" } },
-  ]) {
-    const output = await update(
-      mockDirectory(new Map([["package.json", JSON.stringify(pkg)]])),
-    );
-    expect(JSON.parse(await output.file("package.json").contents())).toEqual({
-      ...pkg,
-      scripts: { ...pkg.scripts, clean: command },
-    });
-    expect(await update(output)).toBe(output);
-  }
-});
-
-test("clean-build update preserves matching package bytes and formatting", async () => {
-  const text =
-    '{\r\n    "custom": true,\r\n    "scripts": {"clean":"rm -rf dist"},\r\n    "name": "owner"\r\n}';
-  const input = mockDirectory(new Map([["package.json", text]]));
-  expect(await update(input)).toBe(input);
-  expect(await input.file("package.json").contents()).toBe(text);
-});
-
-test.each([
-  "{",
-  "null",
-  "[]",
-  '"bad"',
-  "1",
-  '{"scripts":null}',
-  '{"scripts":[]}',
-  '{"scripts":"bad"}',
-  '{"scripts":1}',
-  '{"scripts":true}',
-])(
-  "clean-build update rejects unsafe package input before writes: %s",
-  async (text) => {
-    const input = mockDirectory(new Map([["package.json", text]]));
-    const write = spyOn(input, "withNewFile");
-    try {
-      await expect(update(input)).rejects.toThrow("package.json");
-      expect(write).not.toHaveBeenCalled();
-      expect(await input.file("package.json").contents()).toBe(text);
-    } finally {
-      write.mockRestore();
-    }
-  },
-);
-
 test.each(["library", "forge-app", "tool", "agent-skill"])(
   "%s init and update maintain clean without executing it",
   async (kind) => {

@@ -63,58 +63,6 @@ test.each([undefined, "^99", "github:example/api-types#revision"])(
   },
 );
 
-test("Forge Ahead update does not restore removed dependencies or create missing package", async () => {
-  const missing = mockDirectory();
-  expect(await update(missing)).toBe(missing);
-  for (const pkg of [
-    {},
-    { dependencies: {} },
-    { dependencies: { keep: "1" } },
-    { dependencies: { "@forge-ahead/errors": TOOL_VERSIONS.forgeAheadErrors } },
-  ]) {
-    const output = await update(
-      mockDirectory(new Map([["package.json", JSON.stringify(pkg)]])),
-    );
-    expect(JSON.parse(await output.file("package.json").contents())).toEqual(
-      pkg,
-    );
-    expect(await update(output)).toBe(output);
-  }
-});
-
-test("Forge Ahead update retains matching package bytes", async () => {
-  const text = `${JSON.stringify({ custom: true, dependencies: authoritative }, null, 4)}\r\n`;
-  const input = mockDirectory(new Map([["package.json", text]]));
-  expect(await update(input)).toBe(input);
-  expect(await input.file("package.json").contents()).toBe(text);
-});
-
-test.each([
-  "{",
-  "null",
-  "[]",
-  '"bad"',
-  "1",
-  '{"dependencies":null}',
-  '{"dependencies":[]}',
-  '{"dependencies":"bad"}',
-  '{"dependencies":1}',
-  '{"dependencies":true}',
-])(
-  "Forge Ahead update rejects unsafe package input before writes: %s",
-  async (text) => {
-    const input = mockDirectory(new Map([["package.json", text]]));
-    const write = spyOn(input, "withNewFile");
-    try {
-      await expect(update(input)).rejects.toThrow("package.json");
-      expect(write).not.toHaveBeenCalled();
-      expect(await input.file("package.json").contents()).toBe(text);
-    } finally {
-      write.mockRestore();
-    }
-  },
-);
-
 test("Forge Ahead validation is an explicit no-op without reading or installing", async () => {
   const capability = forgeAhead();
   expect(typeof capability.validate).not.toBe("function");

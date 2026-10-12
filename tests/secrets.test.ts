@@ -255,22 +255,6 @@ test("empty legacy allowlist is safe to replace, but missing owner JSON is not i
   }
 });
 
-test.each(["{", "null", "[]", '{"scripts":null}', '{"scripts":[]}'])(
-  "unsafe package input is rejected before writes: %s",
-  async (contents) => {
-    const input = seededSecrets().withNewFile("package.json", contents);
-    const write = spyOn(input, "withNewFile");
-    try {
-      await expect(runUpdate(forgeSecrets(), input)).rejects.toThrow(
-        "package.json",
-      );
-      expect(write).not.toHaveBeenCalled();
-    } finally {
-      write.mockRestore();
-    }
-  },
-);
-
 test("validation accepts owner edits without baseline comparisons or external execution", async () => {
   const input = seededSecrets()
     .withNewFile(

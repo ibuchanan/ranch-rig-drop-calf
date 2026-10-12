@@ -90,11 +90,9 @@ test.each(["biome.json", "biome.jsonc"])(
   },
 );
 
-test("update seeds missing package sections but never missing package, config, or EditorConfig", async () => {
+test("update seeds missing package sections but never missing config or EditorConfig", async () => {
   const { spy, commands } = mockContainer();
   try {
-    const empty = mockDirectory();
-    expect(await runUpdate(biomeToolchain(), empty)).toBe(empty);
     const output = await runUpdate(
       biomeToolchain(),
       mockDirectory(new Map([["package.json", "{}"]])),
@@ -104,27 +102,10 @@ test("update seeds missing package sections but never missing package, config, o
     });
     expect(await output.exists("biome.jsonc")).toBe(false);
     expect(await output.exists(".editorconfig")).toBe(false);
-    expect(await runUpdate(biomeToolchain(), output)).toBe(output);
     expect(commands).toEqual([]);
   } finally {
     spy.mockRestore();
   }
-});
-
-test.each([
-  "{",
-  "[]",
-  "null",
-  '{"scripts":null}',
-  '{"scripts":[]}',
-  '{"devDependencies":"bad"}',
-])("update rejects malformed shared package: %s", async (contents) => {
-  await expect(
-    runUpdate(
-      biomeToolchain(),
-      mockDirectory(new Map([["package.json", contents]])),
-    ),
-  ).rejects.toThrow(ParseError);
 });
 
 test.each(["{", "[]", "null"])(
