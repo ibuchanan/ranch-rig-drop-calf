@@ -9,7 +9,7 @@ import { EVALS_TEMPLATE } from "../src/evals.ts";
 import { GIT_HOOKS_TEMPLATE } from "../src/git-hooks.ts";
 import { PINNED_GITIGNORE } from "../src/gitignore.ts";
 import { OSS_ASSETS } from "../src/oss.ts";
-import { SECRETS_TEMPLATE } from "../src/secrets.ts";
+import { SECRETS_EXECUTABLES, SECRETS_TEMPLATE } from "../src/secrets.ts";
 import { TYPESCRIPT_TEMPLATE } from "../src/typescript.ts";
 import { mockBiomeContainer } from "./biome-source.ts";
 import {
@@ -30,23 +30,50 @@ export const moduleTemplates = () =>
   );
 
 /** An immutable in-memory directory at the Dagger SDK boundary. */
-export const mockDirectory = (files = new Map<string, string>()) => {
+export const mockDirectory = (
+  files = new Map<string, string>(),
+  permissions = new Map<string, number>(),
+) => {
   const directory = {
     files,
+    permissions,
     exists: async (path: string) => files.has(path),
     file: (path: string) => ({ contents: async () => files.get(path) }),
+    stat: (path: string) => ({
+      permissions: async () => permissions.get(path) ?? 0o644,
+    }),
     withoutFile: (path: string) =>
-      mockDirectory(new Map([...files].filter(([name]) => name !== path))),
-    withNewFile: (path: string, contents: string) =>
-      mockDirectory(new Map(files).set(path, contents)),
+      mockDirectory(
+        new Map([...files].filter(([name]) => name !== path)),
+        new Map([...permissions].filter(([name]) => name !== path)),
+      ),
+    withNewFile: (
+      path: string,
+      contents: string,
+      options?: { permissions?: number },
+    ) =>
+      mockDirectory(
+        new Map(files).set(path, contents),
+        new Map(permissions).set(path, options?.permissions ?? 0o644),
+      ),
     withFile: (path: string, file: { text: string }) =>
-      mockDirectory(new Map(files).set(path, file.text)),
+      mockDirectory(new Map(files).set(path, file.text), permissions),
     withDirectory: (
       _path: string,
-      source: { files: ReadonlyMap<string, string> },
-    ) => mockDirectory(new Map([...files, ...source.files])),
+      source: {
+        files: ReadonlyMap<string, string>;
+        permissions?: ReadonlyMap<string, number>;
+      },
+    ) =>
+      mockDirectory(
+        new Map([...files, ...source.files]),
+        new Map([...permissions, ...(source.permissions ?? [])]),
+      ),
   };
-  return directory as unknown as Directory & { files: Map<string, string> };
+  return directory as unknown as Directory & {
+    files: Map<string, string>;
+    permissions: Map<string, number>;
+  };
 };
 
 /** The real pinned template, so tests assemble from the same bytes generation does. */
@@ -70,17 +97,30 @@ export function mockModuleSource(
         path === PINNED_GITIGNORE ? gitignore : templates.get(path),
     }),
   };
-  const tree = (files: ReadonlyMap<string, string>) => ({
+  const tree = (
+    files: ReadonlyMap<string, string>,
+    permissions = new Map<string, number>(),
+  ) => ({
     files,
+    permissions,
     withoutFile: (path: string) =>
-      tree(new Map([...files].filter(([name]) => name !== path))),
+      tree(
+        new Map([...files].filter(([name]) => name !== path)),
+        new Map([...permissions].filter(([name]) => name !== path)),
+      ),
     glob: async () => [...files.keys()],
     exists: async (path: string) => files.has(path),
+    stat: (path: string) => ({
+      permissions: async () => permissions.get(path) ?? 0o644,
+    }),
     file: (path: string) => ({
       text: files.get(path),
       contents: async () => files.get(path),
     }),
   });
+  const secretsPermissions = new Map(
+    SECRETS_EXECUTABLES.map((path) => [path, 0o755]),
+  );
   const trees = new Map<string, ReturnType<typeof tree>>([
     [CATALOG_TEMPLATE, tree(catalogTemplates())],
     ["templates/docs", tree(docs)],
@@ -88,7 +128,7 @@ export function mockModuleSource(
     [BIOME_TEMPLATE, tree(biome)],
     [CHANGELOG_TEMPLATE, tree(changelog)],
     [GIT_HOOKS_TEMPLATE, tree(gitHooks)],
-    [SECRETS_TEMPLATE, tree(secrets)],
+    [SECRETS_TEMPLATE, tree(secrets, secretsPermissions)],
     ["templates/vitest", tree(vitestTemplates())],
     [EVALS_TEMPLATE, tree(promptfooTemplates())],
   ]);

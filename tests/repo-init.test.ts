@@ -7,6 +7,7 @@ import { biomeToolchain } from "../src/biome.ts";
 import { DropCalf } from "../src/index.ts";
 import { OSS_ASSETS } from "../src/oss.ts";
 import { prelint } from "../src/prelint.ts";
+import { SECRETS_ASSETS } from "../src/secrets.ts";
 import {
   buildProject,
   InvalidOptionsError,
@@ -383,7 +384,9 @@ describe("profiles", () => {
           "biome.jsonc",
           ...typescriptTemplates().keys(),
           ...(kind === "agent-skill" ? [] : changelogTemplates().keys()),
-          ...(kind === "forge-app" ? ["vitest.config.ts"] : []),
+          ...(kind === "forge-app"
+            ? ["vitest.config.ts", ...SECRETS_ASSETS]
+            : []),
         ].sort();
         const present = [];
         for (const path of paths)

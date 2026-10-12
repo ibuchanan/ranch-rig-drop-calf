@@ -149,12 +149,14 @@ DROP_CALF_E2E=1 bun test tests/e2e
   Init and validation are explicit no-ops: the rules ship inside the package,
   with no local config to seed or validate. Standalone `validatePrelint` reports
   the same skip; source scanning belongs to the lint workflow.
-- `src/secrets.ts`: the SecretSpec workflow — the `forge:*` scripts and
-  `copySecretsAssets` for `templates/secretspec/`. The TOML and
-  the two helpers are authored content copied for `forge-app`
-  only, with just the project name substituted. `FORGE_SITE` is required,
-  `env-var.sh` runs each command through `secretspec` with a recorded reason,
-  and the app-variable helper pushes only its `APP_VARIABLE_KEYS` allowlist.
+- `src/secrets.ts`: the Forge-only SecretSpec workflow. Init seeds owner-managed
+  `secretspec.toml` and `forge-variable-keys.json`, substituting the TOML project
+  name and marking both helpers executable. Update maintains the two helpers
+  and six `forge:*` scripts, preserving owner declarations and unrelated package
+  fields. Nonempty or uncertain legacy `APP_VARIABLE_KEYS` blocks update until
+  migrated to JSON. Validation checks local TOML structure, allowlist membership
+  and executable permissions, never resolves secrets or runs Forge. The push
+  helper sends only allowlisted values, encrypted, without printing values.
 - `src/gitignore.ts`: seeds and updates complete `.gitignore` blocks from the
   pinned gitignore.io response and additional defaults, preserving bytes outside
   those blocks. `gitignore()` declares the pin at init and recovers topic selections

@@ -16,7 +16,7 @@ import { prelint, validatePrelint } from "../src/prelint.ts";
 import { buildProject, PROFILES, resolveProfile } from "../src/profiles.ts";
 import { createBlueprint, renderToDirectory } from "../src/project.ts";
 import { seedTemplates } from "../src/templates.ts";
-import { mockModuleSource } from "./module-source.ts";
+import { mockDirectory as tree, mockModuleSource } from "./module-source.ts";
 
 const kinds = ["library", "forge-app", "tool", "agent-skill"];
 const selections = (kind: string) => [
@@ -30,21 +30,6 @@ const selections = (kind: string) => [
       ]
     : []),
 ];
-
-const tree = (files = new Map<string, string>()): Directory =>
-  ({
-    files,
-    exists: async (path: string) => files.has(path),
-    file: (path: string) => ({ contents: async () => files.get(path) }),
-    withoutFile: (path: string) =>
-      tree(new Map([...files].filter(([name]) => name !== path))),
-    withNewFile: (path: string, contents: string) =>
-      tree(new Map(files).set(path, contents)),
-    withFile: (path: string, file: { text: string }) =>
-      tree(new Map(files).set(path, file.text)),
-    withDirectory: (_path: string, source: { files: Map<string, string> }) =>
-      tree(new Map([...files, ...source.files])),
-  }) as unknown as Directory;
 
 const contents = (directory: Directory) =>
   [...(directory as unknown as { files: Map<string, string> }).files].sort(
@@ -153,6 +138,7 @@ test.each(kinds)(
               "prelint",
               "biome",
               "typescript",
+              "secrets",
             ].includes(capability.name) ||
             (kind === "forge-app" && capability.name === "test")
           )

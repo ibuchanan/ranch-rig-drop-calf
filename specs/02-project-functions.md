@@ -366,22 +366,61 @@ The release workflow owns `devDependencies["git-cliff"]` at
   evidence of invalid configuration.
 
 ### `secrets`
-Seed `secretspec.toml`, `scripts/env-var.sh` and
-`scripts/forge-vars-from-secretspec.js` from `templates/secretspec` (authored content,
-never rebuilt by the capability), substituting only the project name. `FORGE_SITE` is
-`required` — no site is assumed — and the TOML documents the split between CLI-targeting
-`FORGE_*` values and app-level runtime secrets.
 
-`env-var.sh` runs any command through `secretspec --file … run --provider dotenv --reason
-… --profile … --` so `$FORGE_*` expand only after injection and every read is recorded;
-the `forge:*` scripts wrap `forge` through it. The app-variable helper pushes only the
-keys in its `APP_VARIABLE_KEYS` allowlist, always `--encrypt`, and never prints values;
-the seeded list is empty. Seeding is create-if-absent for `forge-app` only, so
-an edited config or helper is left alone. The secrets policy slice assigns the
-tree's lifecycle to the required verbs. Secretspec and Gitleaks are external
-prerequisites; never installed, never injected. A prerequisite check is deferred: it
-must run where the tools are used (the developer's machine or CI), not inside the
-module's runtime container, which never has them.
+Forge-only SecretSpec workflow. Owner declarations are separate from maintained
+helper code. Secretspec and Gitleaks remain external prerequisites; the capability
+never installs them or injects secret values.
+
+- **init** overlays four assets from `templates/secretspec`: owner-managed
+  `secretspec.toml` and `forge-variable-keys.json`, plus the two maintained helpers
+  `scripts/env-var.sh` and `scripts/forge-vars-from-secretspec.js`. The TOML project
+  name is substituted with string escaping; the helpers are seeded executable
+  (`0755`). The JSON allowlist starts as `[]`. `FORGE_SITE` is required, with no
+  assumed site. Init is first-time setup, not create-if-absent maintenance: an
+  existing asset is replaced. Standalone `copy-secrets` has the same overlay
+  behavior. The special seeding branch is retained for TOML name substitution
+  and explicit executable permissions; ordinary template overlays do neither.
+- **update** preserves both owner files byte-for-byte, including permissions,
+  edits and deletions. It authoritatively replaces or restores both helpers with
+  template bytes and `0755` permissions. It maintains only six package scripts:
+  `forge:register`, `forge:deploy`, `forge:install`, `forge:uninstall`,
+  `forge:upgrade` and `forge:variables:set`; unrelated scripts (including custom
+  `forge:*` scripts), dependencies and package fields survive. No package is
+  invented if `package.json` is absent. Non-interactive and scope-confirmation
+  flags remain only on commands that support them (deploy, install and upgrade;
+  confirmation is install/upgrade only).
+- **migration safety**: before any tooling write, update statically inspects a
+  legacy push helper. A nonempty, computed or mutated `APP_VARIABLE_KEYS` blocks
+  update with instructions to move its keys into `forge-variable-keys.json` and
+  remove the embedded declaration/references. Owner JavaScript is never run.
+  An unmodified empty legacy list can be replaced. Update does not invent the
+  owner JSON; an older repository must supply `[]` or its migrated keys before
+  the new workflow is used.
+- **validate** checks local structure, not baseline policy: TOML syntax (including
+  duplicate keys), a nonempty project name, revision `1.0`, a default-profile
+  table, declaration tables, optional description/default string types and
+  boolean or named-group-array requirements. Profile defaults and other
+  extension fields are not exhaustively schema-checked. The JSON must be an
+  array of unique environment-variable names; `FORGE_*` CLI-targeting keys are
+  not app variables. Every listed key must be declared locally in
+  `profiles.default`; inherited declarations are not resolved. Both helper
+  files must exist and have at least one execute bit (not necessarily `0755`).
+  Missing TOML reports skipped; malformed/present incomplete workflows fail.
+  No canonical-script/template comparison, secret resolution, helper execution,
+  provider access or Forge mutation occurs. This is a local structural check,
+  not proof of full SecretSpec CLI acceptance, installed prerequisites, or
+  availability of values. Syntax diagnostics do not echo TOML source lines.
+
+`env-var.sh` runs commands through `secretspec --file … run --provider dotenv
+--reason … --profile … --`, so variables expand after injection and reads have
+an audit reason. The push helper reads the JSON allowlist relative to its own
+repository root and explicitly selects the default profile and root TOML.
+An empty list does not invoke either external tool. Invalid or CLI-targeting
+keys fail before secret access. Only selected values and `FORGE_ENVIRONMENT`
+are captured from the injected environment; all selected values are checked
+before any push. Each push is encrypted, and output/error handling never prints
+values or child-process command details. Runtime secret delivery and CLI
+prerequisite checks belong on the developer machine or CI, not in validation.
 
 ### `format`
 

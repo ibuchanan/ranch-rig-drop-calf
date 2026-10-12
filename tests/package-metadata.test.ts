@@ -15,6 +15,7 @@ import {
 import { ParseError } from "../src/preclean.ts";
 import { PRELINT_SCRIPTS } from "../src/prelint.ts";
 import { buildProject } from "../src/profiles.ts";
+import { FORGE_SECRETS_SCRIPTS } from "../src/secrets.ts";
 import { TYPESCRIPT_SCRIPTS } from "../src/typescript.ts";
 import { TOOL_VERSIONS } from "../src/versions.ts";
 import { VITEST_SCRIPTS } from "../src/vitest.ts";
@@ -117,7 +118,11 @@ test.each(kinds)(
           typecheck: TYPESCRIPT_SCRIPTS.typecheck,
           ...(kind === "library" ? {} : { build: TYPESCRIPT_SCRIPTS.build }),
           ...(kind === "forge-app"
-            ? { ...VITEST_SCRIPTS, ...PRELINT_SCRIPTS }
+            ? {
+                ...VITEST_SCRIPTS,
+                ...PRELINT_SCRIPTS,
+                ...FORGE_SECRETS_SCRIPTS,
+              }
             : {}),
         },
         devDependencies: {
