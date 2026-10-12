@@ -186,6 +186,15 @@ describe("pinned OSS templates", () => {
         );
         expect(JSON.parse(writes.get("package.json") ?? "null")).toEqual({
           ...project.packageJson,
+          ...(kind === "forge-app"
+            ? {
+                dependencies: {
+                  ...project.packageJson.dependencies,
+                  "@forge-ahead/errors": TOOL_VERSIONS.forgeAheadErrors,
+                  "@forge-ahead/logging": TOOL_VERSIONS.forgeAheadLogging,
+                },
+              }
+            : {}),
           scripts: {
             ...project.packageJson.scripts,
             clean: "rm -rf dist",

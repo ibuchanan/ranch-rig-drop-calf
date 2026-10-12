@@ -728,9 +728,39 @@ is returned. Matching config bytes remain unchanged; a second update changes not
   No container changes are exported.
 
 ### `forge-ahead`
-Add the three Forge Ahead runtime dependencies (`@forge-ahead/atlassian-api-types`,
-`@forge-ahead/errors`, `@forge-ahead/logging`) from the version registry. Repository URLs
-are supported dependency specs.
+
+The Forge app capability contributes runtime dependencies in `package.json` with
+separate lifecycles:
+
+| Dependency | Init | Update |
+|---|---|---|
+| `@forge-ahead/atlassian-api-types` | Seed `TOOL_VERSIONS.forgeAheadApiTypes` | Preserve owner value or deletion |
+| `@forge-ahead/errors` | Added by top-level init's update pass | Enforce `TOOL_VERSIONS.forgeAheadErrors` |
+| `@forge-ahead/logging` | Added by top-level init's update pass | Enforce `TOOL_VERSIONS.forgeAheadLogging` |
+
+- **init** seeds only API types as a convenience for a new app. Not every app calls
+  product APIs; after initialization the owner may replace or remove this dependency.
+  Seeding merges this one key into blueprint dependencies rather than replacing the
+  object, so unrelated contributions survive without relying on scaffold merging.
+- **update** owns only the errors and logging keys in `dependencies`. It replaces
+  owner-selected references, including newer versions or alternate Git references,
+  with the registry references; no version comparison or conflict detection runs.
+  API types is not added, removed, or rewritten. Missing owned keys or a missing
+  dependencies section are created; a missing `package.json` stays absent.
+  Malformed/non-object JSON or a non-object dependencies section fails before writes.
+  Other dependencies, package fields, source, and lockfiles survive. Matching owned
+  values retain package bytes; changes use sorted, two-space JSON with a trailing
+  newline. A second update changes nothing. No dependency install or lockfile refresh
+  runs.
+- **validate** is an explicit no-op: "Forge Ahead dependencies have no repository-local
+  configuration to validate; comparing dependency references would check policy, not
+  tool acceptance. Runtime integration belongs to the app's build and test workflows."
+  It reports skipped without reading the repository or installing dependencies.
+
+Repository URLs are supported dependency specs. The current registry values are
+GitHub references without a commit or tag; update enforces the reference strings,
+not immutable resolved versions. The legacy `addTo` contribution remains during
+expansion and merges all three keys without replacing unrelated dependencies.
 
 ### `aidev`
 Copy a versioned, Forge-focused `AGENTS.md` seed. Create-if-absent; guidance content,

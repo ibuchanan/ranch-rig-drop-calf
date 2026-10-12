@@ -113,6 +113,10 @@ test.each(kinds)(
           delete legacyInitPackage.scripts["test:coverage"];
         }
         if (kind === "forge-app") {
+          if (legacyInitPackage.dependencies) {
+            delete legacyInitPackage.dependencies["@forge-ahead/errors"];
+            delete legacyInitPackage.dependencies["@forge-ahead/logging"];
+          }
           delete legacyInitPackage.devDependencies["@ast-grep/cli"];
           delete legacyInitPackage.devDependencies["@forge-ahead/prelint"];
           delete legacyInitPackage.scripts["lint:prelint"];
@@ -144,6 +148,7 @@ test.each(kinds)(
               "changelog",
               "git-hooks",
               "prelint",
+              "forge-ahead",
               "biome",
               "typescript",
               "library-build",

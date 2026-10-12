@@ -266,13 +266,11 @@ test("capability and standalone validation skip without reading files or startin
   }
 });
 
-test("Forge projects include only the three Forge Ahead runtime dependencies", () => {
+test("Forge blueprints seed only API types; errors and logging belong to update", () => {
   const pkg = buildProject("forge-app", "sample", "tester").packageJson;
   expect(pkg.dependencies).toEqual({
     "@forge-ahead/atlassian-api-types":
       "github:ibuchanan/forge-ahead-atlassian-api-types",
-    "@forge-ahead/errors": "github:ibuchanan/forge-ahead-errors",
-    "@forge-ahead/logging": "github:ibuchanan/forge-ahead-logging",
   });
   for (const kind of ["library", "tool", "agent-skill"]) {
     expect(

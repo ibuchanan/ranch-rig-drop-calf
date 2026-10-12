@@ -112,6 +112,15 @@ test.each(kinds)(
       const output = await new DropCalf().update(input, kind);
       expect(await manifest(output)).toEqual({
         ...pkg,
+        dependencies: {
+          ...pkg.dependencies,
+          ...(kind === "forge-app"
+            ? {
+                "@forge-ahead/errors": TOOL_VERSIONS.forgeAheadErrors,
+                "@forge-ahead/logging": TOOL_VERSIONS.forgeAheadLogging,
+              }
+            : {}),
+        },
         scripts: {
           ...pkg.scripts,
           ...BIOME_SCRIPTS,

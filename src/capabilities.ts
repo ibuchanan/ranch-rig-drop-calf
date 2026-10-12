@@ -1,7 +1,7 @@
 import type { Directory } from "@dagger.io/dagger";
 import sortPackageJson from "sort-package-json";
 import { biomeToolchain } from "./biome.ts";
-import { type Capability, expandCapability, noOp } from "./capability.ts";
+import { type Capability, noOp } from "./capability.ts";
 import { parseObject } from "./init.ts";
 import { ParseError } from "./preclean.ts";
 import { TOOL_VERSIONS } from "./versions.ts";
@@ -11,16 +11,61 @@ export { docsLinting } from "./docs.ts";
 export type { Capability } from "./capability.ts";
 export { biomeToolchain };
 
+const FORGE_AHEAD_DEPENDENCIES = {
+  "@forge-ahead/errors": TOOL_VERSIONS.forgeAheadErrors,
+  "@forge-ahead/logging": TOOL_VERSIONS.forgeAheadLogging,
+} as const;
+
+async function updateForgeAhead(directory: Directory): Promise<Directory> {
+  if (!(await directory.exists("package.json"))) return directory;
+  const pkg = parseObject(
+    "package.json",
+    await directory.file("package.json").contents(),
+  );
+  const existing = pkg.dependencies;
+  if (
+    existing !== undefined &&
+    (existing === null ||
+      typeof existing !== "object" ||
+      Array.isArray(existing))
+  )
+    throw new ParseError("package.json", "dependencies must be an object");
+  const dependencies = (existing ?? {}) as Record<string, unknown>;
+  if (
+    Object.entries(FORGE_AHEAD_DEPENDENCIES).every(
+      ([key, value]) => dependencies[key] === value,
+    )
+  )
+    return directory;
+  pkg.dependencies = { ...dependencies, ...FORGE_AHEAD_DEPENDENCIES };
+  return directory.withNewFile(
+    "package.json",
+    sortPackageJson(`${JSON.stringify(pkg, null, 2)}\n`),
+  );
+}
+
 export function forgeAhead(): Capability {
-  return expandCapability("forge-ahead", "18-forge-ahead", {
+  return {
+    name: "forge-ahead",
+    // Retain the legacy contribution until ticket 26 contracts the old shape.
     addTo(project) {
       project.packageJson.dependencies = {
+        ...project.packageJson.dependencies,
         "@forge-ahead/atlassian-api-types": TOOL_VERSIONS.forgeAheadApiTypes,
-        "@forge-ahead/errors": TOOL_VERSIONS.forgeAheadErrors,
-        "@forge-ahead/logging": TOOL_VERSIONS.forgeAheadLogging,
+        ...FORGE_AHEAD_DEPENDENCIES,
       };
     },
-  });
+    init(project) {
+      project.packageJson.dependencies = {
+        ...project.packageJson.dependencies,
+        "@forge-ahead/atlassian-api-types": TOOL_VERSIONS.forgeAheadApiTypes,
+      };
+    },
+    update: updateForgeAhead,
+    validate: noOp(
+      "Forge Ahead dependencies have no repository-local configuration to validate; comparing dependency references would check policy, not tool acceptance. Runtime integration belongs to the app's build and test workflows.",
+    ),
+  };
 }
 
 export { libraryBuild } from "./library-build.ts";
