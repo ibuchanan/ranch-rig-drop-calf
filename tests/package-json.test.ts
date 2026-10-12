@@ -4,7 +4,7 @@ import { ParseError } from "../src/errors.ts";
 import {
   assemblePackage,
   editPackageJson,
-  enforcePackagePolicy,
+  updatePackage,
   type PackageContribution,
   seedPackage,
 } from "../src/package-json.ts";
@@ -62,18 +62,93 @@ test("update enforces policy and removals, leaving seeds and owner entries alone
     }),
     contributor("node", { remove: ["engines"] }),
   ];
-  const output = await enforcePackagePolicy(input, contributors);
+  const output = await updatePackage(input, contributors);
   expect(await read(output)).toEqual({
     files: ["owner"],
     scripts: { build: "tsc", owner: "kept" },
     devDependencies: { tool: "owner" },
   });
-  expect(await enforcePackagePolicy(output, contributors)).toBe(output);
+  expect(await updatePackage(output, contributors)).toBe(output);
+});
+
+const freshness = [
+  contributor("tools", {
+    seed: {
+      dependencies: { runtime: "2.0.0" },
+      devDependencies: {
+        behind: "2.0.0",
+        caret: "2.0.0",
+        ahead: "2.0.0",
+        floor: "2.0.0",
+        git: "github:owner/git",
+        tag: "2.0.0",
+        any: "2.0.0",
+        removed: "2.0.0",
+      },
+    },
+  }),
+];
+
+test("update raises seeded dependencies behind their pin and leaves the rest", async () => {
+  const input = mockDirectory(
+    new Map([
+      [
+        "package.json",
+        JSON.stringify({
+          dependencies: { runtime: "^1.9.0" },
+          devDependencies: {
+            behind: "1",
+            caret: "~1.5.0",
+            ahead: "^3",
+            floor: "^2.0.0",
+            git: "0.0.1",
+            tag: "latest",
+            any: "*",
+            unseeded: "0.0.1",
+          },
+        }),
+      ],
+    ]),
+  );
+  const output = await updatePackage(input, freshness);
+  expect(await read(output)).toEqual({
+    dependencies: { runtime: "2.0.0" },
+    devDependencies: {
+      behind: "2.0.0",
+      caret: "2.0.0",
+      ahead: "^3",
+      floor: "^2.0.0",
+      git: "0.0.1",
+      tag: "latest",
+      any: "*",
+      unseeded: "0.0.1",
+    },
+  });
+  expect(await updatePackage(output, freshness)).toBe(output);
+});
+
+test("update never re-adds a removed dependency or creates its section", async () => {
+  const input = mockDirectory(
+    new Map([["package.json", JSON.stringify({ name: "x" })]]),
+  );
+  expect(await updatePackage(input, freshness)).toBe(input);
+});
+
+test("init writes every seeded dependency at its pin", () => {
+  const pkg: Record<string, unknown> = {
+    devDependencies: { behind: "1" },
+  };
+  seedPackage(pkg, freshness);
+  expect(pkg.dependencies).toEqual({ runtime: "2.0.0" });
+  expect(pkg.devDependencies).toMatchObject({
+    behind: "2.0.0",
+    git: "github:owner/git",
+  });
 });
 
 test("update leaves a missing package.json missing", async () => {
   const empty = mockDirectory();
-  const output = await enforcePackagePolicy(empty, [
+  const output = await updatePackage(empty, [
     contributor("lint", { policy: { scripts: { lint: "biome lint" } } }),
   ]);
   expect(output).toBe(empty);
@@ -86,7 +161,7 @@ test("an unchanged package keeps its bytes, and a changed one is rendered canoni
   const contributors = [
     contributor("lint", { policy: { scripts: { lint: "biome lint" } } }),
   ];
-  expect(await enforcePackagePolicy(matching, contributors)).toBe(matching);
+  expect(await updatePackage(matching, contributors)).toBe(matching);
   const changed = await editPackageJson(matching, (pkg) => {
     pkg.version = "1.0.0";
   });
@@ -142,7 +217,7 @@ test.each([
   const input = mockDirectory(new Map([["package.json", text]]));
   const before = [...input.files];
   await expect(
-    enforcePackagePolicy(input, [
+    updatePackage(input, [
       contributor("lint", { policy: { scripts: { lint: "biome lint" } } }),
     ]),
   ).rejects.toBeInstanceOf(ParseError);

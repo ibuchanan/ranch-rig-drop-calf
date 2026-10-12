@@ -42,7 +42,7 @@ test.each(kinds)(
       name: "sample",
       license: "Apache-2.0",
       engines: { node: ">=20", npm: ">=10" },
-      devDependencies: { "@types/node": "^22.0.0", unrelated: "1" },
+      devDependencies: { "@types/node": "20", unrelated: "1" },
       dependencies: { kept: "2" },
       scripts: { custom: "echo kept" },
     };
@@ -64,8 +64,12 @@ test.each(kinds)(
     const before = [...input.files];
     const output = await runUpdate(nodeBaseline(kind), input);
     const result = JSON.parse(await output.file("package.json").contents());
-    const { engines: _engines, ...withoutEngines } = pkg;
-    expect(result).toEqual(kind === "forge-app" ? withoutEngines : pkg);
+    const expectedPkg = {
+      ...pkg,
+      devDependencies: { "@types/node": "24", unrelated: "1" },
+    };
+    const { engines: _engines, ...withoutEngines } = expectedPkg;
+    expect(result).toEqual(kind === "forge-app" ? withoutEngines : expectedPkg);
     expect(await output.file(".nvmrc").contents()).toBe(NODE_NVMRC);
     expect(await output.file(".npmrc").contents()).toBe(NPMRC);
     expect(await output.file("README.md").contents()).toBe("owner text");

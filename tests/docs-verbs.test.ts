@@ -40,8 +40,8 @@ test("update maintains only docs tools and script, preserving owner words, prose
           name: "owner",
           scripts: { "lint:docs": "owner command", lint: "owner lint" },
           devDependencies: {
-            cspell: "old",
-            "markdownlint-cli2": "old",
+            cspell: "0.0.1",
+            "markdownlint-cli2": "0.0.1",
             owner: "1",
           },
           dependencies: { keep: "1" },
@@ -80,7 +80,7 @@ test("update maintains only docs tools and script, preserving owner words, prose
   expect(await updateCapabilities(output, [capability])).toBe(output);
 });
 
-test("update creates missing package keys but not seed files or a missing package", async () => {
+test("update creates missing scripts but never re-adds removed seed dependencies", async () => {
   const empty = mockDirectory();
   expect(await runUpdate(docsLinting(), empty)).toBe(empty);
   const output = await runUpdate(
@@ -90,10 +90,6 @@ test("update creates missing package keys but not seed files or a missing packag
   const pkg = JSON.parse(await output.file("package.json").contents());
   expect(pkg).toEqual({
     scripts: { "lint:docs": DOCS_COMMAND },
-    devDependencies: {
-      cspell: TOOL_VERSIONS.cspell,
-      "markdownlint-cli2": TOOL_VERSIONS.markdownlintCli2,
-    },
   });
   for (const path of docsTemplates().keys())
     expect(await output.exists(path)).toBe(false);
@@ -141,8 +137,8 @@ test.each(["library", "forge-app", "tool", "agent-skill"])(
         expect(await initialized.file(path).contents()).toBe(text);
       const pkg = JSON.parse(await initialized.file("package.json").contents());
       pkg.scripts["lint:docs"] = "owner command";
-      pkg.devDependencies.cspell = "old";
-      pkg.devDependencies["markdownlint-cli2"] = "old";
+      pkg.devDependencies.cspell = "0.0.1";
+      pkg.devDependencies["markdownlint-cli2"] = "0.0.1";
       let edited = initialized.withNewFile("package.json", JSON.stringify(pkg));
       for (const path of docsTemplates().keys())
         edited = edited.withNewFile(path, `owner bytes: ${path}\r\n`);

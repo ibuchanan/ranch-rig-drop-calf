@@ -1,6 +1,5 @@
 import { expect, spyOn, test } from "bun:test";
 import { type Directory, dag } from "@dagger.io/dagger";
-import sortPackageJson from "sort-package-json";
 import { forgeAhead } from "../src/capabilities.ts";
 import { noOpReasons, validateCapabilities } from "../src/capability.ts";
 import { DropCalf } from "../src/index.ts";
@@ -34,7 +33,7 @@ test("Forge Ahead init seeds only API types without replacing other dependencies
 });
 
 test.each([undefined, "^99", "github:example/api-types#revision"])(
-  "Forge Ahead update enforces errors/logging and preserves API types: %j",
+  "Forge Ahead update preserves owner-managed and uncomparable references: %j",
   async (apiReference) => {
     const pkg = {
       name: "owner",
@@ -58,21 +57,13 @@ test.each([undefined, "^99", "github:example/api-types#revision"])(
       ]),
     );
     const before = [...input.files];
-    const output = await update(input);
-    expect(await output.file("package.json").contents()).toBe(
-      sortPackageJson(
-        `${JSON.stringify({ ...pkg, dependencies: { ...pkg.dependencies, ...authoritative } }, null, 2)}\n`,
-      ),
-    );
-    for (const [path, text] of input.files)
-      if (path !== "package.json")
-        expect(await output.file(path).contents()).toBe(text);
+    // GitHub-referenced pins are uncomparable, so nothing is rewritten.
+    expect(await update(input)).toBe(input);
     expect([...input.files]).toEqual(before);
-    expect(await update(output)).toBe(output);
   },
 );
 
-test("Forge Ahead update restores owned keys, not API types or a missing package", async () => {
+test("Forge Ahead update does not restore removed dependencies or create missing package", async () => {
   const missing = mockDirectory();
   expect(await update(missing)).toBe(missing);
   for (const pkg of [
@@ -84,10 +75,9 @@ test("Forge Ahead update restores owned keys, not API types or a missing package
     const output = await update(
       mockDirectory(new Map([["package.json", JSON.stringify(pkg)]])),
     );
-    expect(JSON.parse(await output.file("package.json").contents())).toEqual({
-      ...pkg,
-      dependencies: { ...pkg.dependencies, ...authoritative },
-    });
+    expect(JSON.parse(await output.file("package.json").contents())).toEqual(
+      pkg,
+    );
     expect(await update(output)).toBe(output);
   }
 });
@@ -179,14 +169,17 @@ test.each([false, true])(
         const editedDependencies = { ...pkg.dependencies, ...authoritative };
         if (apiReference === undefined) delete editedDependencies[apiTypes];
         else editedDependencies[apiTypes] = apiReference;
+        const ownerAhead = {
+          "@forge-ahead/errors": "^99",
+          "@forge-ahead/logging": "^99",
+        };
         const edited = initialized.withNewFile(
           "package.json",
           JSON.stringify({
             ...pkg,
             dependencies: {
               ...editedDependencies,
-              "@forge-ahead/errors": "^99",
-              "@forge-ahead/logging": "^99",
+              ...ownerAhead,
             },
           }),
         );
@@ -194,7 +187,10 @@ test.each([false, true])(
         expect(
           JSON.parse(await updated.file("package.json").contents())
             .dependencies,
-        ).toEqual(editedDependencies);
+        ).toEqual({
+          ...editedDependencies,
+          ...ownerAhead,
+        });
         expect(await module.update(updated, "forge-app")).toBe(updated);
       }
     } finally {

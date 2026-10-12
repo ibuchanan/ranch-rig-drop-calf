@@ -87,6 +87,20 @@ review; `update` and standalone scaffold removal never run adoption.
 - **Composition uses separate passes:** scaffold steps → every capability's init
   → every capability's update for top-level `init`; only the update pass for
   top-level `update`. Each pass follows the selected profile's order.
+- **package.json is assembled from contributions.** Capabilities contribute seed
+  (starting values, owner-managed after init) and policy (enforced on every
+  update). Sections merge entry by entry; other fields are replaced whole. A key
+  claimed by two contributions is an assembly error. Init applies blueprint base,
+  then every seed, then every policy. Update (on existing package.json only):
+  enforces every policy entry exactly, deletes `remove` fields, then runs
+  freshness—dependencies seeded by selected capabilities and declared in the
+  owner's package are raised to their exact pin when the declared range's minimum
+  version is below it. Freshness never downgrades, never re-adds a removed
+  dependency, and skips uncomparable references such as GitHub refs and tags. Unchanged content
+  keeps original bytes; changes render with sort-package-json as two-space JSON
+  with trailing newline. A second update changes nothing. No install or lockfile
+  refresh. Failures occur before writes. See
+  [ADR 0002](../docs/adr/0002-package-json-assembled-from-capability-contributions.md).
 - **Validation is separate for now.** Neither mutation operation automatically
   invokes it. Top-level `validate` is independently usable without prior init or
   update and gives every validator the same fully composed repository. It reports
@@ -116,27 +130,27 @@ Missing files or prerequisites can also cause a validator to skip or fail.
 | `library`, `tool` | `package-metadata` | Required | [npm-package-json-lint](https://www.npmjs.com/package/npm-package-json-lint) — Checks package metadata field types and formats with explicit structural rules.<br>[npm](https://docs.npmjs.com/cli/) — Reference for package.json schema and metadata format | **No-op:** Package metadata owns no files; its package.json contribution seeds version 0.1.0, type module, and private true; initialization supplies the initial package name. | Derive name/description/author from catalog; enforce type module, preserving owner privacy and release version. | Check metadata field types/formats with explicit structural rules, not policy compliance. |
 | `library`, `forge-app`, `tool`, `agent-skill` | `oss` | Required | [Apache License 2.0 / pinned Atlassian OSS templates](https://www.apache.org/licenses/LICENSE-2.0) — Supplies licensing, contribution, conduct, security, README, and ownership documents; no executable tool. | Seed LICENSE, README.md, CONTRIBUTING.md, CODE_OF_CONDUCT.md, SECURITY.md, and .atlassian/OWNER with catalog metadata. | Replace authoritative OSS documents and OWNER from pinned templates and catalog metadata; preserve README edits/deletion. | **No-op:** These documents require manual inspection; no consuming validator checks their acceptance. |
 | `library`, `forge-app`, `tool`, `agent-skill` | `gitignore` | Required | [gitignore.io](https://www.gitignore.io/) — Provides template rules for Node, TypeScript, Forge, and other tool ecosystems | Seed two owned blocks from pinned gitignore.io topics and Drop Calf defaults, retaining unowned scaffold rules. | Replace existing owned blocks from recorded topics/pinned defaults; preserve bytes outside blocks and do not seed missing blocks. | **No-op:** Git treats ineffective ignore patterns as nonmatching; checking which paths are ignored would enforce policy, not tool acceptance. |
-| `library`, `tool`, `agent-skill` | `node` | Required | [fnm (Fast Node Manager)](https://github.com/Schniz/fnm) — Selects and, when needed, installs the Node version requested by .nvmrc.<br>[Node.js](https://nodejs.org/) — Reference for Node.js versions and TypeScript type definitions | Seed .nvmrc, public-registry .npmrc, and init-only @types/node; no engines declaration. | Replace .nvmrc/.npmrc and derive package license from catalog; preserve engines and @types/node. | Use fnm to select .nvmrc (may download Node); no baseline, type-version, or deployment check. |
-| `library`, `forge-app`, `tool` | `changelog` | Required | [git-cliff](https://git-cliff.org/) — Renders unreleased changelog from commit history and release policy | Seeds cliff.toml release policy and CHANGELOG.md from templates; adds changelog script to package.json | **No-op:** Release policy and CHANGELOG.md are owner-managed after init; its package.json contribution maintains the git-cliff dependency and changelog command. | Validates cliff.toml policy and runs git-cliff command against repository commit history |
+| `library`, `tool`, `agent-skill` | `node` | Required | [fnm (Fast Node Manager)](https://github.com/Schniz/fnm) — Selects and, when needed, installs the Node version requested by .nvmrc.<br>[Node.js](https://nodejs.org/) — Reference for Node.js versions and TypeScript type definitions | Seed .nvmrc, public-registry .npmrc, and @types/node; no engines declaration. | Replace .nvmrc/.npmrc and derive package license from catalog; preserve engines and keep @types/node fresh. | Use fnm to select .nvmrc (may download Node); no baseline, type-version, or deployment check. |
+| `library`, `forge-app`, `tool` | `changelog` | Required | [git-cliff](https://git-cliff.org/) — Renders unreleased changelog from commit history and release policy | Seeds cliff.toml release policy and CHANGELOG.md from templates; adds changelog script to package.json | **No-op:** Release policy and CHANGELOG.md are owner-managed after init; its package.json contribution enforces the changelog command and keeps the seeded git-cliff dependency fresh. | Validates cliff.toml policy and runs git-cliff command against repository commit history |
 | `library`, `forge-app`, `tool`, `agent-skill` | `biome` | Required | [Biome](https://biomejs.dev/) — Formats and lints JavaScript, TypeScript, and supported configuration files. | Seed Biome, formatting/lint subtasks, biome.jsonc, and .editorconfig. | Let Biome migrate an existing root config, preserving EditorConfig. | Load the root config and references with Biome, without scanning source quality. |
 | `library` | `library-build` | Required | [tsdown](https://tsdown.dev/) — Bundles a TypeScript library as ESM and CommonJS with declaration output. | Seed tsdown, the build pipeline/config, and publishing fields. | Enforce the build script and ESM/CommonJS formats; preserve owner entry/dependency settings. | **No-op:** tsdown has no supported configuration-only validation interface: resolveUserConfig is internal and no-write still bundles source. Build and declaration emission belong to the build workflow; validation does not execute the pipeline or inspect stale artifacts. |
 | `library` | `typescript` | Required | [TypeScript](https://www.typescriptlang.org/docs/) — Type-checks source and emits JavaScript or library declarations. | Seed TypeScript, typecheck, and compiler configuration including declarations; library-build owns build. | Reconcile compiler configuration with policy selected by declared dependencies. | Run tsc --showConfig for applicable compiler configs, without compiling source or declarations. |
 | `library`, `tool`, `agent-skill` | `test` | Required | [Bun test](https://bun.com/docs/test) — Runs library, tool, and agent-skill tests with built-in watch and coverage support. | **No-op:** Bun's built-in test runner needs no dependency or configuration seed; its package.json contribution supplies the test scripts, and test sources are owner-managed. | **No-op:** Bun testing owns no files; its package.json contribution enforces the test/watch/coverage scripts, preserving owner test sources. | **No-op:** This capability owns no Bun test configuration to validate. Test execution belongs to the test workflow; comparing scripts to defaults would check policy, not tool acceptance. |
-| `library` | `size-limit` | Required | [Size Limit](https://github.com/ai/size-limit) — Measures built file sizes against owner-managed budgets with @size-limit/file. | **No-op:** Size Limit owns no files; its package.json contribution seeds the paired tools, the build-then-size script, and a 10 kB budget for dist/index.mjs. | **No-op:** Size Limit owns no files; its package.json contribution enforces the paired tool references and size command, preserving owner budgets and paths. | **No-op:** Size Limit has no supported configuration-only validation interface. Measurement requires build artifacts and belongs to the size workflow; validation does not build the project or assess potentially stale output. |
+| `library` | `size-limit` | Required | [Size Limit](https://github.com/ai/size-limit) — Measures built file sizes against owner-managed budgets with @size-limit/file. | **No-op:** Size Limit owns no files; its package.json contribution seeds the paired tools, the build-then-size script, and a 10 kB budget for dist/index.mjs. | **No-op:** Size Limit owns no files; its package.json contribution enforces the size command and keeps the seeded paired tools fresh, preserving owner budgets and paths. | **No-op:** Size Limit has no supported configuration-only validation interface. Measurement requires build artifacts and belongs to the size workflow; validation does not build the project or assess potentially stale output. |
 | `library`, `forge-app`, `tool`, `agent-skill` | `clean-build` | Required | [rm](https://www.gnu.org/software/coreutils/manual/html_node/rm-invocation.html) — Removes dist when the owner runs the clean workflow. | **No-op:** Clean build owns no files to seed; its package.json contribution supplies the clean script. | **No-op:** Clean build owns no files; its package.json contribution enforces scripts.clean as rm -rf dist and never executes it. | **No-op:** Clean build owns no configuration with a separate tool-acceptance check; executing the clean script would delete build output and belongs to the clean workflow. |
-| `library`, `forge-app`, `tool`, `agent-skill` | `docs` | Required | [markdownlint-cli2](https://github.com/igorshubovych/markdownlint-cli2) — Lints markdown files against consistent style rules<br>[CSpell](https://cspell.org/) — Spell-checks documentation and code comments | Seed Markdown/spelling tools and lint:docs, configs, DEVELOPMENT.md, and Diátaxis/spec starter documents. | **No-op:** Docs configuration and documents are owner-managed after init, including deletions; its package.json contribution enforces the tool references and lint:docs. | Load Markdown/spelling configs and references without scanning documentation quality. |
-| `library`, `forge-app`, `tool`, `agent-skill` | `git-hooks` | Required | [Lefthook](https://lefthook.dev/) — Dispatches lint/check workflows and Git hooks from lefthook.yml.<br>[Gitleaks](https://github.com/gitleaks/gitleaks) — Scans staged changes for secrets in the pre-commit hook; install separately. | Seed Lefthook, prepare/lint/check dispatch scripts, and lefthook.yml. | **No-op:** Hook configuration is owner-managed after init; its package.json contribution enforces the Lefthook runner and dispatch scripts. | Run lefthook validate with isolated Git metadata; never install or execute hooks. |
+| `library`, `forge-app`, `tool`, `agent-skill` | `docs` | Required | [markdownlint-cli2](https://github.com/igorshubovych/markdownlint-cli2) — Lints markdown files against consistent style rules<br>[CSpell](https://cspell.org/) — Spell-checks documentation and code comments | Seed Markdown/spelling tools and lint:docs, configs, DEVELOPMENT.md, and Diátaxis/spec starter documents. | **No-op:** Docs configuration and documents are owner-managed after init, including deletions; its package.json contribution enforces lint:docs and keeps the seeded tool dependencies fresh. | Load Markdown/spelling configs and references without scanning documentation quality. |
+| `library`, `forge-app`, `tool`, `agent-skill` | `git-hooks` | Required | [Lefthook](https://lefthook.dev/) — Dispatches lint/check workflows and Git hooks from lefthook.yml.<br>[Gitleaks](https://github.com/gitleaks/gitleaks) — Scans staged changes for secrets in the pre-commit hook; install separately. | Seed Lefthook, prepare/lint/check dispatch scripts, and lefthook.yml. | **No-op:** Hook configuration is owner-managed after init; its package.json contribution enforces the dispatch scripts and keeps the seeded Lefthook dependency fresh. | Run lefthook validate with isolated Git metadata; never install or execute hooks. |
 | `library`, `tool`, `agent-skill` | `aidev` | Required | [AGENTS.md](https://agents.md/) — Gives coding agents repository-specific instructions; human guidance, not executable config. | **No-op:** Only Forge apps have an authored agent guidance seed; other project kinds omit Forge-specific instructions. | **No-op:** Agent guidance is init-only and owner-managed; update preserves edits and does not restore a deleted AGENTS.md. | **No-op:** AGENTS.md is human guidance, not consuming-tool configuration; checking referenced scripts would check guidance policy, not tool acceptance. |
 | `forge-app`, `agent-skill` | `package-metadata` | Required | [npm-package-json-lint](https://www.npmjs.com/package/npm-package-json-lint) — Checks package metadata field types and formats with explicit structural rules.<br>[npm](https://docs.npmjs.com/cli/) — Reference for package.json schema and metadata format | **No-op:** Package metadata owns no files; its package.json contribution seeds version 0.1.0, type module, and private true; initialization supplies the initial package name. | Derive name/description/author from catalog; enforce type module and private true, preserving release version. | Check metadata field types/formats with explicit structural rules, not policy compliance. |
-| `forge-app` | `node` | Required | [fnm (Fast Node Manager)](https://github.com/Schniz/fnm) — Selects and, when needed, installs the Node version requested by .nvmrc.<br>[Node.js](https://nodejs.org/) — Reference for Node.js versions and TypeScript type definitions | Seed .nvmrc, public-registry .npmrc, and init-only @types/node; no engines declaration. | Replace .nvmrc/.npmrc, derive package license from catalog, and remove engines; preserve @types/node. | Use fnm to select .nvmrc (may download Node); no baseline, type-version, or deployment check. |
+| `forge-app` | `node` | Required | [fnm (Fast Node Manager)](https://github.com/Schniz/fnm) — Selects and, when needed, installs the Node version requested by .nvmrc.<br>[Node.js](https://nodejs.org/) — Reference for Node.js versions and TypeScript type definitions | Seed .nvmrc, public-registry .npmrc, and @types/node; no engines declaration. | Replace .nvmrc/.npmrc, derive package license from catalog, and remove engines; keep @types/node fresh. | Use fnm to select .nvmrc (may download Node); no baseline, type-version, or deployment check. |
 | `forge-app` | `forge-manifest` | Required | [Forge CLI](https://developer.atlassian.com/platform/forge/cli-reference/) — Lints Forge manifests and app source against platform requirements. | **No-op:** The Forge manifest is supplied by forge create or the owner; Drop Calf does not seed app identity or module wiring. | Derive app.runtime.name from numeric .nvmrc in an existing manifest; preserve other settings. | Run pinned forge lint, including source checks, with supplied dependencies and explicit Forge credentials; no fixes or deployment. |
 | `forge-app` | `secrets` | Required | [SecretSpec](https://secretspec.dev) — Manages environment variable injection and secret validation for Forge CLI commands<br>[Atlassian Forge CLI](https://developer.atlassian.com/platform/forge/cli-reference/) — Reference for forge register, deploy, install, and upgrade command syntax | Seed owner SecretSpec declarations and app-variable allowlist, executable helpers, and six Forge dispatch scripts. | Enforce helper contents/modes; preserve declarations/allowlist, rejecting unmigrated embedded keys. | Parse TOML and allowlist, check helper presence and executable modes; no secret resolution or Forge execution. |
-| `forge-app` | `prelint` | Required | [ast-grep](https://ast-grep.github.io/) — AST-based pattern scanner for semantic code analysis and linting<br>[@forge-ahead/prelint](https://github.com/ibuchanan/tool-forge-prelint-ast-grep) — Forge app linting rules for manifest, module wiring, and handler patterns | **No-op:** Prelint has no repository-local configuration to seed; its rules ship in the dependency package, and its package.json contribution supplies the tool dependencies and scripts. | **No-op:** Prelint owns no files; its package.json contribution enforces the ast-grep and @forge-ahead/prelint dependencies and lint subtasks. | **No-op:** Prelint has no repository-local configuration to validate; its rules ship in the dependency package. Source scanning belongs to the lint workflow. |
-| `forge-app` | `test` | Required | [Vitest](https://vitest.dev/) — Runs Forge app tests with mocking and V8 coverage support. | Seed Vitest, matching V8 coverage, test/watch/coverage scripts, and vitest.config.ts; no sample tests. | **No-op:** Vitest configuration and test sources are owner-managed after init; its package.json contribution enforces the runner, matching coverage provider, and test scripts. | Load Vitest config, discover test files, and initialize coverage configuration without executing tests. |
+| `forge-app` | `prelint` | Required | [ast-grep](https://ast-grep.github.io/) — AST-based pattern scanner for semantic code analysis and linting<br>[@forge-ahead/prelint](https://github.com/ibuchanan/tool-forge-prelint-ast-grep) — Forge app linting rules for manifest, module wiring, and handler patterns | **No-op:** Prelint has no repository-local configuration to seed; its rules ship in the dependency package, and its package.json contribution supplies the tool dependencies and scripts. | **No-op:** Prelint owns no files; its package.json contribution enforces the lint subtasks and keeps the seeded ast-grep dependency fresh; the @forge-ahead/prelint GitHub reference is owner-managed. | **No-op:** Prelint has no repository-local configuration to validate; its rules ship in the dependency package. Source scanning belongs to the lint workflow. |
+| `forge-app` | `test` | Required | [Vitest](https://vitest.dev/) — Runs Forge app tests with mocking and V8 coverage support. | Seed Vitest, matching V8 coverage, test/watch/coverage scripts, and vitest.config.ts; no sample tests. | **No-op:** Vitest configuration and test sources are owner-managed after init; its package.json contribution enforces the test scripts and keeps the seeded runner and coverage provider fresh. | Load Vitest config, discover test files, and initialize coverage configuration without executing tests. |
 | `forge-app`, `tool`, `agent-skill` | `typescript` | Required | [TypeScript](https://www.typescriptlang.org/docs/) — Type-checks source and emits JavaScript or library declarations. | Seed TypeScript, typecheck/build scripts, and compiler configuration (declarations config only with tsdown). | Reconcile compiler configuration with policy selected by declared dependencies. | Run tsc --showConfig for applicable compiler configs, without compiling source or declarations. |
-| `forge-app` | `forge-ahead` | Required | [Forge Ahead API types](https://github.com/ibuchanan/forge-ahead-atlassian-api-types) — Provides types for Atlassian API integration in Forge apps.<br>[Forge Ahead errors](https://github.com/ibuchanan/forge-ahead-errors) — Provides typed error handling at Forge boundaries.<br>[Forge Ahead logging](https://github.com/ibuchanan/forge-ahead-logging) — Provides logging helpers for Forge apps. | **No-op:** Forge Ahead owns no files; its package.json contribution seeds API types as an owner-managed dependency. | **No-op:** Forge Ahead owns no files; its package.json contribution enforces errors and logging dependencies, preserving API types and other dependencies. | **No-op:** Forge Ahead dependencies have no repository-local configuration to validate; comparing dependency references would check policy, not tool acceptance. Runtime integration belongs to the app's build and test workflows. |
-| `forge-app` | `size-limit` | Required | [Size Limit](https://github.com/ai/size-limit) — Measures built file sizes against owner-managed budgets with @size-limit/file. | **No-op:** Size Limit owns no files; its package.json contribution seeds the paired tools, the build-then-size script, and a 10 kB budget for dist/**/*.js. | **No-op:** Size Limit owns no files; its package.json contribution enforces the paired tool references and size command, preserving owner budgets and paths. | **No-op:** Size Limit has no supported configuration-only validation interface. Measurement requires build artifacts and belongs to the size workflow; validation does not build the project or assess potentially stale output. |
-| `forge-app` | `evals` | Opt-in; `--with-functions evals`; `--without-functions evals`; `--preset all` | [Promptfoo](https://www.promptfoo.dev/docs/) — Evaluates prompts against authored test cases and displays results. | Seed Promptfoo, eval/view scripts, and the config/prompts/tests/data/guide tree; no manifest wiring. | **No-op:** The eval suite is owner-managed after init, including deletions; its package.json contribution enforces Promptfoo and the eval/view scripts. | Use Promptfoo's native config/schema validator to load suite references; no model calls or assertion execution. |
+| `forge-app` | `forge-ahead` | Required | [Forge Ahead API types](https://github.com/ibuchanan/forge-ahead-atlassian-api-types) — Provides types for Atlassian API integration in Forge apps.<br>[Forge Ahead errors](https://github.com/ibuchanan/forge-ahead-errors) — Provides typed error handling at Forge boundaries.<br>[Forge Ahead logging](https://github.com/ibuchanan/forge-ahead-logging) — Provides logging helpers for Forge apps. | **No-op:** Forge Ahead owns no files; its package.json contribution seeds the API types, errors, and logging dependencies. | **No-op:** Forge Ahead owns no files; its seeded dependencies are owner-managed and kept fresh against their pins, which skips GitHub references. | **No-op:** Forge Ahead dependencies have no repository-local configuration to validate; comparing dependency references would check policy, not tool acceptance. Runtime integration belongs to the app's build and test workflows. |
+| `forge-app` | `size-limit` | Required | [Size Limit](https://github.com/ai/size-limit) — Measures built file sizes against owner-managed budgets with @size-limit/file. | **No-op:** Size Limit owns no files; its package.json contribution seeds the paired tools, the build-then-size script, and a 10 kB budget for dist/**/*.js. | **No-op:** Size Limit owns no files; its package.json contribution enforces the size command and keeps the seeded paired tools fresh, preserving owner budgets and paths. | **No-op:** Size Limit has no supported configuration-only validation interface. Measurement requires build artifacts and belongs to the size workflow; validation does not build the project or assess potentially stale output. |
+| `forge-app` | `evals` | Opt-in; `--with-functions evals`; `--without-functions evals`; `--preset all` | [Promptfoo](https://www.promptfoo.dev/docs/) — Evaluates prompts against authored test cases and displays results. | Seed Promptfoo, eval/view scripts, and the config/prompts/tests/data/guide tree; no manifest wiring. | **No-op:** The eval suite is owner-managed after init, including deletions; its package.json contribution enforces the eval/view scripts and keeps the seeded Promptfoo dependency fresh. | Use Promptfoo's native config/schema validator to load suite references; no model calls or assertion execution. |
 | `forge-app` | `aidev` | Default; `--without-functions aidev` | [AGENTS.md](https://agents.md/) — Gives coding agents repository-specific instructions; human guidance, not executable config. | Seed authored Forge agent guidance in AGENTS.md. | **No-op:** Agent guidance is init-only and owner-managed; update preserves edits and does not restore a deleted AGENTS.md. | **No-op:** AGENTS.md is human guidance, not consuming-tool configuration; checking referenced scripts would check guidance policy, not tool acceptance. |
 <!-- capability-reference:end -->
 
@@ -233,6 +247,13 @@ capability's scope.
 | `type` | Set `module` | Enforce `module` |
 | `private` (`forge-app`, `agent-skill`) | Set `true`, overriding scaffold `false` | Enforce `true` |
 | `private` (`tool`, `library`) | Set `true`, overriding scaffold `false` | Preserve the field, including `false` or absence, to permit later npm publication |
+
+- **update** derives `name`, `description`, and `author` from the catalog. Its
+  package.json contribution (§3) enforces `type: module`; for forge-app/agent-skill,
+  `private: true` is policy; for tool/library it is seed, preserved to permit later
+  publication.
+  Version is init-only. Missing `package.json` is not created. Catalog is the
+  source of truth; direct package edits are overwritten.
 
 Catalog is the source of truth for shared identity on both init and update. Direct
 package edits to `name`, `description`, and `author` are overwritten. Package names
@@ -352,14 +373,12 @@ forgo an automatically generated npm install-time engine warning.
 - **`.npmrc`:** Init seeds the public npm registry and explanatory comment.
   Update creates or replaces the whole file.
 - **`package.json.license`:** Init's update pass and every update pull
-  `metadata.annotations["forge-ranch/license"]` from catalog. A missing catalog,
-  malformed YAML, or missing/non-string/blank license fails for an existing package.
-  Direct package license edits are replaced; unrelated fields are preserved.
-  A missing package is not created and does not require catalog for Node's update.
-  Matching values preserve original bytes; changes use sorted, two-space JSON with
-  a trailing newline. OSS separately requires `Apache-2.0` for its pinned template.
+  `metadata.annotations["forge-ranch/license"]` from catalog. Node's update verb
+  writes it through the package-json edit primitive; no contribution can express a
+  value read from repository content.
 - **`devDependencies["@types/node"]`:** Init seeds `24`, overriding the scaffold.
-  Update preserves owner edits and absence; the dependency is init-only.
+  As a seeded dependency it is kept fresh (§3): a declaration behind `24` is raised;
+  one at or ahead of it, or a removal, survives.
 - **Forge `engines`:** Init removes the scaffold Node entry; its update pass
   removes the entire field. Update removes all entries, including owner additions.
 - **Other kinds' `engines`:** Init removes scaffold `engines.node`, preserving
@@ -456,13 +475,8 @@ The release workflow owns `devDependencies["git-cliff"]` at
 - **init** seeds the tool pin and command and overlays `templates/changelog` for
   `cliff.toml` and `CHANGELOG.md`. Init is fresh-repository setup, not a maintenance
   rerun.
-- **update** enforces only the tool pin and canonical script in an existing
-  `package.json`, creating missing sections and owned keys. A missing package is
-  not created. Malformed/non-object JSON and non-object scripts/devDependencies
-  fail before writes. Unrelated package values survive. Matching owned values
-  preserve original bytes; changes use sorted, two-space JSON with a trailing
-  newline. A second update changes nothing. No repository install or lockfile
-  refresh runs.
+- **update** is a no-op for files. Its package.json contribution (§3) enforces
+  `scripts.changelog`; `devDependencies.git-cliff` is seed, kept fresh.
 - **`cliff.toml` and `CHANGELOG.md` are owner-managed after init.** Update never
   reads, rewrites, migrates, recreates, or regenerates either file. Owner edits
   and deletion survive. Commit groups, preprocessors (including the seeded Jira
@@ -549,21 +563,15 @@ scripts: `format` (`biome format --write`), `format:check` (`biome format`),
   every kind. Its authored `biome.jsonc` schema matches the registry pin, enforced
   by a test. `.editorconfig` contains `[*]` defaults and a Markdown
   `trim_trailing_whitespace = false` override, preserving two-space hard line breaks.
-- **update** enforces the dependency and four scripts in an existing `package.json`,
-  creating missing sections and owned keys while preserving unrelated field values.
-  Malformed/non-object JSON and non-object scripts/devDependencies fail before writes.
-  Unchanged owned fields preserve package bytes; changes use sorted, two-space JSON
-  with a trailing newline. Missing `package.json` is not created.
+- **update**: its package.json contribution (§3) enforces the four scripts;
+  `devDependencies["@biomejs/biome"]` is seed, kept fresh.
   Existing root `biome.json` (preferred) or `biome.jsonc` is migrated with the pinned
   tool's `biome migrate --write --config-path=<file>` in an isolated Node container.
   Only that root config is copied back; owner rules, exclusions, formatting settings,
-  and comments follow Biome's migration rather than being reset to the template.
-  Migration may reformat the config and rename/remove obsolete options. JSONC syntax
-  and object-root checks are mutation preconditions because migration alone can accept
-  malformed input. Missing configs remain absent. A removed `$schema` is not re-added
-  when Biome considers migration unnecessary. Referenced and nested configs are not
-  migrated or copied back. `.editorconfig` is init-only: owner edits and absence survive.
-  Matching files retain their bytes; a second update changes nothing.
+  and comments follow Biome's migration. Migration may reformat the config and
+  rename/remove obsolete options. Missing configs remain absent. Referenced and nested
+  configs are not migrated or copied back. `.editorconfig` is init-only: owner edits
+  and absence survive.
 - **validate** loads the existing root config and its references with the capability's
   pinned Biome in a Node container, without requiring prior init or package installation.
   `biome check --config-path=<file> --formatter-enabled=false --linter-enabled=false
@@ -592,12 +600,8 @@ Every kind includes the documentation workflow: `devDependencies.cspell` at
   The tree includes the four Diátaxis placeholders, `DEVELOPMENT.md`, `specs/spec.md`,
   `.markdownlint-cli2.jsonc`, and `.cspell.jsonc`. These are starting content, not
   continuing policy.
-- **update** enforces only the two tool pins and canonical script in an existing
-  `package.json`, creating missing sections and owned keys. Missing package stays
-  absent; malformed/non-object JSON and non-object scripts/devDependencies fail
-  before writes. Unrelated fields survive. Matching values preserve package bytes;
-  changes use sorted, two-space JSON with a trailing newline. A second update
-  changes nothing. No repository install or lockfile refresh runs.
+- **update** is a no-op for files. Its package.json contribution (§3) enforces
+  `scripts["lint:docs"]`; `cspell` and `markdownlint-cli2` are seed, kept fresh.
 - **Documentation and both configs are owner-managed after init.** Update never
   reads, recreates, rewrites, or migrates them. Authored prose, added spelling words,
   custom rules, exclusions, comments, and intentional deletions survive byte-for-byte.
@@ -637,18 +641,13 @@ The `prelint` capability is selected only for `forge-app`. It owns
 Under ticket 16's agreed policy:
 
 - **init** is an explicit no-op: "Prelint has no repository-local configuration to
-  seed; its rules ship in the dependency package, and update maintains the tool
-  dependencies and scripts." Top-level init's final update pass adds the dependencies
-  and scripts after scaffold merging; there is no local rule/config template.
-- **update** enforces both capability-selected dependency references and both canonical
-  scripts in an existing `package.json`, replacing owner edits and creating missing
-  sections/owned keys. The scan exclusions and packaged config path are enforced as
-  part of the whole script, not merged with owner arguments. A missing package stays
-  absent. Malformed/non-object JSON and non-object scripts/devDependencies fail before
-  writes. Unrelated package values, local config, hook config, source, and lockfiles
-  survive. Matching owned values retain original bytes; changes use sorted, two-space
-  JSON with a trailing newline. A second update changes nothing. No dependency install,
-  source scan, or lockfile refresh runs.
+  seed; its rules ship in the dependency package, and its package.json contribution
+  supplies the tool dependencies and scripts." Init applies that contribution after
+  scaffold merging; there is no local rule/config template.
+- **update** is a no-op for files. Its package.json contribution (§3) enforces both
+  lint subtask scripts; `@ast-grep/cli` is seed, kept fresh, and the
+  `@forge-ahead/prelint` GitHub reference is seed that freshness never changes. The scan exclusions and packaged config path are enforced as part of
+  the whole script, not merged with owner arguments.
 - **validate** is an explicit no-op: "Prelint has no repository-local configuration to
   validate; its rules ship in the dependency package. Source scanning belongs to the
   lint workflow." Both capability validation and standalone `validate-prelint` return
@@ -682,6 +681,12 @@ The `.` export has `import` with `types: "./dist/index.d.ts"` and
 and `default: "./dist/index.cjs"`. Additional entries, dependency externals,
 subpath exports and publishing paths are library-specific owner settings.
 
+- **update**: its package.json contribution (§3) enforces `scripts.build`;
+  `devDependencies.tsdown` is seed, kept fresh.
+  `scripts/build.sh` is enforced whole; `tsdown.config.json` enforces only
+  `format: ["esm", "cjs"]` and preserves all other settings. Publishing defaults
+  (`main`, `types`, `exports`, `files`) are seeded whole but preserved after init.
+
 Update does not create a missing package. An existing package with missing owned
 sections or keys is repaired. Missing config or script is restored. Executable
 `tsdown.config.{ts,mts,cts,js,mjs,cjs}` or `package.json#tsdown` conflicts fail with
@@ -713,19 +718,18 @@ there is no `dev` script.
 - **init** seeds the compiler and owned scripts and overlays `templates/typescript`.
   The final update pass sees all declared dependencies, including Vitest and tsdown,
   before applying the conditional compiler policy. Vitest does not seed a tsconfig.
-- **update** enforces the compiler range and typecheck script in an existing package.
-  It enforces `build: tsc --project tsconfig.json` only when this capability owns build
-  and `devDependencies` does not declare `tsdown`. Library build commands and unrelated
-  package fields survive. Missing package sections/owned keys are created; a missing
-  package is not. Changes use sorted two-space JSON with a trailing newline, while
-  unchanged package bytes are retained. No repository install or lockfile update runs.
-  Both baseline configs are recreated from their TypeScript seeds if missing;
-  existing JSONC receives targeted edits preserving unrelated settings and comments.
-  When `tsdown` is declared, TypeScript also seeds and reconciles
-  `tsconfig.declarations.json`: `extends: ./tsconfig.json`, `include: ["src"]`,
-  `declaration: true`, `emitDeclarationOnly: true`, `rootDir: ./src`, `outDir: ./dist`,
-  and `ESNext`/`Bundler`. It is not seeded for other projects; an existing declaration
-  config is retained if the trigger is removed.
+- **update**: its package.json contribution (§3) enforces `scripts.typecheck`, and
+  `build: tsc --project tsconfig.json` when this capability owns build (library-build
+  is not selected); `devDependencies.typescript` is seed, kept fresh. Compiler policy
+  reads the package after that step, so it follows owner removals of Vitest or tsdown.
+  Both baseline configs are
+  recreated from their TypeScript seeds if missing; existing JSONC receives targeted
+  edits preserving unrelated settings and comments. When `tsdown` is declared,
+  TypeScript also seeds and reconciles `tsconfig.declarations.json`: `extends:
+  ./tsconfig.json`, `include: ["src"]`, `declaration: true`, `emitDeclarationOnly:
+  true`, `rootDir: ./src`, `outDir: ./dist`, and `ESNext`/`Bundler`. It is not seeded
+  for other projects; an existing declaration config is retained if the trigger is
+  removed.
 
 Compiler policy uses declarations in `devDependencies`, not installed modules, dependency
 versions, runtime dependencies, or profile names. Presence of the key selects the policy.
@@ -792,24 +796,17 @@ separate lifecycles:
   product APIs; after initialization the owner may replace or remove this dependency.
   Seeding merges this one key into blueprint dependencies rather than replacing the
   object, so unrelated contributions survive without relying on scaffold merging.
-- **update** owns only the errors and logging keys in `dependencies`. It replaces
-  owner-selected references, including newer versions or alternate Git references,
-  with the registry references; no version comparison or conflict detection runs.
-  API types is not added, removed, or rewritten. Missing owned keys or a missing
-  dependencies section are created; a missing `package.json` stays absent.
-  Malformed/non-object JSON or a non-object dependencies section fails before writes.
-  Other dependencies, package fields, source, and lockfiles survive. Matching owned
-  values retain package bytes; changes use sorted, two-space JSON with a trailing
-  newline. A second update changes nothing. No dependency install or lockfile refresh
-  runs.
+- **update** is a no-op. All three dependencies are seed (§3). Their pins are GitHub
+  references, which freshness cannot compare, so update never rewrites, re-adds, or
+  removes them. Other dependencies, package fields, source, and lockfiles survive.
 - **validate** is an explicit no-op: "Forge Ahead dependencies have no repository-local
   configuration to validate; comparing dependency references would check policy, not
   tool acceptance. Runtime integration belongs to the app's build and test workflows."
   It reports skipped without reading the repository or installing dependencies.
 
 Repository URLs are supported dependency specs. The current registry values are
-GitHub references without a commit or tag; update enforces the reference strings,
-not immutable resolved versions.
+GitHub references without a commit or tag; init seeds the reference strings, not
+immutable resolved versions.
 
 ### `aidev`
 
@@ -886,13 +883,9 @@ there is no no-testing implementation or testing opt-out.
 - **init** is an explicit no-op: "Bun's built-in test runner needs no dependency or
   configuration seed; update maintains the test scripts, and test sources are
   owner-managed." Top-level init includes the update pass.
-- **update** enforces only the three script keys above. A missing `package.json`
-  is left absent; missing scripts and owned keys are created. Malformed/non-object
-  JSON or non-object scripts fail before writes. Other scripts, fields, and
-  dependencies survive. Matching owned values preserve package bytes; changes use
-  sorted, two-space JSON with a trailing newline. A second update changes nothing.
-  Update never reads or changes `bunfig.toml`, test sources, or lockfiles, and does
-  not install dependencies or pin the host Bun runtime.
+- **update** is a no-op for files. Its package.json contribution (§3) enforces the
+  three test scripts. Update never reads or changes `bunfig.toml`, test
+  sources, or lockfiles.
 - **validate** is an explicit no-op: "This capability owns no Bun test configuration
   to validate. Test execution belongs to the test workflow; comparing scripts to
   defaults would check policy, not tool acceptance."
@@ -909,14 +902,10 @@ install a provider.
   and both development dependency pins. The seed excludes `node_modules`, `dist`,
   `coverage`, and `specs/**`, disables globals in favor of explicit imports, and selects
   V8 coverage. All config settings are starting values, not continuing policy.
-- **update** enforces the three scripts and bumps `vitest` and `@vitest/coverage-v8`
-  together to `TOOL_VERSIONS.vitest` in an existing package. Missing sections and owned
-  keys are created; a missing package is not. Malformed/non-object JSON or non-object
-  scripts/devDependencies fail before writes. Other package values survive. Matching
-  owned values preserve package bytes; changes use sorted, two-space JSON with a trailing
-  newline. A second update changes nothing. Update never reads, rewrites, migrates, or
-  recreates `vitest.config.ts`; owner edits and deletion survive. It does not install
-  repository dependencies or refresh lockfiles.
+- **update** is a no-op for files. Its package.json contribution (§3) enforces the
+  three test scripts; `vitest` and `@vitest/coverage-v8` are seed at one pin, kept
+  fresh. Update never reads, rewrites, migrates,
+  or recreates `vitest.config.ts`; owner edits and deletion survive.
 - **validate** loads `vitest.config.ts` using the capability-selected Vitest pin and
   discovers test files with `globTestSpecifications()` (the file-only listing API).
   An empty suite passes. Test modules, assertions, setup files, and global setup are not
@@ -957,13 +946,8 @@ configuration file, or additional cleanup target is introduced.
 - **init** is an explicit no-op: "Clean build has no files, dependencies, or initial
   settings to seed; update maintains the clean script." Top-level init's update pass
   supplies the command.
-- **update** enforces the canonical command in an existing package, replacing owner
-  edits to `scripts.clean` and creating a missing scripts section or clean key. A
-  missing `package.json` is not created. Malformed/non-object JSON and a non-object
-  scripts section fail before writes. Other package fields, script keys, files,
-  dependencies, and lockfiles survive. Matching values preserve original package
-  bytes; changes use sorted, two-space JSON with a trailing newline. A second update
-  changes nothing.
+- **update** is a no-op for files. Its package.json contribution (§3) enforces
+  `scripts.clean`.
 - **validate** is an explicit no-op: "Clean build owns no configuration with a separate
   tool-acceptance check; executing the clean script would delete build output and
   belongs to the clean workflow." It reports skipped without reading the repository,
@@ -992,14 +976,8 @@ an evals result. `--without evals` excludes it from the all preset.
   use update for maintenance. All seeded suite content is init-only, including the
   Promptfoo config's provider, prompts, and test references. No suite setting is
   enforced on update.
-- **update** enforces only `scripts.eval`, `scripts.view`, and
-  `devDependencies.promptfoo` in an existing `package.json`, even if no config or
-  suite exists. Missing owned keys or sections are created; a missing package is
-  not created. Malformed/non-object JSON and non-object consumed sections fail
-  before writes. Other package fields, script keys, dependencies, files, and
-  lockfiles survive. Matching values retain package bytes; changes use sorted,
-  two-space JSON with a trailing newline. A second update changes nothing. No
-  dependency install, lockfile refresh, config repair, or seed restoration runs.
+- **update** is a no-op for files. Its package.json contribution (§3) enforces
+  `scripts.eval` and `scripts.view`; `promptfoo` is seed, kept fresh.
 - **validate** reports skipped when root `promptfooconfig.yaml` is missing, before
   installing tools. Otherwise it installs the capability-selected Promptfoo reference
   in an isolated Node-baseline container and uses Bun to invoke Promptfoo's native
@@ -1045,13 +1023,9 @@ version, so separate pins or independently resolving ranges can be incompatible.
   budget with a `10 kB` limit: `Library bundle` at `dist/index.mjs` for libraries,
   or `Forge app bundle` at `dist/**/*.js` for Forge apps. It replaces scaffold
   budgets during fresh initialization and declares no template tree.
-- **update** enforces only the paired pins and canonical command in an existing
-  package, creating missing sections and owned keys. A missing `package.json`
-  is not created. Malformed/non-object JSON and non-object scripts/devDependencies
-  fail before writes. Other package fields, files, and lockfiles survive. Matching
-  owned values preserve original bytes; changes use sorted, two-space JSON with
-  a trailing newline. A second update changes nothing. No install, lockfile
-  refresh, build, or measurement runs.
+- **update** is a no-op for files. Its package.json contribution (§3) enforces
+  `scripts.size`; `size-limit` and `@size-limit/file` are seed at one pin, kept
+  fresh.
 - **The entire budget is owner-managed after init.** Update does not validate,
   merge, reset, restore, or migrate its names, paths, limits, additional entries,
   or options. Deletion and even malformed budget values survive update. External
@@ -1083,13 +1057,8 @@ and `lint:forge` without writing `lint`; ownership does not depend on pass order
   formatting under `lint`; pre-commit runs gitleaks and formatting; pre-push runs
   lint, tests, and size checks. npm script calls use `--if-present` so omitted
   subtasks are no-ops. Init is fresh-repository setup, not maintenance adoption.
-- **update** enforces only the runner pin and three canonical scripts in an
-  existing package, replacing owner edits and creating missing sections/keys.
-  Missing `package.json` is not created. Malformed/non-object JSON and non-object
-  scripts/devDependencies fail before writes. Unrelated values and lockfiles survive.
-  Matching values preserve original bytes; changes use sorted, two-space JSON with
-  a trailing newline. A second update changes nothing. No dependency install,
-  hook installation, or lockfile refresh runs.
+- **update** is a no-op for files. Its package.json contribution (§3) enforces
+  `prepare`, `lint`, and `check`; `lefthook` is seed, kept fresh.
 - **`lefthook.yml` is owner-managed after init.** Update never reads, rewrites,
   merges, migrates, or recreates it; edits and deletion survive. The gitleaks guard
   and pre-push checks are starting defaults, not continuing enforced policy.

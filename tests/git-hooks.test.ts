@@ -38,7 +38,7 @@ test("init and update enforce only the selected pin and hook dispatch scripts", 
             check: "owner",
             custom: "keep",
           },
-          devDependencies: { lefthook: "old", custom: "1" },
+          devDependencies: { lefthook: "0.0.1", custom: "1" },
           dependencies: { keep: "1" },
         }),
       ],
@@ -61,7 +61,7 @@ test("init and update enforce only the selected pin and hook dispatch scripts", 
   expect(await updateCapabilities(output, [capability])).toBe(output);
 });
 
-test("update creates missing owned keys but not a missing package or hook config", async () => {
+test("update does not create missing dependencies but enforces scripts when package.json exists", async () => {
   const empty = mockDirectory();
   expect(await runUpdate(gitHooks(), empty)).toBe(empty);
   const output = await runUpdate(
@@ -71,7 +71,6 @@ test("update creates missing owned keys but not a missing package or hook config
   const pkg = JSON.parse(await output.file("package.json").contents());
   expect(pkg).toEqual({
     scripts: GIT_HOOKS_SCRIPTS,
-    devDependencies: { lefthook: TOOL_VERSIONS.lefthook },
   });
   expect(await output.exists("lefthook.yml")).toBe(false);
   const text = JSON.stringify(pkg, null, 4);
@@ -122,7 +121,7 @@ test.each(["library", "forge-app", "tool", "agent-skill"])(
         check: "owner",
         custom: "keep",
       });
-      pkg.devDependencies.lefthook = "old";
+      pkg.devDependencies.lefthook = "0.0.1";
       const edited = initialized
         .withNewFile("package.json", JSON.stringify(pkg))
         .withNewFile("lefthook.yml", "# owner hooks\n");

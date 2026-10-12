@@ -122,19 +122,21 @@ export function docsLinting(
         "Load Markdown/spelling configs and references without scanning documentation quality.",
     },
     packageJson: {
-      policy: {
-        scripts: { "lint:docs": DOCS_COMMAND },
+      seed: {
         devDependencies: {
           cspell: cspellVersion,
           "markdownlint-cli2": markdownlintVersion,
         },
+      },
+      policy: {
+        scripts: { "lint:docs": DOCS_COMMAND },
       },
     },
     init(project) {
       project.templates.push(templateTree(DOCS_TEMPLATE));
     },
     update: noOp(
-      "Docs configuration and documents are owner-managed after init, including deletions; its package.json contribution enforces the tool references and lint:docs.",
+      "Docs configuration and documents are owner-managed after init, including deletions; its package.json contribution enforces lint:docs and keeps the seeded tool dependencies fresh.",
     ),
     validate: (directory) =>
       validateDocs(directory, cspellVersion, markdownlintVersion),

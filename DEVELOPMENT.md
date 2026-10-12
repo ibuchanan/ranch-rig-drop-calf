@@ -102,6 +102,10 @@ DROP_CALF_E2E=1 bun test tests/e2e
   `export` writes a supplied `Directory` to a path.
 - `src/project.ts`: project blueprint, base package metadata and files,
   and Dagger directory rendering.
+- `src/package-json.ts`: owns `package.json`, assembles capability contributions
+  (seed/policy/remove), rejects collisions, applies them at init and enforces
+  policy plus freshness on update; `editPackageJson` is the primitive for
+  catalog-derived rules.
 - `src/oss.ts`: seeds pinned `vendor/oss-templates` assets and authoritatively
   updates all except README. It reads catalog title, owner, copyright date, and
   Apache-2.0 license without editing the catalog or reading the clock. Missing
@@ -109,8 +113,8 @@ DROP_CALF_E2E=1 bun test tests/e2e
   [Refreshing the pinned OSS templates](#refreshing-the-pinned-oss-templates).
 - `src/docs.ts`: the documentation workflow, separate from OSS. Init seeds
   `templates/docs/`, including the Diátaxis placeholders, `DEVELOPMENT.md`, spec,
-  and both lint configs. Update maintains only `lint:docs` and the CSpell and
-  markdownlint-cli2 pins; owner docs, words, rules, and deletions survive.
+  and both lint configs. Update enforces the script and keeps CSpell and
+  markdownlint-cli2 fresh; owner docs, words, rules, and deletions survive.
   Validation loads both root JSONC configs with pinned tools in a read-only
   container while excluding all documents. It checks loading, not spelling,
   Markdown style, full schemas, or dictionary availability. See the
@@ -135,10 +139,10 @@ DROP_CALF_E2E=1 bun test tests/e2e
   the config, shared prompt, cases, synthetic contexts, and Rovo wiring guide;
   the blueprint does not author those seed files.
 - `src/size-limit.ts`: the bundle-size workflow — init seeds the named
-  `size-limit` budget in `package.json`; update maintains only the `size` script
-  and the paired `size-limit` / `@size-limit/file` dependencies at one exact pin.
-  Budget edits and deletion survive update, as do external config files. There
-  is no template tree. Validation is an explicit no-op because Size Limit has
+  `size-limit` budget in `package.json`; update enforces the `size` script
+  and keeps `size-limit` and `@size-limit/file` fresh. Budget edits and
+  deletion survive update, as do external config files. There is no template tree.
+  Validation is an explicit no-op because Size Limit has
   no supported config-only check; building and measuring belong to the size
   workflow, not repository validation.
 - `src/git-hooks.ts`: the Git hook workflow — the `lefthook` devDependency,
@@ -174,7 +178,7 @@ DROP_CALF_E2E=1 bun test tests/e2e
   `docsLinting()` is re-exported from `src/docs.ts` for compatibility; its
   dedicated module owns documentation initialization, update, and validation.
 - `src/node.ts`: the Node baseline. `nodeBaseline(kind)` seeds `.nvmrc`, `.npmrc`,
-  and `@types/node`; the dependency is init-only. Node also pulls catalog
+  and `@types/node`; update keeps the dependency fresh. Node also pulls catalog
   `forge-ranch/license` into an existing package's `license` field during update
   (including init's final update pass), preserving unrelated fields. Missing or
   malformed license metadata fails; no missing package is created.
@@ -398,8 +402,8 @@ Every kind's `biomeToolchain()` declares `templates/biome`. Generation seeds its
 host temporary directory. The template's `$schema` must match
 `TOOL_VERSIONS.biome`; the test suite checks for drift. Edit the pinned template
 to change the initialization baseline rather than rebuilding it in code.
-After init, the config is owner-managed. Update enforces only the Biome dependency
-and four owned scripts, and runs the pinned `biome migrate --write` inside a
+After init, the config is owner-managed. Update enforces the four scripts and
+keeps Biome fresh, and runs the pinned `biome migrate --write` inside a
 container for an existing root `biome.json` or `biome.jsonc`. Only that config is
 copied back; Biome preserves settings/comments while migrating obsolete options.
 Missing configs stay absent, referenced/nested configs are not migrated, and
@@ -447,6 +451,9 @@ bun run pins:outdated
 ```
 
 After changing a pin, run `bun test --update-snapshots` and review the diff.
+
+On update, freshness raises declared dependencies that are behind a pin to it,
+never downgrades, and skips GitHub references.
 
 ## The generated `.gitignore`
 

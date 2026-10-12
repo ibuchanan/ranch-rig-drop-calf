@@ -66,10 +66,7 @@ test("update leaves missing config and package absent and preserves matching pac
   const output = await runUpdate(vitestTesting("4.0.7"), input);
   expect(await output.exists("vitest.config.ts")).toBe(false);
   const pkg = JSON.parse(await output.file("package.json").contents());
-  expect(pkg.devDependencies).toEqual({
-    vitest: "4.0.7",
-    "@vitest/coverage-v8": "4.0.7",
-  });
+  expect(pkg.devDependencies).toEqual(undefined);
   const text = JSON.stringify(pkg, null, 4);
   const matching = output.withNewFile("package.json", text);
   expect(await runUpdate(vitestTesting("4.0.7"), matching)).toBe(matching);
@@ -91,7 +88,7 @@ test.each([
   expect(await input.file("package.json").contents()).toBe(contents);
 });
 
-test("composed Forge update restores missing Vitest declaration before TypeScript, converging on the first pass", async () => {
+test("composed Forge update preserves missing Vitest declaration and TypeScript respects owner deletion", async () => {
   const source = mockModuleSource();
   const empty = spyOn(dag, "directory").mockImplementation(() =>
     mockDirectory(),
@@ -115,8 +112,8 @@ test("composed Forge update restores missing Vitest declaration before TypeScrip
     const check = JSON.parse(
       await output.file("tsconfig.typecheck.json").contents(),
     );
-    expect(check.compilerOptions.moduleResolution).toBe("Bundler");
-    expect(check.include).toEqual(["src", "test", "tests", "vitest.config.ts"]);
+    expect(check.compilerOptions.moduleResolution).toBe("Node");
+    expect(check.include).toEqual(["src"]);
     expect(await module.update(output, "forge-app")).toEqual(output);
   } finally {
     empty.mockRestore();

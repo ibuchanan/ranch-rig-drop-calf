@@ -83,8 +83,8 @@ test("init seeds the selected budget and update maintains only the selected pair
             custom: "keep",
           },
           devDependencies: {
-            "size-limit": "old",
-            "@size-limit/file": "old",
+            "size-limit": "0.0.1",
+            "@size-limit/file": "0.0.1",
             owner: "1",
           },
           dependencies: { keep: "1" },
@@ -128,10 +128,6 @@ test("update creates missing owned keys but not a missing package or budget, ret
   const pkg = JSON.parse(await output.file("package.json").contents());
   expect(pkg).toEqual({
     scripts: { size: SIZE_LIMIT_COMMAND },
-    devDependencies: {
-      "size-limit": TOOL_VERSIONS.sizeLimit,
-      "@size-limit/file": TOOL_VERSIONS.sizeLimit,
-    },
   });
   const text = `${JSON.stringify(pkg, null, 4)}\r\n`;
   const matching = output.withNewFile("package.json", text);
@@ -204,8 +200,8 @@ test.each(["library", "forge-app"])(
       const pkg = JSON.parse(await initialized.file("package.json").contents());
       pkg["size-limit"] = tunedBudget;
       pkg.scripts.size = "owner command";
-      pkg.devDependencies["size-limit"] = "old";
-      pkg.devDependencies["@size-limit/file"] = "old";
+      pkg.devDependencies["size-limit"] = "0.0.1";
+      pkg.devDependencies["@size-limit/file"] = "0.0.1";
       const output = await module.update(
         initialized.withNewFile("package.json", JSON.stringify(pkg)),
         kind,

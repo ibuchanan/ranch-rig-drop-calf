@@ -71,7 +71,7 @@ test("init and update use the selected pin without claiming unrelated package fi
         JSON.stringify({
           name: "owner",
           scripts: { changelog: "owner command", release: "owner release" },
-          devDependencies: { "git-cliff": "old", owner: "1" },
+          devDependencies: { "git-cliff": "0.0.1", owner: "1" },
           dependencies: { keep: "1" },
           custom: { keep: true },
         }),
@@ -97,14 +97,13 @@ test("init and update use the selected pin without claiming unrelated package fi
   expect(await updateCapabilities(output, [capability])).toBe(output);
 });
 
-test("update creates missing package sections but leaves missing seed files and package absent", async () => {
+test("update creates missing scripts but never re-adds removed seed dependencies", async () => {
   const empty = mockDirectory();
   expect(await runUpdate(changelogToolchain(), empty)).toBe(empty);
   const input = mockDirectory(new Map([["package.json", "{}"]]));
   const output = await runUpdate(changelogToolchain(), input);
   expect(JSON.parse(await output.file("package.json").contents())).toEqual({
     scripts: { changelog: CHANGELOG_COMMAND },
-    devDependencies: { "git-cliff": TOOL_VERSIONS.gitCliff },
   });
   expect(await output.exists("cliff.toml")).toBe(false);
   expect(await output.exists("CHANGELOG.md")).toBe(false);
@@ -154,7 +153,7 @@ test.each(["library", "forge-app", "tool"])(
       expect(await module.update(initialized, kind)).toBe(initialized);
       const pkg = JSON.parse(await initialized.file("package.json").contents());
       pkg.scripts.changelog = "owner command";
-      pkg.devDependencies["git-cliff"] = "old";
+      pkg.devDependencies["git-cliff"] = "0.0.1";
       const edited = initialized
         .withNewFile("package.json", JSON.stringify(pkg))
         .withNewFile("cliff.toml", "# owner policy\n")

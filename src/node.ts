@@ -6,7 +6,7 @@ import { NODE_MAJOR, TOOL_VERSIONS } from "./versions.ts";
 
 /**
  * Update owns .nvmrc and the whole .npmrc; Forge manifest updates are separate.
- * @types/node is init-only. No kind generates engines: a toolchain baseline
+ * @types/node is seeded and kept fresh. No kind generates engines: a toolchain baseline
  * is not a library's compatibility promise, and engines has troubled forge deploy.
  * Forge update removes engines; other kinds preserve owner declarations.
  */
@@ -115,11 +115,11 @@ export function nodeBaseline(kind: string): Capability {
             "Reference for Node.js versions and TypeScript type definitions",
         },
       ],
-      init: "Seed .nvmrc, public-registry .npmrc, and init-only @types/node; no engines declaration.",
+      init: "Seed .nvmrc, public-registry .npmrc, and @types/node; no engines declaration.",
       update:
         kind === "forge-app"
-          ? "Replace .nvmrc/.npmrc, derive package license from catalog, and remove engines; preserve @types/node."
-          : "Replace .nvmrc/.npmrc and derive package license from catalog; preserve engines and @types/node.",
+          ? "Replace .nvmrc/.npmrc, derive package license from catalog, and remove engines; keep @types/node fresh."
+          : "Replace .nvmrc/.npmrc and derive package license from catalog; preserve engines and keep @types/node fresh.",
       validate:
         "Use fnm to select .nvmrc (may download Node); no baseline, type-version, or deployment check.",
     },

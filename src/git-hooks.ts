@@ -45,16 +45,16 @@ export function gitHooks(
         "Run lefthook validate with isolated Git metadata; never install or execute hooks.",
     },
     packageJson: {
+      seed: { devDependencies: { lefthook: lefthookVersion } },
       policy: {
         scripts: GIT_HOOKS_SCRIPTS,
-        devDependencies: { lefthook: lefthookVersion },
       },
     },
     init(project) {
       project.templates.push(templateTree(GIT_HOOKS_TEMPLATE));
     },
     update: noOp(
-      "Hook configuration is owner-managed after init; its package.json contribution enforces the Lefthook runner and dispatch scripts.",
+      "Hook configuration is owner-managed after init; its package.json contribution enforces the dispatch scripts and keeps the seeded Lefthook dependency fresh.",
     ),
     validate: (directory) => validateGitHooks(directory, lefthookVersion),
   };

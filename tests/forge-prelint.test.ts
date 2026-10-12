@@ -19,6 +19,8 @@ import { TOOL_VERSIONS } from "../src/versions.ts";
 import { mockDirectory, mockModuleSource } from "./module-source.ts";
 import { runUpdate } from "./capability-fixtures.ts";
 
+const updateReason =
+  "Prelint owns no files; its package.json contribution enforces the lint subtasks and keeps the seeded ast-grep dependency fresh; the @forge-ahead/prelint GitHub reference is owner-managed.";
 const validationReason =
   "Prelint has no repository-local configuration to validate; its rules ship in the dependency package. Source scanning belongs to the lint workflow.";
 
@@ -34,8 +36,7 @@ test("prelint init and validate are explicit no-ops with enumerable reasons", ()
     {
       capability: "prelint",
       verb: "update",
-      reason:
-        "Prelint owns no files; its package.json contribution enforces the ast-grep and @forge-ahead/prelint dependencies and lint subtasks.",
+      reason: updateReason,
     },
     { capability: "prelint", verb: "validate", reason: validationReason },
   ]);
@@ -68,8 +69,8 @@ test("update enforces selected dependencies and scripts while preserving unrelat
             custom: "keep",
           },
           devDependencies: {
-            [AST_GREP_PACKAGE]: "old",
-            [PRELINT_PACKAGE]: "old",
+            [AST_GREP_PACKAGE]: "0.0.1",
+            [PRELINT_PACKAGE]: "github:example/rules#revision",
             custom: "1",
           },
           dependencies: { keep: "1" },
@@ -106,7 +107,7 @@ test("update enforces selected dependencies and scripts while preserving unrelat
   expect(await updateCapabilities(output, [capability])).toBe(output);
 });
 
-test("update creates missing sections and owned keys, but not a missing package or hook config", async () => {
+test("update does not create missing dependencies but enforces scripts when package.json exists", async () => {
   const empty = mockDirectory();
   expect(await runUpdate(prelint(), empty)).toBe(empty);
   const output = await runUpdate(
@@ -116,10 +117,6 @@ test("update creates missing sections and owned keys, but not a missing package 
   const pkg = JSON.parse(await output.file("package.json").contents());
   expect(pkg).toEqual({
     scripts: PRELINT_SCRIPTS,
-    devDependencies: {
-      [AST_GREP_PACKAGE]: TOOL_VERSIONS.astGrep,
-      [PRELINT_PACKAGE]: TOOL_VERSIONS.forgePrelint,
-    },
   });
   expect(await output.exists("lefthook.yml")).toBe(false);
   const text = `${JSON.stringify(pkg, null, 4)}\r\n`;
@@ -192,8 +189,8 @@ test.each(["library", "forge-app", "tool", "agent-skill"])(
         "lint:forge": "owner forge",
       });
       Object.assign(pkg.devDependencies, {
-        [AST_GREP_PACKAGE]: "old",
-        [PRELINT_PACKAGE]: "old",
+        [AST_GREP_PACKAGE]: "0.0.1",
+        [PRELINT_PACKAGE]: "0.0.1",
       });
       const edited = initialized
         .withNewFile("package.json", JSON.stringify(pkg))
@@ -207,11 +204,9 @@ test.each(["library", "forge-app", "tool", "agent-skill"])(
         kind === "forge-app" ? "forge lint" : "owner forge",
       );
       expect(actual.devDependencies[AST_GREP_PACKAGE]).toBe(
-        kind === "forge-app" ? TOOL_VERSIONS.astGrep : "old",
+        kind === "forge-app" ? TOOL_VERSIONS.astGrep : "0.0.1",
       );
-      expect(actual.devDependencies[PRELINT_PACKAGE]).toBe(
-        kind === "forge-app" ? TOOL_VERSIONS.forgePrelint : "old",
-      );
+      expect(actual.devDependencies[PRELINT_PACKAGE]).toBe("0.0.1");
       expect(await updated.file("lefthook.yml").contents()).toBe(
         "owner hooks\r\n",
       );

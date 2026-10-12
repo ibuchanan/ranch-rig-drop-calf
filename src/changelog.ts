@@ -72,8 +72,8 @@ export function changelogToolchain(
         "Validates cliff.toml policy and runs git-cliff command against repository commit history",
     },
     packageJson: {
+      seed: { devDependencies: { "git-cliff": cliffVersion } },
       policy: {
-        devDependencies: { "git-cliff": cliffVersion },
         scripts: { changelog: CHANGELOG_COMMAND },
       },
     },
@@ -81,7 +81,7 @@ export function changelogToolchain(
       project.templates.push(templateTree(CHANGELOG_TEMPLATE));
     },
     update: noOp(
-      "Release policy and CHANGELOG.md are owner-managed after init; its package.json contribution maintains the git-cliff dependency and changelog command.",
+      "Release policy and CHANGELOG.md are owner-managed after init; its package.json contribution enforces the changelog command and keeps the seeded git-cliff dependency fresh.",
     ),
     validate: (directory) => validateChangelog(directory, cliffVersion),
   };

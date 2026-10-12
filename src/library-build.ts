@@ -72,6 +72,7 @@ export function libraryBuild(
     },
     packageJson: {
       seed: {
+        devDependencies: { tsdown: version },
         main: "dist/index.mjs",
         types: "dist/index.d.ts",
         exports: {
@@ -87,7 +88,6 @@ export function libraryBuild(
       },
       policy: {
         scripts: { build: LIBRARY_BUILD_COMMAND },
-        devDependencies: { tsdown: version },
       },
     },
     init(project) {

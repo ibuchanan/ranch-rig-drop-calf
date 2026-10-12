@@ -30,21 +30,21 @@ export function bundleSize(
     },
     packageJson: {
       seed: {
-        [SIZE_LIMIT_FIELD]: [{ name, path, limit: SIZE_LIMIT_LIMIT }],
-      },
-      policy: {
-        scripts: { size: SIZE_LIMIT_COMMAND },
         devDependencies: {
           "size-limit": version,
           "@size-limit/file": version,
         },
+        [SIZE_LIMIT_FIELD]: [{ name, path, limit: SIZE_LIMIT_LIMIT }],
+      },
+      policy: {
+        scripts: { size: SIZE_LIMIT_COMMAND },
       },
     },
     init: noOp(
       `Size Limit owns no files; its package.json contribution seeds the paired tools, the build-then-size script, and a ${SIZE_LIMIT_LIMIT} budget for ${path}.`,
     ),
     update: noOp(
-      "Size Limit owns no files; its package.json contribution enforces the paired tool references and size command, preserving owner budgets and paths.",
+      "Size Limit owns no files; its package.json contribution enforces the size command and keeps the seeded paired tools fresh, preserving owner budgets and paths.",
     ),
     validate: noOp(
       "Size Limit has no supported configuration-only validation interface. Measurement requires build artifacts and belongs to the size workflow; validation does not build the project or assess potentially stale output.",

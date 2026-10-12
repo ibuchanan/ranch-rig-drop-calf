@@ -240,13 +240,13 @@ export function typeScriptToolchain(
         "Run tsc --showConfig for applicable compiler configs, without compiling source or declarations.",
     },
     packageJson: {
+      seed: { devDependencies: { typescript: tsVersion } },
       policy: {
         scripts: {
           typecheck: TYPESCRIPT_SCRIPTS.typecheck,
           // library-build owns build when it is selected.
           ...(ownsBuild ? { build: TYPESCRIPT_SCRIPTS.build } : {}),
         },
-        devDependencies: { typescript: tsVersion },
       },
     },
     init(project) {

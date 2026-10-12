@@ -80,16 +80,16 @@ export function evals(version: string = TOOL_VERSIONS.promptfoo): Capability {
     },
     selection: { with: true, without: true, default: false },
     packageJson: {
+      seed: { devDependencies: { promptfoo: version } },
       policy: {
         scripts: EVALS_SCRIPTS,
-        devDependencies: { promptfoo: version },
       },
     },
     init(project) {
       project.templates.push(templateTree(EVALS_TEMPLATE));
     },
     update: noOp(
-      "The eval suite is owner-managed after init, including deletions; its package.json contribution enforces Promptfoo and the eval/view scripts.",
+      "The eval suite is owner-managed after init, including deletions; its package.json contribution enforces the eval/view scripts and keeps the seeded Promptfoo dependency fresh.",
     ),
     validate: (directory) => validateEvals(directory, version),
   };

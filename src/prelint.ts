@@ -43,19 +43,21 @@ export function prelint(
     },
     // Git-hooks alone owns lint; prelint contributes only named subtasks.
     packageJson: {
-      policy: {
-        scripts: PRELINT_SCRIPTS,
+      seed: {
         devDependencies: {
           [AST_GREP_PACKAGE]: astGrepVersion,
           [PRELINT_PACKAGE]: rulesPackage,
         },
+      },
+      policy: {
+        scripts: PRELINT_SCRIPTS,
       },
     },
     init: noOp(
       "Prelint has no repository-local configuration to seed; its rules ship in the dependency package, and its package.json contribution supplies the tool dependencies and scripts.",
     ),
     update: noOp(
-      "Prelint owns no files; its package.json contribution enforces the ast-grep and @forge-ahead/prelint dependencies and lint subtasks.",
+      "Prelint owns no files; its package.json contribution enforces the lint subtasks and keeps the seeded ast-grep dependency fresh; the @forge-ahead/prelint GitHub reference is owner-managed.",
     ),
     validate: PRELINT_VALIDATION,
   };

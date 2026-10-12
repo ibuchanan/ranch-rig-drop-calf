@@ -1,8 +1,5 @@
 import type { Directory } from "@dagger.io/dagger";
-import {
-  enforcePackagePolicy,
-  type PackageContribution,
-} from "./package-json.ts";
+import { updatePackage, type PackageContribution } from "./package-json.ts";
 import type { ProjectBlueprint } from "./project.ts";
 
 export type NoOp = { readonly reason: string };
@@ -53,7 +50,7 @@ export async function updateCapabilities(
   capabilities: readonly Capability[],
 ): Promise<Directory> {
   // Package policy first, so verbs that read package.json see the result.
-  let result = await enforcePackagePolicy(directory, capabilities);
+  let result = await updatePackage(directory, capabilities);
   for (const capability of capabilities) {
     if (typeof capability.update === "function")
       result = await capability.update(result);

@@ -100,7 +100,6 @@ test("update seeds missing package sections but never missing package, config, o
       mockDirectory(new Map([["package.json", "{}"]])),
     );
     expect(JSON.parse(await output.file("package.json").contents())).toEqual({
-      devDependencies: { "@biomejs/biome": TOOL_VERSIONS.biome },
       scripts: BIOME_SCRIPTS,
     });
     expect(await output.exists("biome.jsonc")).toBe(false);
@@ -151,7 +150,10 @@ test("root JSON takes precedence over JSONC and custom pins apply to both update
     new Map([
       ["biome.json", '{"formatter":{"indentStyle":"tab"}}'],
       ["biome.jsonc", "{ malformed unselected config"],
-      ["package.json", "{}"],
+      [
+        "package.json",
+        JSON.stringify({ devDependencies: { "@biomejs/biome": "0.0.1" } }),
+      ],
     ]),
   );
   const { spy, reads, commands } = mockContainer();

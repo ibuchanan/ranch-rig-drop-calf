@@ -108,16 +108,18 @@ export function vitestTesting(
         "Load Vitest config, discover test files, and initialize coverage configuration without executing tests.",
     },
     packageJson: {
+      seed: {
+        devDependencies: { vitest: version, "@vitest/coverage-v8": version },
+      },
       policy: {
         scripts: VITEST_SCRIPTS,
-        devDependencies: { vitest: version, "@vitest/coverage-v8": version },
       },
     },
     init(project) {
       project.templates.push(templateTree(VITEST_TEMPLATE));
     },
     update: noOp(
-      "Vitest configuration and test sources are owner-managed after init; its package.json contribution enforces the runner, matching coverage provider, and test scripts.",
+      "Vitest configuration and test sources are owner-managed after init; its package.json contribution enforces the test scripts and keeps the seeded runner and coverage provider fresh.",
     ),
     validate: (directory) => validateVitest(directory, version),
   };

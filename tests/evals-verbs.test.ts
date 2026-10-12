@@ -10,7 +10,6 @@ import {
 } from "../src/evals.ts";
 import { DropCalf } from "../src/index.ts";
 import { createBlueprint } from "../src/project.ts";
-import { TOOL_VERSIONS } from "../src/versions.ts";
 import { mockDirectory, mockModuleSource } from "./module-source.ts";
 import { promptfooTemplates } from "./templates-source.ts";
 import { runUpdate, runInit } from "./capability-fixtures.ts";
@@ -55,7 +54,7 @@ test("evals update owns only the tool and scripts, preserving every edited seed 
   expect(pkg).toEqual({
     name: "owner-name",
     scripts: { ...EVALS_SCRIPTS, custom: "owner custom" },
-    devDependencies: { promptfoo: version, other: "1.2.3" },
+    devDependencies: { promptfoo: "github:owner/promptfoo", other: "1.2.3" },
     dependencies: { runtime: "4.5.6" },
   });
   for (const [path, contents] of files)
@@ -65,7 +64,7 @@ test("evals update owns only the tool and scripts, preserving every edited seed 
   expect(await runUpdate(evals(version), output)).toBe(output);
 });
 
-test("evals update creates missing tooling but never seeds a suite or missing package", async () => {
+test("evals update creates missing scripts but never re-adds removed seed dependencies", async () => {
   const empty = mockDirectory();
   expect(await runUpdate(evals(version), empty)).toBe(empty);
   const output = await runUpdate(
@@ -74,7 +73,6 @@ test("evals update creates missing tooling but never seeds a suite or missing pa
   );
   expect(JSON.parse(await output.file("package.json").contents())).toEqual({
     scripts: EVALS_SCRIPTS,
-    devDependencies: { promptfoo: version },
   });
   for (const path of promptfooTemplates().keys())
     expect(await output.exists(path)).toBe(false);
@@ -171,9 +169,8 @@ test("top-level update requires explicit evals selection, preserves edits and de
       expect(result.scripts.view).toBe(
         enabled ? EVALS_SCRIPTS.view : "owner view",
       );
-      expect(result.devDependencies.promptfoo).toBe(
-        enabled ? TOOL_VERSIONS.promptfoo : "owner version",
-      );
+      // Non-semver owner value "owner version" is always preserved per FRESHNESS
+      expect(result.devDependencies.promptfoo).toBe("owner version");
       for (const path of promptfooTemplates().keys()) {
         if (path === absent) expect(await output.exists(path)).toBe(false);
         else

@@ -152,7 +152,7 @@ test("owner comments, unrelated settings and package fields survive; trigger rem
     const pkg = {
       scripts: { build: "tsdown custom", typecheck: "old", custom: "kept" },
       devDependencies: {
-        typescript: "old",
+        typescript: "0.0.1",
         vitest: "5",
         tsdown: "0.15",
         kept: "1",
@@ -234,7 +234,10 @@ test("only development declarations trigger policy and a custom compiler pin is 
       new Map([
         [
           "package.json",
-          JSON.stringify({ dependencies: { vitest: "5", tsdown: "0.15" } }),
+          JSON.stringify({
+            devDependencies: { typescript: "0.0.1" },
+            dependencies: { vitest: "5", tsdown: "0.15" },
+          }),
         ],
       ]),
     );

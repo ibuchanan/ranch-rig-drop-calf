@@ -1,4 +1,5 @@
 import type { Directory } from "@dagger.io/dagger";
+import semver from "semver";
 import sortPackageJson from "sort-package-json";
 import { ParseError } from "./errors.ts";
 
@@ -7,7 +8,8 @@ import { ParseError } from "./errors.ts";
  *
  * Capabilities declare a contribution instead of editing the file: seed
  * entries applied once at init, policy entries applied at init and on every
- * update. Sections merge entry by entry; every other field is replaced whole.
+ * update. Seeded dependencies are also kept fresh against their pins.
+ * Sections merge entry by entry; every other field is replaced whole.
  * Two contributions claiming the same key is an error.
  */
 export const PACKAGE_JSON = "package.json";
@@ -163,15 +165,45 @@ export function seedPackage(
   for (const field of remove) delete pkg[field];
 }
 
-/** Update: every policy entry, leaving seeds and everything else to the owner. */
-export function enforcePackagePolicy(
+const DEPENDENCY_SECTIONS = ["dependencies", "devDependencies"] as const;
+
+/** The lowest version a reference admits; undefined for Git refs, tags, and `*`. */
+function floor(reference: string): string | undefined {
+  const range = semver.validRange(reference);
+  if (!range || range === "*") return undefined;
+  return semver.minVersion(range)?.version;
+}
+
+/**
+ * Freshness: raise each seeded dependency the owner still declares to its pin
+ * when the declaration admits only older versions. An owner ahead of the pin,
+ * a removed dependency, or a reference that cannot be compared is left alone.
+ */
+function freshen(pkg: Package, seed: PackageFields): void {
+  for (const name of DEPENDENCY_SECTIONS) {
+    const pins = seed[name];
+    if (!pins || pkg[name] === undefined) continue;
+    const declared = section(pkg, name);
+    for (const [dependency, pin] of Object.entries(pins)) {
+      const current = declared[dependency];
+      if (typeof current !== "string") continue;
+      const have = floor(current);
+      const want = floor(pin);
+      if (have && want && semver.lt(have, want)) declared[dependency] = pin;
+    }
+  }
+}
+
+/** Update: every policy entry and removal, then freshness; seeds stay owner-managed. */
+export function updatePackage(
   directory: Directory,
   contributors: readonly Contributor[],
 ): Promise<Directory> {
-  const { policy, remove } = assemblePackage(contributors);
+  const { seed, policy, remove } = assemblePackage(contributors);
   return editPackageJson(directory, (pkg) => {
     apply(pkg, policy);
     for (const field of remove) delete pkg[field];
+    freshen(pkg, seed);
   });
 }
 

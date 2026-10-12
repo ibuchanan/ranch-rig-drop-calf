@@ -148,9 +148,9 @@ export function biomeToolchain(
         "Load the root config and references with Biome, without scanning source quality.",
     },
     packageJson: {
+      seed: { devDependencies: { "@biomejs/biome": biomeVersion } },
       policy: {
         scripts: BIOME_SCRIPTS,
-        devDependencies: { "@biomejs/biome": biomeVersion },
       },
     },
     init(project) {

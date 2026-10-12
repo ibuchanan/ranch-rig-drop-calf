@@ -216,7 +216,16 @@ test("dependency convergence precedes compiler update on the first pass", async 
       names.indexOf("typescript"),
     );
     const output = await updateCapabilities(
-      mockDirectory(new Map([["package.json", "{}"]])),
+      mockDirectory(
+        new Map([
+          [
+            "package.json",
+            JSON.stringify({
+              devDependencies: { tsdown: TOOL_VERSIONS.tsdown },
+            }),
+          ],
+        ]),
+      ),
       resolveProfile("library").filter(
         (c) => c.name === "library-build" || c.name === "typescript",
       ),

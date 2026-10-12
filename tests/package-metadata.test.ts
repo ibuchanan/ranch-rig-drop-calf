@@ -18,7 +18,6 @@ import { buildProject } from "../src/profiles.ts";
 import { FORGE_SECRETS_SCRIPTS } from "../src/secrets.ts";
 import { SIZE_LIMIT_COMMAND } from "../src/size-limit.ts";
 import { TYPESCRIPT_SCRIPTS } from "../src/typescript.ts";
-import { TOOL_VERSIONS } from "../src/versions.ts";
 import { VITEST_SCRIPTS } from "../src/vitest.ts";
 import { mockDirectory, mockModuleSource } from "./module-source.ts";
 import { catalogTemplates } from "./templates-source.ts";
@@ -102,7 +101,15 @@ test.each(kinds)(
       private: false,
       license: "MIT",
       scripts: { custom: "echo custom" },
-      dependencies: { custom: "^1.0.0" },
+      dependencies: {
+        custom: "^1.0.0",
+        ...(kind === "forge-app"
+          ? {
+              "@forge-ahead/errors": "github:ibuchanan/forge-ahead-errors",
+              "@forge-ahead/logging": "github:ibuchanan/forge-ahead-logging",
+            }
+          : {}),
+      },
       publishConfig: { access: "public" },
       custom: [1, 2],
     };
@@ -112,17 +119,8 @@ test.each(kinds)(
       const output = await new DropCalf().update(input, kind);
       expect(await manifest(output)).toEqual({
         ...pkg,
-        dependencies: {
-          ...pkg.dependencies,
-          ...(kind === "forge-app"
-            ? {
-                "@forge-ahead/errors": TOOL_VERSIONS.forgeAheadErrors,
-                "@forge-ahead/logging": TOOL_VERSIONS.forgeAheadLogging,
-              }
-            : {}),
-        },
         scripts: {
-          ...pkg.scripts,
+          custom: "echo custom",
           ...BIOME_SCRIPTS,
           ...GIT_HOOKS_SCRIPTS,
           clean: "rm -rf dist",
@@ -147,31 +145,6 @@ test.each(kinds)(
                 "test:watch": "bun test --watch --pass-with-no-tests",
                 "test:coverage": "bun test --coverage --pass-with-no-tests",
               }),
-        },
-        devDependencies: {
-          "@biomejs/biome": TOOL_VERSIONS.biome,
-          lefthook: TOOL_VERSIONS.lefthook,
-          cspell: TOOL_VERSIONS.cspell,
-          "markdownlint-cli2": TOOL_VERSIONS.markdownlintCli2,
-          typescript: TOOL_VERSIONS.typescript,
-          ...(kind === "library" ? { tsdown: TOOL_VERSIONS.tsdown } : {}),
-          ...(kind === "library" || kind === "forge-app"
-            ? {
-                "size-limit": TOOL_VERSIONS.sizeLimit,
-                "@size-limit/file": TOOL_VERSIONS.sizeLimit,
-              }
-            : {}),
-          ...(kind === "agent-skill"
-            ? {}
-            : { "git-cliff": TOOL_VERSIONS.gitCliff }),
-          ...(kind === "forge-app"
-            ? {
-                vitest: TOOL_VERSIONS.vitest,
-                "@vitest/coverage-v8": TOOL_VERSIONS.vitest,
-                "@ast-grep/cli": TOOL_VERSIONS.astGrep,
-                "@forge-ahead/prelint": TOOL_VERSIONS.forgePrelint,
-              }
-            : {}),
         },
         name: "@scope/sample",
         description: "Catalog description",

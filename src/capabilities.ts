@@ -33,20 +33,16 @@ export function forgeAhead(): Capability {
       seed: {
         dependencies: {
           "@forge-ahead/atlassian-api-types": TOOL_VERSIONS.forgeAheadApiTypes,
-        },
-      },
-      policy: {
-        dependencies: {
           "@forge-ahead/errors": TOOL_VERSIONS.forgeAheadErrors,
           "@forge-ahead/logging": TOOL_VERSIONS.forgeAheadLogging,
         },
       },
     },
     init: noOp(
-      "Forge Ahead owns no files; its package.json contribution seeds API types as an owner-managed dependency.",
+      "Forge Ahead owns no files; its package.json contribution seeds the API types, errors, and logging dependencies.",
     ),
     update: noOp(
-      "Forge Ahead owns no files; its package.json contribution enforces errors and logging dependencies, preserving API types and other dependencies.",
+      "Forge Ahead owns no files; its seeded dependencies are owner-managed and kept fresh against their pins, which skips GitHub references.",
     ),
     validate: noOp(
       "Forge Ahead dependencies have no repository-local configuration to validate; comparing dependency references would check policy, not tool acceptance. Runtime integration belongs to the app's build and test workflows.",
