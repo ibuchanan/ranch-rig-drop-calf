@@ -124,3 +124,13 @@ The **catalog** capability (added after this ADR) captures the owner staff ID at
 model will be **superseded**: catalog-derived on init + update, replacing the prior init-only
 model. This decision is recorded here to avoid rewriting the ADR core; the capability-specific
 policy migration belongs to the OSS ticket (ticket 06).
+
+### Migration complete (2026-10-12)
+
+The expand–contract migration described under Consequences is complete. Commit
+`ad044bc` removed the legacy capability contract (`addTo`, capability-level
+templates, and the standalone copy functions). Every capability now exposes only
+`init`, `update`, and `validate`, and `files` is retired. The OSS ticket (ticket 06)
+also landed: `.atlassian/OWNER` is derived from catalog metadata on init and
+update, which supersedes the init-only OWNER policy described above. The decision
+text above is unchanged and records the contract as it was accepted.

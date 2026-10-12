@@ -6,7 +6,7 @@
 
 A human declares intent by choosing a profile (e.g., `library`, `forge-app`, `tool`, `agent-skill`). Each profile assembles the same capability slots, but each slot may be fulfilled by a different implementation. The module initializes new projects, updates existing projects according to capability policy, and independently validates tool acceptance.
 
-[ADR 0001: Capabilities have three verbs, decided by intent](../docs/adr/0001-capability-verbs-by-intent.md) supersedes the original single-operation convergence model. This specification describes the target contract; the code migrates incrementally.
+[ADR 0001: Capabilities have three verbs, decided by intent](../docs/adr/0001-capability-verbs-by-intent.md) supersedes the original single-operation convergence model. This specification describes the current contract; future work is listed in §7.2 and §14.
 
 ## 2. Goals
 
@@ -49,7 +49,7 @@ Every capability requires `init`, `update`, and `validate`. A verb with no work 
 
 Each capability declares the scope of its changes. Its policy decides whether content is init-only, updated authoritatively, or changed selectively within shared resources. Documented policy authorizes replacement of owner edits without an explicit opt-in or `--force`; unrelated content in shared resources is preserved. These decisions are not inferred from file type.
 
-The previous `addTo` interface is superseded by [ADR 0001](../docs/adr/0001-capability-verbs-by-intent.md); its removal and the concrete verb signatures belong to the code migration.
+The previous `addTo` interface was superseded by [ADR 0001](../docs/adr/0001-capability-verbs-by-intent.md) and has been removed. The concrete verb signatures are in `src/capability.ts`.
 
 ## 6. Developer API (package.json scripts)
 
@@ -85,9 +85,9 @@ Additional profiles may be added without changing existing capability implementa
 
 The former merge-strategy table is superseded by [ADR 0001](../docs/adr/0001-capability-verbs-by-intent.md). File type does not decide whether an output is seeded, preserved, merged, or replaced.
 
-A capability may use line-set, section-map, structured-key, managed-region, or whole-file operations to implement its documented policy. None is a universal default. For example, OSS updates LICENSE, CODE_OF_CONDUCT, CONTRIBUTING, and SECURITY authoritatively, while README is init-only. The catalog decision supersedes the former init-only OWNER policy: ticket 06 will derive OWNER from catalog metadata on init and update. Their common document format does not imply a common lifecycle.
+A capability may use line-set, section-map, structured-key, managed-region, or whole-file operations to implement its documented policy. None is a universal default. For example, OSS updates LICENSE, CODE_OF_CONDUCT, CONTRIBUTING, and SECURITY authoritatively, while README is init-only. The catalog decision superseded the former init-only OWNER policy: OSS derives OWNER from catalog metadata on init and update. Their common document format does not imply a common lifecycle.
 
-The catalog capability owns a single root `catalog-info.yaml` as the language-independent project metadata source. Initialization seeds it from an authored template; update is an explicit no-op until a policy is defined. Package metadata and OSS consumption are deferred to tickets 04 and 06.
+The catalog capability owns a single root `catalog-info.yaml` as the language-independent project metadata source. Initialization seeds it from an authored template; update is an explicit no-op until a policy is defined. Package metadata and OSS read it without editing it; see the [shared metadata contract](02-project-functions.md#shared-metadata-contract).
 
 Detailed policies and substitutions belong to the owning capability's specification.
 

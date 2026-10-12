@@ -64,10 +64,9 @@ bun run lint
 bun run format:check
 ```
 
-`bun run format` and `bun run lint:fix` modify files. The test suite in
-`tests/repo-init.test.ts` exercises the blueprint and capability logic without
-starting Dagger. To exercise the Dagger boundary without writing generated
-files locally:
+`bun run format` and `bun run lint:fix` modify files. The unit suite under
+`tests/` runs without starting Dagger. To exercise the Dagger boundary without
+writing generated files locally:
 
 ```bash
 mkdir -p .scratch/tmp_rovo_empty
@@ -81,203 +80,110 @@ directory (ignored by Biome). `tsconfig.json` resolves `@dagger.io/dagger`
 through that generated SDK, so if type checking reports a missing
 `sdk/index.ts`, load the module with `dagger call init --help` before retrying.
 
-To verify `init-changes` exports from empty directories across all profiles
-and presets without registering or deploying a Forge app:
+### Opt-in end-to-end tests
+
+The suites in `tests/e2e/` start Dagger and run real tools, so each one is
+opt-in through an environment variable:
 
 ```bash
 DROP_CALF_INIT_E2E=1 bun test tests/e2e/init.e2e.test.ts
 ```
 
-The Forge end-to-end test runs a real `forge create`, which registers an app
-in your developer space, so it is opt-in:
+| Variable | Suite | Notes |
+|---|---|---|
+| `DROP_CALF_INIT_E2E` | `init` | `init-changes` export from empty directories, all profiles and presets |
+| `DROP_CALF_E2E` | `forge-create` | Runs a real `forge create`, which registers an app in your developer space |
+| `DROP_CALF_SCAFFOLD_E2E` | `scaffold-typescript` | In-place export, compiler diagnostics, update preservation |
+| `DROP_CALF_NODE_E2E` | `node` | Runtime normalization through a real init |
+| `DROP_CALF_FORGE_MANIFEST_E2E` | `forge-manifest` | Credential-prerequisite reporting only, not authenticated acceptance |
+| `DROP_CALF_BIOME_E2E` | `biome` | |
+| `DROP_CALF_DOCS_E2E` | `docs` | Config loading only, not Markdown content |
+| `DROP_CALF_EVALS_E2E` | `evals` | |
+| `DROP_CALF_GIT_HOOKS_E2E` | `git-hooks` | |
+| `DROP_CALF_LIBRARY_BUILD_E2E` | `library-build` | |
+| `DROP_CALF_SECRETS_E2E` | `secrets` | |
+| `DROP_CALF_TESTING_E2E` | `testing` | |
+| `DROP_CALF_TYPESCRIPT_E2E` | `typescript` | |
+| `DROP_CALF_VITEST_E2E` | `vitest` | |
 
-```bash
-DROP_CALF_E2E=1 bun test tests/e2e
-```
+To check authenticated Forge lint acceptance, you need a credentialed
+`dagger call validate` (see the [README](README.md)) against a registered app you
+can access. A local fixture with an invented app ID is not enough. Bun runs the
+pinned Forge CLI, so Forge warns that it does not recognize the Node version;
+authenticated CLI compatibility has not been verified.
 
 ## Code layout
 
-- `src/index.ts`: Dagger `DropCalf` entry point; `init` initializes an empty
-  directory or a scaffold, and `init-changes` returns the changeset to export.
-  `export` writes a supplied `Directory` to a path.
-- `src/project.ts`: project blueprint, base package metadata and files,
-  and Dagger directory rendering.
-- `src/package-json.ts`: owns `package.json`, assembles capability contributions
-  (seed/policy/remove), rejects collisions, applies them at init and enforces
-  policy plus freshness on update; `editPackageJson` is the primitive for
-  catalog-derived rules.
-- `src/oss.ts`: seeds pinned `vendor/oss-templates` assets and authoritatively
-  updates all except README. It reads catalog title, owner, copyright date, and
-  Apache-2.0 license without editing the catalog or reading the clock. Missing
-  required values fail; document validation is a manual-inspection no-op. See
-  [Refreshing the pinned OSS templates](#refreshing-the-pinned-oss-templates).
-- `src/docs.ts`: the documentation workflow, separate from OSS. Init seeds
-  `templates/docs/`, including the Diátaxis placeholders, `DEVELOPMENT.md`, spec,
-  and both lint configs. Update enforces the script and keeps CSpell and
-  markdownlint-cli2 fresh; owner docs, words, rules, and deletions survive.
-  Validation loads both root JSONC configs with pinned tools in a read-only
-  container while excluding all documents. It checks loading, not spelling,
-  Markdown style, full schemas, or dictionary availability. See the
-  [docs policy](specs/02-project-functions.md#docs). Both configs are dotfiles:
-  Dagger's `glob` matches them, but a shell glob will not.
-- `src/templates.ts`: `templateTree`, whose default seed is a plain tree
-  overlay, and `seedTemplates`, which executes ordered seed steps declared by capability
-  init. Substitution, exclusions, and executable modes belong to capabilities;
-  the seeding loop has no capability-specific branches.
-- `src/tool-run.ts`: the containerized-tool recipe shared by every validator
-  (and Biome migration). `nodeContainer()` is the one place the Node baseline
-  image is chosen, independently of the host's Node installation. `bunTools()`
-  grafts the pinned Bun binary and installs packages into `/tools` without
-  install scripts; `npmTools()` installs globally for tools run by binary name.
-  `runTool()` is the one failure convention: it throws
-  `<label> execution failed: <diagnostic>`, where the diagnostic is the tool's
-  stdout and stderr (or the error message), and `validateCapabilities` reports
-  the throw as `failed`. Validators choose packages, mounts, and commands only.
-- `src/changelog.ts`: the release workflow — the `git-cliff` devDependency and
-  the `changelog` script, plus `templates/changelog/`. Validation renders an
-  unreleased changelog
-  in a container built from the Node baseline image, so the verdict depends on
-  the policy under review rather than on whatever the host has installed.
-- `src/typescript.ts`: the compiler dependency, owned tsc scripts, and both
-  tsconfigs. Init seeds templates; update enforces compiler settings selected by
-  declared Vitest/tsdown dependencies with comment-preserving JSONC edits.
-  Library-build owns library `build`. Validation runs read-only `tsc --showConfig`.
-  Init overlays the uncomposed seed pair; update adds the declarations config
-  for tsdown projects.
-- `src/evals.ts`: optional Promptfoo toolchain — the `promptfoo` devDependency
-  and `eval`/`view` scripts. It declares `templates/promptfoo/`, which holds
-  the config, shared prompt, cases, synthetic contexts, and Rovo wiring guide;
-  the blueprint does not author those seed files.
-- `src/size-limit.ts`: the bundle-size workflow — init seeds the named
-  `size-limit` budget in `package.json`; update enforces the `size` script
-  and keeps `size-limit` and `@size-limit/file` fresh. Budget edits and
-  deletion survive update, as do external config files. There is no template tree.
-  Validation is an explicit no-op because Size Limit has
-  no supported config-only check; building and measuring belong to the size
-  workflow, not repository validation.
-- `src/git-hooks.ts`: the Git hook workflow — the `lefthook` devDependency,
-  the `prepare`/`lint`/`check` scripts, and
-  `templates/git-hooks/lefthook.yml`. One config serves every kind: the
-  scripts a kind omits are reached through `npm run <script> --if-present`, so
-  a hook with nothing to run is a no-op rather than a failure.
-- `src/prelint.ts`: the Forge prelint workflow — update enforces the
-  `@ast-grep/cli` and `@forge-ahead/prelint` dependency references and the
-  `lint:prelint`/`lint:forge` scripts. Git-hooks alone owns the `lint` dispatcher.
-  Init and validation are explicit no-ops: the rules ship inside the package,
-  with no local config to seed or validate; source scanning belongs to the
-  lint workflow.
-- `src/secrets.ts`: the Forge-only SecretSpec workflow. Init seeds owner-managed
-  `secretspec.toml` and `forge-variable-keys.json`, substituting the TOML project
-  name and marking both helpers executable. Update maintains the two helpers
-  and six `forge:*` scripts, preserving owner declarations and unrelated package
-  fields. Nonempty or uncertain legacy `APP_VARIABLE_KEYS` blocks update until
-  migrated to JSON. Validation checks local TOML structure, allowlist membership
-  and executable permissions, never resolves secrets or runs Forge. The push
-  helper sends only allowlisted values, encrypted, without printing values.
-- `src/gitignore.ts`: seeds and updates complete `.gitignore` blocks from the
-  pinned gitignore.io response and additional defaults, preserving bytes outside
-  those blocks. `gitignore()` declares the pin at init and recovers topic selections
-  from block URLs during update; validation is an explicit no-op.
-  `copyGitignoreAssets` is an internal helper used by the capability.
-- `src/forge-ahead.ts`, `src/clean-build.ts`, `src/bun-testing.ts`:
-  capabilities whose only output is their `package.json` contribution. Like
-  every capability module, each has required `init`, `update`, and `validate`
-  verbs; an inactive verb carries a deliberate no-op reason. Init contributes
-  blueprint values and seed steps in `ProjectBlueprint.templates` without
-  reading module files. Optional selection policy lives with the capability;
-  profile resolution checks that data without naming individual capabilities.
-- `src/scaffold.ts`: scaffold steps that prepare fresh `forge create` output
-  before init and never run on update: preclean (removes replaced files and
-  calls `package-json` to strip scaffold metadata) and Forge TypeScript adoption.
-- `src/errors.ts`: `ParseError` for malformed repository files and
-  `InvalidOptionsError` for invalid kind, selection, or capability options.
-- `src/node.ts`: the Node baseline. `nodeBaseline(options)` seeds `.nvmrc`, `.npmrc`,
-  and `@types/node`; update keeps the dependency fresh. Node also pulls catalog
-  `forge-ranch/license` into an existing package's `license` field during update
-  (including init's final update pass), preserving unrelated fields. Missing or
-  malformed license metadata fails; no missing package is created.
-  Update owns the whole `.nvmrc` and `.npmrc` files in every kind,
-  including replacing owner-added scoped registries and auth settings. With
-  `engines: "remove"` (the Forge profile), update removes the entire `engines`
-  field; the default preserves owner engine declarations. No kind generates `engines`: it has caused trouble with
-  `forge deploy`, and a development toolchain baseline is not a library's minimum
-  supported runtime. Validation copies only `.nvmrc` into an isolated
-  Dagger container with pinned fnm, initializes its shell, and runs
-  `fnm use --install-if-missing`. Missing `.nvmrc` is skipped; selectable
-  non-baseline versions pass. The validator may download Node and does not check
-  `.npmrc`, type versions, or deployment. Execution failures retain fnm's output
-  in the read-only report. It never changes the host or exports container
-  changes.
-- `src/forge-manifest.ts`: the Forge manifest capability for Forge apps.
-  `forgeManifest()` derives a runtime major from numeric `.nvmrc` and enforces
-  `app.runtime.name` in an existing manifest using the YAML document API,
-  preserving comments, key order, scalar
-  styles, indentation, and siblings. Matching values preserve original bytes
-  (byte-idempotent). Init is a no-op; update enforces the runtime only when both
-  manifest and `.nvmrc` exist. Aliases/ranges and malformed YAML raise `ParseError`.
-  `validateForgeManifest()` runs `forge lint` in an isolated Dagger container
-  with pinned Forge CLI 14.1.0, reporting tool acceptance without claiming
-  deployment readiness. Missing manifest is skipped; lint failures report the
-  tool's diagnostic. This capability is positioned immediately after node in the
-  capability order, so Node establishes the runtime baseline before this
-  capability reads it. The validator runs full Forge lint, including source checks;
-  dependencies must be present in the supplied repository. Forge lint requires
-  authentication: `validate` accepts `--forge-email` and
-  `--forge-api-token` as Dagger Secrets and pass them to every validator in a
-  `ValidationContext`; only this one reads them, injected only for lint. Credentials are
-  never read from the host implicitly; missing credentials fail before tool setup.
-  Lint selects the development environment without prompting. Manifest substitutions
-  needing other host variables are not forwarded; declared defaults work.
-  `DROP_CALF_FORGE_MANIFEST_E2E=1 bun test tests/e2e/forge-manifest.e2e.test.ts`
-  verifies read-only credential-prerequisite reporting, not acceptance.
-  Authenticated tool acceptance still needs a credentialed run against an accessible
-  registered app; a local fixture with an invented app ID is not sufficient.
+Each capability's policy is specified in
+[§4 of the functions spec](specs/02-project-functions.md#4-the-functions) and
+summarized by its `documentation` field (see
+[Maintaining the capability reference](#maintaining-the-capability-reference)).
+The module docblocks and tests are authoritative; this list only points to
+where things live.
 
-  With credentials already supplied by the owner in the environment:
+Composition and shared machinery:
 
-  ```sh
-  dagger call validate --directory . --profile forge-app \
-    --forge-email env://FORGE_EMAIL --forge-api-token env://FORGE_API_TOKEN
-  ```
+- `src/index.ts`: Dagger `DropCalf` entry point (`init`, `initChanges`,
+  `update`, `validate`).
+- `src/profiles.ts`: ordered capabilities, policy options, and scaffold steps
+  per kind.
+- `src/capability.ts`: the `Capability` contract and `noOp(reason)`.
+- `src/project.ts`: `ProjectBlueprint` and Dagger directory rendering.
+- `src/package-json.ts`: `package.json` assembly from capability contributions
+  ([ADR 0002](docs/adr/0002-package-json-assembled-from-capability-contributions.md)).
+- `src/templates.ts`: `templateTree` and ordered seed steps.
+- `src/tool-run.ts`: the containerized-tool runner and failure convention for
+  validators.
+- `src/scaffold.ts`: scaffold steps for fresh `forge create` output (preclean,
+  TypeScript adoption).
+- `src/versions.ts`: `TOOL_VERSIONS`, read from `pins/package.json`, plus
+  non-npm pins.
+- `src/errors.ts`: `ParseError` and `InvalidOptionsError`.
 
-  Bun executes the pinned CLI; Forge warns that its Node version detection does
-  not recognize Bun. Authenticated CLI compatibility remains unverified.
-- `src/profiles.ts`: ordered capability lists for the four supported profiles,
-  each capability's policy options (for example `engines`, `enforcePrivate`,
-  `forgeGuidance`), and each kind's scaffold steps. Capabilities and `index.ts`
-  never branch on a kind or capability name.
-- `tests/repo-init.test.ts`: Bun unit tests for the pure blueprint/capability
-  layer.
-- `specs/`: design targets; check implementation before documenting any item
-  as shipped.
+Capabilities, one module each:
 
-To change generated output, edit the base blueprint or capability in `src/`,
-then wire the capability into the intended profile(s) in `src/profiles.ts`. Add
-a focused test of the resulting blueprint and run the checks above.
-`renderToDirectory` is the Dagger boundary; keep ordinary project assembly
-testable without the engine.
+- `src/aidev.ts`: init-only `AGENTS.md` agent guidance.
+- `src/biome.ts`: Biome config, `.editorconfig`, and format/lint scripts.
+- `src/bun-testing.ts`: Bun test scripts.
+- `src/catalog.ts`: `catalog-info.yaml` and the metadata readers that other
+  capabilities use.
+- `src/changelog.ts`: git-cliff config and the release changelog.
+- `src/clean-build.ts`: the `clean` script.
+- `src/docs.ts`: docs lint configs and Diátaxis starter documents. Both configs
+  are dotfiles: Dagger's `glob` matches them, but a shell glob will not.
+- `src/evals.ts`: the optional Promptfoo toolchain.
+- `src/forge-ahead.ts`: Forge Ahead dependencies.
+- `src/forge-manifest.ts`: Forge manifest runtime and `forge lint` validation.
+- `src/git-hooks.ts`: Lefthook config and hook scripts.
+- `src/gitignore.ts`: `.gitignore` blocks (see
+  [The generated `.gitignore`](#the-generated-gitignore)).
+- `src/library-build.ts`: tsdown config and the library build script.
+- `src/node.ts`: `.nvmrc`, `.npmrc`, `@types/node`, and the catalog license.
+- `src/oss.ts`: pinned OSS documents (see
+  [Refreshing the pinned OSS templates](#refreshing-the-pinned-oss-templates)).
+- `src/package-metadata.ts`: catalog-derived package identity.
+- `src/prelint.ts`: Forge prelint dependencies and scripts.
+- `src/secrets.ts`: SecretSpec declarations and Forge variable helpers.
+- `src/size-limit.ts`: the Size Limit budget and script.
+- `src/typescript.ts`: tsconfigs and tsc scripts.
+- `src/vitest.ts`: Vitest config and scripts.
 
-First-time `init` accepts either an empty directory or a scaffold. Its package
-name is the explicit `--package-name`, then the nonblank scaffold name, then
-the Dagger workspace directory name. Without a scaffold, cleanup and manifest
-normalization do nothing. With a scaffold, `init` reads
-and cleans a scaffold, merges its package dependencies, and normalizes an existing
-Forge manifest runtime. Forge initialization also adopts root `src/` JavaScript
-as TypeScript using the pure plan in `src/scaffold.ts`: `.js` becomes `.ts`, `.jsx`
-becomes `.tsx`, and matching resource-path scalars change in `manifest.yml`.
-Contents, function handlers without extensions, and Custom UI `static/` projects
-survive.
-Collisions refuse initialization. Strict errors are left for the owner to fix;
-this step never suppresses diagnostics or runs during `update`.
-`DROP_CALF_SCAFFOLD_E2E=1 bun test tests/e2e/scaffold-typescript.e2e.test.ts`
-checks in-place changeset export, compiler diagnostics, and update preservation
-without registering or deploying an app.
-`DROP_CALF_NODE_E2E=1 bun test tests/e2e/node.e2e.test.ts` verifies runtime
-normalization through a real Dagger init without registering or deploying an app.
-Generated projects have scripts and configs but no source tree, and the copied
-OSS README is an unfilled template. The `agent-skill` profile intentionally omits
-a test script. Use the specs as a roadmap, not as a description of current CLI
-behavior.
+Elsewhere:
+
+- `templates/`: authored seed trees, one directory per capability.
+- `pins/package.json`: exact npm tool pins (see
+  [Refreshing tool pins](#refreshing-tool-pins)).
+- `vendor/`: pinned upstream inputs and design references.
+- `scripts/`: refresh and documentation generators.
+- `tests/`: unit tests; `tests/e2e/` holds the opt-in suites above.
+- `specs/`: the overview, kinds, and functions contracts. Future work is in
+  §7.2 and §14 of the overview.
+
+To change generated output, edit the capability (or `src/project.ts`) in `src/`,
+wire it into the intended profiles in `src/profiles.ts`, add a focused test,
+regenerate the capability reference, and run the checks above. Keep project
+assembly testable without the engine; `renderToDirectory` is the Dagger
+boundary.
 
 ## Maintaining the capability reference
 

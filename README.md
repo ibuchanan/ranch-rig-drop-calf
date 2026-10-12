@@ -230,7 +230,7 @@ contains the same reference plus detailed ownership and preservation rules.
   initialized directory. Add `entries` to list its top-level contents; prefer
   `init-changes ... export --path <dir>` to apply changes to disk, including
   scaffold deletions.
-- `update --directory <dir> --profile <name>` applies migrated update policies.
+- `update --directory <dir> --profile <name>` applies every capability's update policy.
   Node update replaces the whole `.npmrc` and `.nvmrc`, removes Forge package
   `engines`, and preserves `@types/node`. On `forge-app`, manifest update then
   derives the runtime from `.nvmrc`; review the result before exporting it.

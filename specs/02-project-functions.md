@@ -5,9 +5,8 @@ High-level specification of the repository capabilities ("functions") Drop Calf
 design (`specs/esa-repo-init-spec.md`).
 
 [ADR 0001](../docs/adr/0001-capability-verbs-by-intent.md) supersedes the original
-single-operation, universal-merge contract. The three-verb contract below is the
-target; capability-specific migration tickets resolve detailed policies not yet
-split into verbs. Existing policy details remain unless explicitly superseded.
+single-operation, universal-merge contract. Every capability below implements the
+three-verb contract, and each section states its current policy.
 
 ## 1. Purpose
 
@@ -42,10 +41,11 @@ executes them in order; catalog rendering, OSS substitution, TypeScript exclusio
 gitignore blocks, and SecretSpec executable modes are owned by their capabilities.
 Optional CLI selection is capability data, including default inclusion and whether
 `--with` or `--without` is permitted. Profile assembly does not name capabilities
-when selecting or executing them. Standalone `copy-*` Dagger actions are removed;
-internal copy helpers remain implementation details of init or update.
+when selecting or executing them. There are no standalone `copy-*` Dagger actions;
+copy helpers are internal to init or update.
 
-Tests reject placeholder migration reasons and require exactly one capability
+Tests reject no-op reasons that read as placeholders (deferred work, ticket
+references, not yet implemented) and require exactly one capability
 owner for every generated file, package field, script, and dependency key across
 init, seed execution, and update. The README seed belongs to OSS; there is no
 separate README generator.
@@ -201,18 +201,18 @@ Under [ADR 0001](../docs/adr/0001-capability-verbs-by-intent.md):
 #### Shared metadata contract
 
 The root `catalog-info.yaml` is the permanent source for metadata consumed by
-other modules, independent of language or package manager. This tracked section
-records the field contract; scratch tickets only track deferred wiring.
+other modules, independent of language or package manager. This section records
+the field contract.
 
 | Value | Catalog field | Consumer |
 |---|---|---|
 | Catalog identifier | `metadata.name` | Backstage; not a package or display name |
-| Project display name | `metadata.title` | OSS README/CONTRIBUTING (ticket 06) |
-| Description | `metadata.description` | Package metadata (ticket 04) |
+| Project display name | `metadata.title` | OSS README/CONTRIBUTING |
+| Description | `metadata.description` | Package metadata |
 | Responsible user | `spec.owner` | Package metadata author; OSS OWNER |
-| Package name | `metadata.annotations["forge-ranch/package-name"]` | Package metadata (ticket 04) |
-| Copyright year/range | `metadata.annotations["forge-ranch/copyright-date"]` | OSS LICENSE (ticket 06) |
-| License | `metadata.annotations["forge-ranch/license"]` | Node package.json license; OSS template validation (ticket 06) |
+| Package name | `metadata.annotations["forge-ranch/package-name"]` | Package metadata |
+| Copyright year/range | `metadata.annotations["forge-ranch/copyright-date"]` | OSS LICENSE |
+| License | `metadata.annotations["forge-ranch/license"]` | Node package.json license; OSS template validation |
 | External-system pointers | Integration annotations and `metadata.links` | Jira/GitHub integrations |
 
 Additional module-specific metadata belongs under `metadata.annotations` with
@@ -293,7 +293,7 @@ is generated separately because it is not in that template. The OSS capability
 declares a `PINNED_OSS` template source and is selected after `package-metadata`
 and before `node` in the initialization order.
 
-Under ticket 06's agreed policy:
+Policy:
 
 - **init** seeds all six files (`LICENSE`, `CODE_OF_CONDUCT.md`, `CONTRIBUTING.md`,
   `README.md`, `SECURITY.md`, `.atlassian/OWNER`) from templates
@@ -332,7 +332,7 @@ with `bun run refresh:gitignore`, so output is deterministic, reviewable, and
 available offline. The pinned bytes carry a macOS rule that only matches with
 literal CR characters, so the file is preserved `-text` in `.gitattributes`.
 
-Under ticket 07's agreed policy:
+Policy:
 
 - **init** builds `.gitignore` from selected sets with two owned blocks:
   - A topic block with `# Created by <URL>` / `# End of <URL>` markers recording the
@@ -410,8 +410,8 @@ repository or host shell, and no container changes are exported.
 Validation does not compare `.nvmrc` and `@types/node` with one another or with
 the baseline. Type declarations are owner-managed after init. It does not validate
 `.npmrc` or run npm install. Forge manifest acceptance is handled separately by
-the forge-manifest capability. This replaces the ticket's original pin-agreement
-proposal with ADR 0001's tool-acceptance contract.
+the forge-manifest capability. Validation checks tool acceptance, per ADR 0001, not
+agreement between pins.
 
 ### `forge-manifest`
 
@@ -638,7 +638,7 @@ The `prelint` capability is selected only for `forge-app`. It owns
 - `lint:prelint`: `ast-grep scan --globs '!specs/**' --globs '!node_modules/**' --config ./node_modules/@forge-ahead/prelint/sgconfig.ecosol.yml`
 - `lint:forge`: `forge lint`
 
-Under ticket 16's agreed policy:
+Policy:
 
 - **init** is an explicit no-op: "Prelint has no repository-local configuration to
   seed; its rules ship in the dependency package, and its package.json contribution
@@ -652,8 +652,8 @@ Under ticket 16's agreed policy:
   validate; its rules ship in the dependency package. Source scanning belongs to the
   lint workflow." Capability validation returns
   skipped with that reason, without reading the repository, installing tools, scanning
-  source, or running `forge lint`. This supersedes the previous container scan validator;
-  Forge acceptance belongs to the separate `forge-manifest` validator.
+  source, or running `forge lint`. Forge acceptance belongs to the separate
+  `forge-manifest` validator.
 
 Prelint never writes `lint` or `lefthook.yml`. Git-hooks alone owns `lint`, and its
 seeded config dispatches both named subtasks with `--if-present`; owner hook edits
@@ -1029,8 +1029,8 @@ version, so separate pins or independently resolving ranges can be incompatible.
 - **The entire budget is owner-managed after init.** Update does not validate,
   merge, reset, restore, or migrate its names, paths, limits, additional entries,
   or options. Deletion and even malformed budget values survive update. External
-  Size Limit configuration files are also untouched. This supersedes the previous
-  same-name conflict rule: a tuned budget is not a conflict.
+  Size Limit configuration files are also untouched. A tuned budget is not a
+  conflict.
 - **validate** is an explicit no-op: "Size Limit has no supported configuration-only
   validation interface. Measurement requires build artifacts and belongs to the
   size workflow; validation does not build the project or assess potentially
@@ -1081,9 +1081,8 @@ source files nor hooks are installed/modified in the caller's repository, and no
 container changes are exported. Setup/download errors are execution failures, not
 evidence of invalid configuration.
 
-Ticket 15 supersedes the older managed-baseline/additive-adoption split: update
-always owns the package pin/scripts, including existing `lint`/`check`, and never
-adopts or merges existing hook configuration.
+Update always enforces the `prepare`, `lint`, and `check` scripts, including existing
+ones, keeps `lefthook` fresh, and never adopts or merges existing hook configuration.
 
 ## 5. Composition into project kinds
 
