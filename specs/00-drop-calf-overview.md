@@ -148,3 +148,33 @@ Dagger does **not** track persistent project state. State lives in Git and in th
 - Should `update` support selecting only certain capability slots?
 - Should a complete update pass automatically invoke validation while retaining standalone `validate`?
 - How are example repositories pinned and versioned for canonicalization?
+
+### 14.1 Carried over from the `init-repo` design
+
+These ideas from the [`init-repo`](https://github.com/ibuchanan/init-repo) design
+(`specs/esa-repo-init-spec.md`) have no counterpart here yet. Each needs its own
+decision before it is specified.
+
+- **Prerequisite report (`doctor`).** Report missing host tools that generated
+  projects still need outside Dagger (`forge`, `secretspec`, `gitleaks`, `git`)
+  without installing them. `validate` checks repositories, not hosts.
+- **Reviewable update.** `init-changes` returns a changeset, but `update` returns
+  only a directory; an `update-changes` counterpart would give existing
+  repositories the same review path.
+- **Forge architecture tests.** Seed the `test/forge/**` architecture suite, as in
+  the vendored OKF producer example, from the Forge testing capability.
+- **Capability subsets.** Apply selected capabilities to an existing repository
+  (`apply --function <name>`), related to the slot-selection question above.
+- **Monorepo composition.** A `monorepo` kind and a command that adds child
+  projects at a path (workspaces, Turbo); see
+  [`01-project-kinds.md`](01-project-kinds.md#6-future-kinds).
+- **Additional scripts.** `dev` (watch), `todo`, `generate`/`generate:rovo`, and
+  `forge:variables:set-encrypted` from the `init-repo` script table.
+- **Error classes.** `PrerequisiteError` and `ValidationError` alongside
+  `ParseError` and `InvalidOptionsError`.
+
+Deliberately not carried over: `--force`/`--merge`, conflict reports, and
+file-type mutation modes (superseded by
+[ADR 0001](../docs/adr/0001-capability-verbs-by-intent.md)); the initialization
+journal (state lives in Git, §3); and procedural `biome init` in place of pinned
+templates.
