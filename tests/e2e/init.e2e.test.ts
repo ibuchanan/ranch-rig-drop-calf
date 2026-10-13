@@ -11,7 +11,6 @@ import {
 import { join } from "node:path";
 
 // Requires Dagger, but never registers, installs, or deploys a Forge app.
-const enabled = process.env.DROP_CALF_INIT_E2E === "1";
 const repo = join(import.meta.dir, "../..");
 const cases = ["library", "forge-app", "tool", "agent-skill"].flatMap(
   (profile) =>
@@ -22,7 +21,7 @@ const cases = ["library", "forge-app", "tool", "agent-skill"].flatMap(
     })),
 );
 
-test.skipIf(!enabled).each(cases)(
+test.each(cases)(
   "$profile init-changes exports once and both init forms refuse reruns ($label)",
   ({ profile, preset }) => {
     mkdirSync(join(repo, ".scratch"), { recursive: true });

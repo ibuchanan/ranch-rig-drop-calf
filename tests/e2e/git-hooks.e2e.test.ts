@@ -10,7 +10,6 @@ import {
 } from "node:fs";
 import { join } from "node:path";
 
-const enabled = process.env.DROP_CALF_GIT_HOOKS_E2E === "1";
 const repo = join(import.meta.dir, "../..");
 
 for (const { name, config, status, base } of [
@@ -53,59 +52,55 @@ for (const { name, config, status, base } of [
   { name: "malformed YAML", config: "pre-commit: [\n", status: "failed" },
   { name: "missing config", config: undefined, status: "skipped" },
 ]) {
-  test.skipIf(!enabled)(
-    `Dagger git-hooks validation: ${name}`,
-    () => {
-      mkdirSync(join(repo, ".scratch"), { recursive: true });
-      const root = mkdtempSync(join(repo, ".scratch/tmp_rovo_git_hooks_e2e_"));
-      try {
-        if (config !== undefined)
-          writeFileSync(join(root, "lefthook.yml"), config);
-        if (base !== undefined) writeFileSync(join(root, "base.yml"), base);
-        // A worktree pointer must not be followed; validation uses disposable metadata.
-        writeFileSync(join(root, ".git"), "gitdir: /does-not-exist\n");
-        const report = JSON.parse(
-          execFileSync(
-            "dagger",
-            [
-              "--progress",
-              "plain",
-              "call",
-              "-m",
-              repo,
-              "validate",
-              "--directory",
-              root,
-              "--profile",
-              "agent-skill",
-            ],
-            {
-              cwd: repo,
-              encoding: "utf8",
-              timeout: 240_000,
-              stdio: "pipe",
-              env: { ...process.env, DAGGER_NO_NAG: "1" },
-            },
-          ),
-        );
-        const result = report.find(
-          (entry: { capability: string }) => entry.capability === "git-hooks",
-        );
-        expect(result.status).toBe(status);
-        if (status !== "validated")
-          expect(result.reason.length).toBeGreaterThan(0);
-        if (config !== undefined)
-          expect(readFileSync(join(root, "lefthook.yml"), "utf8")).toBe(config);
-        if (base !== undefined)
-          expect(readFileSync(join(root, "base.yml"), "utf8")).toBe(base);
-        expect(readFileSync(join(root, ".git"), "utf8")).toBe(
-          "gitdir: /does-not-exist\n",
-        );
-        expect(existsSync(join(root, "ran-hook"))).toBe(false);
-      } finally {
-        rmSync(root, { recursive: true, force: true });
-      }
-    },
-    240_000,
-  );
+  test(`Dagger git-hooks validation: ${name}`, () => {
+    mkdirSync(join(repo, ".scratch"), { recursive: true });
+    const root = mkdtempSync(join(repo, ".scratch/tmp_rovo_git_hooks_e2e_"));
+    try {
+      if (config !== undefined)
+        writeFileSync(join(root, "lefthook.yml"), config);
+      if (base !== undefined) writeFileSync(join(root, "base.yml"), base);
+      // A worktree pointer must not be followed; validation uses disposable metadata.
+      writeFileSync(join(root, ".git"), "gitdir: /does-not-exist\n");
+      const report = JSON.parse(
+        execFileSync(
+          "dagger",
+          [
+            "--progress",
+            "plain",
+            "call",
+            "-m",
+            repo,
+            "validate",
+            "--directory",
+            root,
+            "--profile",
+            "agent-skill",
+          ],
+          {
+            cwd: repo,
+            encoding: "utf8",
+            timeout: 240_000,
+            stdio: "pipe",
+            env: { ...process.env, DAGGER_NO_NAG: "1" },
+          },
+        ),
+      );
+      const result = report.find(
+        (entry: { capability: string }) => entry.capability === "git-hooks",
+      );
+      expect(result.status).toBe(status);
+      if (status !== "validated")
+        expect(result.reason.length).toBeGreaterThan(0);
+      if (config !== undefined)
+        expect(readFileSync(join(root, "lefthook.yml"), "utf8")).toBe(config);
+      if (base !== undefined)
+        expect(readFileSync(join(root, "base.yml"), "utf8")).toBe(base);
+      expect(readFileSync(join(root, ".git"), "utf8")).toBe(
+        "gitdir: /does-not-exist\n",
+      );
+      expect(existsSync(join(root, "ran-hook"))).toBe(false);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  }, 240_000);
 }

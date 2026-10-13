@@ -23,7 +23,8 @@ import { planScaffoldTypeScript } from "../../src/scaffold.ts";
  * engine, and network access, and **`forge create` registers a real app** in
  * your developer space, so a run leaves one behind.
  *
- *   DROP_CALF_E2E=1 bun test tests/e2e
+ *   DROP_CALF_E2E=1 bun test ./tests/e2e/forge-create.e2e.test.ts \
+ *     --path-ignore-patterns='vendor/**'
  *
  * `FORGE_E2E_TEMPLATE` (default `blank`) picks the template and
  * `FORGE_E2E_DEV_SPACE` passes `--developer-space-id` for non-interactive runs.

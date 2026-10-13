@@ -13,7 +13,6 @@ import { join } from "node:path";
 import { buildProject } from "../../src/profiles.ts";
 
 // Opt in: requires Dagger and network access, but never registers or deploys an app.
-const enabled = process.env.DROP_CALF_TESTING_E2E === "1";
 const repo = join(import.meta.dir, "../..");
 let root: string;
 
@@ -26,7 +25,6 @@ const run = (cwd: string, args: string[]) =>
   });
 
 beforeAll(() => {
-  if (!enabled) return;
   mkdirSync(join(repo, ".scratch"), { recursive: true });
   root = mkdtempSync(join(repo, ".scratch/tmp_rovo_testing_"));
   const tools = join(root, "tools");
@@ -54,7 +52,7 @@ afterAll(() => {
   if (root) rmSync(root, { recursive: true, force: true });
 });
 
-test.skipIf(!enabled).each(["empty", "initialized"])(
+test.each(["empty", "initialized"])(
   "%s Forge scaffold tests and typechecks independently of the handler build",
   (mode) => {
     const app = join(root, mode);

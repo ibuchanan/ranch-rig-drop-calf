@@ -5,4 +5,4 @@ registry = "https://registry.npmjs.org/"
 "@forge" = "https://registry.npmjs.org/"
 
 [test]
-pathIgnorePatterns = ["vendor/**"]
+pathIgnorePatterns = ["vendor/**", "tests/e2e/**"]

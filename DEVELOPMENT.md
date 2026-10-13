@@ -80,31 +80,38 @@ directory (ignored by Biome). `tsconfig.json` resolves `@dagger.io/dagger`
 through that generated SDK, so if type checking reports a missing
 `sdk/index.ts`, load the module with `dagger call init --help` before retrying.
 
-### Opt-in end-to-end tests
+### End-to-end tests
 
-The suites in `tests/e2e/` start Dagger and run real tools, so each one is
-opt-in through an environment variable:
+The suites in `tests/e2e/` start Dagger and run real tools, so `bun test`
+leaves them out (see `pathIgnorePatterns` in `bunfig.toml`). They need a
+running Dagger engine and network access. Run them all with:
 
 ```bash
-DROP_CALF_INIT_E2E=1 bun test tests/e2e/init.e2e.test.ts
+bun run test:e2e
 ```
 
-| Variable | Suite | Notes |
-|---|---|---|
-| `DROP_CALF_INIT_E2E` | `init` | `init-changes` export from empty directories, all profiles and presets |
-| `DROP_CALF_E2E` | `forge-create` | Runs a real `forge create`, which registers an app in your developer space |
-| `DROP_CALF_SCAFFOLD_E2E` | `scaffold-typescript` | In-place export, compiler diagnostics, update preservation |
-| `DROP_CALF_NODE_E2E` | `node` | Runtime normalization through a real init |
-| `DROP_CALF_FORGE_MANIFEST_E2E` | `forge-manifest` | Credential-prerequisite reporting only, not authenticated acceptance |
-| `DROP_CALF_BIOME_E2E` | `biome` | |
-| `DROP_CALF_DOCS_E2E` | `docs` | Config loading only, not Markdown content |
-| `DROP_CALF_EVALS_E2E` | `evals` | |
-| `DROP_CALF_GIT_HOOKS_E2E` | `git-hooks` | |
-| `DROP_CALF_LIBRARY_BUILD_E2E` | `library-build` | |
-| `DROP_CALF_SECRETS_E2E` | `secrets` | |
-| `DROP_CALF_TESTING_E2E` | `testing` | |
-| `DROP_CALF_TYPESCRIPT_E2E` | `typescript` | |
-| `DROP_CALF_VITEST_E2E` | `vitest` | |
+Or run one suite:
+
+```bash
+bun test tests/e2e/init.e2e.test.ts --path-ignore-patterns='vendor/**'
+```
+
+| Suite | Notes |
+|---|---|
+| `init` | `init-changes` export from empty directories, all profiles and presets |
+| `scaffold-typescript` | In-place export, compiler diagnostics, update preservation |
+| `node` | Runtime normalization through a real init |
+| `forge-manifest` | Credential-prerequisite reporting only, not authenticated acceptance |
+| `docs` | Config loading only, not Markdown content |
+| `biome`, `evals`, `git-hooks`, `library-build`, `secrets`, `testing`, `typescript`, `vitest` | |
+
+`forge-create` is excluded from `test:e2e` because it runs a real
+`forge create`, which registers an app in your developer space. It stays behind
+`DROP_CALF_E2E=1`:
+
+```bash
+DROP_CALF_E2E=1 bun test ./tests/e2e/forge-create.e2e.test.ts --path-ignore-patterns='vendor/**'
+```
 
 To check authenticated Forge lint acceptance, you need a credentialed
 `dagger call validate` (see the [README](README.md)) against a registered app you
@@ -243,7 +250,7 @@ the dependency to be available in the supplied tree.
 No dependency install for the repository or exported changes are performed.
 
 ```bash
-DROP_CALF_TYPESCRIPT_E2E=1 bun test tests/e2e/typescript.e2e.test.ts
+bun test tests/e2e/typescript.e2e.test.ts --path-ignore-patterns='vendor/**'
 ```
 
 Forge runs on Node, not Bun. Vitest matches that runtime, provides `vi.mock` for
@@ -272,7 +279,7 @@ config, with modern module resolution confined to local checks. Tests and test
 config stay outside the Forge handler build. The existing pre-push lint group
 includes `typecheck`, so broken tests block pushing as broken source does.
 
-`DROP_CALF_TESTING_E2E=1 bun test tests/e2e/testing.e2e.test.ts` verifies real
+`bun test tests/e2e/testing.e2e.test.ts --path-ignore-patterns='vendor/**'` verifies real
 Dagger-generated and initialized scaffolds. It needs an engine and network for
 test-tool installation, but never registers or deploys an app.
 
@@ -350,7 +357,7 @@ To exercise migration, owner preservation, idempotence, and read-only acceptance
 against real Dagger containers without registering or deploying an app:
 
 ```bash
-DROP_CALF_BIOME_E2E=1 bun test tests/e2e/biome.e2e.test.ts
+bun test tests/e2e/biome.e2e.test.ts --path-ignore-patterns='vendor/**'
 ```
 
 `templates/biome/.editorconfig` is the only EditorConfig source for generated
@@ -369,7 +376,7 @@ To exercise docs config loading, malformed configs, unavailable references, and
 read-only acceptance without linting or fixing Markdown content:
 
 ```bash
-DROP_CALF_DOCS_E2E=1 bun test tests/e2e/docs.e2e.test.ts
+bun test tests/e2e/docs.e2e.test.ts --path-ignore-patterns='vendor/**'
 ```
 
 ## Refreshing tool pins

@@ -12,6 +12,7 @@
     "refresh:gitignore": "bun run scripts/refresh-gitignore.ts",
     "refresh:oss": "bun run scripts/refresh-oss-templates.ts",
     "test": "bun test",
+    "test:e2e": "bun test tests/e2e --path-ignore-patterns='vendor/**' --path-ignore-patterns='**/forge-create*'",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
