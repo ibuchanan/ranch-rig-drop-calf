@@ -178,7 +178,7 @@ Elsewhere:
 - `templates/`: authored seed trees, one directory per capability.
 - `pins/package.json`: exact npm tool pins (see
   [Refreshing tool pins](#refreshing-tool-pins)).
-- `vendor/`: pinned upstream inputs and design references.
+- `vendor/`: pinned upstream inputs.
 - `scripts/`: refresh and documentation generators.
 - `tests/`: unit tests; `tests/e2e/` holds the opt-in suites above.
 - `specs/`: the overview, kinds, and functions contracts. Future work is in
@@ -252,10 +252,10 @@ bun test tests/e2e/typescript.e2e.test.ts --path-ignore-patterns='vendor/**'
 ```
 
 Forge runs on Node, not Bun. Vitest matches that runtime, provides `vi.mock` for
-`@forge/*` modules, and matches the vendored Forge examples and architecture
-tests. `library`, `tool`, and `agent-skill` use Bun's built-in runner, including
-for tests of scripts shipped with agent skills. Both Vitest packages are pinned
-together through `TOOL_VERSIONS.vitest`.
+`@forge/*` modules, and matches the Forge examples and architecture tests.
+`library`, `tool`, and `agent-skill` use Bun's built-in runner, including for
+scripts shipped with agent skills. Both Vitest packages are pinned together
+through `TOOL_VERSIONS.vitest`.
 
 Bun needs no dependency, config, or sample-test seed, so its capability init is
 an explicit no-op. The update pass supplies and maintains `test`, `test:watch`,

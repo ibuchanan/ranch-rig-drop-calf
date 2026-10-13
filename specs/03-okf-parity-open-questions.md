@@ -1,9 +1,10 @@
 # OKF parity: open questions
 
 This is a decision register, **not** a change to the current capability contract.
-The questions arose from comparison with the vendored OKF producer example. Its
-choices are evidence, not requirements for every Drop Calf project kind. Until a
-question is decided, the current behavior in
+The questions arose from comparison with the
+[OKF producer example](https://github.com/ibuchanan/explore-forge-confluence-okf-producer),
+previously vendored here. Its choices are evidence, not requirements for every
+Drop Calf project kind. Until a question is decided, the current behavior in
 [`02-project-functions.md`](02-project-functions.md) remains authoritative.
 
 ## Forge and TypeScript

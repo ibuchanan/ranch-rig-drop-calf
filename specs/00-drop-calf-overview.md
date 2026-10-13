@@ -145,7 +145,7 @@ Dagger does **not** track persistent project state. State lives in Git and in th
 ## 14. Open questions and future work
 
 The [OKF parity decision register](03-okf-parity-open-questions.md) records
-unresolved differences from the vendored example without changing current policy.
+unresolved differences from the OKF example without changing current policy.
 
 - How should the README reflect the chosen test runner and other capabilities? Currently the base README is static.
 - Should profile selection support a default based on project metadata, or only explicit selection?
@@ -166,7 +166,8 @@ decision before it is specified.
   only a directory; an `update-changes` counterpart would give existing
   repositories the same review path.
 - **Forge architecture tests.** Seed the `test/forge/**` architecture suite, as in
-  the vendored OKF producer example, from the Forge testing capability.
+  the [OKF producer example](https://github.com/ibuchanan/explore-forge-confluence-okf-producer),
+  from the Forge testing capability.
 - **Capability subsets.** Apply selected capabilities to an existing repository
   (`apply --function <name>`), related to the slot-selection question above.
 - **Monorepo composition.** A `monorepo` kind and a command that adds child

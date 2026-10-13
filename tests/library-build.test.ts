@@ -1,5 +1,4 @@
 import { expect, spyOn, test } from "bun:test";
-import { readFileSync } from "node:fs";
 import { dag } from "@dagger.io/dagger";
 import { updateCapabilities, validateCapabilities } from "../src/capability.ts";
 import { DropCalf } from "../src/index.ts";
@@ -64,19 +63,31 @@ test("init seeds reference-style conditional exports, config and shared pipeline
   }
 });
 
-test("update enforces pipeline and formats while preserving the example's entries and publishing fields", async () => {
+test("update enforces pipeline and formats while preserving owner entries and publishing fields", async () => {
   const source = mockModuleSource();
   try {
-    const pkg = JSON.parse(
-      readFileSync("vendor/forge-ahead-errors/package.json", "utf8"),
-    );
-    const config = JSON.parse(
-      readFileSync("vendor/forge-ahead-errors/tsdown.config.json", "utf8"),
-    );
+    const pkg = {
+      name: "@example/errors",
+      main: "dist/errors.mjs",
+      types: "dist/errors.d.ts",
+      files: ["dist"],
+      exports: {
+        ".": { import: "./dist/errors.mjs", require: "./dist/errors.cjs" },
+        "./testing": {
+          import: "./dist/testing.mjs",
+          require: "./dist/testing.cjs",
+        },
+      },
+      scripts: { build: "owner build", test: "bun test" },
+      devDependencies: { tsdown: "0.1", typescript: "^5.9" },
+    };
+    const config = {
+      entry: { index: "./src/errors.ts", testing: "./src/testing.ts" },
+      format: ["esm"],
+      sourcemap: true,
+      deps: { neverBundle: ["vitest"] },
+    };
     const original = structuredClone(pkg);
-    pkg.scripts.build = "owner build";
-    pkg.devDependencies.tsdown = "0.1";
-    config.format = ["esm"];
     const input = mockDirectory(
       new Map([
         ["package.json", JSON.stringify(pkg)],

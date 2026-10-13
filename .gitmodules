@@ -1,9 +1,0 @@
-[submodule "vendor/explore-forge-jira-remote-data-fields"]
-	path = vendor/explore-forge-jira-remote-data-fields
-	url = https://github.com/ibuchanan/explore-forge-jira-remote-data-fields.git
-[submodule "vendor/explore-forge-confluence-okf-producer"]
-	path = vendor/explore-forge-confluence-okf-producer
-	url = https://github.com/ibuchanan/explore-forge-confluence-okf-producer.git
-[submodule "vendor/forge-ahead-errors"]
-	path = vendor/forge-ahead-errors
-	url = https://github.com/ibuchanan/forge-ahead-errors.git
