@@ -37,7 +37,8 @@ test("library and Forge seed an owned size command, paired pins and matching bud
     ],
   ] as const) {
     const { packageJson } = buildProject(kind, "sample", "tester");
-    expect(packageJson.scripts.size).toBe(SIZE_LIMIT_COMMAND);
+    expect(packageJson.scripts["size:check"]).toBe(SIZE_LIMIT_COMMAND);
+    expect(packageJson.scripts.size).toBeUndefined();
     expect(packageJson.devDependencies["size-limit"]).toBe(
       TOOL_VERSIONS.sizeLimit,
     );
@@ -100,7 +101,12 @@ test("init seeds the selected budget and update maintains only the selected pair
   const output = await updateCapabilities(input, [capability]);
   expect(JSON.parse(await output.file("package.json").contents())).toEqual({
     name: "owner",
-    scripts: { size: SIZE_LIMIT_COMMAND, build: "owner build", custom: "keep" },
+    scripts: {
+      size: "owner command",
+      "size:check": SIZE_LIMIT_COMMAND,
+      build: "owner build",
+      custom: "keep",
+    },
     devDependencies: {
       "size-limit": TOOL_VERSIONS.sizeLimit,
       "@size-limit/file": TOOL_VERSIONS.sizeLimit,
@@ -116,13 +122,47 @@ test("init seeds the selected budget and update maintains only the selected pair
   expect(await updateCapabilities(output, [capability])).toBe(output);
 });
 
-test("update contributes only the size script, never a missing budget", async () => {
+test.each([
+  { legacy: SIZE_LIMIT_COMMAND, retained: false },
+  { legacy: "owner command", retained: true },
+  { legacy: `${SIZE_LIMIT_COMMAND} `, retained: true },
+])(
+  "update migrates only the exact former size policy: $legacy",
+  async ({ legacy, retained }) => {
+    const capability = bundleSize("sample", "dist/index.mjs");
+    const input = mockDirectory(
+      new Map([
+        [
+          "package.json",
+          JSON.stringify({
+            scripts: {
+              size: legacy,
+              "size:check": "outdated command",
+              custom: "keep",
+            },
+          }),
+        ],
+      ]),
+    );
+    const output = await runUpdate(capability, input);
+    expect(JSON.parse(await output.file("package.json").contents())).toEqual({
+      scripts: {
+        ...(retained ? { size: legacy } : {}),
+        "size:check": SIZE_LIMIT_COMMAND,
+        custom: "keep",
+      },
+    });
+    expect(await runUpdate(capability, output)).toBe(output);
+  },
+);
+
+test("update contributes only the size:check script, never a missing budget", async () => {
   const output = await runUpdate(
     bundleSize("sample", "dist/index.mjs"),
     mockDirectory(new Map([["package.json", "{}"]])),
   );
   expect(JSON.parse(await output.file("package.json").contents())).toEqual({
-    scripts: { size: SIZE_LIMIT_COMMAND },
+    scripts: { "size:check": SIZE_LIMIT_COMMAND },
   });
 });
 
@@ -176,7 +216,8 @@ test.each(["library", "forge-app"])(
       );
       const updated = JSON.parse(await output.file("package.json").contents());
       expect(updated["size-limit"]).toEqual(tunedBudget);
-      expect(updated.scripts.size).toBe(SIZE_LIMIT_COMMAND);
+      expect(updated.scripts["size:check"]).toBe(SIZE_LIMIT_COMMAND);
+      expect(updated.scripts.size).toBe("owner command");
       expect(updated.devDependencies["size-limit"]).toBe(
         TOOL_VERSIONS.sizeLimit,
       );

@@ -120,7 +120,7 @@ test.each(kinds)(
           clean: "rm -rf dist",
           "lint:docs": DOCS_COMMAND,
           ...(kind === "library" || kind === "forge-app"
-            ? { size: SIZE_LIMIT_COMMAND }
+            ? { "size:check": SIZE_LIMIT_COMMAND }
             : {}),
           ...(kind === "agent-skill" ? {} : { changelog: CHANGELOG_COMMAND }),
           typecheck: TYPESCRIPT_SCRIPTS.typecheck,

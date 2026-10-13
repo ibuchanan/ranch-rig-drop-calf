@@ -1,4 +1,5 @@
 import { type Capability, noOp } from "./capability.ts";
+import { editPackageJson } from "./package-json.ts";
 import { TOOL_VERSIONS } from "./versions.ts";
 
 /** The budget is seeded here, then owner-managed independently of tool updates. */
@@ -23,6 +24,8 @@ export function bundleSize(name: string, path: string): Capability {
             "Measures built file sizes against owner-managed budgets with @size-limit/file.",
         },
       ],
+      update:
+        "Enforce size:check and keep the seeded paired tools fresh, preserving owner budgets and paths. Remove the legacy size script only when it matches the former policy command; preserve owner-authored commands.",
     },
     packageJson: {
       seed: {
@@ -33,15 +36,18 @@ export function bundleSize(name: string, path: string): Capability {
         [SIZE_LIMIT_FIELD]: [{ name, path, limit: SIZE_LIMIT_LIMIT }],
       },
       policy: {
-        scripts: { size: SIZE_LIMIT_COMMAND },
+        scripts: { "size:check": SIZE_LIMIT_COMMAND },
       },
     },
     init: noOp(
-      `Size Limit owns no files; its package.json contribution seeds the paired tools, the build-then-size script, and a ${SIZE_LIMIT_LIMIT} budget for ${path}.`,
+      `Size Limit owns no files; its package.json contribution seeds the paired tools, the build-then-measure size:check script, and a ${SIZE_LIMIT_LIMIT} budget for ${path}.`,
     ),
-    update: noOp(
-      "Size Limit owns no files; its package.json contribution enforces the size command and keeps the seeded paired tools fresh, preserving owner budgets and paths.",
-    ),
+    update(directory) {
+      return editPackageJson(directory, (pkg) => {
+        const scripts = pkg.scripts as Record<string, unknown> | undefined;
+        if (scripts?.size === SIZE_LIMIT_COMMAND) delete scripts.size;
+      });
+    },
     validate: noOp(
       "Size Limit has no supported configuration-only validation interface. Measurement requires build artifacts and belongs to the size workflow; validation does not build the project or assess potentially stale output.",
     ),

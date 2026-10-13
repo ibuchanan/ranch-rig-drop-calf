@@ -203,5 +203,7 @@ test.each(["library", "forge-app", "tool", "agent-skill"])(
     // template's call.
     expect(yml).toMatch(/^lint:/m);
     expect(yml).toMatch(/^pre-push:/m);
+    expect(yml).toContain("run: npm run size:check --if-present");
+    expect(yml).not.toContain("run: npm run size --if-present");
   },
 );

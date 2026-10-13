@@ -25,7 +25,8 @@ test.each(["library", "forge-app", "tool", "agent-skill"])(
       );
       const scripts = packageJson.scripts;
       expect(Boolean(scripts.test)).toBe(true);
-      expect(Boolean(scripts.size)).toBe(
+      expect(scripts.size).toBeUndefined();
+      expect(Boolean(scripts["size:check"])).toBe(
         kind === "library" || kind === "forge-app",
       );
       expect(Boolean(scripts.changelog)).toBe(kind !== "agent-skill");

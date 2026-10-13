@@ -40,4 +40,4 @@ pre-push:
     test:
       run: npm run test --if-present
     size:
-      run: npm run size --if-present
+      run: npm run size:check --if-present
