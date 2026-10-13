@@ -125,6 +125,44 @@ export function buildGitignore(
   return `${buildTopicBlock(template, sets)}\n${ADDITIONAL_IGNORES}`;
 }
 
+type BlockMarker = {
+  opens: boolean;
+  source: string;
+  /** Present for an upstream topic block; absent for the additional-ignores block. */
+  topics?: string[];
+};
+
+/** Only owned markers count; other `# Created by` comments are owner content. */
+function parseMarker(line: string): BlockMarker | undefined {
+  const marker = /^# (Created by|End of) (.+)$/.exec(line);
+  if (!marker?.[2]) return undefined;
+  const opens = marker[1] === "Created by";
+  const source = marker[2];
+  if (source === EXTRAS) return { opens, source };
+  const url = TOPIC_URL.exec(source);
+  if (!url) return undefined;
+  return { opens, source, topics: url[1] ? url[1].split(",") : [] };
+}
+
+function replacementBlock(
+  topics: string[] | undefined,
+  template: string,
+  sets: readonly string[] | undefined,
+): string {
+  if (!topics) return ADDITIONAL_IGNORES;
+  return buildTopicBlock(
+    template,
+    sets ?? topics.map(normalizeSet).filter((set) => set !== "yarn"),
+  );
+}
+
+/** Separate appended blocks from existing content by exactly one blank line. */
+function appendBlocks(contents: string, blocks: string[]): string {
+  if (!blocks.length) return contents;
+  const separator = !contents ? "" : contents.endsWith("\n") ? "\n" : "\n\n";
+  return contents + separator + blocks.join("\n");
+}
+
 /**
  * Replace complete owned blocks, never individual lines or surrounding bytes.
  * A retired Yarn topic is removed from existing selections; other unknown topics
@@ -136,63 +174,42 @@ function rewriteBlocks(
   seed = false,
   sets?: readonly string[],
 ): string {
-  let open: { start: number; source: string; topics?: string[] } | undefined;
+  let open: (BlockMarker & { start: number }) | undefined;
   let cursor = 0;
   let result = "";
   let topicsFound = false;
   let extrasFound = false;
   for (const match of contents.matchAll(/[^\n]+\n?|\n/g)) {
-    const line = match[0].replace(/\r?\n$/, "");
-    const marker = /^# (Created by|End of) (.+)$/.exec(line);
-    if (!marker?.[2]) continue;
-    const source = marker[2];
-    const topics = TOPIC_URL.exec(source);
-    if (source !== EXTRAS && !topics) continue;
-    if (marker[1] === "Created by") {
+    const marker = parseMarker(match[0].replace(/\r?\n$/, ""));
+    if (!marker) continue;
+    if (marker.opens) {
       if (open)
         throw new ParseError(".gitignore", "nested managed block markers");
-      open = {
-        start: match.index,
-        source,
-        topics: topics ? (topics[1] ? topics[1].split(",") : []) : undefined,
-      };
-    } else {
-      if (!open || open.source !== source)
-        throw new ParseError(
-          ".gitignore",
-          "unmatched managed block end marker",
-        );
-      const replacement = open.topics
-        ? buildTopicBlock(
-            template,
-            sets ??
-              open.topics.map(normalizeSet).filter((set) => set !== "yarn"),
-          )
-        : ADDITIONAL_IGNORES;
-      // The marker's newline belongs to the block; an EOF marker stays at EOF.
-      result +=
-        contents.slice(cursor, open.start) +
-        (match[0].endsWith("\n") ? replacement : replacement.slice(0, -1));
-      cursor = match.index + match[0].length;
-      if (open.topics) topicsFound = true;
-      else extrasFound = true;
-      open = undefined;
+      open = { ...marker, start: match.index };
+      continue;
     }
+    if (!open || open.source !== marker.source)
+      throw new ParseError(".gitignore", "unmatched managed block end marker");
+    const replacement = replacementBlock(open.topics, template, sets);
+    // The marker's newline belongs to the block; an EOF marker stays at EOF.
+    result +=
+      contents.slice(cursor, open.start) +
+      (match[0].endsWith("\n") ? replacement : replacement.slice(0, -1));
+    cursor = match.index + match[0].length;
+    if (open.topics) topicsFound = true;
+    else extrasFound = true;
+    open = undefined;
   }
   if (open)
     throw new ParseError(".gitignore", "missing managed block end marker");
   result += contents.slice(cursor);
-  if (seed) {
-    const missing = [
-      ...(topicsFound
-        ? []
-        : [buildTopicBlock(template, sets ?? GITIGNORE_TEMPLATES)]),
-      ...(extrasFound ? [] : [ADDITIONAL_IGNORES]),
-    ];
-    if (missing.length)
-      result += `${result && !result.endsWith("\n") ? "\n" : ""}${result ? "\n" : ""}${missing.join("\n")}`;
-  }
-  return result;
+  if (!seed) return result;
+  return appendBlocks(result, [
+    ...(topicsFound
+      ? []
+      : [buildTopicBlock(template, sets ?? GITIGNORE_TEMPLATES)]),
+    ...(extrasFound ? [] : [ADDITIONAL_IGNORES]),
+  ]);
 }
 
 /** Update uses the topics recorded in each owned block; unmarked files are intact. */
