@@ -144,6 +144,9 @@ Dagger does **not** track persistent project state. State lives in Git and in th
 
 ## 14. Open questions and future work
 
+The [OKF parity decision register](03-okf-parity-open-questions.md) records
+unresolved differences from the vendored example without changing current policy.
+
 - How should the README reflect the chosen test runner and other capabilities? Currently the base README is static.
 - Should profile selection support a default based on project metadata, or only explicit selection?
 - Should `update` support selecting only certain capability slots?
