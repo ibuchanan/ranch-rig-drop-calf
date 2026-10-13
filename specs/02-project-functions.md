@@ -51,6 +51,16 @@ owner for every generated file, package field, script, and dependency key across
 init, seed execution, and update. The README seed belongs to OSS; there is no
 separate README generator.
 
+### Scaffold preparation (top-level init only)
+
+Every kind runs preclean before capability init. Preclean removes scaffold metadata
+`name`, `version`, `description`, `license`, and `main` from `package.json`, and
+empties `scripts` and `devDependencies`. Runtime dependencies and unrelated fields
+are preserved. Already-clean package bytes are returned untouched; an absent
+`package.json` is left absent. Capabilities then contribute their own package
+fields, including the library's publishing `main`. Top-level `update` never runs
+preclean.
+
 ### Scaffold source adoption (top-level init only)
 
 On `forge-app`, top-level `init` automatically renames root `src/**/*.js` to

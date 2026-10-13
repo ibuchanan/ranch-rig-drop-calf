@@ -60,6 +60,7 @@ const scaffolded = JSON.stringify(
     private: true,
     license: "MIT",
     description: "Forge app",
+    main: "index.js",
     scripts: { start: "dagger develop" },
     devDependencies: { "@types/node": "^22.0.0" },
     dependencies: { yaml: "^2.9.1" },
@@ -74,6 +75,16 @@ describe("stripScaffold", () => {
     for (const field of SCAFFOLD_FIELDS)
       expect(Object.hasOwn(result, field)).toBe(false);
     for (const section of EMPTY_SECTIONS) expect(result[section]).toEqual({});
+  });
+
+  test("strips main when it is the only remaining scaffold field", () => {
+    const input = JSON.stringify({
+      main: "index.js",
+      scripts: {},
+      devDependencies: {},
+    });
+    expect(stripScaffold(input)).toBe(CLEAN);
+    expect(stripScaffold(stripScaffold(input))).toBe(CLEAN);
   });
 
   test("keeps fields Drop Calf does not own", () => {

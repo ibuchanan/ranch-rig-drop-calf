@@ -15,7 +15,6 @@ const NODE_FORGE_RUNTIME = forgeRuntimeFromNvmrc(NODE_NVMRC);
 
 /** The shape `forge create` leaves behind once scaffold cleanup has run. */
 const precleaned = JSON.stringify({
-  main: "index.js",
   private: true,
   scripts: {},
   devDependencies: {},
@@ -192,7 +191,7 @@ test.each([
       expect(result.files.get("src/index.ts")).toBe("export {};\n");
       const pkg = JSON.parse(result.files.get("package.json") ?? "{}");
       expect(pkg.name).toBe("forge-blank");
-      expect(pkg.main).toBe("index.js");
+      expect(Object.hasOwn(pkg, "main")).toBe(false);
       expect(pkg.dependencies["@forge/api"]).toBe("^7.0.0");
       expect(pkg.scripts.lint).not.toBe("eslint .");
     } finally {
@@ -206,7 +205,12 @@ test.each(["library", "tool", "agent-skill"])(
   "%s init leaves even an unparseable manifest alone",
   async (profile) => {
     const manifest = "app: [unparseable\n";
-    const scaffold = fake(new Map([["manifest.yml", manifest]]));
+    const scaffold = fake(
+      new Map([
+        ["manifest.yml", manifest],
+        ["package.json", JSON.stringify({ main: "index.js" })],
+      ]),
+    );
     const source = mockModuleSource();
     const spy = spyOn(dag, "directory").mockImplementation(() =>
       mockDirectory(),
@@ -219,6 +223,9 @@ test.each(["library", "tool", "agent-skill"])(
         "sample",
       )) as unknown as Fake;
       expect(result.files.get("manifest.yml")).toBe(manifest);
+      const pkg = JSON.parse(result.files.get("package.json") ?? "{}");
+      if (profile === "library") expect(pkg.main).toBe("dist/index.mjs");
+      else expect(Object.hasOwn(pkg, "main")).toBe(false);
     } finally {
       spy.mockRestore();
       source.mockRestore();

@@ -214,6 +214,7 @@ export const SCAFFOLD_FIELDS = [
   "version",
   "description",
   "license",
+  "main",
 ] as const;
 
 // Sections Drop Calf regenerates from capabilities. The scaffold's entries are

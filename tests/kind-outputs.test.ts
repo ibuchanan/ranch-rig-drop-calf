@@ -33,6 +33,8 @@ test.each(["library", "forge-app", "tool", "agent-skill"])(
       expect(Boolean(scripts["lint:prelint"])).toBe(kind === "forge-app");
       expect(Boolean(scripts["lint:check"])).toBe(true);
       expect(Boolean(scripts["forge:deploy"])).toBe(kind === "forge-app");
+      if (kind === "library") expect(packageJson.main).toBe("dist/index.mjs");
+      else expect(Object.hasOwn(packageJson, "main")).toBe(false);
       expect(Boolean(packageJson.exports)).toBe(kind === "library");
       expect(await result.exists("secretspec.toml")).toBe(kind === "forge-app");
     } finally {
