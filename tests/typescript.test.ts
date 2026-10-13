@@ -49,12 +49,14 @@ for (const dependencies of [
       expect(check.compilerOptions.moduleResolution).toBe(
         modern ? "Bundler" : "Node",
       );
-      expect(check.compilerOptions.rootDir).toBe(modern ? "." : "src");
+      expect(base.compilerOptions.types).toEqual(["node"]);
+      expect(check.compilerOptions.rootDir).toBe(".");
+      expect(check.compilerOptions.types).toEqual(["node"]);
       expect(check.include).toEqual([
         "src",
-        ...("vitest" in dependencies
-          ? ["test", "tests", "vitest.config.ts"]
-          : []),
+        "test",
+        "tests",
+        ...("vitest" in dependencies ? ["vitest.config.ts"] : []),
       ]);
       expect(await runUpdate(typeScriptToolchain(), output)).toBe(output);
       expect(await input.file("tsconfig.json").contents()).toBe(
@@ -100,13 +102,19 @@ test.each(Object.entries(initPolicy))(
       expect(base.compilerOptions).toMatchObject({
         strict: true,
         sourceMap: true,
+        types: ["node"],
         moduleResolution: policy.bundler ? "Bundler" : "Node",
       });
+      expect(check.compilerOptions.types).toEqual(
+        policy.tests ? ["node"] : ["node", "bun"],
+      );
       expect(check.extends).toBe("./tsconfig.json");
       expect(check.compilerOptions.noEmit).toBe(true);
       expect(check.include).toEqual([
         "src",
-        ...(policy.tests ? ["test", "tests", "vitest.config.ts"] : []),
+        "test",
+        "tests",
+        ...(policy.tests ? ["vitest.config.ts"] : []),
       ]);
       expect(await module.update(output, kind)).toBe(output);
     } finally {
@@ -156,7 +164,7 @@ test("owner comments, unrelated settings and package fields survive; trigger rem
   const source = mockModuleSource();
   try {
     const owner =
-      '{\r\n // keep owner comment\r\n "compilerOptions": {"strict": false, "paths": {"@/*": ["src/*"]}, "declaration": true},\r\n "references": [{"path": "./child"}],\r\n}\r\n';
+      '{\r\n // keep owner comment\r\n "compilerOptions": {"strict": false, "types": ["jest"], "paths": {"@/*": ["src/*"]}, "declaration": true},\r\n "references": [{"path": "./child"}],\r\n}\r\n';
     const pkg = {
       scripts: { build: "tsdown custom", typecheck: "old", custom: "kept" },
       devDependencies: {
@@ -182,6 +190,9 @@ test("owner comments, unrelated settings and package fields survive; trigger rem
       expect(text).toContain("// keep owner comment");
       expect(text).toContain("\r\n");
       expect(parsed(text).compilerOptions.paths).toEqual({ "@/*": ["src/*"] });
+      expect(parsed(text).compilerOptions.types).toEqual(
+        path === "tsconfig.declarations.json" ? ["jest"] : ["node"],
+      );
       expect(parsed(text).compilerOptions.declaration).toBe(true);
       expect(parsed(text).references).toEqual([{ path: "./child" }]);
     }
@@ -213,9 +224,9 @@ test("owner comments, unrelated settings and package fields survive; trigger rem
     expect(check.compilerOptions).toMatchObject({
       module: "CommonJS",
       moduleResolution: "Node",
-      rootDir: "src",
+      rootDir: ".",
     });
-    expect(check.include).toEqual(["src"]);
+    expect(check.include).toEqual(["src", "test", "tests"]);
     expect(
       JSON.parse(await removed.file("package.json").contents()).scripts.build,
     ).toBe(TYPESCRIPT_SCRIPTS.build);
@@ -256,7 +267,7 @@ test("default compiler pin is enforced", async () => {
     ).toBe("Node");
     expect(
       parsed(await output.file("tsconfig.typecheck.json").contents()).include,
-    ).toEqual(["src"]);
+    ).toEqual(["src", "test", "tests"]);
     expect(
       JSON.parse(await output.file("package.json").contents()).devDependencies
         .typescript,

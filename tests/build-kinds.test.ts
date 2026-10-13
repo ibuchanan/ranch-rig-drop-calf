@@ -82,6 +82,13 @@ test("generated TypeScript configs typecheck and compile a sample entry", () => 
         join(folder, "src/index.ts"),
         "export const value: number = 1;\n",
       );
+      if (kind !== "forge-app") {
+        mkdirSync(join(folder, "tests"));
+        writeFileSync(
+          join(folder, "tests/index.test.ts"),
+          'import { test } from "bun:test";\ntest("sample", () => {});\n',
+        );
+      }
       const configs = TYPESCRIPT_CONFIGS.filter(
         (path) => path !== "tsconfig.declarations.json" || kind === "library",
       );
@@ -105,6 +112,9 @@ test("generated TypeScript configs typecheck and compile a sample entry", () => 
         );
         expect(parsed?.errors).toEqual([]);
         if (!parsed) continue;
+        expect(
+          parsed.fileNames.some((name) => name.endsWith("index.test.ts")),
+        ).toBe(path === "tsconfig.typecheck.json" && kind !== "forge-app");
         const program = ts.createProgram(parsed.fileNames, parsed.options);
         expect(
           ts

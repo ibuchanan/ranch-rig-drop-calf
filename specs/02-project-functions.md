@@ -146,7 +146,7 @@ Missing files or prerequisites can also cause a validator to skip or fail.
 | `library`, `forge-app`, `tool`, `agent-skill` | `biome` | Required | [Biome](https://biomejs.dev/) — Formats and lints JavaScript, TypeScript, and supported configuration files. | Seed Biome, formatting/lint subtasks, biome.jsonc, and .editorconfig. | Let Biome migrate an existing root config, preserving EditorConfig. | Load the root config and references with Biome, without scanning source quality. |
 | `library` | `library-build` | Required | [tsdown](https://tsdown.dev/) — Bundles a TypeScript library as ESM and CommonJS with declaration output. | Seed tsdown, the build pipeline/config, and publishing fields. | Enforce the build script and ESM/CommonJS formats; preserve owner entry/dependency settings. | **No-op:** tsdown has no supported configuration-only validation interface: resolveUserConfig is internal and no-write still bundles source. Build and declaration emission belong to the build workflow; validation does not execute the pipeline or inspect stale artifacts. |
 | `library` | `typescript` | Required | [TypeScript](https://www.typescriptlang.org/docs/) — Type-checks source and emits JavaScript or library declarations. | Seed TypeScript, typecheck, and compiler configuration including declarations; library-build owns build. | Reconcile compiler configuration with policy selected by declared dependencies. | Run tsc --showConfig for applicable compiler configs, without compiling source or declarations. |
-| `library`, `tool`, `agent-skill` | `test` | Required | [Bun test](https://bun.com/docs/test) — Runs library, tool, and agent-skill tests with built-in watch and coverage support. | **No-op:** Bun's built-in test runner needs no dependency or configuration seed; its package.json contribution supplies the test scripts, and test sources are owner-managed. | **No-op:** Bun testing owns no files; its package.json contribution enforces the test/watch/coverage scripts, preserving owner test sources. | **No-op:** This capability owns no Bun test configuration to validate. Test execution belongs to the test workflow; comparing scripts to defaults would check policy, not tool acceptance. |
+| `library`, `tool`, `agent-skill` | `test` | Required | [Bun test](https://bun.com/docs/test) — Runs library, tool, and agent-skill tests with built-in watch and coverage support. | **No-op:** Seed @types/bun for test typechecking and supply test scripts; test sources remain owner-managed. | **No-op:** Bun testing owns no files; its package.json contribution enforces test scripts and keeps @types/bun fresh, preserving owner test sources. | **No-op:** This capability owns no Bun test configuration to validate. Test execution belongs to the test workflow; comparing scripts to defaults would check policy, not tool acceptance. |
 | `library` | `size-limit` | Required | [Size Limit](https://github.com/ai/size-limit) — Measures built file sizes against owner-managed budgets with @size-limit/file. | **No-op:** Size Limit owns no files; its package.json contribution seeds the paired tools, the build-then-measure size:check script, and a 10 kB budget for dist/index.mjs. | Enforce size:check and keep the seeded paired tools fresh, preserving owner budgets and paths. Remove the legacy size script only when it matches the former policy command; preserve owner-authored commands. | **No-op:** Size Limit has no supported configuration-only validation interface. Measurement requires build artifacts and belongs to the size workflow; validation does not build the project or assess potentially stale output. |
 | `library`, `forge-app`, `tool`, `agent-skill` | `clean-build` | Required | [rm](https://www.gnu.org/software/coreutils/manual/html_node/rm-invocation.html) — Removes dist when the owner runs the clean workflow. | **No-op:** Clean build owns no files to seed; its package.json contribution supplies the clean script. | **No-op:** Clean build owns no files; its package.json contribution enforces scripts.clean as rm -rf dist and never executes it. | **No-op:** Clean build owns no configuration with a separate tool-acceptance check; executing the clean script would delete build output and belongs to the clean workflow. |
 | `library`, `forge-app`, `tool`, `agent-skill` | `todo` | Required | [Git grep](https://git-scm.com/docs/git-grep) — Lists TODO markers in tracked files with paths and line numbers. | **No-op:** Todo owns no files; its package.json contribution seeds scripts.todo for every kind. | **No-op:** The seeded todo script is owner-managed after init; update does not replace or re-add it. | **No-op:** Todo owns no configuration with a separate tool-acceptance check; owners run the script in their Git repository. |
@@ -755,8 +755,9 @@ to observe newly created tool declarations would violate top-level idempotence.
 |---|---|---|---|
 | Base `module` / `moduleResolution` | `CommonJS` / `Node` | unchanged | `ESNext` / `Bundler` |
 | Typecheck `module` / `moduleResolution` | `CommonJS` / `Node` | `ESNext` / `Bundler` | `ESNext` / `Bundler` |
-| Typecheck `rootDir` | `src` | `.` | `.` |
-| Typecheck `include` | `["src"]` | add `test`, `tests`, `vitest.config.ts` | unchanged (bundler config is JSON) |
+| Typecheck `rootDir` | `.` | unchanged | unchanged |
+| Typecheck `types` | `["node"]` | unchanged | `["node", "bun"]` when `@types/bun` is declared |
+| Typecheck `include` | `["src", "test", "tests"]` | add `vitest.config.ts` | unchanged (bundler config is JSON) |
 
 Both triggers combine; tsdown selects the base module settings, and Vitest adds its
 typecheck inputs. Base `include` is always `["src"]`. Typecheck always extends
@@ -765,13 +766,13 @@ These lists are owned whole-array values, not additive merges of owner paths.
 
 All compiler options explicitly present in each seed are enforced on update. Base options
 are `jsx: react-jsx`, `sourceMap: true`, `target: ES2022`, `lib: ["ES2022"]`,
-`strict: true`, `esModuleInterop: true`, `skipLibCheck: true`,
+`types: ["node"]`, `strict: true`, `esModuleInterop: true`, `skipLibCheck: true`,
 `forceConsistentCasingInFileNames: true`, `outDir: dist`, `rootDir: src`, and the module
 pair above. The Node baseline is 24; ES2022 is a conservative target, not a minimum
 consumer runtime promise. Typecheck enforces `noEmit`, `noImplicitReturns`,
 `noUncheckedIndexedAccess`, `noUncheckedSideEffectImports`, `noImplicitOverride`,
 `noPropertyAccessFromIndexSignature`, and `exactOptionalPropertyTypes` as true, plus
-its conditional module pair and rootDir. Other options such as `paths`, `types`,
+its conditional module pair, rootDir, and ambient types. Other options such as `paths`,
 `declaration`, and project references survive. `isolatedDeclarations` is not enforced;
 it is an optional tsdown optimization. Malformed JSONC, duplicate keys, non-object roots
 or compilerOptions, and malformed package scripts/devDependencies fail before a result
@@ -890,14 +891,13 @@ there is no no-testing implementation or testing opt-out.
 
 - Bun owns `test`, `test:watch`, and `test:coverage` with
   `bun test --pass-with-no-tests`, `bun test --watch --pass-with-no-tests`, and
-  `bun test --coverage --pass-with-no-tests`. It needs no test-runner dependency
-  or config.
-- **init** is an explicit no-op: "Bun's built-in test runner needs no dependency or
-  configuration seed; update maintains the test scripts, and test sources are
-  owner-managed." Top-level init includes the update pass.
+  `bun test --coverage --pass-with-no-tests`. It seeds `@types/bun` at the Bun
+  runtime pin for typechecking tests, but needs no test-runner dependency or config.
+- **init** is a file no-op: the package contribution seeds `@types/bun` and the test
+  scripts; test sources are owner-managed. Top-level init includes the update pass.
 - **update** is a no-op for files. Its package.json contribution (§3) enforces the
-  three test scripts. Update never reads or changes `bunfig.toml`, test
-  sources, or lockfiles.
+  three test scripts and keeps `@types/bun` fresh. Update never reads or changes
+  `bunfig.toml`, test sources, or lockfiles.
 - **validate** is an explicit no-op: "This capability owns no Bun test configuration
   to validate. Test execution belongs to the test workflow; comparing scripts to
   defaults would check policy, not tool acceptance."

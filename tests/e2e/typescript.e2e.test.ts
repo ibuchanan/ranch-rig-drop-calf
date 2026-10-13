@@ -102,6 +102,7 @@ for (const kind of ["library", "forge-app", "tool", "agent-skill"]) {
       expect(text).toContain("/* owner alias */");
       const parsed = ts.parseConfigFileTextToJson("tsconfig.json", text).config;
       expect(parsed.compilerOptions.strict).toBe(true);
+      expect(parsed.compilerOptions.types).toEqual(["node"]);
       expect(parsed.compilerOptions.paths).toEqual({ "@/*": ["src/*"] });
       expect(parsed.compilerOptions.moduleResolution).toBe(
         kind === "library" ? "Bundler" : "Node",
@@ -149,9 +150,10 @@ for (const kind of ["library", "forge-app", "tool", "agent-skill"]) {
       expect(check.compilerOptions).toMatchObject({
         module: "CommonJS",
         moduleResolution: "Node",
-        rootDir: "src",
+        rootDir: ".",
+        types: kind === "forge-app" ? ["node"] : ["node", "bun"],
       });
-      expect(check.include).toEqual(["src"]);
+      expect(check.include).toEqual(["src", "test", "tests"]);
     } finally {
       rmSync(temporary, { recursive: true, force: true });
     }

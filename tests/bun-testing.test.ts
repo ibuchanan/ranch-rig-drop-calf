@@ -7,6 +7,7 @@ import { bunTesting } from "../src/bun-testing.ts";
 import { validateCapabilities } from "../src/capability.ts";
 import { DropCalf } from "../src/index.ts";
 import { createBlueprint } from "../src/project.ts";
+import { TOOL_VERSIONS } from "../src/versions.ts";
 import { runInit, runUpdate } from "./capability-fixtures.ts";
 import { mockDirectory, mockModuleSource } from "./module-source.ts";
 
@@ -25,7 +26,9 @@ test("Bun init and validate are explicit no-ops, without seeding or executing ow
   expect(typeof capability.validate).not.toBe("function");
   runInit(capability, project);
   expect(project.packageJson.scripts).toEqual(scripts);
-  expect(project.packageJson.devDependencies).toEqual({});
+  expect(project.packageJson.devDependencies).toEqual({
+    "@types/bun": TOOL_VERSIONS.bun,
+  });
   expect(project.files.size).toBe(0);
   expect(project.templates.map((template) => template.path)).toEqual([]);
   // Any attempt to read the repository must fail; no-op validation needs no I/O.

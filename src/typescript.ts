@@ -85,9 +85,13 @@ export function reconcileTypeScriptConfig(
     ...(modern ? { module: "ESNext", moduleResolution: "Bundler" } : {}),
     ...(check
       ? {
-          rootDir: vitest || tsdown ? "." : "src",
+          rootDir: ".",
           module: modern ? "ESNext" : "CommonJS",
           moduleResolution: modern ? "Bundler" : "Node",
+          types: [
+            "node",
+            ...(Object.hasOwn(devDependencies, "@types/bun") ? ["bun"] : []),
+          ],
         }
       : {}),
   };
@@ -96,7 +100,12 @@ export function reconcileTypeScriptConfig(
   );
   fields.push([
     ["include"],
-    ["src", ...(check && vitest ? ["test", "tests", "vitest.config.ts"] : [])],
+    [
+      "src",
+      ...(check
+        ? ["test", "tests", ...(vitest ? ["vitest.config.ts"] : [])]
+        : []),
+    ],
   ]);
   if (check) {
     fields.push([["extends"], "./tsconfig.json"]);

@@ -86,7 +86,7 @@ test("composed Forge update preserves missing Vitest declaration and TypeScript 
       await output.file("tsconfig.typecheck.json").contents(),
     );
     expect(check.compilerOptions.moduleResolution).toBe("Node");
-    expect(check.include).toEqual(["src"]);
+    expect(check.include).toEqual(["src", "test", "tests"]);
     expect(await module.update(output, "forge-app")).toEqual(output);
   } finally {
     empty.mockRestore();

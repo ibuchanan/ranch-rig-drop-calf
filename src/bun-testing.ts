@@ -1,4 +1,5 @@
 import { type Capability, noOp } from "./capability.ts";
+import { TOOL_VERSIONS } from "./versions.ts";
 
 export const BUN_TEST_SCRIPTS = {
   test: "bun test --pass-with-no-tests",
@@ -19,12 +20,15 @@ export function bunTesting(): Capability {
         },
       ],
     },
-    packageJson: { policy: { scripts: BUN_TEST_SCRIPTS } },
+    packageJson: {
+      seed: { devDependencies: { "@types/bun": TOOL_VERSIONS.bun } },
+      policy: { scripts: BUN_TEST_SCRIPTS },
+    },
     init: noOp(
-      "Bun's built-in test runner needs no dependency or configuration seed; its package.json contribution supplies the test scripts, and test sources are owner-managed.",
+      "Seed @types/bun for test typechecking and supply test scripts; test sources remain owner-managed.",
     ),
     update: noOp(
-      "Bun testing owns no files; its package.json contribution enforces the test/watch/coverage scripts, preserving owner test sources.",
+      "Bun testing owns no files; its package.json contribution enforces test scripts and keeps @types/bun fresh, preserving owner test sources.",
     ),
     validate: noOp(
       "This capability owns no Bun test configuration to validate. Test execution belongs to the test workflow; comparing scripts to defaults would check policy, not tool acceptance.",

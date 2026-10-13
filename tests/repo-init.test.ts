@@ -68,9 +68,9 @@ test.each(["library", "forge-app", "tool", "agent-skill"])(
         expect(check.extends).toBe("./tsconfig.json");
         expect(check.include).toEqual([
           "src",
-          ...(kind === "forge-app"
-            ? ["test", "tests", "vitest.config.ts"]
-            : []),
+          "test",
+          "tests",
+          ...(kind === "forge-app" ? ["vitest.config.ts"] : []),
         ]);
         expect(await result.file(".editorconfig").contents()).toBe(
           biomeTemplates().get(".editorconfig") ?? "",
