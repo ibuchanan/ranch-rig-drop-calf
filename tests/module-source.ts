@@ -6,6 +6,7 @@ import { BIOME_TEMPLATE } from "../src/biome.ts";
 import { CATALOG_TEMPLATE } from "../src/catalog.ts";
 import { CHANGELOG_TEMPLATE } from "../src/changelog.ts";
 import { EVALS_TEMPLATE } from "../src/evals.ts";
+import { FALLOW_TEMPLATE } from "../src/fallow.ts";
 import { GIT_HOOKS_TEMPLATE } from "../src/git-hooks.ts";
 import { PINNED_GITIGNORE } from "../src/gitignore.ts";
 import { OSS_ASSETS } from "../src/oss.ts";
@@ -14,6 +15,7 @@ import { TYPESCRIPT_TEMPLATE } from "../src/typescript.ts";
 import { mockContainer } from "./container-source.ts";
 import {
   biomeTemplates,
+  fallowTemplates,
   catalogTemplates,
   changelogTemplates,
   docsTemplates,
@@ -131,6 +133,7 @@ export function mockModuleSource(
     ["templates/docs", tree(docs)],
     [TYPESCRIPT_TEMPLATE, tree(typeScript)],
     [BIOME_TEMPLATE, tree(biome)],
+    [FALLOW_TEMPLATE, tree(fallowTemplates())],
     [CHANGELOG_TEMPLATE, tree(changelog)],
     [GIT_HOOKS_TEMPLATE, tree(gitHooks)],
     [SECRETS_TEMPLATE, tree(secrets, secretsPermissions)],

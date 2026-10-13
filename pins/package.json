@@ -11,6 +11,7 @@
     "@forge-ahead/prelint": "github:ibuchanan/tool-forge-prelint-ast-grep",
     "@forge/cli": "14.1.0",
     "cspell": "10.3.2",
+    "fallow": "3.33.1",
     "git-cliff": "2.14.2",
     "lefthook": "2.1.9",
     "markdownlint-cli2": "0.23.3",

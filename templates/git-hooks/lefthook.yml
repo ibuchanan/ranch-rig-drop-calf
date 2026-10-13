@@ -11,6 +11,8 @@ lint:
       run: npm run lint:prelint --if-present
     biome:
       run: npm run lint:check --if-present
+    fallow:
+      run: npm run lint:fallow --if-present
     forge:
       run: npm run lint:forge --if-present
     typecheck:

@@ -6,6 +6,7 @@ import { CATALOG_TEMPLATE } from "../src/catalog.ts";
 import { CHANGELOG_TEMPLATE } from "../src/changelog.ts";
 import { DOCS_TEMPLATE } from "../src/docs.ts";
 import { EVALS_TEMPLATE } from "../src/evals.ts";
+import { FALLOW_TEMPLATE } from "../src/fallow.ts";
 import { GIT_HOOKS_TEMPLATE } from "../src/git-hooks.ts";
 import { PINNED_GITIGNORE } from "../src/gitignore.ts";
 import { LIBRARY_BUILD_TEMPLATE } from "../src/library-build.ts";
@@ -30,6 +31,7 @@ test.each(kinds)("%s declares only its selected template trees", (kind) => {
         DOCS_TEMPLATE,
         GIT_HOOKS_TEMPLATE,
         ...(kind === "library" ? [LIBRARY_BUILD_TEMPLATE] : []),
+        ...(["library", "tool"].includes(kind) ? [FALLOW_TEMPLATE] : []),
         ...(kind === "forge-app" ? [SECRETS_TEMPLATE, "templates/vitest"] : []),
         ...(kind === "forge-app" && preset === "all" ? [EVALS_TEMPLATE] : []),
         TYPESCRIPT_TEMPLATE,

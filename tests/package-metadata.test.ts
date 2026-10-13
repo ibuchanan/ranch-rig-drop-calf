@@ -7,6 +7,7 @@ import { CATALOG_FILE, PACKAGE_NAME, renderCatalog } from "../src/catalog.ts";
 import { CHANGELOG_COMMAND } from "../src/changelog.ts";
 import { DOCS_COMMAND } from "../src/docs.ts";
 import { ParseError } from "../src/errors.ts";
+import { FALLOW_SCRIPT } from "../src/fallow.ts";
 import { GIT_HOOKS_SCRIPTS } from "../src/git-hooks.ts";
 import { DropCalf } from "../src/index.ts";
 import { PRELINT_SCRIPTS } from "../src/prelint.ts";
@@ -119,6 +120,9 @@ test.each(kinds)(
           ...GIT_HOOKS_SCRIPTS,
           clean: "rm -rf dist",
           "lint:docs": DOCS_COMMAND,
+          ...(kind === "library" || kind === "tool"
+            ? { "lint:fallow": FALLOW_SCRIPT }
+            : {}),
           ...(kind === "library" || kind === "forge-app"
             ? { "size:check": SIZE_LIMIT_COMMAND }
             : {}),

@@ -32,6 +32,12 @@ test.each(["library", "forge-app", "tool", "agent-skill"])(
       expect(Boolean(scripts.changelog)).toBe(kind !== "agent-skill");
       expect(Boolean(scripts["lint:forge"])).toBe(kind === "forge-app");
       expect(Boolean(scripts["lint:prelint"])).toBe(kind === "forge-app");
+      expect(Boolean(scripts["lint:fallow"])).toBe(
+        kind === "library" || kind === "tool",
+      );
+      expect(await result.exists(".fallowrc.jsonc")).toBe(
+        kind === "library" || kind === "tool",
+      );
       expect(Boolean(scripts["lint:check"])).toBe(true);
       expect(Boolean(scripts["forge:deploy"])).toBe(kind === "forge-app");
       if (kind === "library") expect(packageJson.main).toBe("dist/index.mjs");

@@ -83,6 +83,9 @@ test.each(cases)(
       expect(existsSync(join(output, "promptfooconfig.yaml"))).toBe(
         profile === "forge-app" && preset === "all",
       );
+      expect(existsSync(join(output, ".fallowrc.jsonc"))).toBe(
+        profile === "library" || profile === "tool",
+      );
       expect(existsSync(join(input, "package.json"))).toBe(false);
 
       const ownerFiles = new Map([

@@ -9,6 +9,7 @@ import { cleanBuild } from "./clean-build.ts";
 import { docsLinting } from "./docs.ts";
 import { InvalidOptionsError } from "./errors.ts";
 import { evals } from "./evals.ts";
+import { fallow } from "./fallow.ts";
 import { forgeAhead } from "./forge-ahead.ts";
 import { forgeManifest } from "./forge-manifest.ts";
 import { gitHooks } from "./git-hooks.ts";
@@ -39,6 +40,7 @@ export const PROFILES: Record<string, Capability[]> = {
     libraryBuild(),
     typeScriptToolchain({ ownsBuild: false }),
     bunTesting(),
+    fallow(),
     bundleSize("Library bundle", "dist/index.mjs"),
     cleanBuild(),
     todo(),
@@ -86,6 +88,7 @@ export const PROFILES: Record<string, Capability[]> = {
     biomeToolchain(),
     typeScriptToolchain(),
     bunTesting(),
+    fallow(),
     cleanBuild(),
     todo(),
     docsLinting(),

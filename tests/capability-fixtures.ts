@@ -14,6 +14,9 @@ export const kinds = ["library", "forge-app", "tool", "agent-skill"];
 export const selections = (kind: string) => [
   { withFunctions: [], withoutFunctions: [], preset: undefined },
   { withFunctions: [], withoutFunctions: [], preset: "all" },
+  ...(["library", "tool"].includes(kind)
+    ? [{ withFunctions: [], withoutFunctions: ["fallow"], preset: undefined }]
+    : []),
   ...(kind === "forge-app"
     ? [
         { withFunctions: ["evals"], withoutFunctions: [], preset: undefined },

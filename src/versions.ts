@@ -21,6 +21,7 @@ export const TOOL_VERSIONS = {
   lefthook: pin.lefthook,
   astGrep: pin["@ast-grep/cli"],
   forgePrelint: pin["@forge-ahead/prelint"],
+  fallow: pin.fallow,
   forgeAheadApiTypes: pin["@forge-ahead/atlassian-api-types"],
   forgeAheadErrors: pin["@forge-ahead/errors"],
   forgeAheadLogging: pin["@forge-ahead/logging"],
