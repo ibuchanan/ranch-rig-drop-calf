@@ -1039,11 +1039,10 @@ configured provider, not a test of the deployed Rovo runtime.
 The `size-limit` capability is selected for `library` and `forge-app`. It owns
 `devDependencies["size-limit"]`, `devDependencies["@size-limit/file"]`, and
 `scripts["size:check"]` (`npm run build && size-limit`). Both tools use the same exact
-`TOOL_VERSIONS.sizeLimit` pin (`13.1.1`); the file adapter declares an exact peer
+`TOOL_VERSIONS.sizeLimit` pin (`14.2.0`); the file adapter declares an exact peer
 version, so separate pins or independently resolving ranges can be incompatible.
-Version 13 requires Node `^22.18.0 || ^24.0.0 || >=26.0.0`, which the seeded
-Node 24 baseline satisfies. Version 12 required Node 20, 22, or 24+, and
-made `jiti` an optional peer; version 13 no longer declares that peer.
+Version 14 requires Node `^22.19.0 || ^24.5.0 || >=26.0.0`, which the seeded
+Node 24 baseline satisfies when installed at version 24.5 or later.
 
 - **init** seeds both tool pins, the command, and one `package.json["size-limit"]`
   budget with a `10 kB` limit: `Library bundle` at `dist/index.mjs` for libraries,
@@ -1065,7 +1064,7 @@ made `jiti` an optional peer; version 13 no longer declares that peer.
   tools, resolving paths, or measuring output. It does not establish configuration
   acceptance, build success, or budget compliance.
 
-Size Limit 13.1.1's CLI loads configuration and measures built files as one
+Size Limit's CLI loads configuration and measures built files as one
 workflow; it does not provide a supported configuration-only validation step
 for this capability. Path comparison with the seed would be policy compliance,
 not tool acceptance. The explicit size workflow builds before measuring and

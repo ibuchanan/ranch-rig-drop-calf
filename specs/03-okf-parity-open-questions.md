@@ -98,7 +98,7 @@ Drop Calf project kind. Until a question is decided, the current behavior in
   selects Fallow by default for `library` and `tool`, permits opting out, and
   excludes `forge-app` and `agent-skill` for now.
 - **15 — Size Limit pin:** Both `size-limit` and `@size-limit/file` now use the
-  same `13.1.1` pin, and the version/Node/CLI notes and freshness policy are in
+  same pin, and the version/Node/CLI notes and freshness policy are in
   [`02-project-functions.md`](02-project-functions.md#sizecheck). The original
   11-to-13 question is stale.
 - **16 — Changelog mode:** The enforced command regenerates `CHANGELOG.md`

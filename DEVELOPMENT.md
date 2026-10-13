@@ -390,7 +390,17 @@ weekly pull requests against `/pins`; to check locally, run:
 bun run pins:outdated
 ```
 
-After changing a pin, run `bun test --update-snapshots` and review the diff.
+To upgrade only the pins you have reviewed, filter `npm-check-updates` by package
+name; do not sweep intentional compiler/runtime pins along with tool updates:
+
+```bash
+bunx npm-check-updates --packageFile pins/package.json --filter 'cspell,lefthook' -u
+```
+
+For paired tools (such as `size-limit` and `@size-limit/file`), update their
+shared pin together. After changing a pin, run `bun test --update-snapshots` and
+review the diff. Validate affected tool workflows before adopting the new pin
+in generated repositories.
 
 On update, freshness raises declared dependencies that are behind a pin to it,
 never downgrades, and skips GitHub references.
