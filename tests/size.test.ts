@@ -84,8 +84,8 @@ test("init seeds the selected budget and update maintains only the selected pair
             custom: "keep",
           },
           devDependencies: {
-            "size-limit": "0.0.1",
-            "@size-limit/file": "0.0.1",
+            "size-limit": "11.2.0",
+            "@size-limit/file": "11.2.0",
             owner: "1",
           },
           dependencies: { keep: "1" },
@@ -188,6 +188,31 @@ test.each([
     ).toBe(output);
   },
 );
+
+test("update leaves owner-chosen newer Size Limit versions untouched", async () => {
+  const input = mockDirectory(
+    new Map([
+      [
+        "package.json",
+        JSON.stringify({
+          devDependencies: {
+            "size-limit": "^14.0.0",
+            "@size-limit/file": "^14.0.0",
+          },
+        }),
+      ],
+    ]),
+  );
+  const output = await runUpdate(bundleSize("sample", "dist/index.mjs"), input);
+  const pkg = JSON.parse(await output.file("package.json").contents());
+  expect(pkg.devDependencies).toEqual({
+    "size-limit": "^14.0.0",
+    "@size-limit/file": "^14.0.0",
+  });
+  expect(await runUpdate(bundleSize("sample", "dist/index.mjs"), output)).toBe(
+    output,
+  );
+});
 
 test.each(["library", "forge-app"])(
   "%s composed update preserves tuned budgets and deletion idempotently",
