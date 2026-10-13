@@ -753,8 +753,8 @@ to observe newly created tool declarations would violate top-level idempotence.
 
 | Setting | Baseline | `vitest` declared | `tsdown` declared |
 |---|---|---|---|
-| Base `module` / `moduleResolution` | `CommonJS` / `Node` | unchanged | `ESNext` / `Bundler` |
-| Typecheck `module` / `moduleResolution` | `CommonJS` / `Node` | `ESNext` / `Bundler` | `ESNext` / `Bundler` |
+| Base `module` / `moduleResolution` | `ESNext` / `Node` | unchanged | `ESNext` / `Bundler` |
+| Typecheck `module` / `moduleResolution` | `ESNext` / `Node` | `ESNext` / `Bundler` | `ESNext` / `Bundler` |
 | Typecheck `rootDir` | `.` | unchanged | unchanged |
 | Typecheck `types` | `["node"]` | unchanged | `["node", "bun"]` when `@types/bun` is declared |
 | Typecheck `include` | `["src", "test", "tests"]` | add `vitest.config.ts` | unchanged (bundler config is JSON) |
@@ -769,7 +769,15 @@ are `jsx: react-jsx`, `sourceMap: true`, `target: ES2022`, `lib: ["ES2022"]`,
 `types: ["node"]`, `strict: true`, `esModuleInterop: true`, `skipLibCheck: true`,
 `forceConsistentCasingInFileNames: true`, `outDir: dist`, `rootDir: src`, and the module
 pair above. The Node baseline is 24; ES2022 is a conservative target, not a minimum
-consumer runtime promise. Typecheck enforces `noEmit`, `noImplicitReturns`,
+consumer runtime promise. Every kind's package declares `"type": "module"`.
+The Forge app keeps that field so webpack resolves ESM-only dependencies;
+its `ESNext` / `Node` base pair emits ESM for `npm run build` and is accepted
+by Forge's ts-loader (unlike `moduleResolution: Bundler`). Size Limit reads
+that ESM from `dist/**/*.js`. Tools and agent skills likewise emit ESM from
+`src` into `dist` for their module packages. Libraries instead use tsdown's
+ESM `.mjs` and CommonJS `.cjs` outputs with corresponding conditional exports
+and declaration files; their Size Limit entry is `dist/index.mjs`.
+Typecheck enforces `noEmit`, `noImplicitReturns`,
 `noUncheckedIndexedAccess`, `noUncheckedSideEffectImports`, `noImplicitOverride`,
 `noPropertyAccessFromIndexSignature`, and `exactOptionalPropertyTypes` as true, plus
 its conditional module pair, rootDir, and ambient types. Other options such as `paths`,
@@ -848,7 +856,9 @@ repository after initialization; there is no Drop Calf-maintained content block.
 The seed is deliberately short and action-oriented: manifest/code alignment,
 invocation-scoped functions and async work, Forge storage, UI Kit versus Custom
 UI, Bridge/resolver boundaries, explicit web-trigger/remote wiring, declarative
-egress, and user-versus-app authorization. It omits directory tours, generic
+egress, Forge's `"type": "module"` requirement for ESM-only dependencies
+and its compatible `ESNext` / `Node` deploy-time compiler pair, and
+user-versus-app authorization. It omits directory tours, generic
 coding standards, setup tutorials, and a version-sensitive CLI flag catalog.
 
 The command guidance names generated `npm run check`, `typecheck`, `test`, and

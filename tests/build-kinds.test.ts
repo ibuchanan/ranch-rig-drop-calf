@@ -1,5 +1,11 @@
 import { expect, test } from "bun:test";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import {
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { join } from "node:path";
 import ts from "typescript";
 import { buildProject } from "../src/profiles.ts";
@@ -72,6 +78,7 @@ test("generated TypeScript configs typecheck and compile a sample entry", () => 
   try {
     for (const kind of ["library", "forge-app", "tool", "agent-skill"]) {
       const project = buildProject(kind, "sample", "tester");
+      expect(project.packageJson.type).toBe("module");
       const folder = join(root, kind);
       mkdirSync(join(folder, "src"), { recursive: true });
       writeFileSync(
@@ -121,8 +128,12 @@ test("generated TypeScript configs typecheck and compile a sample entry", () => 
             .getPreEmitDiagnostics(program)
             .map((d) => ts.flattenDiagnosticMessageText(d.messageText, " ")),
         ).toEqual([]);
-        if (path === "tsconfig.json")
+        if (path === "tsconfig.json") {
           expect(program.emit().emitSkipped).toBe(false);
+          expect(readFileSync(join(folder, "dist/index.js"), "utf8")).toContain(
+            "export const value",
+          );
+        }
       }
     }
   } finally {

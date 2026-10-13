@@ -148,7 +148,7 @@ for (const kind of ["library", "forge-app", "tool", "agent-skill"]) {
           .devDependencies,
       ).not.toContainAnyKeys(["vitest", "tsdown"]);
       expect(check.compilerOptions).toMatchObject({
-        module: "CommonJS",
+        module: "ESNext",
         moduleResolution: "Node",
         rootDir: ".",
         types: kind === "forge-app" ? ["node"] : ["node", "bun"],

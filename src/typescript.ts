@@ -86,7 +86,7 @@ export function reconcileTypeScriptConfig(
     ...(check
       ? {
           rootDir: ".",
-          module: modern ? "ESNext" : "CommonJS",
+          module: "ESNext",
           moduleResolution: modern ? "Bundler" : "Node",
           types: [
             "node",

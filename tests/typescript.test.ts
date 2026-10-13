@@ -43,9 +43,11 @@ for (const dependencies of [
         await output.file("tsconfig.typecheck.json").contents(),
       );
       const modern = "vitest" in dependencies || "tsdown" in dependencies;
+      expect(base.compilerOptions.module).toBe("ESNext");
       expect(base.compilerOptions.moduleResolution).toBe(
         "tsdown" in dependencies ? "Bundler" : "Node",
       );
+      expect(check.compilerOptions.module).toBe("ESNext");
       expect(check.compilerOptions.moduleResolution).toBe(
         modern ? "Bundler" : "Node",
       );
@@ -102,6 +104,7 @@ test.each(Object.entries(initPolicy))(
       expect(base.compilerOptions).toMatchObject({
         strict: true,
         sourceMap: true,
+        module: "ESNext",
         types: ["node"],
         moduleResolution: policy.bundler ? "Bundler" : "Node",
       });
@@ -222,7 +225,7 @@ test("owner comments, unrelated settings and package fields survive; trigger rem
       await removed.file("tsconfig.typecheck.json").contents(),
     );
     expect(check.compilerOptions).toMatchObject({
-      module: "CommonJS",
+      module: "ESNext",
       moduleResolution: "Node",
       rootDir: ".",
     });

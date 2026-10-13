@@ -18,6 +18,9 @@ This repository is an Atlassian Forge app.
   Web triggers and remotes require explicit manifest wiring.
 - Declare external network access in the manifest; do not assume unrestricted
   egress.
+- Keep \`"type": "module"\` in \`package.json\`: Forge's webpack bundler needs it
+  to resolve ESM-only dependencies. Keep deploy-time \`tsconfig.json\` on
+  \`module: ESNext\` and \`moduleResolution: Node\` (not Bundler).
 - Prefer \`asUser()\` for user-driven product API calls. Use \`asApp()\` only when
   app-level access is needed, and enforce caller authorization for
   user-triggered operations.

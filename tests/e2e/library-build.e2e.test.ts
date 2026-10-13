@@ -47,6 +47,8 @@ test("generated library builds ESM/CJS, maps and both declaration formats for mu
         "--ignore-scripts",
         `tsdown@${TOOL_VERSIONS.tsdown}`,
         `typescript@${TOOL_VERSIONS.typescript}`,
+        `size-limit@${TOOL_VERSIONS.sizeLimit}`,
+        `@size-limit/file@${TOOL_VERSIONS.sizeLimit}`,
       ],
       { stdio: "pipe", timeout: 120_000 },
     );
@@ -65,6 +67,11 @@ test("generated library builds ESM/CJS, maps and both declaration formats for mu
     config.entry["testing/helper"] = "./src/testing/helper.ts";
     writeFileSync(join(root, "tsdown.config.json"), JSON.stringify(config));
     execFileSync("bun", ["run", "--bun", "build"], {
+      cwd: root,
+      stdio: "pipe",
+      timeout: 120_000,
+    });
+    execFileSync("bun", ["run", "--bun", "size:check"], {
       cwd: root,
       stdio: "pipe",
       timeout: 120_000,

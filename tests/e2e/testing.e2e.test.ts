@@ -38,9 +38,14 @@ beforeAll(() => {
     JSON.stringify({
       private: true,
       devDependencies: Object.fromEntries(
-        ["vitest", "@vitest/coverage-v8", "typescript", "@types/node"].map(
-          (name) => [name, deps[name]],
-        ),
+        [
+          "vitest",
+          "@vitest/coverage-v8",
+          "typescript",
+          "@types/node",
+          "size-limit",
+          "@size-limit/file",
+        ].map((name) => [name, deps[name]]),
       ),
     }),
   );
@@ -164,6 +169,8 @@ test.each(["empty", "initialized"])(
     );
     const build = run(app, ["run", "build"]);
     expect(build.status, build.stdout + build.stderr).toBe(0);
+    const size = run(app, ["run", "size:check"]);
+    expect(size.status, size.stdout + size.stderr).toBe(0);
   },
   180_000,
 );

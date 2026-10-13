@@ -6,7 +6,7 @@
 
     /* Runtime baseline: Node 24; ES2022 remains a conservative target alongside the Forge Webpack defaults */
     "target": "ES2022",
-    "module": "CommonJS",
+    "module": "ESNext",
     "moduleResolution": "Node",
     "lib": ["ES2022"],
     "types": ["node"],
