@@ -12,7 +12,7 @@ import { NODE_MAJOR, TOOL_VERSIONS } from "./versions.ts";
  * The engines option decides whether update removes or preserves owner declarations.
  */
 export const NODE_NVMRC = `${NODE_MAJOR}\n`;
-export const NPM_REGISTRY = "https://registry.npmjs.org/";
+const NPM_REGISTRY = "https://registry.npmjs.org/";
 export const NPMRC = `# Use the public npm registry (not the default for internal Atlassians)\nregistry=${NPM_REGISTRY}\n`;
 /** Whole-file pins and catalog license are policy; dependencies remain owner-managed. */
 async function updateNode(directory: Directory): Promise<Directory> {

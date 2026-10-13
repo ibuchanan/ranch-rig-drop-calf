@@ -10,7 +10,7 @@ import {
 } from "./catalog.ts";
 import { templateTree } from "./templates.ts";
 
-export const OSS_LICENSE = "Apache-2.0";
+const OSS_LICENSE = "Apache-2.0";
 
 /**
  * Upstream of the OSS templates. It is a private Bitbucket repository, so it

@@ -25,7 +25,7 @@ import {
   vitestTemplates,
 } from "./templates-source.ts";
 
-export const moduleTemplates = () =>
+const moduleTemplates = () =>
   new Map<string, string>(
     OSS_ASSETS.map((path) => [path, `fixture for ${path}`]),
   );

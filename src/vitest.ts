@@ -4,8 +4,8 @@ import { templateTree } from "./templates.ts";
 import { bunTools, REPOSITORY, runTool, TOOLS } from "./tool-run.ts";
 import { TOOL_VERSIONS } from "./versions.ts";
 
-export const VITEST_TEMPLATE = "templates/vitest";
-export const VITEST_CONFIG = "vitest.config.ts";
+const VITEST_TEMPLATE = "templates/vitest";
+const VITEST_CONFIG = "vitest.config.ts";
 export const VITEST_SCRIPTS = {
   test: "vitest run --passWithNoTests",
   "test:watch": "vitest watch --passWithNoTests",

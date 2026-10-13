@@ -39,7 +39,7 @@ export type CatalogSeed = {
 };
 
 /** Parse a single catalog mapping, rejecting malformed YAML and duplicate keys. */
-export function catalogDocument(contents: string) {
+function catalogDocument(contents: string) {
   const document = parseDocument(contents);
   if (document.errors.length)
     throw new ParseError(
@@ -103,7 +103,7 @@ export function renderCatalog(template: string, seed: CatalogSeed): string {
   return document.toString({ lineWidth: 0 });
 }
 
-export async function copyCatalog(
+async function copyCatalog(
   destination: Directory,
   source: Directory,
   seed: CatalogSeed,

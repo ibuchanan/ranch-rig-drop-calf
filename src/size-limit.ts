@@ -2,13 +2,13 @@ import { type Capability, noOp } from "./capability.ts";
 import { TOOL_VERSIONS } from "./versions.ts";
 
 /** The budget is seeded here, then owner-managed independently of tool updates. */
-export const SIZE_LIMIT_FIELD = "size-limit";
+const SIZE_LIMIT_FIELD = "size-limit";
 
 /** Build first, then measure: a stale `dist/` would budget the wrong bytes. */
 export const SIZE_LIMIT_COMMAND = "npm run build && size-limit";
 
 /** The budget every generated project starts with. */
-export const SIZE_LIMIT_LIMIT = "10 kB";
+const SIZE_LIMIT_LIMIT = "10 kB";
 
 /** Seed an owner budget; maintain only the paired tools and measurement command. */
 export function bundleSize(name: string, path: string): Capability {

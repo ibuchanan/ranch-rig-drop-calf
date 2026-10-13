@@ -1,6 +1,6 @@
 import { type Capability, noOp } from "./capability.ts";
 
-export const CLEAN_BUILD_COMMAND = "rm -rf dist";
+const CLEAN_BUILD_COMMAND = "rm -rf dist";
 
 export function cleanBuild(): Capability {
   return {

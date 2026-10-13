@@ -6,8 +6,8 @@ export const AST_GREP_PACKAGE = "@ast-grep/cli";
 export const PRELINT_PACKAGE = "@forge-ahead/prelint";
 
 /** The scan exclusions are enforced as part of the canonical script. */
-export const PRELINT_GLOBS = ["!specs/**", "!node_modules/**"] as const;
-export const PRELINT_CONFIG = `./node_modules/${PRELINT_PACKAGE}/sgconfig.ecosol.yml`;
+const PRELINT_GLOBS = ["!specs/**", "!node_modules/**"] as const;
+const PRELINT_CONFIG = `./node_modules/${PRELINT_PACKAGE}/sgconfig.ecosol.yml`;
 export const PRELINT_COMMAND = `ast-grep scan ${PRELINT_GLOBS.map((glob) => `--globs '${glob}'`).join(" ")} --config ${PRELINT_CONFIG}`;
 export const PRELINT_SCRIPTS = {
   "lint:prelint": PRELINT_COMMAND,
