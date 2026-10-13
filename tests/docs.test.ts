@@ -130,8 +130,38 @@ test.each(["library", "forge-app", "tool", "agent-skill"])(
         "tester",
         "sample",
       );
-      for (const [path, text] of docsTemplates())
-        expect(await initialized.file(path).contents()).toBe(text);
+      for (const [path, text] of docsTemplates()) {
+        const actual = await initialized.file(path).contents();
+        if (path === "DEVELOPMENT.md")
+          expect(actual.startsWith(text)).toBe(true);
+        else expect(actual).toBe(text);
+      }
+      const development = await initialized.file("DEVELOPMENT.md").contents();
+      expect(development).toContain("## Repository layout\n");
+      const bullets = development
+        .split("## Repository layout\n")[1]
+        ?.trim()
+        .split("\n");
+      const shared = [".atlassian/", "src/", "docs/", "specs/", "dist/"];
+      const expected =
+        kind === "forge-app"
+          ? [...shared, "test/", "scripts/"]
+          : kind === "library"
+            ? [...shared, "tests/", "scripts/"]
+            : [...shared, "tests/"];
+      expect(
+        bullets?.map((line) => line.match(/^- `([^`]+)`: .+\.$/)?.[1]),
+      ).toEqual(expected);
+      expect(development).toContain(
+        "`specs/`: Specifications and reference material; excluded from Biome checks.",
+      );
+      expect(development).toContain(
+        "`dist/`: Build output; ignored by Git and excluded from Biome checks.",
+      );
+      if (kind === "forge-app") {
+        expect(development).toContain("Forge app tests (Vitest)");
+        expect(development).toContain("Forge setup and deployment helpers");
+      }
       const pkg = JSON.parse(await initialized.file("package.json").contents());
       pkg.scripts["lint:docs"] = "owner command";
       pkg.devDependencies.cspell = "0.0.1";
@@ -161,6 +191,33 @@ test.each(["library", "forge-app", "tool", "agent-skill"])(
     }
   },
 );
+
+test("Forge eval selection includes prompts only when selected", async () => {
+  const source = mockModuleSource();
+  const empty = spyOn(dag, "directory").mockImplementation(() =>
+    mockDirectory(),
+  );
+  try {
+    const module = new DropCalf();
+    for (const selected of [false, true]) {
+      const initialized = await module.init(
+        mockDirectory(),
+        "forge-app",
+        "tester",
+        "sample",
+        "",
+        selected ? ["evals"] : [],
+      );
+      const development = await initialized.file("DEVELOPMENT.md").contents();
+      expect(
+        development.includes("- `prompts/`: Prompt templates for evaluations."),
+      ).toBe(selected);
+    }
+  } finally {
+    empty.mockRestore();
+    source.mockRestore();
+  }
+});
 
 test("validation uses selected tools and content-free commands with a read-only repository", async () => {
   const input = mockDirectory(

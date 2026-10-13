@@ -1,5 +1,6 @@
 import type { Directory } from "@dagger.io/dagger";
 import { type Capability, noOp, type Validation } from "./capability.ts";
+import { EVALS_TEMPLATE } from "./evals.ts";
 import { templateTree } from "./templates.ts";
 import { bunTools, REPOSITORY, runTool } from "./tool-run.ts";
 import { TOOL_VERSIONS } from "./versions.ts";
@@ -61,7 +62,37 @@ async function validateDocs(directory: Directory): Promise<Validation> {
   return { status: "validated" };
 }
 
-export function docsLinting(): Capability {
+type DocsLayout = {
+  testDirectory: string;
+  testPurpose: string;
+  scriptsPurpose?: string;
+};
+
+const commonLayout = [
+  "- `.atlassian/`: Repository ownership metadata.",
+  "- `src/`: TypeScript source code.",
+  "- `docs/`: Diataxis guides, reference, explanations, and tutorials.",
+  "- `specs/`: Specifications and reference material; excluded from Biome checks.",
+  "- `dist/`: Build output; ignored by Git and excluded from Biome checks.",
+];
+
+function repositoryLayout(
+  { testDirectory, testPurpose, scriptsPurpose }: DocsLayout,
+  evaluations: boolean,
+): string {
+  const lines = [...commonLayout, `- \`${testDirectory}/\`: ${testPurpose}.`];
+  if (scriptsPurpose) lines.push(`- \`scripts/\`: ${scriptsPurpose}.`);
+  if (evaluations)
+    lines.push("- `prompts/`: Prompt templates for evaluations.");
+  return `${lines.join("\n")}\n`;
+}
+
+export function docsLinting(
+  layout: DocsLayout = {
+    testDirectory: "tests",
+    testPurpose: "Bun tests for source code and workflows",
+  },
+): Capability {
   return {
     name: "docs",
     documentation: {
@@ -93,7 +124,20 @@ export function docsLinting(): Capability {
       },
     },
     init(project) {
-      project.templates.push(templateTree(DOCS_TEMPLATE));
+      project.templates.push(
+        templateTree(DOCS_TEMPLATE, async (destination, source) => {
+          const seeded = destination.withDirectory(".", source);
+          const path = "DEVELOPMENT.md";
+          const contents = await source.file(path).contents();
+          const evaluations = project.templates.some(
+            (template) => template.path === EVALS_TEMPLATE,
+          );
+          return seeded.withNewFile(
+            path,
+            `${contents}\n## Repository layout\n\n${repositoryLayout(layout, evaluations)}`,
+          );
+        }),
+      );
     },
     update: noOp(
       "Docs configuration and documents are owner-managed after init, including deletions; its package.json contribution enforces lint:docs and keeps the seeded tool dependencies fresh.",

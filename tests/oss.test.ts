@@ -226,9 +226,13 @@ describe("pinned OSS templates", () => {
         expect(writes.get("CODE_OF_CONDUCT.md")).toBe(
           ossTemplates().get("CODE_OF_CONDUCT.md"),
         );
-        expect(writes.get("DEVELOPMENT.md")).toBe(
-          docsTemplates().get("DEVELOPMENT.md"),
-        );
+        expect(
+          writes
+            .get("DEVELOPMENT.md")
+            ?.startsWith(
+              docsTemplates().get("DEVELOPMENT.md") ?? "missing docs template",
+            ),
+        ).toBe(true);
         const seeded = new Map([
           ...biomeTemplates(),
           ...[...typescriptTemplates()].filter(
@@ -244,7 +248,8 @@ describe("pinned OSS templates", () => {
           ...(kind === "agent-skill" ? [] : changelogTemplates()),
         ]);
         for (const [path, contents] of seeded)
-          expect(writes.get(path)).toBe(contents);
+          if (path !== "DEVELOPMENT.md")
+            expect(writes.get(path)).toBe(contents);
         expect(writes.has("cliff.toml")).toBe(kind !== "agent-skill");
         expect(writes.has("CHANGELOG.md")).toBe(kind !== "agent-skill");
         if (kind === "forge-app") {
