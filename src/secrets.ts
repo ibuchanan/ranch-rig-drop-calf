@@ -156,31 +156,54 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
-/** Local structural acceptance only; never resolve values, run helpers, or contact Forge. */
-async function validateSecrets(directory: Directory): Promise<Validation> {
-  if (!(await directory.exists("secretspec.toml")))
-    return { status: "skipped", reason: "secretspec.toml is missing" };
-  let config: Record<string, unknown>;
+function parseSecretspec(contents: string): Record<string, unknown> {
   try {
-    config = parseToml(await directory.file("secretspec.toml").contents());
+    return parseToml(contents);
   } catch {
     // Parser diagnostics can include source lines; declarations may hold defaults.
     throw new Error("secretspec.toml: invalid TOML");
   }
+}
+
+function checkProject(project: unknown): void {
   if (
-    !isRecord(config.project) ||
-    typeof config.project.name !== "string" ||
-    !config.project.name.trim() ||
-    config.project.revision !== "1.0"
+    !isRecord(project) ||
+    typeof project.name !== "string" ||
+    !project.name.trim() ||
+    project.revision !== "1.0"
   )
     throw new Error(
       'secretspec.toml: project.name must be nonempty and project.revision must be "1.0"',
     );
-  if (!isRecord(config.profiles) || !isRecord(config.profiles.default))
+}
+
+const isOptional = (value: unknown, valid: (value: unknown) => boolean) =>
+  value === undefined || valid(value);
+const isString = (value: unknown) => typeof value === "string";
+const isRequirement = (value: unknown) =>
+  typeof value === "boolean" || (Array.isArray(value) && value.every(isString));
+
+function checkDeclaration(
+  path: string,
+  declaration: Record<string, unknown>,
+): void {
+  if (!isOptional(declaration.description, isString))
+    throw new Error(`secretspec.toml: ${path}.description must be a string`);
+  if (!isOptional(declaration.required, isRequirement))
+    throw new Error(
+      `secretspec.toml: ${path}.required must be boolean or an array of group names`,
+    );
+  if (!isOptional(declaration.default, isString))
+    throw new Error(`secretspec.toml: ${path}.default must be a string`);
+}
+
+/** Returns the default profile, which the helpers resolve allowlisted keys from. */
+function checkProfiles(profiles: unknown): Record<string, unknown> {
+  if (!isRecord(profiles) || !isRecord(profiles.default))
     throw new Error(
       "secretspec.toml: profiles.default must be a table for the helpers' default profile",
     );
-  for (const [name, profile] of Object.entries(config.profiles)) {
+  for (const [name, profile] of Object.entries(profiles)) {
     if (!isRecord(profile))
       throw new Error(`secretspec.toml: profile ${name} must be a table`);
     for (const [key, declaration] of Object.entries(profile)) {
@@ -188,51 +211,52 @@ async function validateSecrets(directory: Directory): Promise<Validation> {
         throw new Error(
           `secretspec.toml: ${name}.${key} must be a declaration table`,
         );
-      if (key === "defaults") continue;
-      if (
-        declaration.description !== undefined &&
-        typeof declaration.description !== "string"
-      )
-        throw new Error(
-          `secretspec.toml: ${name}.${key}.description must be a string`,
-        );
-      if (
-        declaration.required !== undefined &&
-        typeof declaration.required !== "boolean" &&
-        !(
-          Array.isArray(declaration.required) &&
-          declaration.required.every((group) => typeof group === "string")
-        )
-      )
-        throw new Error(
-          `secretspec.toml: ${name}.${key}.required must be boolean or an array of group names`,
-        );
-      if (
-        declaration.default !== undefined &&
-        typeof declaration.default !== "string"
-      )
-        throw new Error(
-          `secretspec.toml: ${name}.${key}.default must be a string`,
-        );
+      if (key !== "defaults") checkDeclaration(`${name}.${key}`, declaration);
     }
   }
+  return profiles.default;
+}
+
+async function readForgeVariableKeys(directory: Directory): Promise<string[]> {
   if (!(await directory.exists(FORGE_VARIABLE_KEYS)))
     throw new Error(
       `${FORGE_VARIABLE_KEYS} is missing; create an empty array or migrate the legacy allowlist`,
     );
-  const keys = parseForgeVariableKeys(
+  return parseForgeVariableKeys(
     await directory.file(FORGE_VARIABLE_KEYS).contents(),
   );
+}
+
+function checkKeysDeclared(
+  keys: readonly string[],
+  profile: Record<string, unknown>,
+): void {
   for (const key of keys)
-    if (key === "defaults" || !Object.hasOwn(config.profiles.default, key))
+    if (key === "defaults" || !Object.hasOwn(profile, key))
       throw new Error(
         `${FORGE_VARIABLE_KEYS}: ${key} is not declared in secretspec.toml profiles.default`,
       );
+}
+
+async function checkExecutables(directory: Directory): Promise<void> {
   for (const path of SECRETS_EXECUTABLES) {
     if (!(await directory.exists(path))) throw new Error(`${path} is missing`);
     if (((await directory.stat(path).permissions()) & 0o111) === 0)
       throw new Error(`${path} is not executable`);
   }
+}
+
+/** Local structural acceptance only; never resolve values, run helpers, or contact Forge. */
+async function validateSecrets(directory: Directory): Promise<Validation> {
+  if (!(await directory.exists("secretspec.toml")))
+    return { status: "skipped", reason: "secretspec.toml is missing" };
+  const config = parseSecretspec(
+    await directory.file("secretspec.toml").contents(),
+  );
+  checkProject(config.project);
+  const defaultProfile = checkProfiles(config.profiles);
+  checkKeysDeclared(await readForgeVariableKeys(directory), defaultProfile);
+  await checkExecutables(directory);
   return { status: "validated" };
 }
 
