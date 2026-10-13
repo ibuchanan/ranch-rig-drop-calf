@@ -340,8 +340,10 @@ Every kind's `biomeToolchain()` declares `templates/biome`. Generation seeds its
 host temporary directory. The template's `$schema` must match
 `TOOL_VERSIONS.biome`; the test suite checks for drift. Edit the pinned template
 to change the initialization baseline rather than rebuilding it in code.
-After init, the config is owner-managed. Update enforces the four scripts and
-keeps Biome fresh, and runs the pinned `biome migrate --write` inside a
+The seed explicitly excludes `specs` and `dist` (including nested directories)
+from Biome scans, independent of `.gitignore`. After init, the config is
+owner-managed: update does not enforce these exclusions. It enforces the four
+scripts, keeps Biome fresh, and runs the pinned `biome migrate --write` inside a
 container for an existing root `biome.json` or `biome.jsonc`. Only that config is
 copied back; Biome preserves settings/comments while migrating obsolete options.
 Missing configs stay absent, referenced/nested configs are not migrated, and

@@ -1,4 +1,7 @@
 import { expect, test } from "bun:test";
+import { spawnSync } from "node:child_process";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 import { BIOME_SCRIPTS, biomeToolchain } from "../src/biome.ts";
 import { validateCapabilities } from "../src/capability.ts";
 import { ParseError } from "../src/errors.ts";
@@ -10,6 +13,66 @@ import { mockDirectory } from "./module-source.ts";
 import { biomeTemplates } from "./templates-source.ts";
 
 const kinds = ["library", "forge-app", "tool", "agent-skill"];
+
+test.each(kinds)(
+  "%s seeded Biome checks ignore specs and dist without relying on .gitignore",
+  (kind) => {
+    const root = mkdtempSync(
+      join(import.meta.dir, "../.scratch/tmp_rovo_biome_"),
+    );
+    try {
+      const project = buildProject(kind, "sample", "tester");
+      writeFileSync(
+        join(root, "package.json"),
+        `${JSON.stringify(project.packageJson, null, 2)}\n`,
+      );
+      writeFileSync(
+        join(root, "biome.jsonc"),
+        biomeTemplates().get("biome.jsonc") ?? "",
+      );
+      const initialized = spawnSync("git", ["init", "-q"], { cwd: root });
+      expect(initialized.status).toBe(0);
+      writeFileSync(join(root, ".gitignore"), "");
+      for (const folder of ["specs", "dist", "src", "src/specs", "src/dist"])
+        mkdirSync(join(root, folder), { recursive: true });
+      for (const folder of ["specs", "dist", "src/specs", "src/dist"])
+        writeFileSync(join(root, folder, "invalid.js"), "const = ;\n");
+      writeFileSync(join(root, "src/valid.js"), "const value = 1;\n");
+      const run = (script: string) =>
+        spawnSync("bun", ["run", script], {
+          cwd: root,
+          encoding: "utf8",
+          env: {
+            ...process.env,
+            PATH: `${join(import.meta.dir, "../node_modules/.bin")}:${process.env.PATH ?? ""}`,
+          },
+        });
+      for (const script of ["lint:check", "format:check"]) {
+        const ignored = run(script);
+        expect(ignored.status, ignored.stdout + ignored.stderr).toBe(0);
+        writeFileSync(join(root, "src/invalid.js"), "const = ;\n");
+        const included = run(script);
+        expect(included.status, included.stdout + included.stderr).not.toBe(0);
+        rmSync(join(root, "src/invalid.js"));
+      }
+      const validation = spawnSync(
+        join(import.meta.dir, "../node_modules/.bin/biome"),
+        [
+          "check",
+          "--formatter-enabled=false",
+          "--linter-enabled=false",
+          "--assist-enabled=false",
+          "--no-errors-on-unmatched",
+          "biome.jsonc",
+        ],
+        { cwd: root, encoding: "utf8" },
+      );
+      expect(validation.status, validation.stdout + validation.stderr).toBe(0);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  },
+);
 
 test.each(kinds)(
   "%s Biome verbs preserve a freshly initialized repository byte-exact",
