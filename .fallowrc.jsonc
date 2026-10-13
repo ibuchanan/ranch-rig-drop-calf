@@ -1,0 +1,15 @@
+{
+  "$schema": "https://raw.githubusercontent.com/fallow-rs/fallow/main/schema.json",
+  "ignorePatterns": [
+    // Git submodules are analyzed in their own repositories.
+    "vendor/**",
+    // Version pins read as data by src/versions.ts; never installed here.
+    "pins/**"
+  ],
+  "dynamicallyLoaded": [
+    // Run manually per DEVELOPMENT.md, not from a package.json script.
+    "scripts/refresh-capability-docs.ts",
+    // Copied into scaffolded projects, never imported here.
+    "templates/**"
+  ]
+}
