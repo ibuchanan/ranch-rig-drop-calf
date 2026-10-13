@@ -63,6 +63,7 @@ Every non-empty capability slot contributes to the stable developer API. The exa
 | Testing | `test`, `test:watch`, `test:coverage` | Bun (`library`, `tool`, `agent-skill`), Vitest (`forge-app`), both with a no-tests starter flag |
 | Build | `build` | `tsc` |
 | Clean | `clean` | `rm -rf dist` |
+| TODO lookup | `todo` | `git grep` on tracked files |
 
 ## 7. Profiles
 
@@ -168,7 +169,7 @@ decision before it is specified.
 - **Monorepo composition.** A `monorepo` kind and a command that adds child
   projects at a path (workspaces, Turbo); see
   [`01-project-kinds.md`](01-project-kinds.md#6-future-kinds).
-- **Additional scripts.** `dev` (watch), `todo`, `generate`/`generate:rovo`, and
+- **Additional scripts.** `dev` (watch), `generate`/`generate:rovo`, and
   `forge:variables:set-encrypted` from the `init-repo` script table.
 - **Error classes.** `PrerequisiteError` and `ValidationError` alongside
   `ParseError` and `InvalidOptionsError`.

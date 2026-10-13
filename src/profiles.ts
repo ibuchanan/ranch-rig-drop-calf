@@ -23,6 +23,7 @@ import { createBlueprint, type ProjectBlueprint } from "./project.ts";
 import { adoptScaffoldTypeScript, applyPreclean } from "./scaffold.ts";
 import { forgeSecrets } from "./secrets.ts";
 import { bundleSize } from "./size-limit.ts";
+import { todo } from "./todo.ts";
 import { typeScriptToolchain } from "./typescript.ts";
 import { vitestTesting } from "./vitest.ts";
 
@@ -40,6 +41,7 @@ export const PROFILES: Record<string, Capability[]> = {
     bunTesting(),
     bundleSize("Library bundle", "dist/index.mjs"),
     cleanBuild(),
+    todo(),
     docsLinting(),
     gitHooks(),
     aidev(),
@@ -60,6 +62,7 @@ export const PROFILES: Record<string, Capability[]> = {
     forgeAhead(),
     bundleSize("Forge app bundle", "dist/**/*.js"),
     cleanBuild(),
+    todo(),
     docsLinting(),
     gitHooks(),
     evals(),
@@ -76,6 +79,7 @@ export const PROFILES: Record<string, Capability[]> = {
     typeScriptToolchain(),
     bunTesting(),
     cleanBuild(),
+    todo(),
     docsLinting(),
     gitHooks(),
     aidev(),
@@ -90,6 +94,7 @@ export const PROFILES: Record<string, Capability[]> = {
     typeScriptToolchain(),
     bunTesting(),
     cleanBuild(),
+    todo(),
     docsLinting(),
     gitHooks(),
     aidev(),
