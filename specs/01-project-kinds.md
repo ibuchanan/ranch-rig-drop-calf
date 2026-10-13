@@ -82,7 +82,7 @@ Notes:
 - `aidev` is composed in every kind, but seeds `AGENTS.md` only on `forge-app`;
   non-Forge init is an explicit no-op. Forge can exclude it with `--without aidev`.
   Update and validate are explicit no-ops in every kind.
-- `tool` and `agent-skill` are **new kinds** with no vendor parity target; their
+- `tool` and `agent-skill` are **new kinds** with no `init-repo` counterpart; their
   compositions above are provisional and should be revisited after first use.
 - Optional-function selection (`--with`/`--without`) applies on top of the kind; it cannot
   remove a kind-mandated slot implementation.
@@ -100,8 +100,8 @@ Notes:
 ## 6. Future kinds
 
 - **`monorepo`** — root coordination (workspaces, aggregate scripts/hooks, child kinds
-  added explicitly). Deferred; child-composition rules come from the vendor design when
-  this kind is specced.
+  added explicitly). Deferred; the `init-repo` design (§8.3–8.4 of its spec) is the
+  starting point for child-composition rules when this kind is specced.
 - **Python-based kinds** — explicitly second-class; the capability interface must not
   preclude them, but no Python kind is in scope.
 
@@ -116,9 +116,12 @@ Per kind, tests must assert:
 - the full generated blueprint matches a per-kind snapshot;
 - an unknown kind fails with `InvalidOptionsError` before any mutation.
 
-## 8. Terminology mapping (vendor traceability)
+## 8. Terminology mapping (`init-repo` traceability)
 
-| This project | `vendor/init-repo` |
+Drop Calf's kinds trace to the [`init-repo`](https://github.com/ibuchanan/init-repo)
+design (`specs/esa-repo-init-spec.md`), which is no longer vendored.
+
+| This project | `init-repo` |
 |---|---|
 | project kind (Profile) | catalog kind |
 | `library` | `typescript-library` |

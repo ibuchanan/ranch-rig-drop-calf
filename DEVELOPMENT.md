@@ -51,9 +51,7 @@ dagger call init --help
 
 Loading the module generates its local SDK. If Dagger cannot connect, confirm
 that `podman info` succeeds and that the runner host is set in the current
-shell. The `vendor/init-repo` Git submodule is a design reference, not a runtime
-dependency. If you need to consult it, initialize it separately with
-`git submodule update --init vendor/init-repo`.
+shell.
 
 ## Development loop
 

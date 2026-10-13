@@ -1,8 +1,9 @@
 # Project-functions specification
 
 High-level specification of the repository capabilities ("functions") Drop Calf
-(`drop-calf`) must implement, originally extracted from the `vendor/init-repo`
-design (`specs/esa-repo-init-spec.md`).
+(`drop-calf`) must implement, originally extracted from the
+[`init-repo`](https://github.com/ibuchanan/init-repo) design
+(`specs/esa-repo-init-spec.md`).
 
 [ADR 0001](../docs/adr/0001-capability-verbs-by-intent.md) supersedes the original
 single-operation, universal-merge contract. Every capability below implements the
