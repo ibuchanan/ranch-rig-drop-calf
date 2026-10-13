@@ -322,7 +322,6 @@ describe("profiles", () => {
         const packageJson = JSON.parse(
           await result.file("package.json").contents(),
         );
-        // Preserve the historical snapshot's scope while checking actual init output.
         const paths = [
           ...project.files.keys(),
           ...OSS_ASSETS,
@@ -337,16 +336,15 @@ describe("profiles", () => {
             ? ["vitest.config.ts", ...SECRETS_ASSETS]
             : []),
         ].sort();
-        const present = [];
         for (const path of paths)
-          if (await result.exists(path)) present.push(path);
-        expect({ packageJson, files: present }).toMatchSnapshot(kind);
-        if (kind === "agent-skill")
-          expect(
-            Object.keys(packageJson.scripts).some((key) =>
-              key.startsWith("test"),
-            ),
-          ).toBe(true);
+          expect(await result.exists(path), `${kind} seeds ${path}`).toBe(true);
+        expect(packageJson).toMatchObject(project.packageJson);
+        expect(
+          Object.keys(packageJson.scripts).some((key) =>
+            key.startsWith("test"),
+          ),
+          `${kind} exposes a test script`,
+        ).toBe(true);
       }
     } finally {
       stub.mockRestore();

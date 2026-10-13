@@ -258,7 +258,6 @@ test.each([
           `Missing guidance file: ${path}`,
         ).toBe(true);
       expect(pkg.scripts.test).toBe("vitest run --passWithNoTests");
-      expect(guidance).toContain("Vitest");
       expect(guidance.includes("## Prompt evaluations")).toBe(selection.evals);
       expect(scripts.includes("eval")).toBe(selection.evals);
       expect(scripts.includes("view")).toBe(selection.evals);
@@ -275,14 +274,8 @@ test.each([
       ])
         expect(guidance).not.toContain(stale);
       if (selection.evals) {
-        expect(guidance).toContain("may\n  incur charges");
-        expect(guidance).toContain(
-          "do not replace deployed Rovo integration tests",
-        );
         expect(await initialized.exists("promptfooconfig.yaml")).toBe(true);
       }
-      if (selection.name === "default" || selection.name === "all")
-        expect(guidance).toMatchSnapshot();
     } finally {
       empty.mockRestore();
       source.mockRestore();

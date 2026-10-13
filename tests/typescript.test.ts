@@ -66,9 +66,17 @@ for (const dependencies of [
   });
 }
 
-test.each(["library", "forge-app", "tool", "agent-skill"])(
-  "%s init config bytes and subsequent update are stable",
-  async (kind) => {
+/** Per kind: the module system its compiler configs must agree on, and whether the typecheck overlay also covers tests. */
+const initPolicy = {
+  library: { bundler: true, tests: false, declarations: true },
+  "forge-app": { bundler: false, tests: true, declarations: false },
+  tool: { bundler: false, tests: false, declarations: false },
+  "agent-skill": { bundler: false, tests: false, declarations: false },
+} as const;
+
+test.each(Object.entries(initPolicy))(
+  "%s init emits the configs its policy requires and a subsequent update is stable",
+  async (kind, policy) => {
     const source = mockModuleSource();
     const empty = spyOn(dag, "directory").mockImplementation(() =>
       mockDirectory(),
@@ -81,24 +89,25 @@ test.each(["library", "forge-app", "tool", "agent-skill"])(
         "tester",
         "sample",
       );
-      const existingConfigs = await Promise.all(
-        TYPESCRIPT_CONFIGS.map(async (path) => {
-          const exists = await output.exists(path);
-          return [
-            path,
-            exists ? await output.file(path).contents() : null,
-          ] as const;
-        }),
+      for (const path of TYPESCRIPT_CONFIGS)
+        expect(await output.exists(path)).toBe(
+          path !== "tsconfig.declarations.json" || policy.declarations,
+        );
+      const base = parsed(await output.file("tsconfig.json").contents());
+      const check = parsed(
+        await output.file("tsconfig.typecheck.json").contents(),
       );
-      expect(
-        JSON.stringify(
-          Object.fromEntries(
-            existingConfigs.filter(([_, contents]) => contents !== null),
-          ),
-          null,
-          2,
-        ),
-      ).toMatchSnapshot(kind);
+      expect(base.compilerOptions).toMatchObject({
+        strict: true,
+        sourceMap: true,
+        moduleResolution: policy.bundler ? "Bundler" : "Node",
+      });
+      expect(check.extends).toBe("./tsconfig.json");
+      expect(check.compilerOptions.noEmit).toBe(true);
+      expect(check.include).toEqual([
+        "src",
+        ...(policy.tests ? ["test", "tests", "vitest.config.ts"] : []),
+      ]);
       expect(await module.update(output, kind)).toBe(output);
     } finally {
       empty.mockRestore();

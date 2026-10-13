@@ -11,7 +11,7 @@ import { DropCalf } from "../src/index.ts";
 import { buildProject } from "../src/profiles.ts";
 import { createBlueprint } from "../src/project.ts";
 import { TOOL_VERSIONS } from "../src/versions.ts";
-import { runInit, runUpdate, verb } from "./capability-fixtures.ts";
+import { runInit, verb } from "./capability-fixtures.ts";
 import { mockContainer } from "./container-source.ts";
 import { mockDirectory, mockModuleSource } from "./module-source.ts";
 import { docsTemplates } from "./templates-source.ts";

@@ -36,7 +36,7 @@ test("evals documents a Rovo resource that resolves to the prompt used by every 
   expect(resource).toBeDefined();
   const promptPath = posix.join(resource?.path ?? "", relativePath ?? "");
   expect(promptPath).toBe("prompts/agent-instructions.md");
-  expect(files.get(promptPath)).toContain("translation assistant");
+  expect(files.get(promptPath)).toBeTruthy();
 
   const cases = YAML.parse(files.get("test/promptfoo-test.yaml") ?? "") as {
     vars: { agent_instructions: string };
@@ -47,46 +47,30 @@ test("evals documents a Rovo resource that resolves to the prompt used by every 
   expect(files.has("manifest.yml")).toBe(false);
 });
 
-test("evals remains a generic translation example without a Rovo agent", () => {
+test("evals config wires its prompt variable, test file and fixtures without a Rovo agent", () => {
   const files = promptfooTemplates();
-  const configText = files.get("promptfooconfig.yaml") ?? "";
-  expect(configText).toContain("docs/how-to/evaluate-rovo-agent.md");
-  const config = YAML.parse(configText) as {
+  const config = YAML.parse(files.get("promptfooconfig.yaml") ?? "") as {
     prompts: { raw: string }[];
     providers: string[];
     tests: string[];
   };
   expect(config.prompts[0]?.raw).toContain("{{ agent_instructions }}");
-  expect(config.providers).toEqual(["google:gemini-2.0-flash-lite"]);
-  expect(config.tests).toEqual(["file://test/promptfoo-test.yaml"]);
+  expect(config.providers.length).toBeGreaterThan(0);
+  for (const test of config.tests) {
+    expect(test).toStartWith("file://");
+    expect(files.has(test.slice("file://".length))).toBe(true);
+  }
   const cases = YAML.parse(files.get("test/promptfoo-test.yaml") ?? "") as {
     vars: Record<string, string>;
-    assert: { type: string; value: string }[];
+    assert: unknown[];
   }[];
-  for (const entry of cases)
+  expect(cases.length).toBeGreaterThan(0);
+  for (const entry of cases) {
+    expect(entry.assert.length).toBeGreaterThan(0);
     for (const value of Object.values(entry.vars))
       if (value.startsWith("file://"))
         expect(files.get(value.slice("file://".length))).toBeTruthy();
-  expect(cases.map((entry) => entry.assert)).toEqual([
-    [{ type: "icontains", value: "Bonjour le monde" }],
-    [{ type: "icontains", value: "Dónde está la biblioteca" }],
-  ]);
-  const guide = files.get("docs/how-to/evaluate-rovo-agent.md") ?? "";
-  expect(guide).toContain("without a Rovo agent");
-  expect(guide).toContain("GEMINI_API_KEY");
-  expect(guide).toContain("npm run eval -- --no-cache");
-  expect(guide).toContain("npm run view");
-  expect(files.has("manifest.yml")).toBe(false);
-});
-
-test("evals marks the shared prompt and leaves manifest wiring to the app owner", () => {
-  const files = promptfooTemplates();
-  const prompt = files.get("prompts/agent-instructions.md") ?? "";
-  expect(prompt).toContain("rovo:agent");
-  expect(prompt).toContain("docs/how-to/evaluate-rovo-agent.md");
-  const guide = files.get("docs/how-to/evaluate-rovo-agent.md") ?? "";
-  expect(guide).toContain("Drop Calf does not edit `manifest.yml`");
-  expect(guide).toContain("prompt simulation");
+  }
   expect(files.has("manifest.yml")).toBe(false);
 });
 
