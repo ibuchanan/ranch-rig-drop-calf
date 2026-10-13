@@ -31,6 +31,9 @@ in the [specifications](specs/00-drop-calf-overview.md) are not all implemented.
 - **`update` to converge on policy:** Maintain an existing repository with the
   selected capabilities' implemented update policies, without rerunning scaffold
   cleanup or init-only template seeding. Review the changes before exporting.
+  For a guarded repo missing `catalog-info.yaml`, follow the
+  [existing-repository adoption guide](docs/how-to/adopt-existing-repository.md)
+  before updating.
 - **`validate` to check:** Get a read-only report of tool acceptance and explicit
   skipped or failed checks. It does not apply fixes or guarantee policy compliance.
 
