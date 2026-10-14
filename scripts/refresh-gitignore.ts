@@ -9,7 +9,7 @@ import {
   GITIGNORE_ENDPOINT,
   GITIGNORE_QUERY,
   PINNED_GITIGNORE,
-} from "../src/gitignore.ts";
+} from "../src/capabilities/gitignore.ts";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const target = join(root, PINNED_GITIGNORE);

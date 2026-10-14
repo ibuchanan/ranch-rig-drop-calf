@@ -10,11 +10,11 @@ import {
   writeFileSync,
 } from "node:fs";
 import { join } from "node:path";
-import { forgeRuntimeFromNvmrc } from "../../src/forge-manifest.ts";
-import { NODE_NVMRC, NPMRC } from "../../src/node.ts";
-import { assemblePackage } from "../../src/package-json.ts";
-import { resolveProfile } from "../../src/profiles.ts";
-import { NODE_MAJOR } from "../../src/versions.ts";
+import { forgeRuntimeFromNvmrc } from "../../src/capabilities/forge-manifest.ts";
+import { NODE_NVMRC, NPMRC } from "../../src/capabilities/node.ts";
+import { resolveProfile } from "../../src/composition/profiles.ts";
+import { assemblePackage } from "../../src/core/package-json.ts";
+import { NODE_MAJOR } from "../../src/core/versions.ts";
 
 const NODE_FORGE_RUNTIME = forgeRuntimeFromNvmrc(NODE_NVMRC);
 

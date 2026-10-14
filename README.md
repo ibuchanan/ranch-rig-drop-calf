@@ -252,7 +252,7 @@ contains the same reference plus detailed ownership and preservation rules.
   interface. Standalone `copy-*`, `validate-*`, `remove-scaffold*`,
   `node-container`, and `export` functions have been removed: use `init` for
   first-time seeding (it runs the scaffold cleanup in
-  [`src/scaffold.ts`](src/scaffold.ts)), `update` for maintenance, `validate`
+  [`src/composition/scaffold.ts`](src/composition/scaffold.ts)), `update` for maintenance, `validate`
   for every capability's report, and Dagger's own `export --path` on the
   returned directory or changeset.
 

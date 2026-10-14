@@ -9,9 +9,9 @@ import {
 } from "node:fs";
 import { join } from "node:path";
 import ts from "typescript";
-import { BIOME_SCRIPTS } from "../../src/biome.ts";
-import { GIT_HOOKS_SCRIPTS } from "../../src/git-hooks.ts";
-import { TOOL_VERSIONS } from "../../src/versions.ts";
+import { BIOME_SCRIPTS } from "../../src/capabilities/biome.ts";
+import { GIT_HOOKS_SCRIPTS } from "../../src/capabilities/git-hooks.ts";
+import { TOOL_VERSIONS } from "../../src/core/versions.ts";
 
 const repo = join(import.meta.dir, "../..");
 

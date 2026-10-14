@@ -179,7 +179,8 @@ catalog → package-metadata → oss → gitignore → node → forge-manifest �
 **Note:** Init sequence stages catalog init before OSS; within the init pass, capabilities run in listed order. The OSS capability depends on catalog being initialized first to read metadata.
 Library's `library-build` capability precedes `typescript` so its restored tsdown
 declaration selects compiler policy in the same update pass.
-Forge's Vitest `test` capability precedes `typescript` in `src/profiles.ts` so its
+Forge's Vitest `test` capability precedes `typescript` in
+`src/composition/profiles.ts` so its
 updated dependency declaration is visible to compiler policy in the same pass.
 
 ### `catalog`
@@ -373,7 +374,7 @@ Policy:
 
 ### `node`
 
-The Node major is centralized in `src/versions.ts` (`24`). The capability owns
+The Node major is centralized in `src/core/versions.ts` (`24`). The capability owns
 local Node selection, not the Forge manifest or a published package's
 compatibility promise. No kind generates `engines`: it has caused trouble with
 `forge deploy`,

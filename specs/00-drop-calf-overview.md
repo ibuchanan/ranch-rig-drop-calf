@@ -49,7 +49,7 @@ Every capability requires `init`, `update`, and `validate`. A verb with no work 
 
 Each capability declares the scope of its changes. Its policy decides whether content is init-only, updated authoritatively, or changed selectively within shared resources. Documented policy authorizes replacement of owner edits without an explicit opt-in or `--force`; unrelated content in shared resources is preserved. These decisions are not inferred from file type.
 
-The previous `addTo` interface was superseded by [ADR 0001](../docs/adr/0001-capability-verbs-by-intent.md) and has been removed. The concrete verb signatures are in `src/capability.ts`.
+The previous `addTo` interface was superseded by [ADR 0001](../docs/adr/0001-capability-verbs-by-intent.md) and has been removed. The concrete verb signatures are in `src/core/capability.ts`.
 
 ## 6. Developer API (package.json scripts)
 
@@ -67,7 +67,7 @@ Every non-empty capability slot contributes to the stable developer API. The exa
 
 ## 7. Profiles
 
-Profiles are defined in `src/profiles.ts` as arrays of capabilities.
+Profiles are defined in `src/composition/profiles.ts` as arrays of capabilities.
 
 ### 7.1 Initial profiles
 

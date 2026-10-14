@@ -20,7 +20,7 @@ import {
   OSS_UPSTREAM,
   PINNED_OSS,
   PINNED_OSS_UPSTREAM,
-} from "../src/oss.ts";
+} from "../src/capabilities/oss.ts";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const target = join(root, PINNED_OSS);

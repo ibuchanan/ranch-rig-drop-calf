@@ -8,16 +8,16 @@ import {
   object,
   type Secret,
 } from "@dagger.io/dagger";
-import { updateCapabilities, validateCapabilities } from "./capability.ts";
-import { mergeScaffoldPackage, scaffoldName } from "./package-json.ts";
 import {
   blueprintFor,
   type ProjectProfile,
   resolveProfile,
   scaffoldSteps,
-} from "./profiles.ts";
-import { renderToDirectory } from "./project.ts";
-import { seedTemplates } from "./templates.ts";
+} from "./composition/profiles.ts";
+import { updateCapabilities, validateCapabilities } from "./core/capability.ts";
+import { mergeScaffoldPackage, scaffoldName } from "./core/package-json.ts";
+import { renderToDirectory } from "./core/project.ts";
+import { seedTemplates } from "./core/templates.ts";
 
 @object()
 export class DropCalf {

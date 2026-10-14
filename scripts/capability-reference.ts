@@ -1,5 +1,5 @@
-import type { Capability } from "../src/capability.ts";
-import { PROFILES } from "../src/profiles.ts";
+import { PROFILES } from "../src/composition/profiles.ts";
+import type { Capability } from "../src/core/capability.ts";
 
 export const REFERENCE_START = "<!-- capability-reference:start -->";
 export const REFERENCE_END = "<!-- capability-reference:end -->";

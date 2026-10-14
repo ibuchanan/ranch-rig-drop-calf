@@ -8,7 +8,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { join } from "node:path";
-import { TOOL_VERSIONS } from "../../src/versions.ts";
+import { TOOL_VERSIONS } from "../../src/core/versions.ts";
 
 const repo = join(import.meta.dir, "../..");
 function call(...args: string[]) {

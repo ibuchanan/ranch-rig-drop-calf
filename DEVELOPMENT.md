@@ -126,52 +126,73 @@ summarized by its `documentation` field (see
 The module docblocks and tests are authoritative; this list only points to
 where things live.
 
-Composition and shared machinery:
+`src/` is grouped into three subpackages by role, plus the Dagger entry point.
+The dependency direction is inward: `core/` names no capability, capabilities
+import `core/` (and the `catalog` readers) but never each other, `composition/`
+imports both, and `index.ts` imports `composition/` and `core/`. The layout and
+its rules are recorded in
+[ADR 0004](docs/adr/0004-source-subpackages.md).
+
+Entry point:
 
 - `src/index.ts`: Dagger `DropCalf` entry point (`init`, `initChanges`,
   `update`, `validate`).
-- `src/profiles.ts`: ordered capabilities, policy options, and scaffold steps
-  per kind.
-- `src/capability.ts`: the `Capability` contract and `noOp(reason)`.
-- `src/project.ts`: `ProjectBlueprint` and Dagger directory rendering.
-- `src/package-json.ts`: `package.json` assembly from capability contributions
+
+`src/core/`, shared machinery that names no capability:
+
+- `src/core/capability.ts`: the `Capability` contract and `noOp(reason)`.
+- `src/core/project.ts`: `ProjectBlueprint` and Dagger directory rendering.
+- `src/core/package-json.ts`: `package.json` assembly from capability
+  contributions
   ([ADR 0002](docs/adr/0002-package-json-assembled-from-capability-contributions.md)).
-- `src/templates.ts`: `templateTree` and ordered seed steps.
-- `src/tool-run.ts`: the containerized-tool runner and failure convention for
-  validators.
-- `src/scaffold.ts`: scaffold steps for fresh `forge create` output (preclean,
-  TypeScript adoption).
-- `src/versions.ts`: `TOOL_VERSIONS`, read from `pins/package.json`, plus
+- `src/core/templates.ts`: `templateTree`, ordered seed steps, and the shared
+  `EVALS_TEMPLATE` path other capabilities detect.
+- `src/core/tool-run.ts`: the containerized-tool runner and failure convention
+  for validators.
+- `src/core/versions.ts`: `TOOL_VERSIONS`, read from `pins/package.json`, plus
   non-npm pins.
-- `src/errors.ts`: `ParseError` and `InvalidOptionsError`.
+- `src/core/errors.ts`: `ParseError` and `InvalidOptionsError`.
 
-Capabilities, one module each:
+`src/composition/`, the one place that knows every capability:
 
-- `src/aidev.ts`: init-only `AGENTS.md` agent guidance.
-- `src/biome.ts`: Biome config, `.editorconfig`, and format/lint scripts.
-- `src/bun-testing.ts`: Bun test scripts.
-- `src/catalog.ts`: `catalog-info.yaml` and the metadata readers that other
-  capabilities use.
-- `src/changelog.ts`: git-cliff config and the release changelog.
-- `src/clean-build.ts`: the `clean` script.
-- `src/docs.ts`: docs lint configs and Diátaxis starter documents. Both configs
-  are dotfiles: Dagger's `glob` matches them, but a shell glob will not.
-- `src/evals.ts`: the optional Promptfoo toolchain.
-- `src/forge-ahead.ts`: Forge Ahead dependencies.
-- `src/forge-manifest.ts`: Forge manifest runtime and `forge lint` validation.
-- `src/git-hooks.ts`: Lefthook config and hook scripts.
-- `src/gitignore.ts`: `.gitignore` blocks (see
+- `src/composition/profiles.ts`: ordered capabilities, policy options, and
+  scaffold steps per kind.
+- `src/composition/scaffold.ts`: scaffold steps for fresh `forge create` output
+  (preclean, TypeScript adoption).
+
+`src/capabilities/`, one module per capability:
+
+- `src/capabilities/aidev.ts`: init-only `AGENTS.md` agent guidance.
+- `src/capabilities/biome.ts`: Biome config, `.editorconfig`, and format/lint
+  scripts.
+- `src/capabilities/bun-testing.ts`: Bun test scripts.
+- `src/capabilities/catalog.ts`: `catalog-info.yaml` and the metadata readers
+  that other capabilities use.
+- `src/capabilities/changelog.ts`: git-cliff config and the release changelog.
+- `src/capabilities/clean-build.ts`: the `clean` script.
+- `src/capabilities/docs.ts`: docs lint configs and Diátaxis starter documents.
+  Both configs are dotfiles: Dagger's `glob` matches them, but a shell glob will
+  not.
+- `src/capabilities/evals.ts`: the optional Promptfoo toolchain.
+- `src/capabilities/forge-ahead.ts`: Forge Ahead dependencies.
+- `src/capabilities/forge-manifest.ts`: Forge manifest runtime and `forge lint`
+  validation.
+- `src/capabilities/git-hooks.ts`: Lefthook config and hook scripts.
+- `src/capabilities/gitignore.ts`: `.gitignore` blocks (see
   [The generated `.gitignore`](#the-generated-gitignore)).
-- `src/library-build.ts`: tsdown config and the library build script.
-- `src/node.ts`: `.nvmrc`, `.npmrc`, `@types/node`, and the catalog license.
-- `src/oss.ts`: pinned OSS documents (see
+- `src/capabilities/library-build.ts`: tsdown config and the library build
+  script.
+- `src/capabilities/node.ts`: `.nvmrc`, `.npmrc`, `@types/node`, and the catalog
+  license.
+- `src/capabilities/oss.ts`: pinned OSS documents (see
   [Refreshing the pinned OSS templates](#refreshing-the-pinned-oss-templates)).
-- `src/package-metadata.ts`: catalog-derived package identity.
-- `src/prelint.ts`: Forge prelint dependencies and scripts.
-- `src/secrets.ts`: SecretSpec declarations and Forge variable helpers.
-- `src/size-limit.ts`: the Size Limit budget and script.
-- `src/typescript.ts`: tsconfigs and tsc scripts.
-- `src/vitest.ts`: Vitest config and scripts.
+- `src/capabilities/package-metadata.ts`: catalog-derived package identity.
+- `src/capabilities/prelint.ts`: Forge prelint dependencies and scripts.
+- `src/capabilities/secrets.ts`: SecretSpec declarations and Forge variable
+  helpers.
+- `src/capabilities/size-limit.ts`: the Size Limit budget and script.
+- `src/capabilities/typescript.ts`: tsconfigs and tsc scripts.
+- `src/capabilities/vitest.ts`: Vitest config and scripts.
 
 Elsewhere:
 
@@ -180,15 +201,17 @@ Elsewhere:
   [Refreshing tool pins](#refreshing-tool-pins)).
 - `vendor/`: pinned upstream inputs.
 - `scripts/`: refresh and documentation generators.
-- `tests/`: unit tests; `tests/e2e/` holds the opt-in suites above.
+- `tests/`: unit tests under `tests/core/`, `tests/composition/`, and
+  `tests/capabilities/`, mirroring `src/`; shared fixtures live in
+  `tests/support/` and `tests/e2e/` holds the opt-in suites above.
 - `specs/`: the overview, kinds, and functions contracts. Future work is in
   §7.2 and §14 of the overview.
 
-To change generated output, edit the capability (or `src/project.ts`) in `src/`,
-wire it into the intended profiles in `src/profiles.ts`, add a focused test,
-regenerate the capability reference, and run the checks above. Keep project
-assembly testable without the engine; `renderToDirectory` is the Dagger
-boundary.
+To change generated output, edit the capability (or `src/core/project.ts`) in
+`src/`, wire it into the intended profiles in `src/composition/profiles.ts`, add
+a focused test, regenerate the capability reference, and run the checks above.
+Keep project assembly testable without the engine; `renderToDirectory` is the
+Dagger boundary.
 
 ## Maintaining the capability reference
 
@@ -197,8 +220,9 @@ one-line purposes, and summaries of implemented verbs. Keep these summaries
 beside the implementation when changing its policy. Do not document inactive
 verbs separately: the renderer reads their exact `noOp(reason)` text.
 
-`src/profiles.ts` supplies kind membership and selection policy. The renderer
-groups only rows whose capability name, selection, tools, and verb descriptions
+`src/composition/profiles.ts` supplies kind membership and selection policy.
+The renderer groups only rows whose capability name, selection, tools, and verb
+descriptions
 are identical; Bun/Vitest, privacy policies, Node engine policy, and size paths
 stay distinct where behavior differs. The kind inventory preserves execution order.
 
@@ -382,8 +406,8 @@ bun test tests/e2e/docs.e2e.test.ts --path-ignore-patterns='vendor/**'
 ## Refreshing tool pins
 
 `pins/package.json` lists the exact npm versions Drop Calf seeds; it is never
-installed. `src/versions.ts` reads it into `TOOL_VERSIONS` and also holds the
-pins that are not npm packages (Bun image, fnm, Node major). Dependabot opens
+installed. `src/core/versions.ts` reads it into `TOOL_VERSIONS` and also holds
+the pins that are not npm packages (Bun image, fnm, Node major). Dependabot opens
 weekly pull requests against `/pins`; to check locally, run:
 
 ```bash
@@ -407,8 +431,8 @@ never downgrades, and skips GitHub references.
 
 ## The generated `.gitignore`
 
-`src/gitignore.ts` assembles `.gitignore` from the gitignore.io templates in
-`GITIGNORE_TEMPLATES` (`visualstudiocode`, `linux`, `macos`, `windows`,
+`src/capabilities/gitignore.ts` assembles `.gitignore` from the gitignore.io
+templates in `GITIGNORE_TEMPLATES` (`visualstudiocode`, `linux`, `macos`, `windows`,
 `node`, and `turbo`), de-duplicating rules on first occurrence, then appends
 `ADDITIONAL_IGNORES`: `.fallow/`, `.scratch/`, `.session/`, and
 `/.cocoindex_code/`. The internal gitignore seed helper selects a subset by
@@ -432,8 +456,9 @@ paths are ignored would enforce policy, not check Git's acceptance.
 
 ### Refreshing the pin
 
-`vendor/gitignore` holds the gitignore.io response that `src/gitignore.ts`
-assembles from, so generation never depends on the network. Refresh it
+`vendor/gitignore` holds the gitignore.io response that
+`src/capabilities/gitignore.ts` assembles from, so generation never depends on
+the network. Refresh it
 deliberately and read the diff, because upstream templates change without
 notice:
 
@@ -441,8 +466,9 @@ notice:
 bun run refresh:gitignore
 ```
 
-Edit `GITIGNORE_TEMPLATES` in `src/gitignore.ts` to change which templates are
-pinned, then refresh. Two things will bite you if you skip the script: the macOS
+Edit `GITIGNORE_TEMPLATES` in `src/capabilities/gitignore.ts` to change which
+templates are pinned, then refresh. Two things will bite you if you skip the
+script: the macOS
 template contains a rule that only matches with its literal CR bytes, so an
 editor that normalises line endings silently breaks it, and `.gitattributes` pins
 the file to `-text` to stop Git doing the same. Tests read the real pin, so a
@@ -467,5 +493,5 @@ bun run refresh:oss
 ```
 
 The script refuses to pin if upstream gains a template that `OSS_ASSETS` in
-`src/oss.ts` does not list; add it there (and to `transformOssTemplate` if it
-needs substitutions), then refresh.
+`src/capabilities/oss.ts` does not list; add it there (and to
+`transformOssTemplate` if it needs substitutions), then refresh.

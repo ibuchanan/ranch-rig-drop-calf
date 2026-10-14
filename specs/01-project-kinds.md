@@ -10,7 +10,7 @@ capabilities are specified in [`02-project-functions.md`](02-project-functions.m
 
 A kind answers one question: *given a capability slot, which implementation does this kind
 use?* Kinds contain no behavior of their own — they are pure composition data, declared in
-`src/profiles.ts` as ordered arrays of capabilities, and are the unit users select when
+`src/composition/profiles.ts` as ordered arrays of capabilities, and are the unit users select when
 initializing (`init`), updating (`update`), or validating (`validate`) a repository.
 [ADR 0001](../docs/adr/0001-capability-verbs-by-intent.md) defines these operations:
 init runs scaffold steps, then every capability's init, then every capability's
@@ -77,7 +77,7 @@ Notes:
 
 - Forge testing (Vitest) runs before TypeScript in the ordered composition: its
   dependency update must be visible to compiler-policy reconciliation on the first pass.
-  The generated inventory follows `src/profiles.ts` execution order.
+  The generated inventory follows `src/composition/profiles.ts` execution order.
 - `evals` is enabled by `--preset all` or `--with evals`, never by default.
 - `aidev` is composed in every kind, but seeds `AGENTS.md` only on `forge-app`;
   non-Forge init is an explicit no-op. Forge can exclude it with `--without aidev`.

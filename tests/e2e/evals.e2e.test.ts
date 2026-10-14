@@ -8,7 +8,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { join } from "node:path";
-import { promptfooTemplates } from "../templates-source.ts";
+import { promptfooTemplates } from "../support/templates-source.ts";
 
 const repo = join(import.meta.dir, "../..");
 

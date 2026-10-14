@@ -10,9 +10,9 @@ import {
 } from "node:fs";
 import { dirname, join } from "node:path";
 import { dag } from "@dagger.io/dagger";
+import { TOOL_VERSIONS } from "../../src/core/versions.ts";
 import { DropCalf } from "../../src/index.ts";
-import { TOOL_VERSIONS } from "../../src/versions.ts";
-import { mockDirectory, mockModuleSource } from "../module-source.ts";
+import { mockDirectory, mockModuleSource } from "../support/module-source.ts";
 
 const repo = join(import.meta.dir, "../..");
 

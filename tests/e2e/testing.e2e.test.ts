@@ -10,7 +10,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { join } from "node:path";
-import { buildProject } from "../../src/profiles.ts";
+import { buildProject } from "../../src/composition/profiles.ts";
 
 // Opt in: requires Dagger and network access, but never registers or deploys an app.
 const repo = join(import.meta.dir, "../..");

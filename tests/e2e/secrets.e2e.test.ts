@@ -13,7 +13,7 @@ import { join } from "node:path";
 import {
   FORGE_SECRETS_SCRIPTS,
   SECRETS_EXECUTABLES,
-} from "../../src/secrets.ts";
+} from "../../src/capabilities/secrets.ts";
 
 const repo = join(import.meta.dir, "../..");
 
