@@ -109,3 +109,7 @@ topo_order_commits = true
 sort_commits = "oldest"
 # Process submodules commits
 recurse_submodules = false
+
+[bump]
+# Breaking changes bump minor while on 0.x; 1.x and later still bump major.
+breaking_always_bump_major = false
