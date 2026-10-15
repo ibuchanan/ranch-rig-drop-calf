@@ -131,9 +131,7 @@ test.each(kinds)(
           ...(kind === "library" || kind === "tool"
             ? { "lint:fallow": FALLOW_SCRIPT }
             : {}),
-          ...(kind === "library" || kind === "forge-app"
-            ? { "size:check": SIZE_LIMIT_COMMAND }
-            : {}),
+          ...(kind === "forge-app" ? { "size:check": SIZE_LIMIT_COMMAND } : {}),
           ...(kind === "agent-skill" ? {} : { changelog: CHANGELOG_COMMAND }),
           typecheck: TYPESCRIPT_SCRIPTS.typecheck,
           build:

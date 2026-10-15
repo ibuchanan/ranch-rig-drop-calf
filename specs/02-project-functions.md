@@ -148,7 +148,6 @@ Missing files or prerequisites can also cause a validator to skip or fail.
 | `library` | `typescript` | Required | [TypeScript](https://www.typescriptlang.org/docs/) — Type-checks source and emits JavaScript or library declarations. | Seed TypeScript, typecheck, and compiler configuration including declarations; library-build owns build. | Reconcile compiler configuration with policy selected by declared dependencies. | Run tsc --showConfig for applicable compiler configs, without compiling source or declarations. |
 | `library`, `tool`, `agent-skill` | `test` | Required | [Bun test](https://bun.com/docs/test) — Runs library, tool, and agent-skill tests with built-in watch and coverage support. | **No-op:** Seed @types/bun for test typechecking and supply test scripts; test sources remain owner-managed. | **No-op:** Bun testing owns no files; its package.json contribution enforces test scripts and keeps @types/bun fresh, preserving owner test sources. | **No-op:** This capability owns no Bun test configuration to validate. Test execution belongs to the test workflow; comparing scripts to defaults would check policy, not tool acceptance. |
 | `library`, `tool` | `fallow` | Default; `--without-functions fallow` | [Fallow](https://docs.fallow.tools/) — Checks unused code, dependencies, duplication, and complexity. | Seed Fallow, lint:fallow, and an owner-managed config for tool and library projects. | **No-op:** Fallow config is owner-managed after init, including deletion; its package.json contribution enforces lint:fallow and keeps the seeded dependency fresh. | **No-op:** Fallow has no configuration-only check; source analysis belongs to lint:fallow, not capability validation. |
-| `library` | `size-limit` | Required | [Size Limit](https://github.com/ai/size-limit) — Measures built file sizes against owner-managed budgets with @size-limit/file. | **No-op:** Size Limit owns no files; its package.json contribution seeds the paired tools, the build-then-measure size:check script, and a 10 kB budget for dist/index.mjs. | Enforce size:check and keep the seeded paired tools fresh, preserving owner budgets and paths. Remove the legacy size script only when it matches the former policy command; preserve owner-authored commands. | **No-op:** Size Limit has no supported configuration-only validation interface. Measurement requires build artifacts and belongs to the size workflow; validation does not build the project or assess potentially stale output. |
 | `library`, `forge-app`, `tool`, `agent-skill` | `clean-build` | Required | [rm](https://www.gnu.org/software/coreutils/manual/html_node/rm-invocation.html) — Removes dist when the owner runs the clean workflow. | **No-op:** Clean build owns no files to seed; its package.json contribution supplies the clean script. | **No-op:** Clean build owns no files; its package.json contribution enforces scripts.clean as rm -rf dist and never executes it. | **No-op:** Clean build owns no configuration with a separate tool-acceptance check; executing the clean script would delete build output and belongs to the clean workflow. |
 | `library`, `forge-app`, `tool`, `agent-skill` | `todo` | Required | [Git grep](https://git-scm.com/docs/git-grep) — Lists TODO markers in tracked files with paths and line numbers. | **No-op:** Todo owns no files; its package.json contribution seeds scripts.todo for every kind. | **No-op:** The seeded todo script is owner-managed after init; update does not replace or re-add it. | **No-op:** Todo owns no configuration with a separate tool-acceptance check; owners run the script in their Git repository. |
 | `library`, `forge-app`, `tool`, `agent-skill` | `docs` | Required | [markdownlint-cli2](https://github.com/igorshubovych/markdownlint-cli2) — Lints markdown files against consistent style rules<br>[CSpell](https://cspell.org/) — Spell-checks documentation and code comments | Seed Markdown/spelling tools and lint:docs, configs, DEVELOPMENT.md, and Diátaxis/spec starter documents. | **No-op:** Docs configuration and documents are owner-managed after init, including deletions; its package.json contribution enforces lint:docs and keeps the seeded tool dependencies fresh. | Load Markdown/spelling configs and references without scanning documentation quality. |
@@ -1037,7 +1036,7 @@ configured provider, not a test of the deployed Rovo runtime.
 
 ### `size:check`
 
-The `size-limit` capability is selected for `library` and `forge-app`. It owns
+The `size-limit` capability is selected only for `forge-app`. It owns
 `devDependencies["size-limit"]`, `devDependencies["@size-limit/file"]`, and
 `scripts["size:check"]` (`npm run build && size-limit`). Both tools use the same exact
 `TOOL_VERSIONS.sizeLimit` pin (`14.2.0`); the file adapter declares an exact peer
@@ -1046,9 +1045,8 @@ Version 14 requires Node `^22.19.0 || ^24.5.0 || >=26.0.0`, which the seeded
 Node 24 baseline satisfies when installed at version 24.5 or later.
 
 - **init** seeds both tool pins, the command, and one `package.json["size-limit"]`
-  budget with a `10 kB` limit: `Library bundle` at `dist/index.mjs` for libraries,
-  or `Forge app bundle` at `dist/**/*.js` for Forge apps. It replaces scaffold
-  budgets during fresh initialization and declares no template tree.
+  budget with a `10 kB` limit: `Forge app bundle` at `dist/**/*.js` for Forge apps.
+  It replaces scaffold budgets during fresh initialization and declares no template tree.
 - **update** enforces `scripts["size:check"]` through its package.json
   contribution (§3) and removes the legacy `scripts.size` only when its command
   exactly matches `npm run build && size-limit`. Owner-authored `size` commands

@@ -86,6 +86,17 @@ test.each(cases)(
       expect(existsSync(join(output, ".fallowrc.jsonc"))).toBe(
         profile === "library" || profile === "tool",
       );
+      expect(Boolean(pkg.scripts["size:check"])).toBe(profile === "forge-app");
+      expect(Boolean(pkg.scripts.todo)).toBe(true);
+      expect(Boolean(pkg.scripts["lint:docs"])).toBe(true);
+      for (const path of [
+        ".cspell.jsonc",
+        ".markdownlint-cli2.jsonc",
+        "DEVELOPMENT.md",
+        "docs",
+        "specs",
+      ])
+        expect(existsSync(join(output, path)), path).toBe(true);
       expect(existsSync(join(input, "package.json"))).toBe(false);
 
       const ownerFiles = new Map([

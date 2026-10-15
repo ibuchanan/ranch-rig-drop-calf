@@ -41,7 +41,6 @@ export const PROFILES: Record<string, Capability[]> = {
     typeScriptToolchain({ ownsBuild: false }),
     bunTesting(),
     fallow(),
-    bundleSize("Library bundle", "dist/index.mjs"),
     cleanBuild(),
     todo(),
     docsLinting({

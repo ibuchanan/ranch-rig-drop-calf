@@ -63,7 +63,6 @@ test("reference includes exact no-op reasons and distinguishes Bun/Vitest and se
     "Opt-in; `--with-functions evals`; `--without-functions evals`; `--preset all`",
   );
   expect(reference).toContain("Default; `--without-functions aidev`");
-  expect(reference).toContain("dist/index.mjs");
   expect(reference).toContain("dist/**/*.js");
   const rows = renderCapabilityReference({
     first: [bunTesting()],

@@ -28,29 +28,20 @@ const tunedBudget = [
   { name: "Styles", path: "build/*.css", limit: "5 kB", brotli: true },
 ];
 
-test("library and Forge seed an owned size command, paired pins and matching budget", () => {
-  for (const [kind, budget] of [
-    [
-      "library",
-      { name: "Library bundle", path: "dist/index.mjs", limit: "10 kB" },
-    ],
-    [
-      "forge-app",
-      { name: "Forge app bundle", path: "dist/**/*.js", limit: "10 kB" },
-    ],
-  ] as const) {
-    const { packageJson } = buildProject(kind, "sample", "tester");
-    expect(packageJson.scripts["size:check"]).toBe(SIZE_LIMIT_COMMAND);
-    expect(packageJson.scripts.size).toBeUndefined();
-    expect(packageJson.devDependencies["size-limit"]).toBe(
-      TOOL_VERSIONS.sizeLimit,
-    );
-    expect(packageJson.devDependencies["@size-limit/file"]).toBe(
-      TOOL_VERSIONS.sizeLimit,
-    );
-    expect(packageJson["size-limit"]).toEqual([budget]);
-  }
-  for (const kind of ["tool", "agent-skill"]) {
+test("only Forge seeds an owned size command, paired pins and matching budget", () => {
+  const { packageJson } = buildProject("forge-app", "sample", "tester");
+  expect(packageJson.scripts["size:check"]).toBe(SIZE_LIMIT_COMMAND);
+  expect(packageJson.scripts.size).toBeUndefined();
+  expect(packageJson.devDependencies["size-limit"]).toBe(
+    TOOL_VERSIONS.sizeLimit,
+  );
+  expect(packageJson.devDependencies["@size-limit/file"]).toBe(
+    TOOL_VERSIONS.sizeLimit,
+  );
+  expect(packageJson["size-limit"]).toEqual([
+    { name: "Forge app bundle", path: "dist/**/*.js", limit: "10 kB" },
+  ]);
+  for (const kind of ["library", "tool", "agent-skill"]) {
     const { packageJson } = buildProject(kind, "sample", "tester");
     expect(packageJson.scripts.size).toBeUndefined();
     expect(packageJson.devDependencies["size-limit"]).toBeUndefined();
@@ -217,7 +208,7 @@ test("update leaves owner-chosen newer Size Limit versions untouched", async () 
   );
 });
 
-test.each(["library", "forge-app"])(
+test.each(["forge-app"])(
   "%s composed update preserves tuned budgets and deletion idempotently",
   async (kind) => {
     const source = mockModuleSource();
