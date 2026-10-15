@@ -8,7 +8,7 @@
   },
   "files": {
     "ignoreUnknown": false,
-    "includes": ["**", "!!**/specs", "!!**/dist"]
+    "includes": ["**", "!!**/dist", "!!**/specs", "!!**/vendor"]
   },
   "formatter": {
     "enabled": true,
@@ -17,7 +17,11 @@
   "linter": {
     "enabled": true,
     "rules": {
-      "preset": "recommended"
+      "preset": "recommended",
+      "complexity": {
+        // Conflicts with TypeScript `noPropertyAccessFromIndexSignature`
+        "useLiteralKeys": "off"
+      }
     }
   },
   "javascript": {
