@@ -19,7 +19,7 @@ import {
   checkStagedFiles,
   git,
   type RepositoryResult,
-} from "../src/repository-git.ts";
+} from "../src/core/repository-git.ts";
 
 function optionalGit(directory: string, ...args: string[]): string | undefined {
   try {

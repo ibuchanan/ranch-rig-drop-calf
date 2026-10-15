@@ -6,9 +6,9 @@ import {
   type Secret,
   type Socket,
 } from "@dagger.io/dagger";
-import { nodeContainer } from "./core/tool-run.ts";
-import { TOOL_VERSIONS } from "./core/versions.ts";
 import type { RepositoryOptions } from "./repository-git.ts";
+import { nodeContainer } from "./tool-run.ts";
+import { TOOL_VERSIONS } from "./versions.ts";
 
 export type RepositoryInput = RepositoryOptions & {
   directory: Directory;
@@ -49,7 +49,10 @@ export async function repositoryWorkflow(
     publish,
     ...options
   } = input;
-  const script = dag.currentModule().source().file("src/repository-git.ts");
+  const script = dag
+    .currentModule()
+    .source()
+    .file("src/core/repository-git.ts");
   let container = nodeContainer()
     .withFile(
       "/usr/local/bin/bun",

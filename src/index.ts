@@ -19,8 +19,8 @@ import {
 import { updateCapabilities, validateCapabilities } from "./core/capability.ts";
 import { mergeScaffoldPackage, scaffoldName } from "./core/package-json.ts";
 import { renderToDirectory } from "./core/project.ts";
+import { repositoryWorkflow } from "./core/repository.ts";
 import { seedTemplates } from "./core/templates.ts";
-import { repositoryWorkflow } from "./repository.ts";
 
 @object()
 export class DropCalf {

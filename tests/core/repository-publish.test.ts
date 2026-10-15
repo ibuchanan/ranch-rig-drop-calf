@@ -8,7 +8,7 @@ import {
   prepareRepository,
   publishRepository,
   type RepositoryOptions,
-} from "../src/repository-git.ts";
+} from "../../src/core/repository-git.ts";
 
 const roots: string[] = [];
 afterEach(() => {
@@ -16,9 +16,9 @@ afterEach(() => {
     rmSync(root, { recursive: true, force: true });
 });
 function fixture() {
-  mkdirSync(join(import.meta.dir, "../.scratch"), { recursive: true });
+  mkdirSync(join(import.meta.dir, "../../.scratch"), { recursive: true });
   const root = mkdtempSync(
-    join(import.meta.dir, "../.scratch/tmp_rovo_publish_"),
+    join(import.meta.dir, "../../.scratch/tmp_rovo_publish_"),
   );
   roots.push(root);
   const source = join(root, "source"),
@@ -66,7 +66,7 @@ test("publication recovery preserves a usable bundle and valid failure metadata"
   writeFileSync(config, JSON.stringify(options));
   execFileSync("bun", [
     "run",
-    join(import.meta.dir, "../src/repository-git.ts"),
+    join(import.meta.dir, "../../src/core/repository-git.ts"),
     "publication-failed",
     config,
     isolated,

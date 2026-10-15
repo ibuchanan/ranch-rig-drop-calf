@@ -11,13 +11,13 @@ import {
   deliverRepository,
   inspectCheckout,
   sourceFingerprint,
-} from "../scripts/repository.ts";
+} from "../../scripts/repository.ts";
 import {
   finishRepository,
   git,
   prepareRepository,
   type RepositoryOptions,
-} from "../src/repository-git.ts";
+} from "../../src/core/repository-git.ts";
 
 const roots: string[] = [];
 afterEach(() => {
@@ -25,9 +25,9 @@ afterEach(() => {
     rmSync(root, { recursive: true, force: true });
 });
 function fixture() {
-  mkdirSync(join(import.meta.dir, "../.scratch"), { recursive: true });
+  mkdirSync(join(import.meta.dir, "../../.scratch"), { recursive: true });
   const root = mkdtempSync(
-    join(import.meta.dir, "../.scratch/tmp_rovo_safety_"),
+    join(import.meta.dir, "../../.scratch/tmp_rovo_safety_"),
   );
   roots.push(root);
   const repo = join(root, "repo"),

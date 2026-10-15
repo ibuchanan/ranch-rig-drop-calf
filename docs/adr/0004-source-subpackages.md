@@ -43,6 +43,8 @@ src/
 │   ├── templates.ts
 │   ├── package-json.ts
 │   ├── tool-run.ts
+│   ├── repository.ts
+│   ├── repository-git.ts
 │   ├── versions.ts
 │   └── errors.ts
 ├── composition/
@@ -75,6 +77,12 @@ Two rules are explicit rather than incidental:
 - **Capabilities do not depend on each other.** `EVALS_TEMPLATE` is a template
   path constant, not capability behavior, so it moves to `core/templates.ts`.
   After that extraction the rule holds exactly.
+
+Repository Git workflows also belong in `core/`: `repository.ts` orchestrates
+an injected directory transformation, and `repository-git.ts` owns the Git
+transaction without naming capabilities or profiles. Their disposable-repository
+tests live in `tests/core/`; the local launcher stays in `scripts/repository.ts`
+and its container round-trip suite stays in `tests/e2e/`.
 
 Tests and scripts follow the same shape. `tests/` gains `core/`,
 `composition/`, and `capabilities/` siblings to `e2e/`, and its shared fixtures

@@ -9,7 +9,7 @@ import {
   prepareRepository,
   type RepositoryOptions,
   type RepositoryResult,
-} from "../src/repository-git.ts";
+} from "../../src/core/repository-git.ts";
 
 const roots: string[] = [];
 afterEach(() => {
@@ -17,8 +17,10 @@ afterEach(() => {
     rmSync(root, { recursive: true, force: true });
 });
 function fixture(operation: "init" | "update" = "init") {
-  mkdirSync(join(import.meta.dir, "../.scratch"), { recursive: true });
-  const root = mkdtempSync(join(import.meta.dir, "../.scratch/tmp_rovo_git_"));
+  mkdirSync(join(import.meta.dir, "../../.scratch"), { recursive: true });
+  const root = mkdtempSync(
+    join(import.meta.dir, "../../.scratch/tmp_rovo_git_"),
+  );
   roots.push(root);
   const repo = join(root, "repo"),
     tree = join(root, "tree"),
