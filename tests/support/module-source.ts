@@ -2,6 +2,7 @@ import { spyOn } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { type Directory, dag } from "@dagger.io/dagger";
+import { AIDEV_TEMPLATE } from "../../src/capabilities/aidev.ts";
 import { BIOME_TEMPLATE } from "../../src/capabilities/biome.ts";
 import { CATALOG_TEMPLATE } from "../../src/capabilities/catalog.ts";
 import { CHANGELOG_TEMPLATE } from "../../src/capabilities/changelog.ts";
@@ -17,6 +18,7 @@ import { TYPESCRIPT_TEMPLATE } from "../../src/capabilities/typescript.ts";
 import { EVALS_TEMPLATE } from "../../src/core/templates.ts";
 import { mockContainer } from "./container-source.ts";
 import {
+  aidevTemplates,
   biomeTemplates,
   catalogTemplates,
   changelogTemplates,
@@ -132,6 +134,7 @@ export function mockModuleSource(
     SECRETS_EXECUTABLES.map((path) => [path, 0o755]),
   );
   const trees = new Map<string, ReturnType<typeof tree>>([
+    [AIDEV_TEMPLATE, tree(aidevTemplates())],
     [CATALOG_TEMPLATE, tree(catalogTemplates())],
     ["templates/docs", tree(docs)],
     [TYPESCRIPT_TEMPLATE, tree(typeScript)],

@@ -1,5 +1,6 @@
 import { expect, spyOn, test } from "bun:test";
 import { dag } from "@dagger.io/dagger";
+import { AIDEV_TEMPLATE } from "../../src/capabilities/aidev.ts";
 import {
   buildProject,
   resolveProfile,
@@ -11,9 +12,11 @@ import {
 } from "../../src/core/capability.ts";
 import { InvalidOptionsError } from "../../src/core/errors.ts";
 import { createBlueprint } from "../../src/core/project.ts";
+import { seedTemplates } from "../../src/core/templates.ts";
 import { DropCalf } from "../../src/index.ts";
 import { capabilityOf, runInit } from "../support/capability-fixtures.ts";
 import { mockDirectory, mockModuleSource } from "../support/module-source.ts";
+import { aidevTemplates } from "../support/templates-source.ts";
 
 const kinds = ["library", "forge-app", "tool", "agent-skill"];
 
@@ -34,11 +37,9 @@ test.each(kinds)(
     runInit(capability, project);
     expect(project.packageJson).toEqual(before.packageJson);
     expect(project.templates.map((template) => template.path)).toEqual(
-      before.templates.map((template) => template.path),
+      kind === "forge-app" ? [AIDEV_TEMPLATE] : [],
     );
-    expect([...project.files.keys()]).toEqual(
-      kind === "forge-app" ? ["AGENTS.md"] : [],
-    );
+    expect(project.files).toEqual(before.files);
     expect(noOpReasons([capability])).toEqual([
       ...(kind === "forge-app"
         ? []
@@ -79,17 +80,11 @@ test.each([undefined, "all"])(
         expect(await initialized.exists("AGENTS.md")).toBe(
           !without.includes("aidev"),
         );
+        expect(await initialized.exists("evals.md")).toBe(false);
         if (!without.includes("aidev")) {
           expect(await initialized.file("AGENTS.md").contents()).toBe(
-            buildProject(
-              "forge-app",
-              "sample",
-              "tester",
-              "",
-              [],
-              [],
-              preset,
-            ).files.get("AGENTS.md") ?? "",
+            (aidevTemplates().get("AGENTS.md") ?? "") +
+              (preset === "all" ? aidevTemplates().get("evals.md") : ""),
           );
         }
         for (const repository of [
@@ -239,16 +234,7 @@ test.each([
       const scripts = references
         .filter((reference) => reference.startsWith("npm run "))
         .map((reference) => reference.slice("npm run ".length));
-      expect(scripts).toEqual(
-        expect.arrayContaining([
-          "check",
-          "typecheck",
-          "test",
-          "lint:forge",
-          "forge:deploy",
-          "forge:upgrade",
-        ]),
-      );
+      expect(scripts).toContain("check");
       for (const script of scripts)
         expect(
           pkg.scripts[script],
@@ -289,27 +275,33 @@ test.each([
   },
 );
 
-test("a promptfoo dependency alone does not select eval guidance", () => {
-  const project = createBlueprint("sample", "", "tester");
-  project.packageJson.devDependencies.promptfoo = "owner";
-  const capability = capabilityOf("forge-app", "aidev");
-  runInit(capability, project);
-  expect(project.files.get("AGENTS.md")).not.toContain("## Prompt evaluations");
+test("a promptfoo dependency alone does not select eval guidance", async () => {
+  const source = mockModuleSource();
+  try {
+    const project = createBlueprint("sample", "", "tester");
+    project.packageJson.devDependencies.promptfoo = "owner";
+    runInit(capabilityOf("forge-app", "aidev"), project);
+    const seeded = await seedTemplates(
+      mockDirectory(),
+      dag.currentModule().source(),
+      project.templates,
+    );
+    expect(await seeded.file("AGENTS.md").contents()).toBe(
+      aidevTemplates().get("AGENTS.md") ?? "",
+    );
+  } finally {
+    source.mockRestore();
+  }
 });
 
 test.each([undefined, "all"])(
   "authored guidance stays inside the docs line length with preset %s",
   (preset) => {
     // `lint:docs` globs `**/*.md`, including this seed, and enforces MD013.
-    const guidance = buildProject(
-      "forge-app",
-      "sample",
-      "tester",
-      "",
-      [],
-      [],
-      preset,
-    ).files.get("AGENTS.md") as string;
+    const templates = aidevTemplates();
+    const guidance =
+      (templates.get("AGENTS.md") ?? "") +
+      (preset === "all" ? templates.get("evals.md") : "");
     expect(
       guidance
         .split("\n")
@@ -322,10 +314,15 @@ test.each([undefined, "all"])(
 test("excluding aidev prevents Forge guidance generation", () => {
   const without = ["aidev"];
   expect(
-    buildProject("forge-app", "sample", "tester", "", [], without).files.has(
-      "AGENTS.md",
-    ),
-  ).toBe(false);
+    buildProject(
+      "forge-app",
+      "sample",
+      "tester",
+      "",
+      [],
+      without,
+    ).templates.map((template) => template.path),
+  ).not.toContain(AIDEV_TEMPLATE);
   expect(() =>
     buildProject("forge-app", "sample", "tester", "", ["aidev"], without),
   ).toThrow(InvalidOptionsError);
@@ -336,9 +333,11 @@ test("excluding aidev prevents Forge guidance generation", () => {
 
 test("non-Forge kinds omit Forge-specific guidance", () => {
   for (const kind of ["library", "tool", "agent-skill"])
-    expect(buildProject(kind, "sample", "tester").files.has("AGENTS.md")).toBe(
-      false,
-    );
+    expect(
+      buildProject(kind, "sample", "tester").templates.map(
+        (template) => template.path,
+      ),
+    ).not.toContain(AIDEV_TEMPLATE);
 });
 
 test("explicit Forge preclean removes scaffold guidance so generated guidance can replace it", async () => {

@@ -6,9 +6,9 @@ import {
   type Secret,
   type Socket,
 } from "@dagger.io/dagger";
-import type { RepositoryOptions } from "./repository-git.ts";
 import { nodeContainer } from "./core/tool-run.ts";
 import { TOOL_VERSIONS } from "./core/versions.ts";
+import type { RepositoryOptions } from "./repository-git.ts";
 
 export type RepositoryInput = RepositoryOptions & {
   directory: Directory;
