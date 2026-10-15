@@ -229,16 +229,28 @@ produce additional skipped or failed results beyond the deliberate no-ops below.
 The [functions specification](specs/02-project-functions.md#capability-verb-reference)
 contains the same reference plus detailed ownership and preservation rules.
 
+## Repository Git workflows
+
+Use the local launcher to initialize or update a checkout with containerized Git
+operations. Init records the scaffold and transformation separately. Update retains
+an update branch and a non-fast-forward merge. Both can export bundles for preview;
+remote update can publish the update branch and merged target without a PR.
+
+See [Run repository Git workflows](docs/how-to/run-repository-workflows.md)
+for local usage, GitHub Actions and Bitbucket Pipelines examples, and recovery.
+
 ## Other entry points
 
 - `init --directory <dir> --profile <name> --owner <id>` returns the
   initialized directory. Add `entries` to list its top-level contents; prefer
   `init-changes ... export --path <dir>` to apply changes to disk, including
-  scaffold deletions.
-- `update --directory <dir> --profile <name>` applies every capability's update policy.
+  scaffold deletions. Add `--git` to commit changes and export a Git bundle.
+- `update --directory <dir> --profile <name>` applies every capability's update
+  policy.
   Node update replaces the whole `.npmrc` and `.nvmrc`, removes Forge package
   `engines`, and preserves `@types/node`. On `forge-app`, manifest update then
   derives the runtime from `.nvmrc`; review the result before exporting it.
+  Add `--git` to commit changes and export a Git bundle.
 - `validate --directory <dir> --profile <name>` returns a read-only capability
   report. Node validation uses fnm in a container to select the version requested
   by `.nvmrc`, potentially downloading Node; it is not a baseline-compliance or

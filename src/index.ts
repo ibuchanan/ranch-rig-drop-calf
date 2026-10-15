@@ -4,9 +4,11 @@ import {
   type Changeset,
   type Directory,
   dag,
+  type File,
   func,
   object,
   type Secret,
+  type Socket,
 } from "@dagger.io/dagger";
 import {
   blueprintFor,
@@ -18,6 +20,7 @@ import { updateCapabilities, validateCapabilities } from "./core/capability.ts";
 import { mergeScaffoldPackage, scaffoldName } from "./core/package-json.ts";
 import { renderToDirectory } from "./core/project.ts";
 import { seedTemplates } from "./core/templates.ts";
+import { repositoryWorkflow } from "./repository.ts";
 
 @object()
 export class DropCalf {
@@ -33,6 +36,8 @@ export class DropCalf {
    * Normalize the manifest runtime from .nvmrc in the final update pass.
    * Package naming: explicit name, nonblank scaffold name, workspace basename.
    * Catalog owns package identity; the owner staff ID is the package author.
+   * With git, return repository.bundle and result.json instead of a worktree;
+   * author identity is required and history supplies an existing repository.
    */
   @func()
   async init(
@@ -44,7 +49,36 @@ export class DropCalf {
     withFunctions: string[] = [],
     withoutFunctions: string[] = [],
     preset?: string,
+    git = false,
+    history?: File,
+    targetBranch = "main",
+    authorName = "",
+    authorEmail = "",
   ): Promise<Directory> {
+    if (git)
+      return repositoryWorkflow(
+        {
+          operation: "init",
+          directory,
+          history,
+          branch: targetBranch,
+          authorName,
+          authorEmail,
+          publish: false,
+          provenance: `Drop-Calf-Source: ${await dag.currentModule().source().digest()}\nProfile: ${profile}\nWith: ${withFunctions.join(",")}\nWithout: ${withoutFunctions.join(",")}\nPreset: ${preset ?? "default"}`,
+        },
+        (input) =>
+          this.init(
+            input,
+            profile,
+            owner,
+            packageName,
+            description,
+            withFunctions,
+            withoutFunctions,
+            preset,
+          ),
+      );
     const capabilities = resolveProfile(
       profile,
       withFunctions,
@@ -119,15 +153,50 @@ export class DropCalf {
     ).changes(directory);
   }
 
-  /** Apply only the selected capabilities' update policies; never run scaffold steps. */
-  @func()
+  /**
+   * Apply selected update policies without scaffold steps. With git, return a
+   * repository bundle and result.json, retaining an update branch and merge.
+   * Supply history or remoteUrl; publish explicitly pushes both refs to remoteUrl.
+   * Always inspect result.json: failures after preparation export recovery history.
+   */
+  @func({ cache: "never" })
   async update(
     directory: Directory,
     profile: string,
     withFunctions: string[] = [],
     withoutFunctions: string[] = [],
     preset?: string,
+    git = false,
+    history?: File,
+    remoteUrl?: string,
+    targetBranch = "main",
+    authorName = "",
+    authorEmail = "",
+    publish = false,
+    authHeader?: Secret,
+    sshAgent?: Socket,
+    knownHosts?: File,
   ): Promise<Directory> {
+    if (publish && !git) throw new Error("Publication requires --git.");
+    if (git)
+      return repositoryWorkflow(
+        {
+          operation: "update",
+          directory,
+          history,
+          remoteUrl,
+          branch: targetBranch,
+          authorName,
+          authorEmail,
+          publish,
+          authHeader,
+          sshAgent,
+          knownHosts,
+          provenance: `Drop-Calf-Source: ${await dag.currentModule().source().digest()}\nProfile: ${profile}\nWith: ${withFunctions.join(",")}\nWithout: ${withoutFunctions.join(",")}\nPreset: ${preset ?? "default"}`,
+        },
+        (input) =>
+          this.update(input, profile, withFunctions, withoutFunctions, preset),
+      );
     return updateCapabilities(
       directory,
       resolveProfile(profile, withFunctions, withoutFunctions, preset),
