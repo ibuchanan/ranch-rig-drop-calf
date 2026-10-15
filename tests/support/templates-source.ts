@@ -17,7 +17,9 @@ const templatesIn = (tree: string) => {
   );
 };
 
-export const aidevTemplates = () => templatesIn("aidev");
+export const aidevTemplates = (
+  guidance: "forge-app" | "library" = "forge-app",
+) => templatesIn(`aidev/${guidance}`);
 
 export const catalogTemplates = () => templatesIn("catalog");
 

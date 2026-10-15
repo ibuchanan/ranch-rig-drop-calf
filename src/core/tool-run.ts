@@ -7,9 +7,9 @@ export const REPOSITORY = "/repo";
 export const TOOLS = "/tools";
 
 /**
- * The Node baseline as a native Dagger container. This is the one place the
- * Node image is chosen, so a containerized tool runs the same major the file
- * pins promise rather than whatever the host has installed. The `node` image
+ * The internal tooling baseline as a native Dagger container. Project kinds
+ * may select a different development major without changing these tooling
+ * containers. The `node` image
  * carries `git`, which containerized commands dispatch through.
  */
 export function nodeContainer(): Container {

@@ -199,10 +199,12 @@ test("the blueprint leaves license metadata to catalog consumers", () => {
 });
 
 describe("profiles", () => {
-  test("all kinds generate matching Node 24 pins", () => {
+  test("all kinds generate matching project Node pins", () => {
     for (const kind of ["library", "forge-app", "tool", "agent-skill"]) {
       const project = buildProject(kind, "sample", "tester");
-      expect(project.files.get(".nvmrc")).toBe("24\n");
+      expect(project.files.get(".nvmrc")).toBe(
+        kind === "library" ? "22\n" : "24\n",
+      );
       expect(project.packageJson.engines).toBeUndefined();
     }
   });

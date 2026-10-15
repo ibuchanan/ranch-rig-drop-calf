@@ -63,6 +63,19 @@ test.each(cases)(
       expect(pkg.description).toBe("");
       expect(pkg.private).toBe(true);
       expect(pkg.engines).toBeUndefined();
+      expect(readFileSync(join(output, ".nvmrc"), "utf8")).toBe(
+        profile === "library" ? "22\n" : "24\n",
+      );
+      expect(pkg.devDependencies["@types/node"]).toBe(
+        profile === "library" ? "22" : "24",
+      );
+      expect(existsSync(join(output, "AGENTS.md"))).toBe(
+        profile === "library" || profile === "forge-app",
+      );
+      if (profile === "library")
+        expect(readFileSync(join(output, "AGENTS.md"), "utf8")).toBe(
+          readFileSync(join(repo, "templates/aidev/library/AGENTS.md"), "utf8"),
+        );
       expect(readFileSync(join(output, ".atlassian/OWNER"), "utf8")).toBe(
         "tester",
       );

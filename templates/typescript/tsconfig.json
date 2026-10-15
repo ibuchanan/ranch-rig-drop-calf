@@ -4,7 +4,7 @@
     "jsx": "react-jsx",
     "sourceMap": true,
 
-    /* Runtime baseline: Node 24; ES2022 remains a conservative target alongside the Forge Webpack defaults */
+    /* Runtime baseline: Node selected by .nvmrc; ES2022 remains a conservative target alongside the Forge Webpack defaults */
     "target": "ES2022",
     "module": "ESNext",
     "moduleResolution": "Node",

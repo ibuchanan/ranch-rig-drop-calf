@@ -2,7 +2,10 @@ import { spyOn } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { type Directory, dag } from "@dagger.io/dagger";
-import { AIDEV_TEMPLATE } from "../../src/capabilities/aidev.ts";
+import {
+  AIDEV_TEMPLATE,
+  LIBRARY_AIDEV_TEMPLATE,
+} from "../../src/capabilities/aidev.ts";
 import { BIOME_TEMPLATE } from "../../src/capabilities/biome.ts";
 import { CATALOG_TEMPLATE } from "../../src/capabilities/catalog.ts";
 import { CHANGELOG_TEMPLATE } from "../../src/capabilities/changelog.ts";
@@ -135,6 +138,7 @@ export function mockModuleSource(
   );
   const trees = new Map<string, ReturnType<typeof tree>>([
     [AIDEV_TEMPLATE, tree(aidevTemplates())],
+    [LIBRARY_AIDEV_TEMPLATE, tree(aidevTemplates("library"))],
     [CATALOG_TEMPLATE, tree(catalogTemplates())],
     ["templates/docs", tree(docs)],
     [TYPESCRIPT_TEMPLATE, tree(typeScript)],

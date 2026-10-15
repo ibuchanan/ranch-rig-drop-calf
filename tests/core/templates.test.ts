@@ -1,6 +1,9 @@
 import { expect, test } from "bun:test";
 import type { Directory } from "@dagger.io/dagger";
-import { AIDEV_TEMPLATE } from "../../src/capabilities/aidev.ts";
+import {
+  AIDEV_TEMPLATE,
+  LIBRARY_AIDEV_TEMPLATE,
+} from "../../src/capabilities/aidev.ts";
 import { BIOME_TEMPLATE } from "../../src/capabilities/biome.ts";
 import { CATALOG_TEMPLATE } from "../../src/capabilities/catalog.ts";
 import { CHANGELOG_TEMPLATE } from "../../src/capabilities/changelog.ts";
@@ -28,6 +31,7 @@ test.each(kinds)("%s declares only its selected template trees", (kind) => {
     expect(project.templates.map((template) => template.path).sort()).toEqual(
       [
         ...(kind === "forge-app" ? [AIDEV_TEMPLATE] : []),
+        ...(kind === "library" ? [LIBRARY_AIDEV_TEMPLATE] : []),
         BIOME_TEMPLATE,
         CATALOG_TEMPLATE,
         PINNED_OSS,

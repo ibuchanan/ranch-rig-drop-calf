@@ -10,7 +10,7 @@ import {
 import { PROFILES } from "../../src/composition/profiles.ts";
 import { validateCapabilities } from "../../src/core/capability.ts";
 import { createBlueprint } from "../../src/core/project.ts";
-import { NODE_MAJOR, TOOL_VERSIONS } from "../../src/core/versions.ts";
+import { TOOL_VERSIONS } from "../../src/core/versions.ts";
 import { DropCalf } from "../../src/index.ts";
 import { runInit, runUpdate, verb } from "../support/capability-fixtures.ts";
 import { mockContainer } from "../support/container-source.ts";
@@ -162,7 +162,7 @@ test("every TypeScript output has exactly one init contributor per profile", () 
     ])
       expect(owners.get(path), path).toHaveLength(1);
   }
-  expect(baseline("tsconfig.json")).toContain(`Node ${NODE_MAJOR}`);
+  expect(baseline("tsconfig.json")).toContain("Node selected by .nvmrc");
   expect(baseline("tsconfig.json")).not.toContain("Node 18");
 });
 

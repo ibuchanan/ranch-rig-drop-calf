@@ -17,11 +17,13 @@ export const selections = (kind: string) => [
   ...(["library", "tool"].includes(kind)
     ? [{ withFunctions: [], withoutFunctions: ["fallow"], preset: undefined }]
     : []),
+  ...(["forge-app", "library"].includes(kind)
+    ? [{ withFunctions: [], withoutFunctions: ["aidev"], preset: "all" }]
+    : []),
   ...(kind === "forge-app"
     ? [
         { withFunctions: ["evals"], withoutFunctions: [], preset: undefined },
         { withFunctions: [], withoutFunctions: ["evals"], preset: "all" },
-        { withFunctions: [], withoutFunctions: ["aidev"], preset: "all" },
       ]
     : []),
 ];

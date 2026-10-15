@@ -1,4 +1,5 @@
 import { type Directory, dag } from "@dagger.io/dagger";
+import { subset, validRange } from "semver";
 import type { Capability, Validation } from "../core/capability.ts";
 import { editPackageJson, readPackageJson } from "../core/package-json.ts";
 import { nodeContainer, REPOSITORY, runTool } from "../core/tool-run.ts";
@@ -7,15 +8,19 @@ import { CATALOG_FILE, LICENSE, readCatalog } from "./catalog.ts";
 
 /**
  * Update owns .nvmrc and the whole .npmrc; Forge manifest updates are separate.
- * @types/node is seeded and kept fresh. No kind generates engines: a toolchain baseline
+ * @types/node stays within an explicitly selected major; otherwise it is kept fresh.
+ * No kind generates engines: a toolchain baseline
  * is not a library's compatibility promise, and engines has troubled forge deploy.
  * The engines option decides whether update removes or preserves owner declarations.
  */
 export const NODE_NVMRC = `${NODE_MAJOR}\n`;
 const NPM_REGISTRY = "https://registry.npmjs.org/";
 export const NPMRC = `# Use the public npm registry (not the default for internal Atlassians)\nregistry=${NPM_REGISTRY}\n`;
-/** Whole-file pins and catalog license are policy; dependencies remain owner-managed. */
-async function updateNode(directory: Directory): Promise<Directory> {
+/** Explicit majors constrain existing Node type ranges without restoring removed dependencies. */
+async function updateNode(
+  directory: Directory,
+  major?: string,
+): Promise<Directory> {
   let result = directory;
   // The license comes from repository content, so no contribution can express it.
   if (await readPackageJson(directory)) {
@@ -27,10 +32,23 @@ async function updateNode(directory: Directory): Promise<Directory> {
       );
     result = await editPackageJson(directory, (pkg) => {
       pkg.license = license;
+      if (major !== undefined) {
+        for (const section of ["dependencies", "devDependencies"] as const) {
+          const value = pkg[section];
+          if (!value || typeof value !== "object" || Array.isArray(value))
+            continue;
+          const dependencies = value as Record<string, unknown>;
+          const types = dependencies["@types/node"];
+          if (types === undefined) continue;
+          const range = typeof types === "string" && validRange(types);
+          if (!range || !subset(range, `${major}.x`))
+            dependencies["@types/node"] = major;
+        }
+      }
     });
   }
   for (const [path, wanted] of [
-    [".nvmrc", NODE_NVMRC],
+    [".nvmrc", `${major ?? NODE_MAJOR}\n`],
     [".npmrc", NPMRC],
   ] as const) {
     if (
@@ -73,13 +91,25 @@ async function validateNode(directory: Directory): Promise<Validation> {
 }
 
 export type NodeBaselineOptions = {
+  /** Pin development and existing Node type ranges to this compatibility major. */
+  major?: string;
   /** `remove` for platforms whose deploy rejects engines; default preserves owner input. */
   engines?: "preserve" | "remove";
 };
 
 export function nodeBaseline({
   engines = "preserve",
+  major,
 }: NodeBaselineOptions = {}): Capability {
+  const baseline = major ?? NODE_MAJOR;
+  if (!/^[1-9]\d*$/.test(baseline) || baseline.trim() !== baseline)
+    throw new Error(
+      `node: expected a positive numeric major, received ${baseline}`,
+    );
+  const typesPolicy =
+    major === undefined
+      ? "keep @types/node fresh"
+      : `constrain declared @types/node ranges to major ${major}`;
   return {
     name: "node",
     documentation: {
@@ -97,23 +127,23 @@ export function nodeBaseline({
             "Reference for Node.js versions and TypeScript type definitions",
         },
       ],
-      init: "Seed .nvmrc, public-registry .npmrc, and @types/node; no engines declaration.",
+      init: `Seed Node ${baseline} .nvmrc, public-registry .npmrc, and @types/node; no engines declaration.`,
       update:
         engines === "remove"
-          ? "Replace .nvmrc/.npmrc, derive package license from catalog, and remove engines; keep @types/node fresh."
-          : "Replace .nvmrc/.npmrc and derive package license from catalog; preserve engines and keep @types/node fresh.",
+          ? `Replace .nvmrc/.npmrc, derive package license from catalog, and remove engines; ${typesPolicy}.`
+          : `Replace .nvmrc/.npmrc and derive package license from catalog; preserve engines and ${typesPolicy}.`,
       validate:
         "Use fnm to select .nvmrc (may download Node); no baseline, type-version, or deployment check.",
     },
     packageJson: {
-      seed: { devDependencies: { "@types/node": NODE_MAJOR } },
+      seed: { devDependencies: { "@types/node": baseline } },
       ...(engines === "remove" ? { remove: ["engines"] } : {}),
     },
     init(project) {
-      project.files.set(".nvmrc", NODE_NVMRC);
+      project.files.set(".nvmrc", `${baseline}\n`);
       project.files.set(".npmrc", NPMRC);
     },
-    update: updateNode,
+    update: (directory) => updateNode(directory, major),
     validate: validateNode,
   };
 }

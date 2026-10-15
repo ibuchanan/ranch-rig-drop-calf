@@ -2,26 +2,26 @@ import { type Capability, noOp } from "../core/capability.ts";
 import type { ProjectBlueprint } from "../core/project.ts";
 import { EVALS_TEMPLATE, templateTree } from "../core/templates.ts";
 
-export const AIDEV_TEMPLATE = "templates/aidev";
+export const AIDEV_TEMPLATE = "templates/aidev/forge-app";
+export const LIBRARY_AIDEV_TEMPLATE = "templates/aidev/library";
 
 export type AidevOptions = {
-  /** Seed the authored Forge guidance; without it there is nothing to seed. */
-  forgeGuidance?: boolean;
+  /** Authored template tree path; omit when no guidance should be seeded. */
+  guidance?: string;
 };
 
-export function aidev({
-  forgeGuidance = false,
-}: AidevOptions = {}): Capability {
-  const seed: (project: ProjectBlueprint) => void = (project) => {
+export function aidev({ guidance }: AidevOptions = {}): Capability {
+  const seed = (project: ProjectBlueprint) => {
     project.templates.push(
-      templateTree(AIDEV_TEMPLATE, async (destination, source) => {
-        const guidance = await source.file("AGENTS.md").contents();
-        const evalsSelected = project.templates.some(
-          (template) => template.path === EVALS_TEMPLATE,
-        );
+      templateTree(guidance ?? AIDEV_TEMPLATE, async (destination, source) => {
+        const text = await source.file("AGENTS.md").contents();
+        const evalsSelected =
+          project.templates.some(
+            (template) => template.path === EVALS_TEMPLATE,
+          ) && (await source.exists("evals.md"));
         return destination.withNewFile(
           "AGENTS.md",
-          guidance +
+          text +
             (evalsSelected ? await source.file("evals.md").contents() : ""),
         );
       }),
@@ -38,16 +38,16 @@ export function aidev({
             "Gives coding agents repository-specific instructions; human guidance, not executable config.",
         },
       ],
-      ...(forgeGuidance
-        ? { init: "Seed authored Forge agent guidance in AGENTS.md." }
+      ...(guidance
+        ? {
+            init: `Seed authored agent guidance from ${guidance} in AGENTS.md.`,
+          }
         : {}),
     },
-    ...(forgeGuidance ? { selection: { without: true, default: true } } : {}),
-    init: forgeGuidance
+    ...(guidance ? { selection: { without: true, default: true } } : {}),
+    init: guidance
       ? seed
-      : noOp(
-          "Only Forge apps have an authored agent guidance seed; other project kinds omit Forge-specific instructions.",
-        ),
+      : noOp("No authored agent guidance is selected for this project kind."),
     update: noOp(
       "Agent guidance is init-only and owner-managed; update preserves edits and does not restore a deleted AGENTS.md.",
     ),

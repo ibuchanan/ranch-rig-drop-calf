@@ -1,6 +1,9 @@
 import { expect, spyOn, test } from "bun:test";
 import { dag } from "@dagger.io/dagger";
-import { AIDEV_TEMPLATE } from "../../src/capabilities/aidev.ts";
+import {
+  AIDEV_TEMPLATE,
+  LIBRARY_AIDEV_TEMPLATE,
+} from "../../src/capabilities/aidev.ts";
 import {
   buildProject,
   resolveProfile,
@@ -36,19 +39,25 @@ test.each(kinds)(
     const before = structuredClone(project);
     runInit(capability, project);
     expect(project.packageJson).toEqual(before.packageJson);
+    const expectedTemplate =
+      kind === "forge-app"
+        ? AIDEV_TEMPLATE
+        : kind === "library"
+          ? LIBRARY_AIDEV_TEMPLATE
+          : null;
     expect(project.templates.map((template) => template.path)).toEqual(
-      kind === "forge-app" ? [AIDEV_TEMPLATE] : [],
+      expectedTemplate ? [expectedTemplate] : [],
     );
     expect(project.files).toEqual(before.files);
     expect(noOpReasons([capability])).toEqual([
-      ...(kind === "forge-app"
+      ...(["forge-app", "library"].includes(kind)
         ? []
         : [
             {
               capability: "aidev",
               verb: "init" as const,
               reason:
-                "Only Forge apps have an authored agent guidance seed; other project kinds omit Forge-specific instructions.",
+                "No authored agent guidance is selected for this project kind.",
             },
           ]),
       { capability: "aidev", verb: "update", reason: updateReason },
@@ -57,9 +66,13 @@ test.each(kinds)(
   },
 );
 
-test.each([undefined, "all"])(
-  "Forge init seeds guidance and update preserves edits and deletions with preset %s",
-  async (preset) => {
+test.each(
+  ["forge-app", "library"].flatMap((kind) =>
+    [undefined, "all"].map((preset) => ({ kind, preset })),
+  ),
+)(
+  "$kind init seeds guidance and update preserves edits and deletions ($preset)",
+  async ({ kind, preset }) => {
     const source = mockModuleSource();
     const empty = spyOn(dag, "directory").mockImplementation(() =>
       mockDirectory(),
@@ -69,7 +82,7 @@ test.each([undefined, "all"])(
       for (const without of [[], ["aidev"]]) {
         const initialized = await module.init(
           mockDirectory(),
-          "forge-app",
+          kind,
           "tester",
           "sample",
           "",
@@ -83,8 +96,11 @@ test.each([undefined, "all"])(
         expect(await initialized.exists("evals.md")).toBe(false);
         if (!without.includes("aidev")) {
           expect(await initialized.file("AGENTS.md").contents()).toBe(
-            (aidevTemplates().get("AGENTS.md") ?? "") +
-              (preset === "all" ? aidevTemplates().get("evals.md") : ""),
+            (aidevTemplates(kind as "forge-app" | "library").get("AGENTS.md") ??
+              "") +
+              (kind === "forge-app" && preset === "all"
+                ? aidevTemplates().get("evals.md")
+                : ""),
           );
         }
         for (const repository of [
@@ -95,12 +111,12 @@ test.each([undefined, "all"])(
           initialized.withoutFile("AGENTS.md"),
         ]) {
           expect(
-            await module.update(repository, "forge-app", [], without, preset),
+            await module.update(repository, kind, [], without, preset),
           ).toBe(repository);
           for (const nextPreset of [undefined, "all"]) {
             const updated = await module.update(
               repository,
-              "forge-app",
+              kind,
               [],
               without,
               nextPreset,
@@ -146,7 +162,7 @@ test.each(kinds)(
     ).toEqual([
       { capability: "aidev", status: "skipped", reason: validateReason },
     ]);
-    if (kind === "forge-app") {
+    if (kind === "forge-app" || kind === "library") {
       expect(
         resolveProfile(kind, [], ["aidev"]).some(
           (item) => item.name === "aidev",
@@ -287,7 +303,7 @@ test("a promptfoo dependency alone does not select eval guidance", async () => {
       project.templates,
     );
     expect(await seeded.file("AGENTS.md").contents()).toBe(
-      aidevTemplates().get("AGENTS.md") ?? "",
+      aidevTemplates("forge-app").get("AGENTS.md") ?? "",
     );
   } finally {
     source.mockRestore();
@@ -298,7 +314,7 @@ test.each([undefined, "all"])(
   "authored guidance stays inside the docs line length with preset %s",
   (preset) => {
     // `lint:docs` globs `**/*.md`, including this seed, and enforces MD013.
-    const templates = aidevTemplates();
+    const templates = aidevTemplates("forge-app");
     const guidance =
       (templates.get("AGENTS.md") ?? "") +
       (preset === "all" ? templates.get("evals.md") : "");
@@ -311,24 +327,39 @@ test.each([undefined, "all"])(
   },
 );
 
-test("excluding aidev prevents Forge guidance generation", () => {
-  const without = ["aidev"];
-  expect(
-    buildProject(
-      "forge-app",
-      "sample",
-      "tester",
-      "",
-      [],
-      without,
-    ).templates.map((template) => template.path),
-  ).not.toContain(AIDEV_TEMPLATE);
-  expect(() =>
-    buildProject("forge-app", "sample", "tester", "", ["aidev"], without),
-  ).toThrow(InvalidOptionsError);
-  expect(() =>
-    buildProject("library", "sample", "tester", "", [], without),
-  ).toThrow(InvalidOptionsError);
+test.each(["forge-app", "library"])(
+  "excluding aidev prevents %s guidance generation",
+  (kind) => {
+    const without = ["aidev"];
+    expect(
+      buildProject(kind, "sample", "tester", "", [], without).templates.map(
+        (template) => template.path,
+      ),
+    ).not.toContain(
+      kind === "library" ? LIBRARY_AIDEV_TEMPLATE : AIDEV_TEMPLATE,
+    );
+    expect(() =>
+      buildProject(kind, "sample", "tester", "", ["aidev"], without),
+    ).toThrow(InvalidOptionsError);
+    for (const unsupported of ["tool", "agent-skill"])
+      expect(() =>
+        buildProject(unsupported, "sample", "tester", "", [], without),
+      ).toThrow(InvalidOptionsError);
+  },
+);
+
+test("library guidance names compatibility constraints without app assumptions", () => {
+  const guidance = aidevTemplates("library").get("AGENTS.md") ?? "";
+  expect(guidance).toContain("Node.js 22");
+  expect(guidance).toContain("ESM and CommonJS");
+  expect(guidance).toContain("TypeScript declarations");
+  expect(guidance).toContain(
+    "Do not publish packages without explicit approval",
+  );
+  expect(guidance).not.toMatch(
+    /manifest|forge deploy|storage|## Prompt evaluations/i,
+  );
+  expect(guidance.split("\n").filter((line) => line.length > 80)).toEqual([]);
 });
 
 test("non-Forge kinds omit Forge-specific guidance", () => {

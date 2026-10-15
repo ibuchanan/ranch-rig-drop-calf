@@ -1,5 +1,9 @@
 import type { Directory } from "@dagger.io/dagger";
-import { aidev } from "../capabilities/aidev.ts";
+import {
+  AIDEV_TEMPLATE,
+  aidev,
+  LIBRARY_AIDEV_TEMPLATE,
+} from "../capabilities/aidev.ts";
 import { biomeToolchain } from "../capabilities/biome.ts";
 import { bunTesting } from "../capabilities/bun-testing.ts";
 import { catalog } from "../capabilities/catalog.ts";
@@ -34,7 +38,7 @@ export const PROFILES: Record<string, Capability[]> = {
     packageMetadata(),
     oss(),
     gitignore(),
-    nodeBaseline(),
+    nodeBaseline({ major: "22" }),
     changelogToolchain(),
     biomeToolchain(),
     libraryBuild(),
@@ -49,7 +53,7 @@ export const PROFILES: Record<string, Capability[]> = {
       scriptsPurpose: "Library build helpers",
     }),
     gitHooks(),
-    aidev(),
+    aidev({ guidance: LIBRARY_AIDEV_TEMPLATE }),
   ],
   "forge-app": [
     catalog("forge-app"),
@@ -75,7 +79,7 @@ export const PROFILES: Record<string, Capability[]> = {
     }),
     gitHooks(),
     evals(),
-    aidev({ forgeGuidance: true }),
+    aidev({ guidance: AIDEV_TEMPLATE }),
   ],
   tool: [
     catalog("tool"),

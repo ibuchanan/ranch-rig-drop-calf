@@ -162,7 +162,8 @@ Entry point:
 
 `src/capabilities/`, one module per capability:
 
-- `src/capabilities/aidev.ts`: init-only `AGENTS.md` agent guidance.
+- `src/capabilities/aidev.ts`: shared init-only agent guidance with separate
+  `templates/aidev/library` and `templates/aidev/forge-app` authored seeds.
 - `src/capabilities/biome.ts`: Biome config, `.editorconfig`, and format/lint
   scripts.
 - `src/capabilities/bun-testing.ts`: Bun test scripts.

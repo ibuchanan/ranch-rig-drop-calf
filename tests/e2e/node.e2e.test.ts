@@ -14,7 +14,6 @@ import { forgeRuntimeFromNvmrc } from "../../src/capabilities/forge-manifest.ts"
 import { NODE_NVMRC, NPMRC } from "../../src/capabilities/node.ts";
 import { resolveProfile } from "../../src/composition/profiles.ts";
 import { assemblePackage } from "../../src/core/package-json.ts";
-import { NODE_MAJOR } from "../../src/core/versions.ts";
 
 const NODE_FORGE_RUNTIME = forgeRuntimeFromNvmrc(NODE_NVMRC);
 
@@ -71,7 +70,7 @@ for (const kind of ["library", "forge-app"]) {
         private: true,
         license: "Apache-2.0",
         engines: { node: ">=20", npm: ">=10" },
-        devDependencies: { "@types/node": "^22.0.0" },
+        devDependencies: { "@types/node": "^24.0.0" },
         dependencies: { kept: "1.0.0" },
         scripts: { custom: "echo kept" },
       };
@@ -119,7 +118,9 @@ for (const kind of ["library", "forge-app"]) {
       ).toEqual({
         ...(kind === "forge-app" ? withoutEngines : pkg),
         // Seeded dependencies the owner still declares are kept fresh; removed ones stay removed.
-        devDependencies: { "@types/node": NODE_MAJOR },
+        devDependencies: {
+          "@types/node": kind === "library" ? "22" : "^24.0.0",
+        },
         scripts: { ...pkg.scripts, ...policy.scripts },
       });
       expect(readFileSync(join(output, ".atlassian/OWNER"), "utf8")).toBe(
@@ -147,7 +148,9 @@ for (const kind of ["library", "forge-app"]) {
             .replaceAll("[Project name]", "Sample Project"),
         );
       }
-      expect(readFileSync(join(output, ".nvmrc"), "utf8")).toBe(NODE_NVMRC);
+      expect(readFileSync(join(output, ".nvmrc"), "utf8")).toBe(
+        kind === "library" ? "22\n" : NODE_NVMRC,
+      );
       expect(readFileSync(join(output, ".npmrc"), "utf8")).toBe(NPMRC);
       expect(readFileSync(join(output, "manifest.yml"), "utf8")).toBe(
         kind === "forge-app"

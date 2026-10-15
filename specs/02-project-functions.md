@@ -141,7 +141,7 @@ Missing files or prerequisites can also cause a validator to skip or fail.
 | `library`, `tool` | `package-metadata` | Required | [npm-package-json-lint](https://www.npmjs.com/package/npm-package-json-lint) — Checks package metadata field types and formats with explicit structural rules.<br>[npm](https://docs.npmjs.com/cli/) — Reference for package.json schema and metadata format | **No-op:** Package metadata owns no files; its package.json contribution seeds version 0.1.0, type module, and private true; initialization supplies the initial package name. | Derive name/description/author from catalog; enforce type module, preserving owner privacy and release version. | Check metadata field types/formats with explicit structural rules, not policy compliance. |
 | `library`, `forge-app`, `tool`, `agent-skill` | `oss` | Required | [Apache License 2.0 / pinned Atlassian OSS templates](https://www.apache.org/licenses/LICENSE-2.0) — Supplies licensing, contribution, conduct, security, README, and ownership documents; no executable tool. | Seed LICENSE, README.md, CONTRIBUTING.md, CODE_OF_CONDUCT.md, SECURITY.md, and .atlassian/OWNER with catalog metadata. | Replace authoritative OSS documents and OWNER from pinned templates and catalog metadata; preserve README edits/deletion. | **No-op:** These documents require manual inspection; no consuming validator checks their acceptance. |
 | `library`, `forge-app`, `tool`, `agent-skill` | `gitignore` | Required | [gitignore.io](https://www.gitignore.io/) — Provides template rules for Node, TypeScript, Forge, and other tool ecosystems | Seed two owned blocks from pinned gitignore.io topics and Drop Calf defaults, retaining unowned scaffold rules. | Replace existing owned blocks from recorded topics/pinned defaults; preserve bytes outside blocks and do not seed missing blocks. | **No-op:** Git treats ineffective ignore patterns as nonmatching; checking which paths are ignored would enforce policy, not tool acceptance. |
-| `library`, `tool`, `agent-skill` | `node` | Required | [fnm (Fast Node Manager)](https://github.com/Schniz/fnm) — Selects and, when needed, installs the Node version requested by .nvmrc.<br>[Node.js](https://nodejs.org/) — Reference for Node.js versions and TypeScript type definitions | Seed .nvmrc, public-registry .npmrc, and @types/node; no engines declaration. | Replace .nvmrc/.npmrc and derive package license from catalog; preserve engines and keep @types/node fresh. | Use fnm to select .nvmrc (may download Node); no baseline, type-version, or deployment check. |
+| `library` | `node` | Required | [fnm (Fast Node Manager)](https://github.com/Schniz/fnm) — Selects and, when needed, installs the Node version requested by .nvmrc.<br>[Node.js](https://nodejs.org/) — Reference for Node.js versions and TypeScript type definitions | Seed Node 22 .nvmrc, public-registry .npmrc, and @types/node; no engines declaration. | Replace .nvmrc/.npmrc and derive package license from catalog; preserve engines and constrain declared @types/node ranges to major 22. | Use fnm to select .nvmrc (may download Node); no baseline, type-version, or deployment check. |
 | `library`, `forge-app`, `tool` | `changelog` | Required | [git-cliff](https://git-cliff.org/) — Renders unreleased changelog from commit history and release policy | Seeds cliff.toml release policy and CHANGELOG.md from templates; adds changelog script to package.json | **No-op:** Release policy and CHANGELOG.md are owner-managed after init; its package.json contribution enforces the changelog command and keeps the seeded git-cliff dependency fresh. | Validates cliff.toml policy and runs git-cliff command against repository commit history |
 | `library`, `forge-app`, `tool`, `agent-skill` | `biome` | Required | [Biome](https://biomejs.dev/) — Formats and lints JavaScript, TypeScript, and supported configuration files. | Seed Biome, formatting/lint subtasks, biome.jsonc, and .editorconfig. | Let Biome migrate an existing root config, preserving EditorConfig. | Load the root config and references with Biome, without scanning source quality. |
 | `library` | `library-build` | Required | [tsdown](https://tsdown.dev/) — Bundles a TypeScript library as ESM and CommonJS with declaration output. | Seed tsdown, the build pipeline/config, and publishing fields. | Enforce the build script and ESM/CommonJS formats; preserve owner entry/dependency settings. | **No-op:** tsdown has no supported configuration-only validation interface: resolveUserConfig is internal and no-write still bundles source. Build and declaration emission belong to the build workflow; validation does not execute the pipeline or inspect stale artifacts. |
@@ -152,9 +152,9 @@ Missing files or prerequisites can also cause a validator to skip or fail.
 | `library`, `forge-app`, `tool`, `agent-skill` | `todo` | Required | [Git grep](https://git-scm.com/docs/git-grep) — Lists TODO markers in tracked files with paths and line numbers. | **No-op:** Todo owns no files; its package.json contribution seeds scripts.todo for every kind. | **No-op:** The seeded todo script is owner-managed after init; update does not replace or re-add it. | **No-op:** Todo owns no configuration with a separate tool-acceptance check; owners run the script in their Git repository. |
 | `library`, `forge-app`, `tool`, `agent-skill` | `docs` | Required | [markdownlint-cli2](https://github.com/igorshubovych/markdownlint-cli2) — Lints markdown files against consistent style rules<br>[CSpell](https://cspell.org/) — Spell-checks documentation and code comments | Seed Markdown/spelling tools and lint:docs, configs, DEVELOPMENT.md, and Diátaxis/spec starter documents. | **No-op:** Docs configuration and documents are owner-managed after init, including deletions; its package.json contribution enforces lint:docs and keeps the seeded tool dependencies fresh. | Load Markdown/spelling configs and references without scanning documentation quality. |
 | `library`, `forge-app`, `tool`, `agent-skill` | `git-hooks` | Required | [Lefthook](https://lefthook.dev/) — Dispatches lint/check workflows and Git hooks from lefthook.yml.<br>[Gitleaks](https://github.com/gitleaks/gitleaks) — Scans staged changes for secrets in the pre-commit hook; install separately. | Seed Lefthook, prepare/lint/check dispatch scripts, and lefthook.yml. | **No-op:** Hook configuration is owner-managed after init; its package.json contribution enforces the dispatch scripts and keeps the seeded Lefthook dependency fresh. | Run lefthook validate with isolated Git metadata; never install or execute hooks. |
-| `library`, `tool`, `agent-skill` | `aidev` | Required | [AGENTS.md](https://agents.md/) — Gives coding agents repository-specific instructions; human guidance, not executable config. | **No-op:** Only Forge apps have an authored agent guidance seed; other project kinds omit Forge-specific instructions. | **No-op:** Agent guidance is init-only and owner-managed; update preserves edits and does not restore a deleted AGENTS.md. | **No-op:** AGENTS.md is human guidance, not consuming-tool configuration; checking referenced scripts would check guidance policy, not tool acceptance. |
+| `library` | `aidev` | Default; `--without-functions aidev` | [AGENTS.md](https://agents.md/) — Gives coding agents repository-specific instructions; human guidance, not executable config. | Seed authored agent guidance from templates/aidev/library in AGENTS.md. | **No-op:** Agent guidance is init-only and owner-managed; update preserves edits and does not restore a deleted AGENTS.md. | **No-op:** AGENTS.md is human guidance, not consuming-tool configuration; checking referenced scripts would check guidance policy, not tool acceptance. |
 | `forge-app`, `agent-skill` | `package-metadata` | Required | [npm-package-json-lint](https://www.npmjs.com/package/npm-package-json-lint) — Checks package metadata field types and formats with explicit structural rules.<br>[npm](https://docs.npmjs.com/cli/) — Reference for package.json schema and metadata format | **No-op:** Package metadata owns no files; its package.json contribution seeds version 0.1.0, type module, and private true; initialization supplies the initial package name. | Derive name/description/author from catalog; enforce type module and private true, preserving release version. | Check metadata field types/formats with explicit structural rules, not policy compliance. |
-| `forge-app` | `node` | Required | [fnm (Fast Node Manager)](https://github.com/Schniz/fnm) — Selects and, when needed, installs the Node version requested by .nvmrc.<br>[Node.js](https://nodejs.org/) — Reference for Node.js versions and TypeScript type definitions | Seed .nvmrc, public-registry .npmrc, and @types/node; no engines declaration. | Replace .nvmrc/.npmrc, derive package license from catalog, and remove engines; keep @types/node fresh. | Use fnm to select .nvmrc (may download Node); no baseline, type-version, or deployment check. |
+| `forge-app` | `node` | Required | [fnm (Fast Node Manager)](https://github.com/Schniz/fnm) — Selects and, when needed, installs the Node version requested by .nvmrc.<br>[Node.js](https://nodejs.org/) — Reference for Node.js versions and TypeScript type definitions | Seed Node 24 .nvmrc, public-registry .npmrc, and @types/node; no engines declaration. | Replace .nvmrc/.npmrc, derive package license from catalog, and remove engines; keep @types/node fresh. | Use fnm to select .nvmrc (may download Node); no baseline, type-version, or deployment check. |
 | `forge-app` | `forge-manifest` | Required | [Forge CLI](https://developer.atlassian.com/platform/forge/cli-reference/) — Lints Forge manifests and app source against platform requirements. | **No-op:** The Forge manifest is supplied by forge create or the owner; Drop Calf does not seed app identity or module wiring. | Derive app.runtime.name from numeric .nvmrc in an existing manifest; preserve other settings. | Run pinned forge lint, including source checks, with supplied dependencies and explicit Forge credentials; no fixes or deployment. |
 | `forge-app` | `secrets` | Required | [SecretSpec](https://secretspec.dev) — Manages environment variable injection and secret validation for Forge CLI commands<br>[Atlassian Forge CLI](https://developer.atlassian.com/platform/forge/cli-reference/) — Reference for forge register, deploy, install, and upgrade command syntax | Seed owner SecretSpec declarations and app-variable allowlist, executable helpers, and six Forge dispatch scripts. | Enforce helper contents/modes; preserve declarations/allowlist, rejecting unmigrated embedded keys. | Parse TOML and allowlist, check helper presence and executable modes; no secret resolution or Forge execution. |
 | `forge-app` | `prelint` | Required | [ast-grep](https://ast-grep.github.io/) — AST-based pattern scanner for semantic code analysis and linting<br>[@forge-ahead/prelint](https://github.com/ibuchanan/tool-forge-prelint-ast-grep) — Forge app linting rules for manifest, module wiring, and handler patterns | **No-op:** Prelint has no repository-local configuration to seed; its rules ship in the dependency package, and its package.json contribution supplies the tool dependencies and scripts. | **No-op:** Prelint owns no files; its package.json contribution enforces the lint subtasks and keeps the seeded ast-grep dependency fresh; the @forge-ahead/prelint GitHub reference is owner-managed. | **No-op:** Prelint has no repository-local configuration to validate; its rules ship in the dependency package. Source scanning belongs to the lint workflow. |
@@ -163,7 +163,9 @@ Missing files or prerequisites can also cause a validator to skip or fail.
 | `forge-app` | `forge-ahead` | Required | [Forge Ahead API types](https://github.com/ibuchanan/forge-ahead-atlassian-api-types) — Provides types for Atlassian API integration in Forge apps.<br>[Forge Ahead errors](https://github.com/ibuchanan/forge-ahead-errors) — Provides typed error handling at Forge boundaries.<br>[Forge Ahead logging](https://github.com/ibuchanan/forge-ahead-logging) — Provides logging helpers for Forge apps. | **No-op:** Forge Ahead owns no files; its package.json contribution seeds the API types, errors, and logging dependencies. | **No-op:** Forge Ahead owns no files; its seeded dependencies are owner-managed and kept fresh against their pins, which skips GitHub references. | **No-op:** Forge Ahead dependencies have no repository-local configuration to validate; comparing dependency references would check policy, not tool acceptance. Runtime integration belongs to the app's build and test workflows. |
 | `forge-app` | `size-limit` | Required | [Size Limit](https://github.com/ai/size-limit) — Measures built file sizes against owner-managed budgets with @size-limit/file. | **No-op:** Size Limit owns no files; its package.json contribution seeds the paired tools, the build-then-measure size:check script, and a 10 kB budget for dist/**/*.js. | Enforce size:check and keep the seeded paired tools fresh, preserving owner budgets and paths. Remove the legacy size script only when it matches the former policy command; preserve owner-authored commands. | **No-op:** Size Limit has no supported configuration-only validation interface. Measurement requires build artifacts and belongs to the size workflow; validation does not build the project or assess potentially stale output. |
 | `forge-app` | `evals` | Opt-in; `--with-functions evals`; `--without-functions evals`; `--preset all` | [Promptfoo](https://www.promptfoo.dev/docs/) — Evaluates prompts against authored test cases and displays results. | Seed Promptfoo, eval/view scripts, and the config/prompts/tests/data/guide tree; no manifest wiring. | **No-op:** The eval suite is owner-managed after init, including deletions; its package.json contribution enforces the eval/view scripts and keeps the seeded Promptfoo dependency fresh. | Use Promptfoo's native config/schema validator to load suite references; no model calls or assertion execution. |
-| `forge-app` | `aidev` | Default; `--without-functions aidev` | [AGENTS.md](https://agents.md/) — Gives coding agents repository-specific instructions; human guidance, not executable config. | Seed authored Forge agent guidance in AGENTS.md. | **No-op:** Agent guidance is init-only and owner-managed; update preserves edits and does not restore a deleted AGENTS.md. | **No-op:** AGENTS.md is human guidance, not consuming-tool configuration; checking referenced scripts would check guidance policy, not tool acceptance. |
+| `forge-app` | `aidev` | Default; `--without-functions aidev` | [AGENTS.md](https://agents.md/) — Gives coding agents repository-specific instructions; human guidance, not executable config. | Seed authored agent guidance from templates/aidev/forge-app in AGENTS.md. | **No-op:** Agent guidance is init-only and owner-managed; update preserves edits and does not restore a deleted AGENTS.md. | **No-op:** AGENTS.md is human guidance, not consuming-tool configuration; checking referenced scripts would check guidance policy, not tool acceptance. |
+| `tool`, `agent-skill` | `node` | Required | [fnm (Fast Node Manager)](https://github.com/Schniz/fnm) — Selects and, when needed, installs the Node version requested by .nvmrc.<br>[Node.js](https://nodejs.org/) — Reference for Node.js versions and TypeScript type definitions | Seed Node 24 .nvmrc, public-registry .npmrc, and @types/node; no engines declaration. | Replace .nvmrc/.npmrc and derive package license from catalog; preserve engines and keep @types/node fresh. | Use fnm to select .nvmrc (may download Node); no baseline, type-version, or deployment check. |
+| `tool`, `agent-skill` | `aidev` | Required | [AGENTS.md](https://agents.md/) — Gives coding agents repository-specific instructions; human guidance, not executable config. | **No-op:** No authored agent guidance is selected for this project kind. | **No-op:** Agent guidance is init-only and owner-managed; update preserves edits and does not restore a deleted AGENTS.md. | **No-op:** AGENTS.md is human guidance, not consuming-tool configuration; checking referenced scripts would check guidance policy, not tool acceptance. |
 <!-- capability-reference:end -->
 
 The sections below specify detailed field ownership and preservation policies.
@@ -373,25 +375,32 @@ Policy:
 
 ### `node`
 
-The Node major is centralized in `src/core/versions.ts` (`24`). The capability owns
-local Node selection, not the Forge manifest or a published package's
-compatibility promise. No kind generates `engines`: it has caused trouble with
+The default Node major is centralized in `src/core/versions.ts` (`24`).
+`library` selects major `22` through the shared capability's `major` option,
+matching the lowest supported Forge consumer runtime. This does not change the
+internal tooling container's Node version. The capability owns local Node
+selection, not the Forge manifest or a published package's compatibility promise.
+No kind generates `engines`: it has caused trouble with
 `forge deploy`,
 which is why Forge apps use `.nvmrc` and `app.runtime.name` instead. Libraries and
 tools may declare their own consumer compatibility after initialization; they
 forgo an automatically generated npm install-time engine warning.
 
-- **`.nvmrc`:** Init seeds `24` with a trailing newline. Update creates or
-  replaces the whole file with the baseline.
+- **`.nvmrc`:** Init seeds the selected major (`22` for libraries, otherwise
+  `24`) with a trailing newline. Update creates or replaces the whole file.
 - **`.npmrc`:** Init seeds the public npm registry and explanatory comment.
   Update creates or replaces the whole file.
 - **`package.json.license`:** Init's update pass and every update pull
   `metadata.annotations["forge-ranch/license"]` from catalog. Node's update verb
   writes it through the package-json edit primitive; no contribution can express a
   value read from repository content.
-- **`devDependencies["@types/node"]`:** Init seeds `24`, overriding the scaffold.
-  As a seeded dependency it is kept fresh (§3): a declaration behind `24` is raised;
-  one at or ahead of it, or a removal, survives.
+- **`devDependencies["@types/node"]`:** Init seeds the selected major, overriding
+  the scaffold. Libraries constrain existing declarations in `dependencies` or
+  `devDependencies` to major `22`: ranges wholly within 22.x survive; incompatible
+  ranges are replaced with `22`, including newer major versions. Removed
+  declarations stay removed. Other kinds retain dependency freshness (§3):
+  declarations behind `24` are raised; declarations at or ahead, or removals,
+  survive.
 - **Forge `engines`:** Init removes the scaffold Node entry; its update pass
   removes the entire field. Update removes all entries, including owner additions.
 - **Other kinds' `engines`:** Init removes scaffold `engines.node`, preserving
@@ -832,17 +841,17 @@ immutable resolved versions.
 
 ### `aidev`
 
-Agent guidance is a capability in every kind's ordered composition. Only
-`forge-app` seeds authored `AGENTS.md`; other kinds omit Forge-only instructions
-with an explicit init no-op reason. All guidance is starting text owned by the
+Agent guidance is a capability in every kind's ordered composition. `library`
+and `forge-app` select separate authored `AGENTS.md` templates through the
+shared implementation's `guidance` option. Other kinds have an explicit init
+no-op reason. All guidance is starting text owned by the
 repository after initialization; there is no Drop Calf-maintained content block.
 
-- **init** seeds the Forge guidance during first-time setup, replacing any Forge
+- **init** seeds the selected guidance during first-time setup, replacing any
   scaffolder guidance removed by scaffold preparation. It is enabled by default
-  on `forge-app`; `--without aidev` excludes the capability from all three passes.
-  Explicit `--with aidev` and excluding it on non-Forge kinds remain invalid.
-  Non-Forge init is a no-op: "Only Forge apps have an authored agent guidance
-  seed; other project kinds omit Forge-specific instructions."
+  on `library` and `forge-app`; `--without aidev` excludes the capability from all
+  three passes. Explicit `--with aidev` remains invalid. `tool` and `agent-skill`
+  init is a no-op: "No authored agent guidance is selected for this project kind."
 - **update** is a no-op: "Agent guidance is init-only and owner-managed; update
   preserves edits and does not restore a deleted AGENTS.md." No marked block is
   maintained, and update does not create a missing guidance file.
@@ -851,6 +860,12 @@ repository after initialization; there is no Drop Calf-maintained content block.
   tool acceptance." It does not parse guidance or compare named scripts with
   `package.json`. Top-level validation reports a skipped result with this reason
   whenever the capability is selected.
+
+#### Library guidance content policy
+
+`templates/aidev/library/AGENTS.md` records Node 22 consumer compatibility,
+ESM/CommonJS and declaration compatibility, and explicit approval before
+publishing. It contains no app manifest, deployment, or storage instructions.
 
 #### Forge guidance content policy
 
