@@ -2,7 +2,7 @@ import { dag } from "@dagger.io/dagger";
 import { type Capability, noOp } from "../core/capability.ts";
 import { templateTree } from "../core/templates.ts";
 
-/** Own the explicit local release command and helper, not release policy or tool pins. */
+/** Own explicit release commands and helpers, not release policy or tool pins. */
 export function libraryRelease(): Capability {
   return {
     name: "library-release",
@@ -15,13 +15,16 @@ export function libraryRelease(): Capability {
             "Derives release versions and regenerates notes using the changelog capability's shared tool pin and owner-managed policy.",
         },
       ],
-      init: "Seed the explicit local release:prepare helper, reusing the changelog capability's git-cliff tool and owner-managed release policy.",
+      init: "Seed separate release:prepare and release:publish commands and helpers; preparation records reviewed local outputs, while explicit publication checks them and atomically pushes a release commit and tag to the named remote and branch.",
       update:
-        "Maintain only release:prepare and its authored helper; preserve versions, lockfiles, release notes, and owner-managed cliff.toml without preparing a release.",
+        "Maintain only release:prepare, release:publish, and their authored helpers; preserve versions, lockfiles, notes, and owner-managed cliff.toml without preparing or publishing a release.",
     },
     packageJson: {
       policy: {
-        scripts: { "release:prepare": "bun run scripts/release-prepare.ts" },
+        scripts: {
+          "release:prepare": "bun run scripts/release-prepare.ts",
+          "release:publish": "bun run scripts/release-publish.ts",
+        },
       },
     },
     init(project) {
@@ -29,22 +32,26 @@ export function libraryRelease(): Capability {
     },
     async update(directory) {
       if (!(await directory.exists("package.json"))) return directory;
-      const path = "scripts/release-prepare.ts";
-      const script = await dag
-        .currentModule()
-        .source()
-        .directory("templates/library-release")
-        .file(path)
-        .contents();
-      if (
-        (await directory.exists(path)) &&
-        (await directory.file(path).contents()) === script
-      )
-        return directory;
-      return directory.withNewFile(path, script);
+      for (const path of [
+        "scripts/release-prepare.ts",
+        "scripts/release-publish.ts",
+      ]) {
+        const script = await dag
+          .currentModule()
+          .source()
+          .directory("templates/library-release")
+          .file(path)
+          .contents();
+        if (
+          !(await directory.exists(path)) ||
+          (await directory.file(path).contents()) !== script
+        )
+          directory = directory.withNewFile(path, script);
+      }
+      return directory;
     },
     validate: noOp(
-      "Release preparation is an explicit maintainer workflow; standalone validation does not bump versions, render release output, or publish.",
+      "Release preparation and Git publication are explicit maintainer workflows; standalone validation does not bump versions, render release output, commit, tag, or push.",
     ),
   };
 }

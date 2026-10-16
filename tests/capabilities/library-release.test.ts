@@ -10,6 +10,20 @@ import {
   resolveProfile,
 } from "../../src/composition/profiles.ts";
 
+test("publication is an explicit library-only command alongside preparation", () => {
+  expect(
+    buildProject("library", "sample", "tester").packageJson.scripts[
+      "release:publish"
+    ],
+  ).toBe("bun run scripts/release-publish.ts");
+  for (const kind of ["forge-app", "tool", "agent-skill"])
+    expect(
+      buildProject(kind, "sample", "tester").packageJson.scripts[
+        "release:publish"
+      ],
+    ).toBeUndefined();
+});
+
 test("update restores only its authored helper and command without preparing a release", async () => {
   const source = mockModuleSource();
   try {
@@ -39,7 +53,19 @@ test("update restores only its authored helper and command without preparing a r
         "utf8",
       ),
     );
+    expect(await output.file("scripts/release-publish.ts").contents()).toBe(
+      readFileSync(
+        new URL(
+          "../../templates/library-release/scripts/release-publish.ts",
+          import.meta.url,
+        ),
+        "utf8",
+      ),
+    );
     const pkg = JSON.parse(await output.file("package.json").contents());
+    expect(pkg.scripts["release:publish"]).toBe(
+      "bun run scripts/release-publish.ts",
+    );
     expect(pkg.version).toBe("0.1.0");
     expect(pkg.scripts.changelog).toBe("owner");
     expect(pkg.devDependencies["git-cliff"]).toBe("99.0.0");

@@ -136,6 +136,7 @@ test.each(kinds)(
             ? {
                 "pack:check": "npm run build && sh scripts/pack-check.sh",
                 "release:prepare": "bun run scripts/release-prepare.ts",
+                "release:publish": "bun run scripts/release-publish.ts",
                 prepare: "npm run build && (lefthook install || true)",
               }
             : {}),

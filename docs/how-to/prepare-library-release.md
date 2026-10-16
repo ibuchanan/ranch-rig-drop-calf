@@ -63,11 +63,19 @@ registry publication are separate, deliberate operations.
    is no install, network access, lifecycle execution, build, or hook installation.
 
 6. Run your [library package checks](check-library-package.md) before deciding to
-   publish. Review any extra artifacts those checks produce separately. Only after
-   review should you deliberately commit, tag, push, or publish using your chosen
-   release workflow; `release:prepare` never performs any of those operations or
-   stages files. Do not use the unreleased `changelog` command to overwrite the
-   prepared release notes before review.
+   publish. Review any extra artifacts those checks produce separately. After
+   review, follow [Publish a prepared release to Git](publish-library-release.md)
+   to explicitly commit, tag, and atomically push the release. Registry publication
+   remains separate. `release:prepare` never stages, commits, tags, or pushes.
+   Do not use the unreleased `changelog` command to overwrite prepared notes.
+
+   Preparation records the baseline commit, branch, derived tag, and SHA-256
+   fingerprints of the package, applicable lockfile, notes, and policy in the
+   worktree's Git metadata at `git rev-parse --git-path drop-calf-release.json`.
+   This local receipt is not staged or pushed and changes no Git refs or index.
+   Keep it for publication; do not edit it. Publication rejects changes to these
+   files after preparation. If changes are needed, restore the clean baseline,
+   make and commit the owner changes, and prepare and review again.
 
 ## Recover or repeat preparation
 
@@ -84,14 +92,16 @@ git restore -- package.json package-lock.json CHANGELOG.md
 ```
 
 For Bun, restore `package.json` and `CHANGELOG.md`; the helper does not modify
-`bun.lock`. Rerun only after the tree is clean. A successful preparation leaves a
-dirty tree and rerunning is rejected without changing it. Committing the prepared
-files without adding new release history still produces the same non-advancing
-version and is rejected rather than advancing twice or duplicating notes.
+`bun.lock`. Rerun only after the tree is clean.
+A successful preparation leaves a dirty tree and rerunning is rejected without
+changing it. Committing the prepared files without adding new release history
+still produces the same non-advancing version and is rejected rather than
+advancing twice or duplicating notes.
 
-Drop Calf update maintains the `release:prepare` script and
-`scripts/release-prepare.ts` as policy. Do not customize that helper in place;
-update replaces it. The `changelog` capability alone supplies the git-cliff pin
-and seeds the owner-managed `cliff.toml`. Update does not prepare releases, and
+Drop Calf update maintains the `release:prepare` and `release:publish` scripts and
+their `scripts/release-prepare.ts` and `scripts/release-publish.ts` helpers as policy.
+Do not customize those helpers in place; update replaces them. The `changelog`
+capability alone supplies the git-cliff pin and seeds the owner-managed
+`cliff.toml`. Update does not prepare releases, and
 standalone `library-release` validation is an explicit no-op, not a substitute for
 this procedure.

@@ -1,4 +1,5 @@
 import { spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import {
   accessSync,
   constants,
@@ -188,6 +189,27 @@ try {
   if (manager === "npm")
     writeFileSync(lockfile, `${JSON.stringify(lock, null, 2)}\n`);
   writeFileSync("CHANGELOG.md", changelog);
+  const files = Object.fromEntries(
+    ["package.json", lockfile, "CHANGELOG.md", "cliff.toml"].map((path) => [
+      path,
+      createHash("sha256").update(readFileSync(path)).digest("hex"),
+    ]),
+  );
+  writeFileSync(
+    run("git", "rev-parse", "--git-path", "drop-calf-release.json"),
+    `${JSON.stringify(
+      {
+        head: run("git", "rev-parse", "HEAD"),
+        branch: run("git", "symbolic-ref", "--short", "HEAD"),
+        tag,
+        version,
+        lockfile,
+        files,
+      },
+      null,
+      2,
+    )}\n`,
+  );
   console.log(
     `Prepared ${tag} locally; review the package, lockfile, and CHANGELOG.md diff. Nothing was staged or published.`,
   );

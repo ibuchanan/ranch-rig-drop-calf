@@ -272,10 +272,12 @@ bun test tests/e2e/package-check.e2e.test.ts --path-ignore-patterns='vendor/**'
 ## Library release preparation
 
 The library-only `library-release` capability maintains `release:prepare` and
-`templates/library-release/scripts/release-prepare.ts`. It reuses the `changelog`
-capability's centralized git-cliff dependency and never owns its package
-contribution or the owner's `cliff.toml`. Update only restores the helper and
-command; standalone release validation does not execute preparation.
+`templates/library-release/scripts/release-prepare.ts`, plus the separate
+`release:publish` command and `scripts/release-publish.ts` helper. It reuses the
+`changelog` capability's centralized git-cliff dependency and never owns its package
+contribution or the owner's `cliff.toml`. Update only restores the helpers and
+commands; standalone release validation executes neither preparation nor
+publication.
 
 See [Prepare a library release locally](docs/how-to/prepare-library-release.md)
 for preparation, review, supported locks, and recovery. npm version-only lock
@@ -290,6 +292,21 @@ unchanged Git refs/index. Controlled tool failures exercise render-before-write.
 
 ```bash
 bun test tests/e2e/library-release.e2e.test.ts --path-ignore-patterns='vendor/**'
+```
+
+Git publication is a separate explicit maintainer action. See
+[Publish a prepared library release to Git](docs/how-to/publish-library-release.md)
+for required checks, destination input, permissions, atomic pushes, and recovery.
+Preparation records exact outputs locally in Git metadata without changing refs
+or index. Publication verifies that receipt, runs the existing `test`, `typecheck`,
+and `pack:check` scripts, and stages only release outputs. Owner checks and Git hooks
+remain trusted executable code; unexpected side effects stop publication.
+
+The publication E2E suite adds local bare remotes and rejecting hooks to disposable
+repositories. It never contacts live remotes or modifies reference libraries.
+
+```bash
+bun test tests/e2e/library-publish.e2e.test.ts --path-ignore-patterns='vendor/**'
 ```
 
 ## Seeded assets
