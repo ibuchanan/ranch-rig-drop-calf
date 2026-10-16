@@ -17,6 +17,7 @@ import { forgeManifest } from "../capabilities/forge-manifest.ts";
 import { gitHooks } from "../capabilities/git-hooks.ts";
 import { gitignore } from "../capabilities/gitignore.ts";
 import { libraryBuild } from "../capabilities/library-build.ts";
+import { libraryRelease } from "../capabilities/library-release.ts";
 import { nodeBaseline } from "../capabilities/node.ts";
 import { oss, validateOssOwner } from "../capabilities/oss.ts";
 import { packageCheck } from "../capabilities/package-check.ts";
@@ -44,6 +45,7 @@ export const PROFILES: Record<string, Capability[]> = {
     biomeToolchain(),
     libraryBuild(),
     packageCheck(),
+    libraryRelease(),
     typeScriptToolchain({ ownsBuild: false }),
     bunTesting(),
     fallow(),

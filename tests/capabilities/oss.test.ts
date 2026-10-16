@@ -41,6 +41,7 @@ import {
   fallowTemplates,
   gitHooksTemplates,
   libraryBuildTemplates,
+  libraryReleaseTemplates,
   packageCheckTemplates,
   promptfooTemplates,
   typescriptTemplates,
@@ -245,6 +246,7 @@ describe("pinned OSS templates", () => {
           ),
           ...(kind === "library" ? libraryBuildTemplates() : []),
           ...(kind === "library" ? packageCheckTemplates() : []),
+          ...(kind === "library" ? libraryReleaseTemplates() : []),
           ...(["library", "tool"].includes(kind) ? fallowTemplates() : []),
           ...(kind === "forge-app" ? vitestTemplates() : []),
           ...(kind === "forge-app" && preset === "all"

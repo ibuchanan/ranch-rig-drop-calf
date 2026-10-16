@@ -102,6 +102,7 @@ bun test tests/e2e/init.e2e.test.ts --path-ignore-patterns='vendor/**'
 | `forge-manifest` | Credential-prerequisite reporting only, not authenticated acceptance |
 | `docs` | Config loading only, not Markdown content |
 | `package-check` | Controlled tarballs, lifecycle safety, checker failures, and default-build declaration compatibility |
+| `library-release` | Disposable release repositories; requires Bun, Git, and the pinned git-cliff on PATH, no Dagger or network |
 | `library-prepare` | Disposable local Git dependency, real build tools, and ESM/CommonJS consumption; requires npm and network access |
 | `biome`, `evals`, `git-hooks`, `library-build`, `secrets`, `testing`, `typescript`, `vitest` | |
 
@@ -266,6 +267,29 @@ real pinned checkers; it does not modify the reference Forge Ahead repositories.
 
 ```bash
 bun test tests/e2e/package-check.e2e.test.ts --path-ignore-patterns='vendor/**'
+```
+
+## Library release preparation
+
+The library-only `library-release` capability maintains `release:prepare` and
+`templates/library-release/scripts/release-prepare.ts`. It reuses the `changelog`
+capability's centralized git-cliff dependency and never owns its package
+contribution or the owner's `cliff.toml`. Update only restores the helper and
+command; standalone release validation does not execute preparation.
+
+See [Prepare a library release locally](docs/how-to/prepare-library-release.md)
+for preparation, review, supported locks, and recovery. npm version-only lock
+metadata is updated locally; Bun's versionless text lock is preserved. No lock
+refresh, lifecycle command, Git publication, or registry publication runs.
+
+The release E2E suite uses disposable repositories and requires Bun, Git, and
+`git-cliff` at `TOOL_VERSIONS.gitCliff` on PATH. It needs neither Dagger nor a live
+remote. It tests actual git-cliff policy, npm lock formats, a real offline Bun
+lock checked with `--frozen-lockfile`, preflight diagnostics, repeat runs, and
+unchanged Git refs/index. Controlled tool failures exercise render-before-write.
+
+```bash
+bun test tests/e2e/library-release.e2e.test.ts --path-ignore-patterns='vendor/**'
 ```
 
 ## Seeded assets

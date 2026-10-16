@@ -29,6 +29,7 @@ import {
   fallowTemplates,
   gitHooksTemplates,
   libraryBuildTemplates,
+  libraryReleaseTemplates,
   packageCheckTemplates,
   promptfooTemplates,
   secretsTemplates,
@@ -151,6 +152,7 @@ export function mockModuleSource(
     ["templates/vitest", tree(vitestTemplates())],
     ["templates/library-build", tree(libraryBuildTemplates())],
     ["templates/package-check", tree(packageCheckTemplates())],
+    ["templates/library-release", tree(libraryReleaseTemplates())],
     [EVALS_TEMPLATE, tree(promptfooTemplates())],
   ]);
   const container = mockContainer();

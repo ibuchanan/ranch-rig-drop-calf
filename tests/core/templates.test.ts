@@ -41,7 +41,11 @@ test.each(kinds)("%s declares only its selected template trees", (kind) => {
         DOCS_TEMPLATE,
         GIT_HOOKS_TEMPLATE,
         ...(kind === "library"
-          ? [LIBRARY_BUILD_TEMPLATE, PACKAGE_CHECK_TEMPLATE]
+          ? [
+              LIBRARY_BUILD_TEMPLATE,
+              PACKAGE_CHECK_TEMPLATE,
+              "templates/library-release",
+            ]
           : []),
         ...(["library", "tool"].includes(kind) ? [FALLOW_TEMPLATE] : []),
         ...(kind === "forge-app" ? [SECRETS_TEMPLATE, "templates/vitest"] : []),
