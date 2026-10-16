@@ -145,6 +145,7 @@ Missing files or prerequisites can also cause a validator to skip or fail.
 | `library`, `forge-app`, `tool` | `changelog` | Required | [git-cliff](https://git-cliff.org/) — Renders unreleased changelog from commit history and release policy | Seeds cliff.toml release policy and CHANGELOG.md from templates; adds changelog script to package.json | **No-op:** Release policy and CHANGELOG.md are owner-managed after init; its package.json contribution enforces the changelog command and keeps the seeded git-cliff dependency fresh. | Validates cliff.toml policy and runs git-cliff command against repository commit history |
 | `library`, `forge-app`, `tool`, `agent-skill` | `biome` | Required | [Biome](https://biomejs.dev/) — Formats and lints JavaScript, TypeScript, and supported configuration files. | Seed Biome, formatting/lint subtasks, biome.jsonc, and .editorconfig. | Let Biome migrate an existing root config, preserving EditorConfig. | Load the root config and references with Biome, without scanning source quality. |
 | `library` | `library-build` | Required | [tsdown](https://tsdown.dev/) — Bundles a TypeScript library as ESM and CommonJS with declaration output. | Seed tsdown, the build pipeline/config, and publishing fields. | Enforce the build script and ESM/CommonJS formats; preserve owner entry/dependency settings. | **No-op:** tsdown has no supported configuration-only validation interface: resolveUserConfig is internal and no-write still bundles source. Build and declaration emission belong to the build workflow; validation does not execute the pipeline or inspect stale artifacts. |
+| `library` | `package-check` | Required | [Publint](https://publint.dev/) — Checks packed library conventions with warnings treated as errors.<br>[Are the Types Wrong?](https://arethetypeswrong.github.io/) — Checks TypeScript declaration resolution against the consumer package. | Seed exact checker dependencies and the lifecycle-free tarball checking script; checker configuration remains owner-managed. | Enforce pack:check and its script; keep existing checker dependencies fresh without re-adding removed tools. Preserve publishing metadata, checker configuration, and hook edits. | **No-op:** Package checks require fresh build artifacts and belong to the developer pack:check workflow; standalone validation does not build or inspect stale distributables. |
 | `library` | `typescript` | Required | [TypeScript](https://www.typescriptlang.org/docs/) — Type-checks source and emits JavaScript or library declarations. | Seed TypeScript, typecheck, and compiler configuration including declarations; library-build owns build. | Reconcile compiler configuration with policy selected by declared dependencies. | Run tsc --showConfig for applicable compiler configs, without compiling source or declarations. |
 | `library`, `tool`, `agent-skill` | `test` | Required | [Bun test](https://bun.com/docs/test) — Runs library, tool, and agent-skill tests with built-in watch and coverage support. | **No-op:** Seed @types/bun for test typechecking and supply test scripts; test sources remain owner-managed. | **No-op:** Bun testing owns no files; its package.json contribution enforces test scripts and keeps @types/bun fresh, preserving owner test sources. | **No-op:** This capability owns no Bun test configuration to validate. Test execution belongs to the test workflow; comparing scripts to defaults would check policy, not tool acceptance. |
 | `library`, `tool` | `fallow` | Default; `--without-functions fallow` | [Fallow](https://docs.fallow.tools/) — Checks unused code, dependencies, duplication, and complexity. | Seed Fallow, lint:fallow, and an owner-managed config for tool and library projects. | **No-op:** Fallow config is owner-managed after init, including deletion; its package.json contribution enforces lint:fallow and keeps the seeded dependency fresh. | **No-op:** Fallow has no configuration-only check; source analysis belongs to lint:fallow, not capability validation. |
@@ -730,6 +731,48 @@ internal, and `--no-write` still bundles source. Validation does not execute a
 build or assess stale artifacts; build execution belongs to the build workflow.
 The separate TypeScript validator checks acceptance of declaration compiler config.
 
+### `package-check`
+
+Only `library` selects this capability by default. Its policy owns
+`scripts.pack:check` (`npm run build && sh scripts/pack-check.sh`) and
+`scripts/pack-check.sh`; it reuses the library-build command rather than defining
+another build pipeline.
+
+- **init** seeds exact `publint` and `@arethetypeswrong/cli` devDependency pins
+  from `pins/package.json` and overlays `templates/package-check`. No checker
+  configuration or consumer fixtures are seeded; ATTW's default strict profile
+  checks all resolution modes without suppressing rules.
+- **update** enforces the command and the whole checking script. Dependency
+  freshness follows the shared package contribution rules: raise older versions,
+  preserve newer versions, and never re-add removed dependencies. Owner checker
+  configuration, including `.attw.json`, survives edits or deletion.
+- **validate** is an explicit no-op because package acceptance requires fresh
+  artifacts. Standalone validation does not build, pack, install checker tools,
+  or inspect potentially stale output.
+
+The command builds first and stops on failure. The checking script disables npm
+lifecycle scripts, prints `npm pack --dry-run --ignore-scripts`, then packs once
+into a temporary directory outside the repository. Both `publint --strict` and
+`attw` inspect that same consumer tarball. A checker failure retains its tool
+output and fails the command; the temporary tarball is removed on success or
+failure. Neither checker repacks, and no publish command runs.
+
+Git-hooks alone owns `check` and the hook configuration seed. Its pre-push group
+calls `pack:check --if-present`, so new libraries run package checks through
+`check` and pre-push. Update never adds the hook command to an existing
+owner-managed `lefthook.yml`. Public exports and subpaths, `files`, `sideEffects`,
+peer dependencies, publishing paths, and compatibility promises remain
+owner-managed; package-check reports problems rather than changing these fields.
+
+**Known declaration compatibility blocker:** the default library build emits
+extensionless source re-exports unchanged in `.d.ts`. For example,
+`export { answer } from './answer'` builds successfully but ATTW reports an
+`Internal resolution error` for Node16 ESM consumers. The controlled default-build
+fixture with an explicit `./answer.js` re-export passes. A general declaration
+resolution fix belongs to separate library-build compatibility work; this
+capability does not suppress the error or rewrite exports to hide it. See
+[Check a library package](../docs/how-to/check-library-package.md).
+
 ### `typescript`
 
 TypeScript owns `devDependencies.typescript`, `scripts.typecheck`, both root tsconfigs,
@@ -1096,7 +1139,7 @@ and `lint:forge` without writing `lint`; ownership does not depend on pass order
 - **init** seeds the pin, scripts, and authored `templates/git-hooks/lefthook.yml`
   for every kind. The shared seed groups prelint, Biome, Forge, typecheck, and
   formatting under `lint`; pre-commit runs gitleaks and formatting; pre-push runs
-  lint, tests, and size checks. npm script calls use `--if-present` so omitted
+  lint, tests, size checks, and package checks. npm script calls use `--if-present` so omitted
   subtasks are no-ops. Init is fresh-repository setup, not maintenance adoption.
 - **update** is a no-op for files. Its package.json contribution (§3) enforces
   `prepare`, `lint`, and `check`; `lefthook` is seed, kept fresh.

@@ -12,6 +12,8 @@ export const TOOL_VERSIONS = {
   biome: pin["@biomejs/biome"],
   typescript: pin.typescript,
   tsdown: pin.tsdown,
+  publint: pin.publint,
+  attw: pin["@arethetypeswrong/cli"],
   sizeLimit: pin["size-limit"],
   cspell: pin.cspell,
   markdownlintCli2: pin["markdownlint-cli2"],

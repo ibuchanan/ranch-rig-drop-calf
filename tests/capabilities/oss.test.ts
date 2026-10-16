@@ -41,6 +41,7 @@ import {
   fallowTemplates,
   gitHooksTemplates,
   libraryBuildTemplates,
+  packageCheckTemplates,
   promptfooTemplates,
   typescriptTemplates,
   vitestTemplates,
@@ -243,6 +244,7 @@ describe("pinned OSS templates", () => {
             ([path]) => path !== "tsconfig.declarations.json",
           ),
           ...(kind === "library" ? libraryBuildTemplates() : []),
+          ...(kind === "library" ? packageCheckTemplates() : []),
           ...(["library", "tool"].includes(kind) ? fallowTemplates() : []),
           ...(kind === "forge-app" ? vitestTemplates() : []),
           ...(kind === "forge-app" && preset === "all"

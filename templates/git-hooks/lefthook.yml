@@ -43,3 +43,5 @@ pre-push:
       run: npm run test --if-present
     size:
       run: npm run size:check --if-present
+    pack:
+      run: npm run pack:check --if-present

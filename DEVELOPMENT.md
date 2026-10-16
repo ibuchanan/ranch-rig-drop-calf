@@ -101,6 +101,7 @@ bun test tests/e2e/init.e2e.test.ts --path-ignore-patterns='vendor/**'
 | `node` | Runtime normalization through a real init |
 | `forge-manifest` | Credential-prerequisite reporting only, not authenticated acceptance |
 | `docs` | Config loading only, not Markdown content |
+| `package-check` | Controlled tarballs, lifecycle safety, checker failures, and default-build declaration compatibility |
 | `biome`, `evals`, `git-hooks`, `library-build`, `secrets`, `testing`, `typescript`, `vitest` | |
 
 `forge-create` is excluded from `test:e2e` because it runs a real
@@ -187,6 +188,8 @@ Entry point:
   license.
 - `src/capabilities/oss.ts`: pinned OSS documents (see
   [Refreshing the pinned OSS templates](#refreshing-the-pinned-oss-templates)).
+- `src/capabilities/package-check.ts`: library-only build-and-pack verification,
+  strict Publint, and consumer declaration-resolution checks.
 - `src/capabilities/package-metadata.ts`: catalog-derived package identity.
 - `src/capabilities/prelint.ts`: Forge prelint dependencies and scripts.
 - `src/capabilities/secrets.ts`: SecretSpec declarations and Forge variable
@@ -251,6 +254,18 @@ It does not infer prose from function bodies: reviewers still check active summa
 against behavior, backed by each capability's behavior tests. README contains the
 consumer overview and collapsed reference; the functions spec contains detailed
 policy reference; regeneration and contributor workflow belong here.
+
+## Library package checks
+
+Generated libraries expose `pack:check` separately from source tests and standalone
+configuration validation. See [Check a library package](docs/how-to/check-library-package.md)
+for the consumer workflow and the default build's extensionless declaration
+resolution blocker. The `package-check` E2E suite uses controlled packages and the
+real pinned checkers; it does not modify the reference Forge Ahead repositories.
+
+```bash
+bun test tests/e2e/package-check.e2e.test.ts --path-ignore-patterns='vendor/**'
+```
 
 ## Seeded assets
 

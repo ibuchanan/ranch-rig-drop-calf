@@ -19,6 +19,7 @@ import { gitignore } from "../capabilities/gitignore.ts";
 import { libraryBuild } from "../capabilities/library-build.ts";
 import { nodeBaseline } from "../capabilities/node.ts";
 import { oss, validateOssOwner } from "../capabilities/oss.ts";
+import { packageCheck } from "../capabilities/package-check.ts";
 import { packageMetadata } from "../capabilities/package-metadata.ts";
 import { prelint } from "../capabilities/prelint.ts";
 import { forgeSecrets } from "../capabilities/secrets.ts";
@@ -42,6 +43,7 @@ export const PROFILES: Record<string, Capability[]> = {
     changelogToolchain(),
     biomeToolchain(),
     libraryBuild(),
+    packageCheck(),
     typeScriptToolchain({ ownsBuild: false }),
     bunTesting(),
     fallow(),

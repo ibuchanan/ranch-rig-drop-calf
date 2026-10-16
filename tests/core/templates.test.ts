@@ -13,6 +13,7 @@ import { GIT_HOOKS_TEMPLATE } from "../../src/capabilities/git-hooks.ts";
 import { PINNED_GITIGNORE } from "../../src/capabilities/gitignore.ts";
 import { LIBRARY_BUILD_TEMPLATE } from "../../src/capabilities/library-build.ts";
 import { PINNED_OSS } from "../../src/capabilities/oss.ts";
+import { PACKAGE_CHECK_TEMPLATE } from "../../src/capabilities/package-check.ts";
 import { SECRETS_TEMPLATE } from "../../src/capabilities/secrets.ts";
 import { TYPESCRIPT_TEMPLATE } from "../../src/capabilities/typescript.ts";
 import { buildProject, PROFILES } from "../../src/composition/profiles.ts";
@@ -39,7 +40,9 @@ test.each(kinds)("%s declares only its selected template trees", (kind) => {
         ...(kind === "agent-skill" ? [] : [CHANGELOG_TEMPLATE]),
         DOCS_TEMPLATE,
         GIT_HOOKS_TEMPLATE,
-        ...(kind === "library" ? [LIBRARY_BUILD_TEMPLATE] : []),
+        ...(kind === "library"
+          ? [LIBRARY_BUILD_TEMPLATE, PACKAGE_CHECK_TEMPLATE]
+          : []),
         ...(["library", "tool"].includes(kind) ? [FALLOW_TEMPLATE] : []),
         ...(kind === "forge-app" ? [SECRETS_TEMPLATE, "templates/vitest"] : []),
         ...(kind === "forge-app" && preset === "all" ? [EVALS_TEMPLATE] : []),
