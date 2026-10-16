@@ -12,8 +12,8 @@ export const GIT_HOOKS_SCRIPTS = {
   check: "lefthook run pre-push --force",
 } as const;
 
-/** Git-hooks alone owns lint; other capabilities contribute named subtasks. */
-export function gitHooks(): Capability {
+/** Git-hooks owns prepare/lint/check; composition selects build-on-prepare. */
+export function gitHooks({ buildOnPrepare = false } = {}): Capability {
   return {
     name: "git-hooks",
     documentation: {
@@ -31,14 +31,21 @@ export function gitHooks(): Capability {
             "Scans staged changes for secrets in the pre-commit hook; install separately.",
         },
       ],
-      init: "Seed Lefthook, prepare/lint/check dispatch scripts, and lefthook.yml.",
+      init: buildOnPrepare
+        ? "Seed Lefthook, build-before-hooks prepare, lint/check dispatch scripts, and lefthook.yml."
+        : "Seed Lefthook, prepare/lint/check dispatch scripts, and lefthook.yml.",
       validate:
         "Run lefthook validate with isolated Git metadata; never install or execute hooks.",
     },
     packageJson: {
       seed: { devDependencies: { lefthook: TOOL_VERSIONS.lefthook } },
       policy: {
-        scripts: GIT_HOOKS_SCRIPTS,
+        scripts: {
+          ...GIT_HOOKS_SCRIPTS,
+          prepare: buildOnPrepare
+            ? `npm run build && (${GIT_HOOKS_SCRIPTS.prepare})`
+            : GIT_HOOKS_SCRIPTS.prepare,
+        },
       },
     },
     init(project) {

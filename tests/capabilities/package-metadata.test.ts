@@ -133,7 +133,10 @@ test.each(kinds)(
             : {}),
           ...(kind === "forge-app" ? { "size:check": SIZE_LIMIT_COMMAND } : {}),
           ...(kind === "library"
-            ? { "pack:check": "npm run build && sh scripts/pack-check.sh" }
+            ? {
+                "pack:check": "npm run build && sh scripts/pack-check.sh",
+                prepare: "npm run build && (lefthook install || true)",
+              }
             : {}),
           ...(kind === "agent-skill" ? {} : { changelog: CHANGELOG_COMMAND }),
           typecheck: TYPESCRIPT_SCRIPTS.typecheck,

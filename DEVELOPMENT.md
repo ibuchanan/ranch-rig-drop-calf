@@ -102,6 +102,7 @@ bun test tests/e2e/init.e2e.test.ts --path-ignore-patterns='vendor/**'
 | `forge-manifest` | Credential-prerequisite reporting only, not authenticated acceptance |
 | `docs` | Config loading only, not Markdown content |
 | `package-check` | Controlled tarballs, lifecycle safety, checker failures, and default-build declaration compatibility |
+| `library-prepare` | Disposable local Git dependency, real build tools, and ESM/CommonJS consumption; requires npm and network access |
 | `biome`, `evals`, `git-hooks`, `library-build`, `secrets`, `testing`, `typescript`, `vitest` | |
 
 `forge-create` is excluded from `test:e2e` because it runs a real

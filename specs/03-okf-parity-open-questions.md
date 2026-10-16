@@ -82,9 +82,10 @@ Drop Calf project kind. Until a question is decided, the current behavior in
 
 ### 19 — npm lifecycle-script approval
 
-- **Current state:** `git-hooks` seeds `prepare: lefthook install || true`.
-  The OKF example carries a version-specific `allowScripts` list from owner
-  approval; Drop Calf does not seed one.
+- **Current state:** `git-hooks` seeds `prepare: lefthook install || true` for
+  Forge apps, tools, and agent skills. Libraries instead run the canonical build
+  before best-effort hook installation. The OKF example carries a version-specific
+  `allowScripts` list from owner approval; Drop Calf does not seed one.
 - **Question:** Does a fresh generated repo require an explicit npm script
   approval for Lefthook to install? If so, document the owner action in
   `DEVELOPMENT.md`, seed a safe configuration, or leave approval to npm?

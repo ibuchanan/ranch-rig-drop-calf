@@ -21,52 +21,70 @@ import { mockContainer } from "../support/container-source.ts";
 import { mockDirectory, mockModuleSource } from "../support/module-source.ts";
 import { gitHooksTemplates } from "../support/templates-source.ts";
 
-test("init and update enforce only the selected pin and hook dispatch scripts", async () => {
-  const capability = gitHooks();
-  const project = createBlueprint("sample", "", "tester");
-  if (typeof capability.init !== "function") throw new Error("missing init");
-  runInit(capability, project);
-  expect(project.templates.map((template) => template.path)).toEqual([
-    GIT_HOOKS_TEMPLATE,
-  ]);
-  expect(project.packageJson.devDependencies.lefthook).toBe(
-    TOOL_VERSIONS.lefthook,
-  );
-  expect(project.packageJson.scripts).toEqual(GIT_HOOKS_SCRIPTS);
-  const input = mockDirectory(
-    new Map([
-      [
-        "package.json",
-        JSON.stringify({
-          name: "owner",
-          scripts: {
-            prepare: "owner",
-            lint: "owner",
-            check: "owner",
-            custom: "keep",
-          },
-          devDependencies: { lefthook: "0.0.1", custom: "1" },
-          dependencies: { keep: "1" },
-        }),
-      ],
-      ["lefthook.yml", "owner content, even invalid\r\n"],
-      ["bun.lock", "owner lock"],
-    ]),
-  );
-  const before = [...input.files];
-  const output = await updateCapabilities(input, [capability]);
-  expect(JSON.parse(await output.file("package.json").contents())).toEqual({
-    name: "owner",
-    scripts: { ...GIT_HOOKS_SCRIPTS, custom: "keep" },
-    devDependencies: { lefthook: TOOL_VERSIONS.lefthook, custom: "1" },
-    dependencies: { keep: "1" },
-  });
-  for (const [path, text] of input.files)
-    if (path !== "package.json")
-      expect(await output.file(path).contents()).toBe(text);
-  expect([...input.files]).toEqual(before);
-  expect(await updateCapabilities(output, [gitHooks()])).toBe(output);
-});
+test.each([false, true])(
+  "init and update enforce only the selected pin and hook dispatch scripts (buildOnPrepare=%s)",
+  async (buildOnPrepare) => {
+    const capability = gitHooks({ buildOnPrepare });
+    const scripts = {
+      ...GIT_HOOKS_SCRIPTS,
+      prepare: buildOnPrepare
+        ? "npm run build && (lefthook install || true)"
+        : "lefthook install || true",
+    };
+    const project = createBlueprint("sample", "", "tester");
+    if (typeof capability.init !== "function") throw new Error("missing init");
+    runInit(capability, project);
+    expect(project.templates.map((template) => template.path)).toEqual([
+      GIT_HOOKS_TEMPLATE,
+    ]);
+    expect(project.packageJson.devDependencies.lefthook).toBe(
+      TOOL_VERSIONS.lefthook,
+    );
+    expect(project.packageJson.scripts).toEqual(scripts);
+    const input = mockDirectory(
+      new Map([
+        [
+          "package.json",
+          JSON.stringify({
+            name: "owner",
+            scripts: {
+              prepare: "owner",
+              lint: "owner",
+              check: "owner",
+              custom: "keep",
+            },
+            devDependencies: { lefthook: "0.0.1", custom: "1" },
+            dependencies: { keep: "1" },
+          }),
+        ],
+        ["lefthook.yml", "owner content, even invalid\r\n"],
+        ["bun.lock", "owner lock"],
+      ]),
+    );
+    const before = [...input.files];
+    const execution = spyOn(dag, "container").mockImplementation(() => {
+      throw new Error("git-hooks update must not execute tools");
+    });
+    let output: typeof input;
+    try {
+      output = (await updateCapabilities(input, [capability])) as typeof input;
+      expect(execution).not.toHaveBeenCalled();
+    } finally {
+      execution.mockRestore();
+    }
+    expect(JSON.parse(await output.file("package.json").contents())).toEqual({
+      name: "owner",
+      scripts: { ...scripts, custom: "keep" },
+      devDependencies: { lefthook: TOOL_VERSIONS.lefthook, custom: "1" },
+      dependencies: { keep: "1" },
+    });
+    for (const [path, text] of input.files)
+      if (path !== "package.json")
+        expect(await output.file(path).contents()).toBe(text);
+    expect([...input.files]).toEqual(before);
+    expect(await updateCapabilities(output, [capability])).toBe(output);
+  },
+);
 
 test.each(["library", "forge-app", "tool", "agent-skill"])(
   "%s init seeds config and composed update preserves edits and deletion idempotently",
@@ -86,6 +104,11 @@ test.each(["library", "forge-app", "tool", "agent-skill"])(
       expect(await initialized.file("lefthook.yml").contents()).toBe(config());
       expect(await module.update(initialized, kind)).toBe(initialized);
       const pkg = JSON.parse(await initialized.file("package.json").contents());
+      const prepare =
+        kind === "library"
+          ? "npm run build && (lefthook install || true)"
+          : "lefthook install || true";
+      expect(pkg.scripts.prepare).toBe(prepare);
       Object.assign(pkg.scripts, {
         prepare: "owner",
         lint: "owner",
@@ -95,13 +118,27 @@ test.each(["library", "forge-app", "tool", "agent-skill"])(
       pkg.devDependencies.lefthook = "0.0.1";
       const edited = initialized
         .withNewFile("package.json", JSON.stringify(pkg))
-        .withNewFile("lefthook.yml", "# owner hooks\n");
+        .withNewFile("lefthook.yml", "# owner hooks\n")
+        .withNewFile("bun.lock", "owner lock\n")
+        .withNewFile(".git", "gitdir: /does-not-exist\n");
+      const before = [...(edited as ReturnType<typeof mockDirectory>).files];
       const output = await module.update(edited, kind);
+      expect([...(edited as ReturnType<typeof mockDirectory>).files]).toEqual(
+        before,
+      );
+      expect(await output.file("bun.lock").contents()).toBe("owner lock\n");
+      expect(await output.file(".git").contents()).toBe(
+        "gitdir: /does-not-exist\n",
+      );
       expect(await output.file("lefthook.yml").contents()).toBe(
         "# owner hooks\n",
       );
       const updated = JSON.parse(await output.file("package.json").contents());
-      expect(updated.scripts).toEqual({ ...pkg.scripts, ...GIT_HOOKS_SCRIPTS });
+      expect(updated.scripts).toEqual({
+        ...pkg.scripts,
+        ...GIT_HOOKS_SCRIPTS,
+        prepare,
+      });
       expect(updated.devDependencies.lefthook).toBe(TOOL_VERSIONS.lefthook);
       expect(await module.update(output, kind)).toBe(output);
       const deleted = output.withoutFile("lefthook.yml");
@@ -113,14 +150,28 @@ test.each(["library", "forge-app", "tool", "agent-skill"])(
   },
 );
 
-test("git-hooks is the only capability that contributes lint, regardless of composition order", () => {
-  const owners = resolveProfile("forge-app").filter((capability) => {
+test.each(["library", "forge-app", "tool", "agent-skill"])(
+  "%s git-hooks alone contributes prepare, lint, and check in any composition order",
+  (kind) => {
+    const capabilities = resolveProfile(kind);
+    for (const script of ["prepare", "lint", "check"]) {
+      const owners = capabilities.filter((capability) => {
+        const project = createBlueprint("sample", "", "tester");
+        runInit(capability, project);
+        return Object.hasOwn(project.packageJson.scripts, script);
+      });
+      expect(owners.map((capability) => capability.name)).toEqual([
+        "git-hooks",
+      ]);
+    }
     const project = createBlueprint("sample", "", "tester");
-    runInit(capability, project);
-    return Object.hasOwn(project.packageJson.scripts, "lint");
-  });
-  expect(owners.map((capability) => capability.name)).toEqual(["git-hooks"]);
-});
+    for (const capability of [...capabilities].reverse())
+      runInit(capability, project);
+    expect(project.packageJson.scripts).toEqual(
+      buildProject(kind, "sample", "tester").packageJson.scripts,
+    );
+  },
+);
 
 test("validation skips missing lefthook.yml before starting a container", async () => {
   const { commands, spy } = mockContainer();
@@ -201,7 +252,11 @@ test.each(["library", "forge-app", "tool", "agent-skill"])(
       "tester",
     ).packageJson;
     expect(devDependencies.lefthook).toBe(TOOL_VERSIONS.lefthook);
-    expect(scripts.prepare).toBe("lefthook install || true");
+    expect(scripts.prepare).toBe(
+      kind === "library"
+        ? "npm run build && (lefthook install || true)"
+        : "lefthook install || true",
+    );
     expect(scripts.lint).toBe("lefthook run lint");
     expect(scripts.check).toBe("lefthook run pre-push --force");
     const yml = config();

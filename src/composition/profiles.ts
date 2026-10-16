@@ -54,7 +54,7 @@ export const PROFILES: Record<string, Capability[]> = {
       testPurpose: "Bun tests for source code and workflows",
       scriptsPurpose: "Library build helpers",
     }),
-    gitHooks(),
+    gitHooks({ buildOnPrepare: true }),
     aidev({ guidance: LIBRARY_AIDEV_TEMPLATE }),
   ],
   "forge-app": [
