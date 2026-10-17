@@ -97,6 +97,7 @@ bun test tests/e2e/init.e2e.test.ts --path-ignore-patterns='vendor/**'
 | Suite | Notes |
 |---|---|
 | `init` | `init-changes` export from empty directories, all profiles and presets |
+| `lint` | Generated script-family aggregation through Bun and npm, all kinds, without Git or Lefthook |
 | `scaffold-typescript` | In-place export, compiler diagnostics, update preservation |
 | `node` | Runtime normalization through a real init |
 | `forge-manifest` | Credential-prerequisite reporting only, not authenticated acceptance |
@@ -181,7 +182,9 @@ Entry point:
 - `src/capabilities/forge-ahead.ts`: Forge Ahead dependencies.
 - `src/capabilities/forge-manifest.ts`: Forge manifest runtime and `forge lint`
   validation.
-- `src/capabilities/git-hooks.ts`: Lefthook config and hook scripts.
+- `src/capabilities/git-hooks.ts`: Lefthook config and prepare/check scripts.
+- `src/capabilities/lint.ts`: Git-independent lint aggregation with npm-run-all2;
+  producers contribute `lint:check:*` aliases alongside their direct scripts.
 - `src/capabilities/gitignore.ts`: `.gitignore` blocks (see
   [The generated `.gitignore`](#the-generated-gitignore)).
 - `src/capabilities/library-build.ts`: tsdown config and the library build
@@ -365,8 +368,10 @@ acquire implicit test APIs. The current prelint rule
 imports are supported by Vitest and the integration tests verify them.
 The typecheck overlay includes tests and the Vitest
 config, with modern module resolution confined to local checks. Tests and test
-config stay outside the Forge handler build. The existing pre-push lint group
-includes `typecheck`, so broken tests block pushing as broken source does.
+config stay outside the Forge handler build. The pre-push hook invokes `lint`,
+whose script family includes `typecheck`, so broken tests block pushing as broken
+source does. The lint aggregate runs without Git metadata; `check` still invokes
+Lefthook's pre-push group. Docs lint remains a separate `lint:docs` command.
 
 `bun test tests/e2e/testing.e2e.test.ts --path-ignore-patterns='vendor/**'` verifies real
 Dagger-generated and initialized scaffolds. It needs an engine and network for

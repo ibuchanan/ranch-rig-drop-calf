@@ -24,6 +24,7 @@ export const TYPESCRIPT_CONFIGS = [
 export const TYPESCRIPT_SCRIPTS = {
   build: "tsc --project tsconfig.json",
   typecheck: "tsc --project tsconfig.typecheck.json --noEmit",
+  "lint:check:typecheck": "npm run typecheck",
 } as const;
 
 /** Seed the uncomposed pair; update adds the declarations config for tsdown projects. */
@@ -217,6 +218,7 @@ export function typeScriptToolchain({ ownsBuild = true } = {}): Capability {
       policy: {
         scripts: {
           typecheck: TYPESCRIPT_SCRIPTS.typecheck,
+          "lint:check:typecheck": TYPESCRIPT_SCRIPTS["lint:check:typecheck"],
           // library-build owns build when it is selected.
           ...(ownsBuild ? { build: TYPESCRIPT_SCRIPTS.build } : {}),
         },

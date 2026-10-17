@@ -1,5 +1,6 @@
 import { expect, spyOn, test } from "bun:test";
 import { dag } from "@dagger.io/dagger";
+import { LINT_COMMAND } from "../../src/capabilities/lint.ts";
 import {
   AST_GREP_PACKAGE,
   PRELINT_COMMAND,
@@ -121,7 +122,7 @@ test.each(["library", "forge-app", "tool", "agent-skill"])(
         "sample",
       );
       const pkg = JSON.parse(await initialized.file("package.json").contents());
-      expect(pkg.scripts.lint).toBe("lefthook run lint");
+      expect(pkg.scripts.lint).toBe(LINT_COMMAND);
       if (kind === "forge-app") {
         expect(pkg.scripts["lint:prelint"]).toBe(PRELINT_COMMAND);
         expect(pkg.scripts["lint:forge"]).toBe("forge lint");

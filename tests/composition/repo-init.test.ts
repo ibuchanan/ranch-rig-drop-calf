@@ -4,6 +4,7 @@ import * as fs from "node:fs";
 import { dag } from "@dagger.io/dagger";
 import ts from "typescript";
 import { biomeToolchain } from "../../src/capabilities/biome.ts";
+import { LINT_COMMAND } from "../../src/capabilities/lint.ts";
 import { OSS_ASSETS } from "../../src/capabilities/oss.ts";
 import { SECRETS_ASSETS } from "../../src/capabilities/secrets.ts";
 import { buildProject, PROFILES } from "../../src/composition/profiles.ts";
@@ -111,7 +112,7 @@ test("generated kinds install pinned Biome and check scripts", () => {
     expect(scripts.format).toBe("biome format --write");
     expect(scripts["format:check"]).toBe("biome format");
     expect(scripts["lint:check"]).toBe("biome lint");
-    expect(scripts.lint).toBe("lefthook run lint");
+    expect(scripts.lint).toBe(LINT_COMMAND);
     expect(scripts["lint:fix"]).toBe("biome lint --write");
     expect(version).toBe(TOOL_VERSIONS.biome);
   }
@@ -212,25 +213,25 @@ describe("profiles", () => {
   test.each([
     [
       "library",
-      "lefthook run lint",
+      LINT_COMMAND,
       "sh scripts/build.sh",
       "bun test --pass-with-no-tests",
     ],
     [
       "forge-app",
-      "lefthook run lint",
+      LINT_COMMAND,
       "tsc --project tsconfig.json",
       "vitest run --passWithNoTests",
     ],
     [
       "tool",
-      "lefthook run lint",
+      LINT_COMMAND,
       "tsc --project tsconfig.json",
       "bun test --pass-with-no-tests",
     ],
     [
       "agent-skill",
-      "lefthook run lint",
+      LINT_COMMAND,
       "tsc --project tsconfig.json",
       "bun test --pass-with-no-tests",
     ],

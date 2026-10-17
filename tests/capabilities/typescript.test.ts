@@ -205,7 +205,11 @@ test("owner comments, unrelated settings and package fields survive; trigger rem
     const updated = JSON.parse(await output.file("package.json").contents());
     expect(updated).toEqual({
       ...pkg,
-      scripts: { ...pkg.scripts, typecheck: TYPESCRIPT_SCRIPTS.typecheck },
+      scripts: {
+        ...pkg.scripts,
+        typecheck: TYPESCRIPT_SCRIPTS.typecheck,
+        "lint:check:typecheck": TYPESCRIPT_SCRIPTS["lint:check:typecheck"],
+      },
       devDependencies: {
         ...pkg.devDependencies,
         typescript: TOOL_VERSIONS.typescript,

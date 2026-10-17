@@ -11,6 +11,7 @@ import { join } from "node:path";
 import ts from "typescript";
 import { BIOME_SCRIPTS } from "../../src/capabilities/biome.ts";
 import { GIT_HOOKS_SCRIPTS } from "../../src/capabilities/git-hooks.ts";
+import { LINT_COMMAND } from "../../src/capabilities/lint.ts";
 import { TOOL_VERSIONS } from "../../src/core/versions.ts";
 
 const repo = join(import.meta.dir, "../..");
@@ -125,6 +126,11 @@ for (const kind of ["library", "tool", "forge-app", "agent-skill"]) {
         ...pkg.scripts,
         ...BIOME_SCRIPTS,
         ...GIT_HOOKS_SCRIPTS,
+        ...(kind === "library"
+          ? { prepare: `npm run build && (${GIT_HOOKS_SCRIPTS.prepare})` }
+          : {}),
+        lint: LINT_COMMAND,
+        "lint:check:typecheck": "npm run typecheck",
       });
       expect(updatedPackage.devDependencies).toEqual({
         ...pkg.devDependencies,

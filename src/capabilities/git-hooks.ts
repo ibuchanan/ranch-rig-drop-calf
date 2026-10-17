@@ -8,11 +8,10 @@ import { TOOL_VERSIONS } from "../core/versions.ts";
 export const GIT_HOOKS_TEMPLATE = "templates/git-hooks";
 export const GIT_HOOKS_SCRIPTS = {
   prepare: "lefthook install || true",
-  lint: "lefthook run lint",
   check: "lefthook run pre-push --force",
 } as const;
 
-/** Git-hooks owns prepare/lint/check; composition selects build-on-prepare. */
+/** Git-hooks owns prepare/check; composition selects build-on-prepare. */
 export function gitHooks({ buildOnPrepare = false } = {}): Capability {
   return {
     name: "git-hooks",
@@ -22,7 +21,7 @@ export function gitHooks({ buildOnPrepare = false } = {}): Capability {
           name: "Lefthook",
           url: "https://lefthook.dev/",
           purpose:
-            "Dispatches lint/check workflows and Git hooks from lefthook.yml.",
+            "Dispatches the check workflow and Git hooks from lefthook.yml.",
         },
         {
           name: "Gitleaks",
@@ -32,8 +31,8 @@ export function gitHooks({ buildOnPrepare = false } = {}): Capability {
         },
       ],
       init: buildOnPrepare
-        ? "Seed Lefthook, build-before-hooks prepare, lint/check dispatch scripts, and lefthook.yml."
-        : "Seed Lefthook, prepare/lint/check dispatch scripts, and lefthook.yml.",
+        ? "Seed Lefthook, build-before-hooks prepare, check dispatch script, and lefthook.yml."
+        : "Seed Lefthook, prepare/check dispatch scripts, and lefthook.yml.",
       validate:
         "Run lefthook validate with isolated Git metadata; never install or execute hooks.",
     },

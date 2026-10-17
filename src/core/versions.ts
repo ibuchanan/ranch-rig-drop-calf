@@ -21,6 +21,7 @@ export const TOOL_VERSIONS = {
   promptfoo: pin.promptfoo,
   gitCliff: pin["git-cliff"],
   lefthook: pin.lefthook,
+  npmRunAll2: pin["npm-run-all2"],
   astGrep: pin["@ast-grep/cli"],
   forgePrelint: pin["@forge-ahead/prelint"],
   fallow: pin.fallow,

@@ -12,6 +12,8 @@ export const PRELINT_COMMAND = `ast-grep scan ${PRELINT_GLOBS.map((glob) => `--g
 export const PRELINT_SCRIPTS = {
   "lint:prelint": PRELINT_COMMAND,
   "lint:forge": "forge lint",
+  "lint:check:prelint": "npm run lint:prelint",
+  "lint:check:forge": "npm run lint:forge",
 } as const;
 
 export function prelint(): Capability {
@@ -33,7 +35,7 @@ export function prelint(): Capability {
         },
       ],
     },
-    // Git-hooks alone owns lint; prelint contributes only named subtasks.
+    // Lint owns the aggregate; prelint declares membership through named aliases.
     packageJson: {
       seed: {
         devDependencies: {

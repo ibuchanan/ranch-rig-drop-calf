@@ -22,7 +22,12 @@ export function fallow(): Capability {
     selection: { without: true, default: true },
     packageJson: {
       seed: { devDependencies: { fallow: TOOL_VERSIONS.fallow } },
-      policy: { scripts: { "lint:fallow": FALLOW_SCRIPT } },
+      policy: {
+        scripts: {
+          "lint:fallow": FALLOW_SCRIPT,
+          "lint:check:fallow": "npm run lint:fallow",
+        },
+      },
     },
     init(project) {
       project.templates.push(templateTree(FALLOW_TEMPLATE));

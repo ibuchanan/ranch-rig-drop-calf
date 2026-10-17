@@ -4,22 +4,6 @@ output:
   - summary
   - failure
 
-lint:
-  parallel: true
-  commands:
-    prelint:
-      run: npm run lint:prelint --if-present
-    biome:
-      run: npm run lint:check --if-present
-    fallow:
-      run: npm run lint:fallow --if-present
-    forge:
-      run: npm run lint:forge --if-present
-    typecheck:
-      run: npm run typecheck --if-present
-    format:
-      run: npm run format:check --if-present
-
 pre-commit:
   parallel: true
   commands:

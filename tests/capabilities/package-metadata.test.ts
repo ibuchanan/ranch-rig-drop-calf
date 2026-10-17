@@ -11,6 +11,7 @@ import { CHANGELOG_COMMAND } from "../../src/capabilities/changelog.ts";
 import { DOCS_COMMAND } from "../../src/capabilities/docs.ts";
 import { FALLOW_SCRIPT } from "../../src/capabilities/fallow.ts";
 import { GIT_HOOKS_SCRIPTS } from "../../src/capabilities/git-hooks.ts";
+import { LINT_COMMAND } from "../../src/capabilities/lint.ts";
 import { PRELINT_SCRIPTS } from "../../src/capabilities/prelint.ts";
 import { FORGE_SECRETS_SCRIPTS } from "../../src/capabilities/secrets.ts";
 import { SIZE_LIMIT_COMMAND } from "../../src/capabilities/size-limit.ts";
@@ -126,10 +127,15 @@ test.each(kinds)(
           custom: "echo custom",
           ...BIOME_SCRIPTS,
           ...GIT_HOOKS_SCRIPTS,
+          lint: LINT_COMMAND,
+          "lint:check:typecheck": "npm run typecheck",
           clean: "rm -rf dist",
           "lint:docs": DOCS_COMMAND,
           ...(kind === "library" || kind === "tool"
-            ? { "lint:fallow": FALLOW_SCRIPT }
+            ? {
+                "lint:fallow": FALLOW_SCRIPT,
+                "lint:check:fallow": "npm run lint:fallow",
+              }
             : {}),
           ...(kind === "forge-app" ? { "size:check": SIZE_LIMIT_COMMAND } : {}),
           ...(kind === "library"

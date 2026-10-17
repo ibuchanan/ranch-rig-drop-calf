@@ -11,6 +11,8 @@ export const BIOME_SCRIPTS = {
   format: "biome format --write",
   "format:check": "biome format",
   "lint:check": "biome lint",
+  "lint:check:biome": "npm run lint:check",
+  "lint:check:format": "npm run format:check",
   "lint:fix": "biome lint --write",
 } as const;
 

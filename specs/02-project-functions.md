@@ -86,8 +86,8 @@ review; `update` and standalone scaffold removal never run adoption.
   owner edits without explicit opt-in or `--force`. A conflict is raised where
   the capability's policy requires one, not merely because content differs.
 - **Script ownership is stable.** Only the owning function may replace its canonical npm
-  script. Git-hooks alone owns `prepare`, `lint`, and `check`; prelint contributes
-  only named lint subtasks.
+  script. Git-hooks owns `prepare` and `check`; lint owns the `lint` aggregate.
+  Producers declare lint membership with their own `lint:check:*` scripts.
 - **Shared-resource scope is explicit.** Preserve content outside the capability's
   declared scope; preservation within it follows that capability's policy.
   Never create `package.json.orig`.
@@ -144,6 +144,7 @@ Missing files or prerequisites can also cause a validator to skip or fail.
 | `library` | `node` | Required | [fnm (Fast Node Manager)](https://github.com/Schniz/fnm) — Selects and, when needed, installs the Node version requested by .nvmrc.<br>[Node.js](https://nodejs.org/) — Reference for Node.js versions and TypeScript type definitions | Seed Node 22 .nvmrc, public-registry .npmrc, and @types/node; no engines declaration. | Replace .nvmrc/.npmrc and derive package license from catalog; preserve engines and constrain declared @types/node ranges to major 22. | Use fnm to select .nvmrc (may download Node); no baseline, type-version, or deployment check. |
 | `library`, `forge-app`, `tool` | `changelog` | Required | [git-cliff](https://git-cliff.org/) — Renders unreleased changelog from commit history and release policy | Seeds cliff.toml release policy and CHANGELOG.md from templates; adds changelog script to package.json | **No-op:** Release policy and CHANGELOG.md are owner-managed after init; its package.json contribution enforces the changelog command and keeps the seeded git-cliff dependency fresh. | Validates cliff.toml policy and runs git-cliff command against repository commit history |
 | `library`, `forge-app`, `tool`, `agent-skill` | `biome` | Required | [Biome](https://biomejs.dev/) — Formats and lints JavaScript, TypeScript, and supported configuration files. | Seed Biome, formatting/lint subtasks, biome.jsonc, and .editorconfig. | Let Biome migrate an existing root config, preserving EditorConfig. | Load the root config and references with Biome, without scanning source quality. |
+| `library`, `forge-app`, `tool`, `agent-skill` | `lint` | Required | [npm-run-all2](https://github.com/bcomnes/npm-run-all2) — Runs producer-owned lint:check:* scripts in parallel, independently of Git hooks. | **No-op:** Lint owns no files; its package.json contribution seeds npm-run-all2 and supplies the lint aggregate. | **No-op:** Lint owns no files; its package.json contribution enforces the lint aggregate and keeps the seeded runner fresh. | **No-op:** Lint has no configuration file; source checks belong to the lint workflow, not capability validation. |
 | `library` | `library-build` | Required | [tsdown](https://tsdown.dev/) — Bundles a TypeScript library as ESM and CommonJS with declaration output. | Seed tsdown, the build pipeline/config, and publishing fields. | Enforce the build script and ESM/CommonJS formats; preserve owner entry/dependency settings. | **No-op:** tsdown has no supported configuration-only validation interface: resolveUserConfig is internal and no-write still bundles source. Build and declaration emission belong to the build workflow; validation does not execute the pipeline or inspect stale artifacts. |
 | `library` | `package-check` | Required | [Publint](https://publint.dev/) — Checks packed library conventions with warnings treated as errors.<br>[Are the Types Wrong?](https://arethetypeswrong.github.io/) — Checks TypeScript declaration resolution against the consumer package. | Seed exact checker dependencies and the lifecycle-free tarball checking script; checker configuration remains owner-managed. | Enforce pack:check and its script; keep existing checker dependencies fresh without re-adding removed tools. Preserve publishing metadata, checker configuration, and hook edits. | **No-op:** Package checks require fresh build artifacts and belong to the developer pack:check workflow; standalone validation does not build or inspect stale distributables. |
 | `library` | `library-release` | Required | [git-cliff](https://git-cliff.org/) — Derives release versions and regenerates notes using the changelog capability's shared tool pin and owner-managed policy. | Seed separate release:prepare and release:publish commands and helpers; preparation records reviewed local outputs, while explicit publication checks them and atomically pushes a release commit and tag to the named remote and branch. | Maintain only release:prepare, release:publish, and their authored helpers; preserve versions, lockfiles, notes, and owner-managed cliff.toml without preparing or publishing a release. | **No-op:** Release preparation and Git publication are explicit maintainer workflows; standalone validation does not bump versions, render release output, commit, tag, or push. |
@@ -153,7 +154,7 @@ Missing files or prerequisites can also cause a validator to skip or fail.
 | `library`, `forge-app`, `tool`, `agent-skill` | `clean-build` | Required | [rm](https://www.gnu.org/software/coreutils/manual/html_node/rm-invocation.html) — Removes dist when the owner runs the clean workflow. | **No-op:** Clean build owns no files to seed; its package.json contribution supplies the clean script. | **No-op:** Clean build owns no files; its package.json contribution enforces scripts.clean as rm -rf dist and never executes it. | **No-op:** Clean build owns no configuration with a separate tool-acceptance check; executing the clean script would delete build output and belongs to the clean workflow. |
 | `library`, `forge-app`, `tool`, `agent-skill` | `todo` | Required | [Git grep](https://git-scm.com/docs/git-grep) — Lists TODO markers in tracked files with paths and line numbers. | **No-op:** Todo owns no files; its package.json contribution seeds scripts.todo for every kind. | **No-op:** The seeded todo script is owner-managed after init; update does not replace or re-add it. | **No-op:** Todo owns no configuration with a separate tool-acceptance check; owners run the script in their Git repository. |
 | `library`, `forge-app`, `tool`, `agent-skill` | `docs` | Required | [markdownlint-cli2](https://github.com/igorshubovych/markdownlint-cli2) — Lints markdown files against consistent style rules<br>[CSpell](https://cspell.org/) — Spell-checks documentation and code comments | Seed Markdown/spelling tools and lint:docs, configs, DEVELOPMENT.md, and Diátaxis/spec starter documents. | **No-op:** Docs configuration and documents are owner-managed after init, including deletions; its package.json contribution enforces lint:docs and keeps the seeded tool dependencies fresh. | Load Markdown/spelling configs and references without scanning documentation quality. |
-| `library` | `git-hooks` | Required | [Lefthook](https://lefthook.dev/) — Dispatches lint/check workflows and Git hooks from lefthook.yml.<br>[Gitleaks](https://github.com/gitleaks/gitleaks) — Scans staged changes for secrets in the pre-commit hook; install separately. | Seed Lefthook, build-before-hooks prepare, lint/check dispatch scripts, and lefthook.yml. | **No-op:** Hook configuration is owner-managed after init; its package.json contribution enforces the dispatch scripts and keeps the seeded Lefthook dependency fresh. | Run lefthook validate with isolated Git metadata; never install or execute hooks. |
+| `library` | `git-hooks` | Required | [Lefthook](https://lefthook.dev/) — Dispatches the check workflow and Git hooks from lefthook.yml.<br>[Gitleaks](https://github.com/gitleaks/gitleaks) — Scans staged changes for secrets in the pre-commit hook; install separately. | Seed Lefthook, build-before-hooks prepare, check dispatch script, and lefthook.yml. | **No-op:** Hook configuration is owner-managed after init; its package.json contribution enforces the dispatch scripts and keeps the seeded Lefthook dependency fresh. | Run lefthook validate with isolated Git metadata; never install or execute hooks. |
 | `library` | `aidev` | Default; `--without-functions aidev` | [AGENTS.md](https://agents.md/) — Gives coding agents repository-specific instructions; human guidance, not executable config. | Seed authored agent guidance from templates/aidev/library in AGENTS.md. | **No-op:** Agent guidance is init-only and owner-managed; update preserves edits and does not restore a deleted AGENTS.md. | **No-op:** AGENTS.md is human guidance, not consuming-tool configuration; checking referenced scripts would check guidance policy, not tool acceptance. |
 | `forge-app`, `agent-skill` | `package-metadata` | Required | [npm-package-json-lint](https://www.npmjs.com/package/npm-package-json-lint) — Checks package metadata field types and formats with explicit structural rules.<br>[npm](https://docs.npmjs.com/cli/) — Reference for package.json schema and metadata format | **No-op:** Package metadata owns no files; its package.json contribution seeds version 0.1.0, type module, and private true; initialization supplies the initial package name. | Derive name/description/author from catalog; enforce type module and private true, preserving release version. | Check metadata field types/formats with explicit structural rules, not policy compliance. |
 | `forge-app` | `node` | Required | [fnm (Fast Node Manager)](https://github.com/Schniz/fnm) — Selects and, when needed, installs the Node version requested by .nvmrc.<br>[Node.js](https://nodejs.org/) — Reference for Node.js versions and TypeScript type definitions | Seed Node 24 .nvmrc, public-registry .npmrc, and @types/node; no engines declaration. | Replace .nvmrc/.npmrc, derive package license from catalog, and remove engines; keep @types/node fresh. | Use fnm to select .nvmrc (may download Node); no baseline, type-version, or deployment check. |
@@ -164,7 +165,7 @@ Missing files or prerequisites can also cause a validator to skip or fail.
 | `forge-app`, `tool`, `agent-skill` | `typescript` | Required | [TypeScript](https://www.typescriptlang.org/docs/) — Type-checks source and emits JavaScript or library declarations. | Seed TypeScript, typecheck/build scripts, and compiler configuration (declarations config only with tsdown). | Reconcile compiler configuration with policy selected by declared dependencies. | Run tsc --showConfig for applicable compiler configs, without compiling source or declarations. |
 | `forge-app` | `forge-ahead` | Required | [Forge Ahead API types](https://github.com/ibuchanan/forge-ahead-atlassian-api-types) — Provides types for Atlassian API integration in Forge apps.<br>[Forge Ahead errors](https://github.com/ibuchanan/forge-ahead-errors) — Provides typed error handling at Forge boundaries.<br>[Forge Ahead logging](https://github.com/ibuchanan/forge-ahead-logging) — Provides logging helpers for Forge apps. | **No-op:** Forge Ahead owns no files; its package.json contribution seeds the API types, errors, and logging dependencies. | **No-op:** Forge Ahead owns no files; its seeded dependencies are owner-managed and kept fresh against their pins, which skips GitHub references. | **No-op:** Forge Ahead dependencies have no repository-local configuration to validate; comparing dependency references would check policy, not tool acceptance. Runtime integration belongs to the app's build and test workflows. |
 | `forge-app` | `size-limit` | Required | [Size Limit](https://github.com/ai/size-limit) — Measures built file sizes against owner-managed budgets with @size-limit/file. | **No-op:** Size Limit owns no files; its package.json contribution seeds the paired tools, the build-then-measure size:check script, and a 10 kB budget for dist/**/*.js. | Enforce size:check and keep the seeded paired tools fresh, preserving owner budgets and paths. Remove the legacy size script only when it matches the former policy command; preserve owner-authored commands. | **No-op:** Size Limit has no supported configuration-only validation interface. Measurement requires build artifacts and belongs to the size workflow; validation does not build the project or assess potentially stale output. |
-| `forge-app`, `tool`, `agent-skill` | `git-hooks` | Required | [Lefthook](https://lefthook.dev/) — Dispatches lint/check workflows and Git hooks from lefthook.yml.<br>[Gitleaks](https://github.com/gitleaks/gitleaks) — Scans staged changes for secrets in the pre-commit hook; install separately. | Seed Lefthook, prepare/lint/check dispatch scripts, and lefthook.yml. | **No-op:** Hook configuration is owner-managed after init; its package.json contribution enforces the dispatch scripts and keeps the seeded Lefthook dependency fresh. | Run lefthook validate with isolated Git metadata; never install or execute hooks. |
+| `forge-app`, `tool`, `agent-skill` | `git-hooks` | Required | [Lefthook](https://lefthook.dev/) — Dispatches the check workflow and Git hooks from lefthook.yml.<br>[Gitleaks](https://github.com/gitleaks/gitleaks) — Scans staged changes for secrets in the pre-commit hook; install separately. | Seed Lefthook, prepare/check dispatch scripts, and lefthook.yml. | **No-op:** Hook configuration is owner-managed after init; its package.json contribution enforces the dispatch scripts and keeps the seeded Lefthook dependency fresh. | Run lefthook validate with isolated Git metadata; never install or execute hooks. |
 | `forge-app` | `evals` | Opt-in; `--with-functions evals`; `--without-functions evals`; `--preset all` | [Promptfoo](https://www.promptfoo.dev/docs/) — Evaluates prompts against authored test cases and displays results. | Seed Promptfoo, eval/view scripts, and the config/prompts/tests/data/guide tree; no manifest wiring. | **No-op:** The eval suite is owner-managed after init, including deletions; its package.json contribution enforces the eval/view scripts and keeps the seeded Promptfoo dependency fresh. | Use Promptfoo's native config/schema validator to load suite references; no model calls or assertion execution. |
 | `forge-app` | `aidev` | Default; `--without-functions aidev` | [AGENTS.md](https://agents.md/) — Gives coding agents repository-specific instructions; human guidance, not executable config. | Seed authored agent guidance from templates/aidev/forge-app in AGENTS.md. | **No-op:** Agent guidance is init-only and owner-managed; update preserves edits and does not restore a deleted AGENTS.md. | **No-op:** AGENTS.md is human guidance, not consuming-tool configuration; checking referenced scripts would check guidance policy, not tool acceptance. |
 | `tool`, `agent-skill` | `node` | Required | [fnm (Fast Node Manager)](https://github.com/Schniz/fnm) — Selects and, when needed, installs the Node version requested by .nvmrc.<br>[Node.js](https://nodejs.org/) — Reference for Node.js versions and TypeScript type definitions | Seed Node 24 .nvmrc, public-registry .npmrc, and @types/node; no engines declaration. | Replace .nvmrc/.npmrc and derive package license from catalog; preserve engines and keep @types/node fresh. | Use fnm to select .nvmrc (may download Node); no baseline, type-version, or deployment check. |
@@ -680,9 +681,9 @@ Policy:
   source, or running `forge lint`. Forge acceptance belongs to the separate
   `forge-manifest` validator.
 
-Prelint never writes `lint` or `lefthook.yml`. Git-hooks alone owns `lint`, and its
-seeded config dispatches both named subtasks with `--if-present`; owner hook edits
-remain owner-managed.
+Prelint never writes `lint` or `lefthook.yml`. The lint capability owns the
+aggregate; prelint contributes `lint:check:prelint` and `lint:check:forge` aliases
+that call the existing named subtasks. Owner hook edits remain owner-managed.
 
 ### `library-build`
 
@@ -1131,12 +1132,43 @@ lets Size Limit diagnose the owner's configuration and artifacts. Forge's
 seeded glob measures TypeScript's local `dist/` output, not the Forge deployment
 bundle.
 
+### `lint`
+
+Every kind selects the lint capability, which owns the `lint` aggregate:
+`run-p --npm-path npm --print-label "lint:check:*"`. Its seeded development
+dependency is `npm-run-all2` at `TOOL_VERSIONS.npmRunAll2`. The 8.x pin supports
+the generated Node baselines; explicit npm dispatch also works when the entry
+point is `bun run lint`, without inheriting Bun as an npm CLI JavaScript file.
+
+Producers own membership through single-level `lint:check:*` aliases:
+
+- Biome contributes `lint:check:biome` and `lint:check:format`.
+- TypeScript contributes `lint:check:typecheck`.
+- Prelint contributes `lint:check:prelint` and `lint:check:forge` on Forge apps.
+- Fallow contributes `lint:check:fallow` when selected on libraries or tools.
+
+The aliases call the existing direct scripts, which remain available. Docs lint
+stays separate. The aggregate does not match the `lint:check` leaf, `lint:fix`,
+or nested watch scripts. A newly selected producer joins by declaring a family
+member, without editing the aggregate or hooks. Duplicate script ownership is
+still rejected by package assembly.
+
+The runner executes members in parallel with labelled output, fails on a member
+failure, and aborts unfinished siblings. In the pinned version an unmatched
+pattern fails rather than silently skipping checks. Lint itself does not require
+Git metadata; `check` still does.
+
+Init seeds the runner and aggregate; update enforces the aggregate and freshens
+only a declared runner, preserving unrelated scripts and owner hook files. When
+upgrading an older project, explicitly add the runner as described in the
+[adoption guide](../docs/how-to/adopt-existing-repository.md). Validation is a no-op:
+executing source checks belongs to `lint`, not tool-configuration validation.
+
 ### `git-hooks`
 
 Git-hooks alone owns `devDependencies.lefthook` at `TOOL_VERSIONS.lefthook` and
-three scripts: `prepare`, `lint` (`lefthook run lint`), and `check`
-(`lefthook run pre-push --force`). Prelint contributes `lint:prelint` and
-`lint:forge` without writing `lint`; ownership does not depend on pass order.
+two scripts: `prepare` and `check` (`lefthook run pre-push --force`). The lint
+capability owns `lint`; ownership does not depend on pass order.
 
 | Composition option | Project kinds | `prepare` policy |
 |---|---|---|
@@ -1162,12 +1194,12 @@ failure tolerance cannot supply a missing distributable. Drop Calf does not seed
 trust allowlists or bypass script-disabling settings.
 
 - **init** seeds the pin, scripts, and authored `templates/git-hooks/lefthook.yml`
-  for every kind. The shared seed groups prelint, Biome, Forge, typecheck, and
-  formatting under `lint`; pre-commit runs gitleaks and formatting; pre-push runs
-  lint, tests, size checks, and package checks. npm script calls use `--if-present` so omitted
+  for every kind. Pre-commit runs gitleaks and formatting; pre-push invokes the
+  public lint aggregate, tests, size checks, and package checks. There is no custom
+  Lefthook lint group or lint-membership list. npm calls use `--if-present` so omitted
   subtasks are no-ops. Init is fresh-repository setup, not maintenance adoption.
 - **update** is a no-op for files. Its package.json contribution (§3) enforces
-  the composition-selected `prepare`, `lint`, and `check`; `lefthook` is seed,
+  the composition-selected `prepare` and `check`; `lefthook` is seed,
   kept fresh. This lifecycle policy transformation does not install dependencies,
   build, install or execute hooks, write Git metadata, or refresh lockfiles.
 - **`lefthook.yml` is owner-managed after init.** Update never reads, rewrites,
@@ -1192,8 +1224,9 @@ source files nor hooks are installed/modified in the caller's repository, and no
 container changes are exported. Setup/download errors are execution failures, not
 evidence of invalid configuration.
 
-Update always enforces the `prepare`, `lint`, and `check` scripts, including existing
-ones, keeps `lefthook` fresh, and never adopts or merges existing hook configuration.
+Git-hooks update enforces `prepare` and `check`, including existing scripts,
+keeps `lefthook` fresh, and never adopts or merges existing hook configuration.
+The separate lint capability enforces the aggregate script.
 
 ## 5. Composition into project kinds
 

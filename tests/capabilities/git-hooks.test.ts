@@ -5,6 +5,7 @@ import {
   GIT_HOOKS_TEMPLATE,
   gitHooks,
 } from "../../src/capabilities/git-hooks.ts";
+import { LINT_COMMAND } from "../../src/capabilities/lint.ts";
 import {
   buildProject,
   resolveProfile,
@@ -74,7 +75,7 @@ test.each([false, true])(
     }
     expect(JSON.parse(await output.file("package.json").contents())).toEqual({
       name: "owner",
-      scripts: { ...scripts, custom: "keep" },
+      scripts: { ...scripts, lint: "owner", custom: "keep" },
       devDependencies: { lefthook: TOOL_VERSIONS.lefthook, custom: "1" },
       dependencies: { keep: "1" },
     });
@@ -137,6 +138,7 @@ test.each(["library", "forge-app", "tool", "agent-skill"])(
       expect(updated.scripts).toEqual({
         ...pkg.scripts,
         ...GIT_HOOKS_SCRIPTS,
+        lint: LINT_COMMAND,
         prepare,
       });
       expect(updated.devDependencies.lefthook).toBe(TOOL_VERSIONS.lefthook);
@@ -151,7 +153,7 @@ test.each(["library", "forge-app", "tool", "agent-skill"])(
 );
 
 test.each(["library", "forge-app", "tool", "agent-skill"])(
-  "%s git-hooks alone contributes prepare, lint, and check in any composition order",
+  "%s git-hooks owns prepare/check and lint owns the aggregate in any composition order",
   (kind) => {
     const capabilities = resolveProfile(kind);
     for (const script of ["prepare", "lint", "check"]) {
@@ -161,7 +163,7 @@ test.each(["library", "forge-app", "tool", "agent-skill"])(
         return Object.hasOwn(project.packageJson.scripts, script);
       });
       expect(owners.map((capability) => capability.name)).toEqual([
-        "git-hooks",
+        script === "lint" ? "lint" : "git-hooks",
       ]);
     }
     const project = createBlueprint("sample", "", "tester");
@@ -257,12 +259,11 @@ test.each(["library", "forge-app", "tool", "agent-skill"])(
         ? "npm run build && (lefthook install || true)"
         : "lefthook install || true",
     );
-    expect(scripts.lint).toBe("lefthook run lint");
+    expect(scripts.lint).toBe(LINT_COMMAND);
     expect(scripts.check).toBe("lefthook run pre-push --force");
     const yml = config();
-    // The scripts run these groups by name; what each one runs is the
-    // template's call.
-    expect(yml).toMatch(/^lint:/m);
+    expect(yml).not.toMatch(/^lint:/m);
+    expect(yml).toContain("run: npm run lint --if-present");
     expect(yml).toMatch(/^pre-push:/m);
     expect(yml).toContain("run: npm run size:check --if-present");
     expect(yml).not.toContain("run: npm run size --if-present");

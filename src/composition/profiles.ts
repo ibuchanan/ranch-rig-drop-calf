@@ -18,6 +18,7 @@ import { gitHooks } from "../capabilities/git-hooks.ts";
 import { gitignore } from "../capabilities/gitignore.ts";
 import { libraryBuild } from "../capabilities/library-build.ts";
 import { libraryRelease } from "../capabilities/library-release.ts";
+import { lint } from "../capabilities/lint.ts";
 import { nodeBaseline } from "../capabilities/node.ts";
 import { oss, validateOssOwner } from "../capabilities/oss.ts";
 import { packageCheck } from "../capabilities/package-check.ts";
@@ -43,6 +44,7 @@ export const PROFILES: Record<string, Capability[]> = {
     nodeBaseline({ major: "22" }),
     changelogToolchain(),
     biomeToolchain(),
+    lint(),
     libraryBuild(),
     packageCheck(),
     libraryRelease(),
@@ -70,6 +72,7 @@ export const PROFILES: Record<string, Capability[]> = {
     forgeSecrets(),
     prelint(),
     biomeToolchain(),
+    lint(),
     vitestTesting(),
     typeScriptToolchain(),
     forgeAhead(),
@@ -93,6 +96,7 @@ export const PROFILES: Record<string, Capability[]> = {
     nodeBaseline(),
     changelogToolchain(),
     biomeToolchain(),
+    lint(),
     typeScriptToolchain(),
     bunTesting(),
     fallow(),
@@ -109,6 +113,7 @@ export const PROFILES: Record<string, Capability[]> = {
     gitignore(),
     nodeBaseline(),
     biomeToolchain(),
+    lint(),
     typeScriptToolchain(),
     bunTesting(),
     cleanBuild(),
