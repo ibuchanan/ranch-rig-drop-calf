@@ -4,7 +4,7 @@ import type { Capability, Validation } from "../core/capability.ts";
 import { editPackageJson, readPackageJson } from "../core/package-json.ts";
 import { nodeContainer, REPOSITORY, runTool } from "../core/tool-run.ts";
 import { NODE_MAJOR, TOOL_VERSIONS } from "../core/versions.ts";
-import { CATALOG_FILE, LICENSE, readCatalog } from "./catalog.ts";
+import { updatePackageLicense } from "./package-metadata.ts";
 
 /**
  * Update owns .nvmrc and the whole .npmrc; Forge manifest updates are separate.
@@ -21,17 +21,9 @@ async function updateNode(
   directory: Directory,
   major?: string,
 ): Promise<Directory> {
-  let result = directory;
-  // The license comes from repository content, so no contribution can express it.
-  if (await readPackageJson(directory)) {
-    const catalog = await readCatalog(directory, "node");
-    const license = catalog.getIn(["metadata", "annotations", LICENSE]);
-    if (typeof license !== "string" || !license.trim())
-      throw new Error(
-        `node: ${CATALOG_FILE} ${LICENSE} must be a nonempty string; set the license annotation before updating.`,
-      );
-    result = await editPackageJson(directory, (pkg) => {
-      pkg.license = license;
+  let result = await updatePackageLicense(directory, "node");
+  if (await readPackageJson(result)) {
+    result = await editPackageJson(result, (pkg) => {
       if (major !== undefined) {
         for (const section of ["dependencies", "devDependencies"] as const) {
           const value = pkg[section];

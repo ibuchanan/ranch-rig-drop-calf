@@ -5,6 +5,7 @@ import { editPackageJson, readPackageJson } from "../core/package-json.ts";
 import {
   CATALOG_FILE,
   catalogOwnerId,
+  LICENSE,
   PACKAGE_NAME,
   readCatalog,
 } from "./catalog.ts";
@@ -33,6 +34,23 @@ async function updatePackageMetadata(directory: Directory): Promise<Directory> {
       if (value === undefined) delete pkg[field];
       else pkg[field] = value;
     }
+  });
+}
+
+/** Runtime baselines derive the package license without owning unrelated metadata. */
+export async function updatePackageLicense(
+  directory: Directory,
+  capability: string,
+): Promise<Directory> {
+  if (!(await readPackageJson(directory))) return directory;
+  const catalog = await readCatalog(directory, capability);
+  const license = catalog.getIn(["metadata", "annotations", LICENSE]);
+  if (typeof license !== "string" || !license.trim())
+    throw new Error(
+      `${capability}: ${CATALOG_FILE} ${LICENSE} must be a nonempty string; set the license annotation before updating.`,
+    );
+  return editPackageJson(directory, (pkg) => {
+    pkg.license = license;
   });
 }
 

@@ -12,7 +12,10 @@ export const GIT_HOOKS_SCRIPTS = {
 } as const;
 
 /** Git-hooks owns prepare/check; composition selects build-on-prepare. */
-export function gitHooks({ buildOnPrepare = false } = {}): Capability {
+export function gitHooks({
+  buildOnPrepare = false,
+  packageManager = "npm",
+} = {}): Capability {
   return {
     name: "git-hooks",
     documentation: {
@@ -42,13 +45,26 @@ export function gitHooks({ buildOnPrepare = false } = {}): Capability {
         scripts: {
           ...GIT_HOOKS_SCRIPTS,
           prepare: buildOnPrepare
-            ? `npm run build && (${GIT_HOOKS_SCRIPTS.prepare})`
+            ? `${packageManager} run build && (${GIT_HOOKS_SCRIPTS.prepare})`
             : GIT_HOOKS_SCRIPTS.prepare,
         },
       },
     },
     init(project) {
-      project.templates.push(templateTree(GIT_HOOKS_TEMPLATE));
+      project.templates.push(
+        templateTree(GIT_HOOKS_TEMPLATE, async (destination, source) => {
+          const contents = await source.file("lefthook.yml").contents();
+          return destination.withNewFile(
+            "lefthook.yml",
+            packageManager === "bun"
+              ? contents.replaceAll(
+                  /npm run (\S+) --if-present/g,
+                  "bun run --if-present $1",
+                )
+              : contents,
+          );
+        }),
+      );
     },
     update: noOp(
       "Hook configuration is owner-managed after init; its package.json contribution enforces the dispatch scripts and keeps the seeded Lefthook dependency fresh.",

@@ -108,6 +108,7 @@ test("generated TypeScript configs typecheck and compile a sample entry", () => 
             seed,
             seed,
             project.packageJson.devDependencies,
+            kind === "tool" ? "bun" : "node",
           ),
         );
       }
@@ -128,7 +129,7 @@ test("generated TypeScript configs typecheck and compile a sample entry", () => 
             .getPreEmitDiagnostics(program)
             .map((d) => ts.flattenDiagnosticMessageText(d.messageText, " ")),
         ).toEqual([]);
-        if (path === "tsconfig.json") {
+        if (path === "tsconfig.json" && kind !== "tool") {
           expect(program.emit().emitSkipped).toBe(false);
           expect(readFileSync(join(folder, "dist/index.js"), "utf8")).toContain(
             "export const value",
@@ -141,21 +142,16 @@ test("generated TypeScript configs typecheck and compile a sample entry", () => 
   }
 });
 
-test.each(["tool", "agent-skill"])(
-  "%s emits TypeScript from src into dist",
-  (kind) => {
-    const project = buildProject(kind, "sample", "tester");
-    expect(project.packageJson.scripts.build).toBe(
-      "tsc --project tsconfig.json",
-    );
-    expect(project.packageJson.scripts.typecheck).toBe(
-      "tsc --project tsconfig.typecheck.json --noEmit",
-    );
-    expect(
-      config(seededConfigs().get("tsconfig.json")).compilerOptions,
-    ).toMatchObject({
-      rootDir: "src",
-      outDir: "dist",
-    });
-  },
-);
+test.each(["agent-skill"])("%s emits TypeScript from src into dist", (kind) => {
+  const project = buildProject(kind, "sample", "tester");
+  expect(project.packageJson.scripts.build).toBe("tsc --project tsconfig.json");
+  expect(project.packageJson.scripts.typecheck).toBe(
+    "tsc --project tsconfig.typecheck.json --noEmit",
+  );
+  expect(
+    config(seededConfigs().get("tsconfig.json")).compilerOptions,
+  ).toMatchObject({
+    rootDir: "src",
+    outDir: "dist",
+  });
+});

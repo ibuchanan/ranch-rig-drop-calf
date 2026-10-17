@@ -77,7 +77,9 @@ test.each(kinds)(
 test.each(kinds)(
   "%s Biome verbs preserve a freshly initialized repository byte-exact",
   async (kind) => {
-    const capability = biomeToolchain();
+    const capability = biomeToolchain({
+      packageManager: kind === "tool" ? "bun" : "npm",
+    });
     expect(typeof capability.init).toBe("function");
     expect(typeof capability.update).toBe("function");
     expect(typeof capability.validate).toBe("function");
@@ -90,8 +92,8 @@ test.each(kinds)(
     );
     const { spy, commands } = mockContainer();
     try {
-      expect(await runUpdate(biomeToolchain(), input)).toBe(input);
-      expect(await runUpdate(biomeToolchain(), input)).toBe(input);
+      expect(await runUpdate(capability, input)).toBe(input);
+      expect(await runUpdate(capability, input)).toBe(input);
       expect(commands).toContainEqual([
         "biome",
         "migrate",

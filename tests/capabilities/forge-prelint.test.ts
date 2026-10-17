@@ -122,7 +122,11 @@ test.each(["library", "forge-app", "tool", "agent-skill"])(
         "sample",
       );
       const pkg = JSON.parse(await initialized.file("package.json").contents());
-      expect(pkg.scripts.lint).toBe(LINT_COMMAND);
+      expect(pkg.scripts.lint).toBe(
+        kind === "tool"
+          ? LINT_COMMAND.replace("--npm-path npm", "--npm-path bun")
+          : LINT_COMMAND,
+      );
       if (kind === "forge-app") {
         expect(pkg.scripts["lint:prelint"]).toBe(PRELINT_COMMAND);
         expect(pkg.scripts["lint:forge"]).toBe("forge lint");

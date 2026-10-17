@@ -20,6 +20,7 @@ import { VITEST_SCRIPTS } from "../../src/capabilities/vitest.ts";
 import { buildProject } from "../../src/composition/profiles.ts";
 import { validateCapabilities } from "../../src/core/capability.ts";
 import { ParseError } from "../../src/core/errors.ts";
+import { TOOL_VERSIONS } from "../../src/core/versions.ts";
 import { DropCalf } from "../../src/index.ts";
 import {
   capabilityOf,
@@ -123,18 +124,26 @@ test.each(kinds)(
       const output = await new DropCalf().update(input, kind);
       expect(await manifest(output)).toEqual({
         ...pkg,
+        ...(kind === "tool"
+          ? { packageManager: `bun@${TOOL_VERSIONS.bun}` }
+          : {}),
         scripts: {
           custom: "echo custom",
           ...BIOME_SCRIPTS,
           ...GIT_HOOKS_SCRIPTS,
-          lint: LINT_COMMAND,
-          "lint:check:typecheck": "npm run typecheck",
+          lint:
+            kind === "tool"
+              ? LINT_COMMAND.replace("--npm-path npm", "--npm-path bun")
+              : LINT_COMMAND,
+          "lint:check:biome": `${kind === "tool" ? "bun" : "npm"} run lint:check`,
+          "lint:check:format": `${kind === "tool" ? "bun" : "npm"} run format:check`,
+          "lint:check:typecheck": `${kind === "tool" ? "bun" : "npm"} run typecheck`,
           clean: "rm -rf dist",
           "lint:docs": DOCS_COMMAND,
           ...(kind === "library" || kind === "tool"
             ? {
                 "lint:fallow": FALLOW_SCRIPT,
-                "lint:check:fallow": "npm run lint:fallow",
+                "lint:check:fallow": `${kind === "tool" ? "bun" : "npm"} run lint:fallow`,
               }
             : {}),
           ...(kind === "forge-app" ? { "size:check": SIZE_LIMIT_COMMAND } : {}),
@@ -151,7 +160,9 @@ test.each(kinds)(
           build:
             kind === "library"
               ? "sh scripts/build.sh"
-              : TYPESCRIPT_SCRIPTS.build,
+              : kind === "tool"
+                ? "bun build --compile ./src/index.ts --outfile ./dist/cli"
+                : TYPESCRIPT_SCRIPTS.build,
           ...(kind === "forge-app"
             ? {
                 ...VITEST_SCRIPTS,

@@ -7,6 +7,7 @@ import {
   LIBRARY_AIDEV_TEMPLATE,
 } from "../../src/capabilities/aidev.ts";
 import { BIOME_TEMPLATE } from "../../src/capabilities/biome.ts";
+import { BUN_TEMPLATE } from "../../src/capabilities/bun.ts";
 import { CATALOG_TEMPLATE } from "../../src/capabilities/catalog.ts";
 import { CHANGELOG_TEMPLATE } from "../../src/capabilities/changelog.ts";
 import { FALLOW_TEMPLATE } from "../../src/capabilities/fallow.ts";
@@ -143,6 +144,20 @@ export function mockModuleSource(
     [LIBRARY_AIDEV_TEMPLATE, tree(aidevTemplates("library"))],
     [CATALOG_TEMPLATE, tree(catalogTemplates())],
     ["templates/docs", tree(docs)],
+    [
+      BUN_TEMPLATE,
+      tree(
+        new Map([
+          [
+            "bunfig.toml",
+            readFileSync(
+              join(process.cwd(), BUN_TEMPLATE, "bunfig.toml"),
+              "utf8",
+            ),
+          ],
+        ]),
+      ),
+    ],
     [TYPESCRIPT_TEMPLATE, tree(typeScript)],
     [BIOME_TEMPLATE, tree(biome)],
     [FALLOW_TEMPLATE, tree(fallowTemplates())],

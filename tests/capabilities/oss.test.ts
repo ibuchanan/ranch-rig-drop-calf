@@ -236,7 +236,15 @@ describe("pinned OSS templates", () => {
           writes
             .get("DEVELOPMENT.md")
             ?.startsWith(
-              docsTemplates().get("DEVELOPMENT.md") ?? "missing docs template",
+              kind === "tool"
+                ? (
+                    docsTemplates().get("DEVELOPMENT.md") ??
+                    "missing docs template"
+                  )
+                    .replaceAll("npm install", "bun install")
+                    .replaceAll("npm run", "bun run")
+                : (docsTemplates().get("DEVELOPMENT.md") ??
+                    "missing docs template"),
             ),
         ).toBe(true);
         const seeded = new Map([
@@ -258,7 +266,14 @@ describe("pinned OSS templates", () => {
         ]);
         for (const [path, contents] of seeded)
           if (path !== "DEVELOPMENT.md")
-            expect(writes.get(path)).toBe(contents);
+            expect(writes.get(path)).toBe(
+              kind === "tool" && path === "lefthook.yml"
+                ? contents.replaceAll(
+                    /npm run (\S+) --if-present/g,
+                    "bun run --if-present $1",
+                  )
+                : contents,
+            );
         expect(writes.has("cliff.toml")).toBe(kind !== "agent-skill");
         expect(writes.has("CHANGELOG.md")).toBe(kind !== "agent-skill");
         if (kind === "forge-app") {
@@ -284,6 +299,7 @@ describe("pinned OSS templates", () => {
               ...(["forge-app", "library"].includes(kind) ? ["AGENTS.md"] : []),
               ...(kind === "forge-app" ? SECRETS_ASSETS : []),
               ...project.files.keys(),
+              ...(kind === "tool" ? ["bunfig.toml"] : []),
               ...OSS_ASSETS,
               ...seeded.keys(),
               ...(kind === "library" ? ["tsconfig.declarations.json"] : []),

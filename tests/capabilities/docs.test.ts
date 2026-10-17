@@ -136,7 +136,15 @@ test.each(["library", "forge-app", "tool", "agent-skill"])(
       for (const [path, text] of docsTemplates()) {
         const actual = await initialized.file(path).contents();
         if (path === "DEVELOPMENT.md")
-          expect(actual.startsWith(text)).toBe(true);
+          expect(
+            actual.startsWith(
+              kind === "tool"
+                ? text
+                    .replaceAll("npm install", "bun install")
+                    .replaceAll("npm run", "bun run")
+                : text,
+            ),
+          ).toBe(true);
         else expect(actual).toBe(text);
       }
       const development = await initialized.file("DEVELOPMENT.md").contents();

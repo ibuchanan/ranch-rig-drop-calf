@@ -63,12 +63,25 @@ test.each(cases)(
       expect(pkg.description).toBe("");
       expect(pkg.private).toBe(true);
       expect(pkg.engines).toBeUndefined();
-      expect(readFileSync(join(output, ".nvmrc"), "utf8")).toBe(
-        profile === "library" ? "22\n" : "24\n",
-      );
-      expect(pkg.devDependencies["@types/node"]).toBe(
-        profile === "library" ? "22" : "24",
-      );
+      if (profile === "tool") {
+        expect(existsSync(join(output, ".nvmrc"))).toBe(false);
+        expect(existsSync(join(output, ".npmrc"))).toBe(false);
+        expect(readFileSync(join(output, "bunfig.toml"), "utf8")).toContain(
+          "bun = true",
+        );
+        expect(pkg.packageManager).toMatch(/^bun@\d+\.\d+\.\d+$/);
+        expect(pkg.devDependencies["@types/node"]).toBeUndefined();
+        expect(pkg.scripts.build).toBe(
+          "bun build --compile ./src/index.ts --outfile ./dist/cli",
+        );
+      } else {
+        expect(readFileSync(join(output, ".nvmrc"), "utf8")).toBe(
+          profile === "library" ? "22\n" : "24\n",
+        );
+        expect(pkg.devDependencies["@types/node"]).toBe(
+          profile === "library" ? "22" : "24",
+        );
+      }
       expect(existsSync(join(output, "AGENTS.md"))).toBe(
         profile === "library" || profile === "forge-app",
       );

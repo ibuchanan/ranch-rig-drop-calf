@@ -95,7 +95,7 @@ async function validateBiome(directory: Directory): Promise<Validation> {
 }
 
 /** Configuration and EditorConfig are owner-managed after init; only Biome migrates the root config. */
-export function biomeToolchain(): Capability {
+export function biomeToolchain({ packageManager = "npm" } = {}): Capability {
   return {
     name: "biome",
     documentation: {
@@ -116,7 +116,11 @@ export function biomeToolchain(): Capability {
     packageJson: {
       seed: { devDependencies: { "@biomejs/biome": TOOL_VERSIONS.biome } },
       policy: {
-        scripts: BIOME_SCRIPTS,
+        scripts: {
+          ...BIOME_SCRIPTS,
+          "lint:check:biome": `${packageManager} run lint:check`,
+          "lint:check:format": `${packageManager} run format:check`,
+        },
       },
     },
     init(project) {

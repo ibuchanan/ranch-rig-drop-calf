@@ -73,6 +73,7 @@ export function reconcileTypeScriptConfig(
   contents: string,
   baseline: string,
   devDependencies: Record<string, unknown>,
+  runtime = "node",
 ): string {
   const current = configObject(path, contents);
   const seed = configObject(path, baseline);
@@ -80,19 +81,27 @@ export function reconcileTypeScriptConfig(
   const tsdown = Object.hasOwn(devDependencies, "tsdown");
   const check = path === "tsconfig.typecheck.json";
   const declarations = path === "tsconfig.declarations.json";
-  const modern = tsdown || (check && vitest);
+  const bun = runtime === "bun";
+  const modern = bun || tsdown || (check && vitest);
   const compilerOptions = {
     ...object(path, seed.compilerOptions),
     ...(modern ? { module: "ESNext", moduleResolution: "Bundler" } : {}),
+    ...(bun
+      ? { noEmit: true, allowImportingTsExtensions: true, types: ["bun"] }
+      : {}),
     ...(check
       ? {
           rootDir: ".",
           module: "ESNext",
           moduleResolution: modern ? "Bundler" : "Node",
-          types: [
-            "node",
-            ...(Object.hasOwn(devDependencies, "@types/bun") ? ["bun"] : []),
-          ],
+          types: bun
+            ? ["bun"]
+            : [
+                "node",
+                ...(Object.hasOwn(devDependencies, "@types/bun")
+                  ? ["bun"]
+                  : []),
+              ],
         }
       : {}),
   };
@@ -139,7 +148,10 @@ export function reconcileTypeScriptConfig(
 }
 
 /** Declared dependencies select compiler policy; package.json itself is contributed. */
-async function updateTypeScript(directory: Directory): Promise<Directory> {
+async function updateTypeScript(
+  directory: Directory,
+  runtime: string,
+): Promise<Directory> {
   let result = directory;
   const pkg = await readPackageJson(directory);
   const dependencies = object(
@@ -159,6 +171,7 @@ async function updateTypeScript(directory: Directory): Promise<Directory> {
       contents,
       baseline,
       dependencies,
+      runtime,
     );
     if (!exists || updated !== contents)
       result = result.withNewFile(path, updated);
@@ -192,8 +205,11 @@ async function validateTypeScript(directory: Directory): Promise<Validation> {
   return { status: "validated" };
 }
 
-/** `ownsBuild: false` leaves the build script to library-build. */
-export function typeScriptToolchain({ ownsBuild = true } = {}): Capability {
+/** `ownsBuild: false` leaves the build script to the selected build capability. */
+export function typeScriptToolchain({
+  ownsBuild = true,
+  runtime = "node",
+} = {}): Capability {
   return {
     name: "typescript",
     documentation: {
@@ -207,7 +223,7 @@ export function typeScriptToolchain({ ownsBuild = true } = {}): Capability {
       ],
       init: ownsBuild
         ? "Seed TypeScript, typecheck/build scripts, and compiler configuration (declarations config only with tsdown)."
-        : "Seed TypeScript, typecheck, and compiler configuration including declarations; library-build owns build.",
+        : "Seed TypeScript, typecheck, and compiler configuration; the selected build capability owns build (declarations only with tsdown).",
       update:
         "Reconcile compiler configuration with policy selected by declared dependencies.",
       validate:
@@ -218,8 +234,8 @@ export function typeScriptToolchain({ ownsBuild = true } = {}): Capability {
       policy: {
         scripts: {
           typecheck: TYPESCRIPT_SCRIPTS.typecheck,
-          "lint:check:typecheck": TYPESCRIPT_SCRIPTS["lint:check:typecheck"],
-          // library-build owns build when it is selected.
+          "lint:check:typecheck": `${runtime === "bun" ? "bun" : "npm"} run typecheck`,
+          // A separate build capability owns build when selected.
           ...(ownsBuild ? { build: TYPESCRIPT_SCRIPTS.build } : {}),
         },
       },
@@ -227,7 +243,7 @@ export function typeScriptToolchain({ ownsBuild = true } = {}): Capability {
     init(project) {
       project.templates.push(templateTree(TYPESCRIPT_TEMPLATE, seedTypeScript));
     },
-    update: updateTypeScript,
+    update: (directory) => updateTypeScript(directory, runtime),
     validate: validateTypeScript,
   };
 }

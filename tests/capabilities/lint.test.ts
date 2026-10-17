@@ -36,7 +36,11 @@ for (const kind of Object.keys(PROFILES)) {
       "sample",
       "tester",
     );
-    expect(forward.packageJson.scripts.lint).toBe(LINT_COMMAND);
+    expect(forward.packageJson.scripts.lint).toBe(
+      kind === "tool"
+        ? LINT_COMMAND.replace("--npm-path npm", "--npm-path bun")
+        : LINT_COMMAND,
+    );
     expect(reversed.packageJson.scripts).toEqual(forward.packageJson.scripts);
     expect(forward.packageJson.devDependencies["npm-run-all2"]).toBe(
       TOOL_VERSIONS.npmRunAll2,
@@ -131,30 +135,34 @@ async function runLint(scripts: Record<string, string>) {
   }
 }
 
-test("real runner discovers a new producer, labels output, and excludes leaf, docs, and fix scripts without Git", async () => {
-  const { packageJson } = buildProject("forge-app", "sample", "tester");
-  const scripts = { ...packageJson.scripts };
-  for (const name of [
-    "lint:check",
-    "format:check",
-    "typecheck",
-    "lint:forge",
-    "lint:prelint",
-  ]) {
-    scripts[name] = `printf '${name}-ran\\n'`;
-  }
-  scripts["lint:check:new-producer"] = "printf 'new-producer-ran\\n'";
-  scripts["lint:docs"] = "exit 31";
-  scripts["lint:fix"] = "exit 32";
-  scripts["lint:check:biome:watch"] = "exit 33";
-  const result = await runLint(scripts);
-  expect(result.code).toBe(0);
-  for (const name of members(scripts))
-    expect(result.output).toContain(`[${name}`);
-  expect(result.output).toContain("new-producer-ran");
-  expect(result.output.match(/\]\s+lint:check-ran\r?\n/g)).toHaveLength(1);
-  expect(result.output).not.toContain("Task not found");
-}, 20_000);
+test.each(["forge-app", "tool"])(
+  "%s real runner discovers a new producer, labels output, and excludes leaf, docs, and fix scripts without Git",
+  async (kind) => {
+    const { packageJson } = buildProject(kind, "sample", "tester");
+    const scripts = { ...packageJson.scripts };
+    for (const name of [
+      "lint:check",
+      "format:check",
+      "typecheck",
+      "lint:forge",
+      "lint:prelint",
+    ]) {
+      scripts[name] = `printf '${name}-ran\\n'`;
+    }
+    scripts["lint:check:new-producer"] = "printf 'new-producer-ran\\n'";
+    scripts["lint:docs"] = "exit 31";
+    scripts["lint:fix"] = "exit 32";
+    scripts["lint:check:biome:watch"] = "exit 33";
+    const result = await runLint(scripts);
+    expect(result.code).toBe(0);
+    for (const name of members(scripts))
+      expect(result.output).toContain(`[${name}`);
+    expect(result.output).toContain("new-producer-ran");
+    expect(result.output.match(/\]\s+lint:check-ran\r?\n/g)).toHaveLength(1);
+    expect(result.output).not.toContain("Task not found");
+  },
+  20_000,
+);
 
 test("real runner propagates failures and aborts an unfinished sibling", async () => {
   const result = await runLint({

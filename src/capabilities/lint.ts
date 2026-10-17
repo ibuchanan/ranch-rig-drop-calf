@@ -3,7 +3,7 @@ import { TOOL_VERSIONS } from "../core/versions.ts";
 
 export const LINT_COMMAND = 'run-p --npm-path npm --print-label "lint:check:*"';
 
-export function lint(): Capability {
+export function lint({ packageManager = "npm" } = {}): Capability {
   return {
     name: "lint",
     documentation: {
@@ -18,7 +18,14 @@ export function lint(): Capability {
     },
     packageJson: {
       seed: { devDependencies: { "npm-run-all2": TOOL_VERSIONS.npmRunAll2 } },
-      policy: { scripts: { lint: LINT_COMMAND } },
+      policy: {
+        scripts: {
+          lint: LINT_COMMAND.replace(
+            "--npm-path npm",
+            `--npm-path ${packageManager}`,
+          ),
+        },
+      },
     },
     init: noOp(
       "Lint owns no files; its package.json contribution seeds npm-run-all2 and supplies the lint aggregate.",

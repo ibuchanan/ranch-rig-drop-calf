@@ -41,7 +41,7 @@ Every kind:
 | Formatting | biome | biome | biome | biome |
 | Type checking | tsc | tsc | tsc | tsc |
 | Testing | bun test (+ watch/coverage) | vitest (+ watch/coverage) | bun test (+ watch/coverage) | bun test (+ watch/coverage) |
-| Build | tsdown | tsc | tsc | tsc |
+| Build | tsdown | tsc | bun build --compile | tsc |
 | Clean | rm -rf dist | rm -rf dist | rm -rf dist | rm -rf dist |
 
 Kind-specific policies:
@@ -58,6 +58,12 @@ Kind-specific policies:
   does not seed size-check scripts, tools, or budgets; update preserves existing
   owner-managed size checks. Development uses Node 22 and matching Node type
   declarations, the lowest supported Forge consumer runtime.
+- **`tool`** uses Bun as the packageManager baseline with `bun-build` for native
+  platform-specific CLI binaries compiled from TypeScript. Build command:
+  `bun build --compile ./src/index.ts --outfile ./dist/cli`. TypeScript owns type
+  checking with `noEmit: true`, `allowImportingTsExtensions: true`,
+  `moduleResolution: Bundler`, and `types: ["bun"]`. No `.nvmrc`, `.npmrc`, or
+  `@types/node` are seeded. Tool wrappers, hooks, and documentation use Bun.
 - **`agent-skill`** uses Bun testing like `library` and `tool`, including for shipped
   scripts. Every kind exposes `test`, `test:watch`, and `test:coverage`; no testing
   opt-out is provided.
@@ -73,7 +79,7 @@ Each kind additionally selects project-functions (see
 |---|---|
 | `library` | `catalog`, `package-metadata`, `oss`, `gitignore`, `node`, `changelog`, `biome`, `lint`, `library-build`, `package-check`, `library-release`, `typescript`, `test`, `fallow` (Default; `--without-functions fallow`), `clean-build`, `todo`, `docs`, `git-hooks`, `aidev` (Default; `--without-functions aidev`) |
 | `forge-app` | `catalog`, `package-metadata`, `oss`, `gitignore`, `node`, `forge-manifest`, `changelog`, `secrets`, `prelint`, `biome`, `lint`, `test`, `typescript`, `forge-ahead`, `size-limit`, `clean-build`, `todo`, `docs`, `git-hooks`, `evals` (Opt-in; `--with-functions evals`; `--without-functions evals`; `--preset all`), `aidev` (Default; `--without-functions aidev`) |
-| `tool` | `catalog`, `package-metadata`, `oss`, `gitignore`, `node`, `changelog`, `biome`, `lint`, `typescript`, `test`, `fallow` (Default; `--without-functions fallow`), `clean-build`, `todo`, `docs`, `git-hooks`, `aidev` |
+| `tool` | `catalog`, `package-metadata`, `oss`, `gitignore`, `bun`, `changelog`, `biome`, `lint`, `bun-build`, `typescript`, `test`, `fallow` (Default; `--without-functions fallow`), `clean-build`, `todo`, `docs`, `git-hooks`, `aidev` |
 | `agent-skill` | `catalog`, `package-metadata`, `oss`, `gitignore`, `node`, `biome`, `lint`, `typescript`, `test`, `clean-build`, `todo`, `docs`, `git-hooks`, `aidev` |
 <!-- capability-inventory:end -->
 

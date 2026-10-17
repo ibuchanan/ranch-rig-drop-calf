@@ -65,6 +65,7 @@ type DocsLayout = {
   testDirectory: string;
   testPurpose: string;
   scriptsPurpose?: string;
+  packageManager?: string;
 };
 
 const commonLayout = [
@@ -133,7 +134,7 @@ export function docsLinting(
           );
           return seeded.withNewFile(
             path,
-            `${contents}\n## Repository layout\n\n${repositoryLayout(layout, evaluations)}`,
+            `${layout.packageManager === "bun" ? contents.replaceAll("npm install", "bun install").replaceAll("npm run", "bun run") : contents}\n## Repository layout\n\n${repositoryLayout(layout, evaluations)}`,
           );
         }),
       );

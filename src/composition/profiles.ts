@@ -5,6 +5,7 @@ import {
   LIBRARY_AIDEV_TEMPLATE,
 } from "../capabilities/aidev.ts";
 import { biomeToolchain } from "../capabilities/biome.ts";
+import { bunBaseline, bunBuild } from "../capabilities/bun.ts";
 import { bunTesting } from "../capabilities/bun-testing.ts";
 import { catalog } from "../capabilities/catalog.ts";
 import { changelogToolchain } from "../capabilities/changelog.ts";
@@ -93,17 +94,22 @@ export const PROFILES: Record<string, Capability[]> = {
     packageMetadata(),
     oss(),
     gitignore(),
-    nodeBaseline(),
+    bunBaseline(),
     changelogToolchain(),
-    biomeToolchain(),
-    lint(),
-    typeScriptToolchain(),
+    biomeToolchain({ packageManager: "bun" }),
+    lint({ packageManager: "bun" }),
+    bunBuild(),
+    typeScriptToolchain({ ownsBuild: false, runtime: "bun" }),
     bunTesting(),
-    fallow(),
+    fallow({ packageManager: "bun" }),
     cleanBuild(),
     todo(),
-    docsLinting(),
-    gitHooks(),
+    docsLinting({
+      testDirectory: "tests",
+      testPurpose: "Bun tests for CLI source and workflows",
+      packageManager: "bun",
+    }),
+    gitHooks({ packageManager: "bun" }),
     aidev(),
   ],
   "agent-skill": [

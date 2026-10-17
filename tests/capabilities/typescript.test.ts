@@ -77,7 +77,7 @@ for (const dependencies of [
 const initPolicy = {
   library: { bundler: true, tests: false, declarations: true },
   "forge-app": { bundler: false, tests: true, declarations: false },
-  tool: { bundler: false, tests: false, declarations: false },
+  tool: { bundler: true, tests: false, declarations: false },
   "agent-skill": { bundler: false, tests: false, declarations: false },
 } as const;
 
@@ -108,11 +108,11 @@ test.each(Object.entries(initPolicy))(
         strict: true,
         sourceMap: true,
         module: "ESNext",
-        types: ["node"],
+        types: kind === "tool" ? ["bun"] : ["node"],
         moduleResolution: policy.bundler ? "Bundler" : "Node",
       });
       expect(check.compilerOptions.types).toEqual(
-        policy.tests ? ["node"] : ["node", "bun"],
+        kind === "tool" ? ["bun"] : policy.tests ? ["node"] : ["node", "bun"],
       );
       expect(check.extends).toBe("./tsconfig.json");
       expect(check.compilerOptions.noEmit).toBe(true);

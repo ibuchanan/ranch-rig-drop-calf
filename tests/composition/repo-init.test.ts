@@ -112,7 +112,11 @@ test("generated kinds install pinned Biome and check scripts", () => {
     expect(scripts.format).toBe("biome format --write");
     expect(scripts["format:check"]).toBe("biome format");
     expect(scripts["lint:check"]).toBe("biome lint");
-    expect(scripts.lint).toBe(LINT_COMMAND);
+    expect(scripts.lint).toBe(
+      kind === "tool"
+        ? LINT_COMMAND.replace("--npm-path npm", "--npm-path bun")
+        : LINT_COMMAND,
+    );
     expect(scripts["lint:fix"]).toBe("biome lint --write");
     expect(version).toBe(TOOL_VERSIONS.biome);
   }
@@ -200,8 +204,8 @@ test("the blueprint leaves license metadata to catalog consumers", () => {
 });
 
 describe("profiles", () => {
-  test("all kinds generate matching project Node pins", () => {
-    for (const kind of ["library", "forge-app", "tool", "agent-skill"]) {
+  test("Node-based kinds generate matching project Node pins", () => {
+    for (const kind of ["library", "forge-app", "agent-skill"]) {
       const project = buildProject(kind, "sample", "tester");
       expect(project.files.get(".nvmrc")).toBe(
         kind === "library" ? "22\n" : "24\n",
@@ -225,8 +229,8 @@ describe("profiles", () => {
     ],
     [
       "tool",
-      LINT_COMMAND,
-      "tsc --project tsconfig.json",
+      LINT_COMMAND.replace("--npm-path npm", "--npm-path bun"),
+      "bun build --compile ./src/index.ts --outfile ./dist/cli",
       "bun test --pass-with-no-tests",
     ],
     [

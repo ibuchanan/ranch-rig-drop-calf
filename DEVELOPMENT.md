@@ -312,6 +312,17 @@ repositories. It never contacts live remotes or modifies reference libraries.
 bun test tests/e2e/library-publish.e2e.test.ts --path-ignore-patterns='vendor/**'
 ```
 
+## Tool kind Bun defaults
+
+The `tool` kind uses Bun as the packageManager baseline with native CLI compilation
+via `bun-build`. TypeScript owns type checking, not build; Bun's tsconfig declares
+`noEmit: true`, `moduleResolution: Bundler`, and `allowImportingTsExtensions: true`, with `types: ["bun"]`.
+No `.nvmrc`, `.npmrc`, or `@types/node` are seeded. The build command is
+`bun build --compile ./src/index.ts --outfile ./dist/cli`, producing a standalone
+platform-specific executable. Tool wrappers, hooks, documentation, and capability
+defaults (biome, lint, test, clean) use Bun as the runtime baseline; other kinds
+are unchanged. See `src/capabilities/bun.ts` for both capabilities.
+
 ## Seeded assets
 
 `.gitignore` is a seeded asset, not a blueprint file: like the OSS and docs
@@ -348,8 +359,9 @@ bun test tests/e2e/typescript.e2e.test.ts --path-ignore-patterns='vendor/**'
 Forge runs on Node, not Bun. Vitest matches that runtime, provides `vi.mock` for
 `@forge/*` modules, and matches the Forge examples and architecture tests.
 `library`, `tool`, and `agent-skill` use Bun's built-in runner, including for
-scripts shipped with agent skills. Both Vitest packages are pinned together
-through `TOOL_VERSIONS.vitest`.
+shipped scripts and CLI integration tests. Both Vitest packages are pinned together
+through `TOOL_VERSIONS.vitest`. The `tool` kind baseline uses Bun for all scripts
+and wrappers (not Node).
 
 Bun needs no dependency, config, or sample-test seed, so its capability init is
 an explicit no-op. The update pass supplies and maintains `test`, `test:watch`,
@@ -360,6 +372,9 @@ Bun capability validation is an explicit no-op because this capability owns no
 runner configuration to validate; actual test execution belongs to the test workflow.
 `bun test tests/bun-testing.test.ts` checks these policies and runs generated Bun
 scripts against empty, passing, and failing suites without Dagger or network access.
+
+Tool kind clean build uses `rm -rf dist` to remove the compiled standalone executable
+and any intermediate build artifacts. Run `bun run clean` explicitly when needed.
 
 The Vitest config starts from the OKF producer example's discovery exclusions.
 It deliberately uses explicit imports instead of globals so app code does not

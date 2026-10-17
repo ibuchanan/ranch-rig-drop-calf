@@ -5,7 +5,7 @@ import { TOOL_VERSIONS } from "../core/versions.ts";
 export const FALLOW_TEMPLATE = "templates/fallow";
 export const FALLOW_SCRIPT = "fallow --fail-on-issues";
 
-export function fallow(): Capability {
+export function fallow({ packageManager = "npm" } = {}): Capability {
   return {
     name: "fallow",
     documentation: {
@@ -25,7 +25,7 @@ export function fallow(): Capability {
       policy: {
         scripts: {
           "lint:fallow": FALLOW_SCRIPT,
-          "lint:check:fallow": "npm run lint:fallow",
+          "lint:check:fallow": `${packageManager} run lint:fallow`,
         },
       },
     },

@@ -33,6 +33,7 @@ test.each(kinds)("%s declares only its selected template trees", (kind) => {
       [
         ...(kind === "forge-app" ? [AIDEV_TEMPLATE] : []),
         ...(kind === "library" ? [LIBRARY_AIDEV_TEMPLATE] : []),
+        ...(kind === "tool" ? ["templates/bun"] : []),
         BIOME_TEMPLATE,
         CATALOG_TEMPLATE,
         PINNED_OSS,

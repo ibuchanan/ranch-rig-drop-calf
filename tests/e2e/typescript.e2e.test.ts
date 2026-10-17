@@ -102,10 +102,12 @@ for (const kind of ["library", "forge-app", "tool", "agent-skill"]) {
       expect(text).toContain("/* owner alias */");
       const parsed = ts.parseConfigFileTextToJson("tsconfig.json", text).config;
       expect(parsed.compilerOptions.strict).toBe(true);
-      expect(parsed.compilerOptions.types).toEqual(["node"]);
+      expect(parsed.compilerOptions.types).toEqual(
+        kind === "tool" ? ["bun"] : ["node"],
+      );
       expect(parsed.compilerOptions.paths).toEqual({ "@/*": ["src/*"] });
       expect(parsed.compilerOptions.moduleResolution).toBe(
-        kind === "library" ? "Bundler" : "Node",
+        kind === "library" || kind === "tool" ? "Bundler" : "Node",
       );
       expect(
         call(
@@ -138,7 +140,7 @@ for (const kind of ["library", "forge-app", "tool", "agent-skill"]) {
         reset,
       );
       // Update never re-adds removed tool dependencies, so removing the
-      // triggers selects the plain compiler policy in every kind.
+      // triggers selects the runtime baseline (Bun remains Bundler-based).
       const check = ts.parseConfigFileTextToJson(
         "tsconfig.typecheck.json",
         readFileSync(join(reset, "tsconfig.typecheck.json"), "utf8"),
@@ -149,9 +151,14 @@ for (const kind of ["library", "forge-app", "tool", "agent-skill"]) {
       ).not.toContainAnyKeys(["vitest", "tsdown"]);
       expect(check.compilerOptions).toMatchObject({
         module: "ESNext",
-        moduleResolution: "Node",
+        moduleResolution: kind === "tool" ? "Bundler" : "Node",
         rootDir: ".",
-        types: kind === "forge-app" ? ["node"] : ["node", "bun"],
+        types:
+          kind === "tool"
+            ? ["bun"]
+            : kind === "forge-app"
+              ? ["node"]
+              : ["node", "bun"],
       });
       expect(check.include).toEqual(["src", "test", "tests"]);
     } finally {

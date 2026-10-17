@@ -5,6 +5,7 @@ export type PackageJson = {
   version: string;
   type: "module";
   engines?: { node: string };
+  packageManager?: string;
   private?: boolean;
   main?: string;
   types?: string;

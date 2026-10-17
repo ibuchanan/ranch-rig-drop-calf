@@ -77,7 +77,9 @@ test.each(["library", "forge-app", "tool", "agent-skill"])(
     try {
       const names = resolveProfile(kind).map((capability) => capability.name);
       expect(names.indexOf("gitignore")).toBe(names.indexOf("oss") + 1);
-      expect(names.indexOf("node")).toBe(names.indexOf("gitignore") + 1);
+      expect(names.indexOf(kind === "tool" ? "bun" : "node")).toBe(
+        names.indexOf("gitignore") + 1,
+      );
       const module = new DropCalf();
       const owner = "# scaffold ignores\r\ncustom/\r\n!keep/\r\n";
       for (const initial of ["", owner]) {

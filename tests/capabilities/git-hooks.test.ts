@@ -102,7 +102,16 @@ test.each(["library", "forge-app", "tool", "agent-skill"])(
         "tester",
         "sample",
       );
-      expect(await initialized.file("lefthook.yml").contents()).toBe(config());
+      const expectedConfig =
+        kind === "tool"
+          ? config().replaceAll(
+              /npm run (\S+) --if-present/g,
+              "bun run --if-present $1",
+            )
+          : config();
+      expect(await initialized.file("lefthook.yml").contents()).toBe(
+        expectedConfig,
+      );
       expect(await module.update(initialized, kind)).toBe(initialized);
       const pkg = JSON.parse(await initialized.file("package.json").contents());
       const prepare =
@@ -138,7 +147,10 @@ test.each(["library", "forge-app", "tool", "agent-skill"])(
       expect(updated.scripts).toEqual({
         ...pkg.scripts,
         ...GIT_HOOKS_SCRIPTS,
-        lint: LINT_COMMAND,
+        lint:
+          kind === "tool"
+            ? LINT_COMMAND.replace("--npm-path npm", "--npm-path bun")
+            : LINT_COMMAND,
         prepare,
       });
       expect(updated.devDependencies.lefthook).toBe(TOOL_VERSIONS.lefthook);
@@ -259,13 +271,30 @@ test.each(["library", "forge-app", "tool", "agent-skill"])(
         ? "npm run build && (lefthook install || true)"
         : "lefthook install || true",
     );
-    expect(scripts.lint).toBe(LINT_COMMAND);
+    expect(scripts.lint).toBe(
+      kind === "tool"
+        ? LINT_COMMAND.replace("--npm-path npm", "--npm-path bun")
+        : LINT_COMMAND,
+    );
     expect(scripts.check).toBe("lefthook run pre-push --force");
-    const yml = config();
+    const ymlBase = config();
+    const yml =
+      kind === "tool"
+        ? ymlBase.replaceAll(
+            /npm run (\S+) --if-present/g,
+            "bun run --if-present $1",
+          )
+        : ymlBase;
     expect(yml).not.toMatch(/^lint:/m);
-    expect(yml).toContain("run: npm run lint --if-present");
+    if (kind === "tool") {
+      expect(yml).toContain("run: bun run --if-present lint");
+      expect(yml).toContain("run: bun run --if-present size:check");
+      expect(yml).not.toMatch(/run: bun run --if-present size\s/);
+    } else {
+      expect(yml).toContain("run: npm run lint --if-present");
+      expect(yml).toContain("run: npm run size:check --if-present");
+      expect(yml).not.toMatch(/run: npm run size\s.*--if-present/);
+    }
     expect(yml).toMatch(/^pre-push:/m);
-    expect(yml).toContain("run: npm run size:check --if-present");
-    expect(yml).not.toContain("run: npm run size --if-present");
   },
 );

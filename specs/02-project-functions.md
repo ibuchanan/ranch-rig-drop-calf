@@ -148,7 +148,7 @@ Missing files or prerequisites can also cause a validator to skip or fail.
 | `library` | `library-build` | Required | [tsdown](https://tsdown.dev/) — Bundles a TypeScript library as ESM and CommonJS with declaration output. | Seed tsdown, the build pipeline/config, and publishing fields. | Enforce the build script and ESM/CommonJS formats; preserve owner entry/dependency settings. | **No-op:** tsdown has no supported configuration-only validation interface: resolveUserConfig is internal and no-write still bundles source. Build and declaration emission belong to the build workflow; validation does not execute the pipeline or inspect stale artifacts. |
 | `library` | `package-check` | Required | [Publint](https://publint.dev/) — Checks packed library conventions with warnings treated as errors.<br>[Are the Types Wrong?](https://arethetypeswrong.github.io/) — Checks TypeScript declaration resolution against the consumer package. | Seed exact checker dependencies and the lifecycle-free tarball checking script; checker configuration remains owner-managed. | Enforce pack:check and its script; keep existing checker dependencies fresh without re-adding removed tools. Preserve publishing metadata, checker configuration, and hook edits. | **No-op:** Package checks require fresh build artifacts and belong to the developer pack:check workflow; standalone validation does not build or inspect stale distributables. |
 | `library` | `library-release` | Required | [git-cliff](https://git-cliff.org/) — Derives release versions and regenerates notes using the changelog capability's shared tool pin and owner-managed policy. | Seed separate release:prepare and release:publish commands and helpers; preparation records reviewed local outputs, while explicit publication checks them and atomically pushes a release commit and tag to the named remote and branch. | Maintain only release:prepare, release:publish, and their authored helpers; preserve versions, lockfiles, notes, and owner-managed cliff.toml without preparing or publishing a release. | **No-op:** Release preparation and Git publication are explicit maintainer workflows; standalone validation does not bump versions, render release output, commit, tag, or push. |
-| `library` | `typescript` | Required | [TypeScript](https://www.typescriptlang.org/docs/) — Type-checks source and emits JavaScript or library declarations. | Seed TypeScript, typecheck, and compiler configuration including declarations; library-build owns build. | Reconcile compiler configuration with policy selected by declared dependencies. | Run tsc --showConfig for applicable compiler configs, without compiling source or declarations. |
+| `library`, `tool` | `typescript` | Required | [TypeScript](https://www.typescriptlang.org/docs/) — Type-checks source and emits JavaScript or library declarations. | Seed TypeScript, typecheck, and compiler configuration; the selected build capability owns build (declarations only with tsdown). | Reconcile compiler configuration with policy selected by declared dependencies. | Run tsc --showConfig for applicable compiler configs, without compiling source or declarations. |
 | `library`, `tool`, `agent-skill` | `test` | Required | [Bun test](https://bun.com/docs/test) — Runs library, tool, and agent-skill tests with built-in watch and coverage support. | **No-op:** Seed @types/bun for test typechecking and supply test scripts; test sources remain owner-managed. | **No-op:** Bun testing owns no files; its package.json contribution enforces test scripts and keeps @types/bun fresh, preserving owner test sources. | **No-op:** This capability owns no Bun test configuration to validate. Test execution belongs to the test workflow; comparing scripts to defaults would check policy, not tool acceptance. |
 | `library`, `tool` | `fallow` | Default; `--without-functions fallow` | [Fallow](https://docs.fallow.tools/) — Checks unused code, dependencies, duplication, and complexity. | Seed Fallow, lint:fallow, and an owner-managed config for tool and library projects. | **No-op:** Fallow config is owner-managed after init, including deletion; its package.json contribution enforces lint:fallow and keeps the seeded dependency fresh. | **No-op:** Fallow has no configuration-only check; source analysis belongs to lint:fallow, not capability validation. |
 | `library`, `forge-app`, `tool`, `agent-skill` | `clean-build` | Required | [rm](https://www.gnu.org/software/coreutils/manual/html_node/rm-invocation.html) — Removes dist when the owner runs the clean workflow. | **No-op:** Clean build owns no files to seed; its package.json contribution supplies the clean script. | **No-op:** Clean build owns no files; its package.json contribution enforces scripts.clean as rm -rf dist and never executes it. | **No-op:** Clean build owns no configuration with a separate tool-acceptance check; executing the clean script would delete build output and belongs to the clean workflow. |
@@ -162,14 +162,16 @@ Missing files or prerequisites can also cause a validator to skip or fail.
 | `forge-app` | `secrets` | Required | [SecretSpec](https://secretspec.dev) — Manages environment variable injection and secret validation for Forge CLI commands<br>[Atlassian Forge CLI](https://developer.atlassian.com/platform/forge/cli-reference/) — Reference for forge register, deploy, install, and upgrade command syntax | Seed owner SecretSpec declarations and app-variable allowlist, executable helpers, and six Forge dispatch scripts. | Enforce helper contents/modes; preserve declarations/allowlist, rejecting unmigrated embedded keys. | Parse TOML and allowlist, check helper presence and executable modes; no secret resolution or Forge execution. |
 | `forge-app` | `prelint` | Required | [ast-grep](https://ast-grep.github.io/) — AST-based pattern scanner for semantic code analysis and linting<br>[@forge-ahead/prelint](https://github.com/ibuchanan/tool-forge-prelint-ast-grep) — Forge app linting rules for manifest, module wiring, and handler patterns | **No-op:** Prelint has no repository-local configuration to seed; its rules ship in the dependency package, and its package.json contribution supplies the tool dependencies and scripts. | **No-op:** Prelint owns no files; its package.json contribution enforces the lint subtasks and keeps the seeded ast-grep dependency fresh; the @forge-ahead/prelint GitHub reference is owner-managed. | **No-op:** Prelint has no repository-local configuration to validate; its rules ship in the dependency package. Source scanning belongs to the lint workflow. |
 | `forge-app` | `test` | Required | [Vitest](https://vitest.dev/) — Runs Forge app tests with mocking and V8 coverage support. | Seed Vitest, matching V8 coverage, test/watch/coverage scripts, and vitest.config.ts; no sample tests. | **No-op:** Vitest configuration and test sources are owner-managed after init; its package.json contribution enforces the test scripts and keeps the seeded runner and coverage provider fresh. | Load Vitest config, discover test files, and initialize coverage configuration without executing tests. |
-| `forge-app`, `tool`, `agent-skill` | `typescript` | Required | [TypeScript](https://www.typescriptlang.org/docs/) — Type-checks source and emits JavaScript or library declarations. | Seed TypeScript, typecheck/build scripts, and compiler configuration (declarations config only with tsdown). | Reconcile compiler configuration with policy selected by declared dependencies. | Run tsc --showConfig for applicable compiler configs, without compiling source or declarations. |
+| `forge-app`, `agent-skill` | `typescript` | Required | [TypeScript](https://www.typescriptlang.org/docs/) — Type-checks source and emits JavaScript or library declarations. | Seed TypeScript, typecheck/build scripts, and compiler configuration (declarations config only with tsdown). | Reconcile compiler configuration with policy selected by declared dependencies. | Run tsc --showConfig for applicable compiler configs, without compiling source or declarations. |
 | `forge-app` | `forge-ahead` | Required | [Forge Ahead API types](https://github.com/ibuchanan/forge-ahead-atlassian-api-types) — Provides types for Atlassian API integration in Forge apps.<br>[Forge Ahead errors](https://github.com/ibuchanan/forge-ahead-errors) — Provides typed error handling at Forge boundaries.<br>[Forge Ahead logging](https://github.com/ibuchanan/forge-ahead-logging) — Provides logging helpers for Forge apps. | **No-op:** Forge Ahead owns no files; its package.json contribution seeds the API types, errors, and logging dependencies. | **No-op:** Forge Ahead owns no files; its seeded dependencies are owner-managed and kept fresh against their pins, which skips GitHub references. | **No-op:** Forge Ahead dependencies have no repository-local configuration to validate; comparing dependency references would check policy, not tool acceptance. Runtime integration belongs to the app's build and test workflows. |
 | `forge-app` | `size-limit` | Required | [Size Limit](https://github.com/ai/size-limit) — Measures built file sizes against owner-managed budgets with @size-limit/file. | **No-op:** Size Limit owns no files; its package.json contribution seeds the paired tools, the build-then-measure size:check script, and a 10 kB budget for dist/**/*.js. | Enforce size:check and keep the seeded paired tools fresh, preserving owner budgets and paths. Remove the legacy size script only when it matches the former policy command; preserve owner-authored commands. | **No-op:** Size Limit has no supported configuration-only validation interface. Measurement requires build artifacts and belongs to the size workflow; validation does not build the project or assess potentially stale output. |
 | `forge-app`, `tool`, `agent-skill` | `git-hooks` | Required | [Lefthook](https://lefthook.dev/) — Dispatches the check workflow and Git hooks from lefthook.yml.<br>[Gitleaks](https://github.com/gitleaks/gitleaks) — Scans staged changes for secrets in the pre-commit hook; install separately. | Seed Lefthook, prepare/check dispatch scripts, and lefthook.yml. | **No-op:** Hook configuration is owner-managed after init; its package.json contribution enforces the dispatch scripts and keeps the seeded Lefthook dependency fresh. | Run lefthook validate with isolated Git metadata; never install or execute hooks. |
 | `forge-app` | `evals` | Opt-in; `--with-functions evals`; `--without-functions evals`; `--preset all` | [Promptfoo](https://www.promptfoo.dev/docs/) — Evaluates prompts against authored test cases and displays results. | Seed Promptfoo, eval/view scripts, and the config/prompts/tests/data/guide tree; no manifest wiring. | **No-op:** The eval suite is owner-managed after init, including deletions; its package.json contribution enforces the eval/view scripts and keeps the seeded Promptfoo dependency fresh. | Use Promptfoo's native config/schema validator to load suite references; no model calls or assertion execution. |
 | `forge-app` | `aidev` | Default; `--without-functions aidev` | [AGENTS.md](https://agents.md/) — Gives coding agents repository-specific instructions; human guidance, not executable config. | Seed authored agent guidance from templates/aidev/forge-app in AGENTS.md. | **No-op:** Agent guidance is init-only and owner-managed; update preserves edits and does not restore a deleted AGENTS.md. | **No-op:** AGENTS.md is human guidance, not consuming-tool configuration; checking referenced scripts would check guidance policy, not tool acceptance. |
-| `tool`, `agent-skill` | `node` | Required | [fnm (Fast Node Manager)](https://github.com/Schniz/fnm) — Selects and, when needed, installs the Node version requested by .nvmrc.<br>[Node.js](https://nodejs.org/) — Reference for Node.js versions and TypeScript type definitions | Seed Node 24 .nvmrc, public-registry .npmrc, and @types/node; no engines declaration. | Replace .nvmrc/.npmrc and derive package license from catalog; preserve engines and keep @types/node fresh. | Use fnm to select .nvmrc (may download Node); no baseline, type-version, or deployment check. |
+| `tool` | `bun` | Required | [Bun](https://bun.com/docs) — Runs TypeScript tools, installs dependencies, and executes package scripts. | Seed the Bun packageManager pin and bunfig.toml with the public registry and Bun script runtime; no Node version or type pin. | Maintain the Bun packageManager pin and derive package license from catalog; preserve owner-managed Bun configuration and existing Node files. | Parse bunfig.toml as TOML without starting Bun, loading preloads, or installing dependencies; syntax validation does not check Bun option semantics. |
+| `tool` | `bun-build` | Required | [Bun compiler](https://bun.com/docs/bundler/executables) — Compiles a TypeScript CLI into a standalone executable for the current platform. | **No-op:** Bun build owns no source files; its package.json contribution supplies binary compilation from src/index.ts to dist/cli. | **No-op:** Bun build owns no files; its package.json contribution enforces the binary build command without compiling source. | **No-op:** Bun compilation executes source bundling and emits a binary; it belongs to the build workflow, not configuration validation. |
 | `tool`, `agent-skill` | `aidev` | Required | [AGENTS.md](https://agents.md/) — Gives coding agents repository-specific instructions; human guidance, not executable config. | **No-op:** No authored agent guidance is selected for this project kind. | **No-op:** Agent guidance is init-only and owner-managed; update preserves edits and does not restore a deleted AGENTS.md. | **No-op:** AGENTS.md is human guidance, not consuming-tool configuration; checking referenced scripts would check guidance policy, not tool acceptance. |
+| `agent-skill` | `node` | Required | [fnm (Fast Node Manager)](https://github.com/Schniz/fnm) — Selects and, when needed, installs the Node version requested by .nvmrc.<br>[Node.js](https://nodejs.org/) — Reference for Node.js versions and TypeScript type definitions | Seed Node 24 .nvmrc, public-registry .npmrc, and @types/node; no engines declaration. | Replace .nvmrc/.npmrc and derive package license from catalog; preserve engines and keep @types/node fresh. | Use fnm to select .nvmrc (may download Node); no baseline, type-version, or deployment check. |
 <!-- capability-reference:end -->
 
 The sections below specify detailed field ownership and preservation policies.
@@ -379,30 +381,35 @@ Policy:
 
 ### `node`
 
-The default Node major is centralized in `src/core/versions.ts` (`24`).
+The default Node major is centralized in `src/core/versions.ts` (`24`). The `tool`
+kind does not select Node; it uses Bun as the packageManager baseline with no `.nvmrc`
+or `@types/node` seed.
+
 `library` selects major `22` through the shared capability's `major` option,
 matching the lowest supported Forge consumer runtime. This does not change the
 internal tooling container's Node version. The capability owns local Node
 selection, not the Forge manifest or a published package's compatibility promise.
 No kind generates `engines`: it has caused trouble with
 `forge deploy`,
-which is why Forge apps use `.nvmrc` and `app.runtime.name` instead. Libraries and
-tools may declare their own consumer compatibility after initialization; they
-forgo an automatically generated npm install-time engine warning.
+which is why Forge apps use `.nvmrc` and `app.runtime.name` instead. Libraries,
+agent-skills, and other Node-selecting kinds may declare their own consumer
+compatibility after initialization; they forgo an automatically generated npm
+install-time engine warning.
 
 - **`.nvmrc`:** Init seeds the selected major (`22` for libraries, otherwise
-  `24`) with a trailing newline. Update creates or replaces the whole file.
-- **`.npmrc`:** Init seeds the public npm registry and explanatory comment.
-  Update creates or replaces the whole file.
+  `24`) with a trailing newline, skipped for `tool`. Update creates or replaces
+  the whole file when present.
+- **`.npmrc`:** Init seeds the public npm registry and explanatory comment,
+  skipped for `tool`. Update creates or replaces the whole file when present.
 - **`package.json.license`:** Init's update pass and every update pull
   `metadata.annotations["forge-ranch/license"]` from catalog. Node's update verb
   writes it through the package-json edit primitive; no contribution can express a
   value read from repository content.
 - **`devDependencies["@types/node"]`:** Init seeds the selected major, overriding
-  the scaffold. Libraries constrain existing declarations in `dependencies` or
-  `devDependencies` to major `22`: ranges wholly within 22.x survive; incompatible
-  ranges are replaced with `22`, including newer major versions. Removed
-  declarations stay removed. Other kinds retain dependency freshness (§3):
+  the scaffold (skipped for `tool`). Libraries constrain existing declarations in
+  `dependencies` or `devDependencies` to major `22`: ranges wholly within 22.x survive;
+  incompatible ranges are replaced with `22`, including newer major versions. Removed
+  declarations stay removed. Other Node-selecting kinds retain dependency freshness (§3):
   declarations behind `24` are raised; declarations at or ahead, or removals,
   survive.
 - **Forge `engines`:** Init removes the scaffold Node entry; its update pass
@@ -490,6 +497,46 @@ Node retains its
 whole-file `.nvmrc` policy, so full-profile init/update still produces `nodejs24.x`;
 standalone capability update derives the runtime from the supplied numeric pin.
 Other kinds do not select this capability, even when a manifest is present.
+
+### `bun`
+
+Selected only for `tool`. Init seeds `packageManager: bun@<TOOL_VERSIONS.bun>`
+and `templates/bun/bunfig.toml`, selecting the public npm registry and `[run] bun = true`
+so scripts use Bun even for Node-shebang dependencies. It seeds no `.nvmrc`, `.npmrc`,
+Node engine, or `@types/node` dependency.
+
+Update enforces the package manager pin and derives package license from the catalog
+through the runtime-neutral helper in `package-metadata`. Bun configuration is
+owner-managed after init, including intentional deletion. Existing Node files,
+engines, and dependencies are preserved rather than removed during adoption.
+
+Validate parses `bunfig.toml` with the existing TOML parser without starting Bun,
+installing dependencies, or executing owner preloads. Missing config is skipped;
+malformed TOML fails with a path-specific error. This is syntax validation only,
+not validation of Bun option semantics.
+
+### `bun-build`
+
+Native standalone CLI compilation for the `tool` kind only. Bun's `--compile` flag
+emits platform-specific executables from TypeScript source without requiring Node.
+
+| Resource | Init | Update |
+|---|---|---|
+| `package.json` scripts | ✓ | ✓ (enforced) |
+
+- **init** seeds one package.json script:
+  - `build`: `bun build --compile ./src/index.ts --outfile ./dist/cli`
+
+The command compiles TypeScript source directly to a native executable. Source
+layout is assumed: `src/index.ts` as entry point, `dist/cli` as output.
+
+- **update** enforces the build script without recompiling source.
+- **validate** is an explicit no-op: "Binary compilation executes bundling and emits an
+  executable; it belongs to the build workflow, not configuration validation."
+
+The `tool` kind selects `bun-build` with TypeScript's `ownsBuild: false` and
+`runtime: "bun"`. Bun compilation adds no build dependency; the `bun` baseline
+selects the runtime version. Other kinds retain their existing build capability.
 
 ### `changelog`
 
@@ -799,8 +846,11 @@ there is no `dev` script.
   for other projects; an existing declaration config is retained if the trigger is
   removed.
 
-Compiler policy uses declarations in `devDependencies`, not installed modules, dependency
-versions, runtime dependencies, or profile names. Presence of the key selects the policy.
+Compiler policy uses the selected runtime and declarations in `devDependencies`, not
+installed modules or dependency versions. The `tool` composition explicitly selects
+`runtime: "bun"`: both compiler configs use `ESNext` / `Bundler`, `noEmit: true`,
+`allowImportingTsExtensions: true`, and `types: ["bun"]`. Other compositions use the
+Node policy below. Presence of a dependency key selects the corresponding policy.
 The owning dependency capabilities maintain those declarations. Removing a trigger resets
 its owned compiler options and file-selection lists to baseline on the next update.
 When those capabilities gain dependency-update policies, their update must precede
@@ -829,8 +879,9 @@ consumer runtime promise. Every kind's package declares `"type": "module"`.
 The Forge app keeps that field so webpack resolves ESM-only dependencies;
 its `ESNext` / `Node` base pair emits ESM for `npm run build` and is accepted
 by Forge's ts-loader (unlike `moduleResolution: Bundler`). Size Limit reads
-that ESM from `dist/**/*.js`. Tools and agent skills likewise emit ESM from
-`src` into `dist` for their module packages. Libraries instead use tsdown's
+that ESM from `dist/**/*.js`. Agent skills likewise emit ESM from
+`src` into `dist`; tools use type checking without emitting JavaScript and
+compile `src/index.ts` into the standalone `dist/cli` binary with Bun. Libraries instead use tsdown's
 ESM `.mjs` and CommonJS `.cjs` outputs with corresponding conditional exports
 and declaration files; their Size Limit entry is `dist/index.mjs`.
 Typecheck enforces `noEmit`, `noImplicitReturns`,
@@ -1196,8 +1247,8 @@ trust allowlists or bypass script-disabling settings.
 - **init** seeds the pin, scripts, and authored `templates/git-hooks/lefthook.yml`
   for every kind. Pre-commit runs gitleaks and formatting; pre-push invokes the
   public lint aggregate, tests, size checks, and package checks. There is no custom
-  Lefthook lint group or lint-membership list. npm calls use `--if-present` so omitted
-  subtasks are no-ops. Init is fresh-repository setup, not maintenance adoption.
+  Lefthook lint group or lint-membership list. Tool hooks use `bun run --if-present <script>`;
+  other kinds use `npm run <script> --if-present`, so omitted subtasks are no-ops. Init is fresh-repository setup, not maintenance adoption.
 - **update** is a no-op for files. Its package.json contribution (§3) enforces
   the composition-selected `prepare` and `check`; `lefthook` is seed,
   kept fresh. This lifecycle policy transformation does not install dependencies,
