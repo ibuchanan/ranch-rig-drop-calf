@@ -1187,9 +1187,12 @@ bundle.
 
 Every kind selects the lint capability, which owns the `lint` aggregate:
 `run-p --npm-path npm --print-label "lint:check:*"`. Its seeded development
-dependency is `npm-run-all2` at `TOOL_VERSIONS.npmRunAll2`. The 8.x pin supports
-the generated Node baselines; explicit npm dispatch also works when the entry
-point is `bun run lint`, without inheriting Bun as an npm CLI JavaScript file.
+dependency is `npm-run-all2` at `TOOL_VERSIONS.npmRunAll2`. The 9.x pin requires
+Node `^22.22.2 || ^24.15.0 || >=26.0.0` and npm 10 or later. Node-based kinds use
+explicit npm dispatch, which also works when the entry point is `bun run lint`,
+without inheriting Bun as an npm CLI JavaScript file. Tools use `--npm-path bun`.
+Unmatched wildcard families succeed without running tasks; missing literal tasks
+fail. Generated profiles always contribute required `lint:check:*` producers.
 
 Producers own membership through single-level `lint:check:*` aliases:
 
@@ -1205,9 +1208,8 @@ member, without editing the aggregate or hooks. Duplicate script ownership is
 still rejected by package assembly.
 
 The runner executes members in parallel with labelled output, fails on a member
-failure, and aborts unfinished siblings. In the pinned version an unmatched
-pattern fails rather than silently skipping checks. Lint itself does not require
-Git metadata; `check` still does.
+failure, and aborts unfinished siblings. Lint itself does not require Git
+metadata; `check` still does.
 
 Init seeds the runner and aggregate; update enforces the aggregate and freshens
 only a declared runner, preserving unrelated scripts and owner hook files. When

@@ -15,7 +15,7 @@ export const VITEST_SCRIPTS = {
 // Use Vitest's file-discovery API, never collect/import test modules or run coverage cleanup.
 const VITEST_VALIDATOR = `
 import { createVitest } from 'vitest/node';
-const ctx = await createVitest({ root: '/repo', config: '/repo/vitest.config.ts', watch: false, configLoader: 'runner' });
+const ctx = await createVitest({ root: '/repo', config: '/repo/vitest.config.ts', watch: false, configLoader: 'runner', fsModuleCache: false });
 try {
   const files = await ctx.globTestSpecifications();
   const options = ctx.config.coverage;

@@ -1,6 +1,7 @@
 import { expect, test } from "bun:test";
 import { execFileSync } from "node:child_process";
 import {
+  existsSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
@@ -92,7 +93,9 @@ test("Dagger Vitest accepts custom coverage, rejects missing providers and provi
       join(root, "provider.ts"),
       "export default { getProvider: () => ({ name: 'owner', initialize() { }, resolveOptions() { return { provider: 'custom' }; } }) };\n",
     );
-    expect(report(root).status).toBe("validated");
+    const custom = report(root);
+    expect(custom.status, custom.reason).toBe("validated");
+    expect(existsSync(join(root, "node_modules/.vitest-cache"))).toBe(false);
     rmSync(join(root, "provider.ts"));
     expect(report(root).status).toBe("failed");
     writeFileSync(join(root, "vitest.config.ts"), config);

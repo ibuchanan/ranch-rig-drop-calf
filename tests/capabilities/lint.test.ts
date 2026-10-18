@@ -176,13 +176,23 @@ test("real runner propagates failures and aborts an unfinished sibling", async (
   expect(result.output).not.toMatch(/\]\s+should-not-finish\r?\n/);
 }, 20_000);
 
-test("real runner rejects a misspelled family instead of silently skipping lint", async () => {
+test("real runner permits an unmatched family without running unrelated scripts", async () => {
   const result = await runLint({
     lint: LINT_COMMAND,
-    "lint:checks:typo": "exit 0",
+    "lint:checks:typo": "echo should-not-run; exit 23",
+  });
+  expect(result.code).toBe(0);
+  expect(result.output).not.toContain("should-not-run");
+});
+
+test("real runner rejects a missing literal task", async () => {
+  const result = await runLint({
+    lint: LINT_COMMAND.replace("lint:check:*", "lint:check:missing"),
+    "lint:check:owner": "echo should-not-run; exit 23",
   });
   expect(result.code).not.toBe(0);
   expect(result.output).toContain("Task not found");
+  expect(result.output).not.toContain("should-not-run");
 });
 
 test("test runner version matches the generated pin", () => {

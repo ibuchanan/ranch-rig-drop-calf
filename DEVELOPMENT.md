@@ -14,6 +14,10 @@ Install [Bun](https://bun.com), the
 container runtime for Dagger. On macOS with Homebrew, install the CLI tools
 with `brew install podman dagger` (and install Bun separately).
 
+Local lint-runner tests also need Node 24.15.0 or later within Node 24, and
+npm 10 or later, on PATH. These are the `npm-run-all2` 9.x requirements for the
+generated Node 24 baseline; use a current Node 24 release in generated projects.
+
 After cloning, run these commands from the repository root. On macOS, Podman
 uses a VM; initialize it once, then start it for each new session if it is not
 already running:
@@ -507,6 +511,10 @@ name; do not sweep intentional compiler/runtime pins along with tool updates:
 ```bash
 bunx npm-check-updates --packageFile pins/package.json --filter 'cspell,lefthook' -u
 ```
+
+Promptfoo remains at 0.116.2: newer bundled distributions remove the internal
+`dist/src/commands/validate.js` entry point used by read-only validation. Migrate
+that integration before raising its pin.
 
 For paired tools (such as `size-limit` and `@size-limit/file`), update their
 shared pin together. After changing a pin, run `bun test --update-snapshots` and
