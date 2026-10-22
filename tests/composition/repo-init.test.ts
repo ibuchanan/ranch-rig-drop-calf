@@ -21,6 +21,7 @@ import {
   typescriptTemplates,
   vitestTemplates,
 } from "../support/templates-source.ts";
+import { isBunKind } from "../support/kinds.ts";
 
 let moduleSource: ReturnType<typeof mockModuleSource>;
 beforeEach(() => {
@@ -113,7 +114,7 @@ test("generated kinds install pinned Biome and check scripts", () => {
     expect(scripts["format:check"]).toBe("biome format");
     expect(scripts["lint:check"]).toBe("biome lint");
     expect(scripts.lint).toBe(
-      kind === "tool"
+      isBunKind(kind)
         ? LINT_COMMAND.replace("--npm-path npm", "--npm-path bun")
         : LINT_COMMAND,
     );
@@ -205,7 +206,7 @@ test("the blueprint leaves license metadata to catalog consumers", () => {
 
 describe("profiles", () => {
   test("Node-based kinds generate matching project Node pins", () => {
-    for (const kind of ["library", "forge-app", "agent-skill"]) {
+    for (const kind of ["library", "forge-app"]) {
       const project = buildProject(kind, "sample", "tester");
       expect(project.files.get(".nvmrc")).toBe(
         kind === "library" ? "22\n" : "24\n",
@@ -235,8 +236,8 @@ describe("profiles", () => {
     ],
     [
       "agent-skill",
-      LINT_COMMAND,
-      "tsc --project tsconfig.json",
+      LINT_COMMAND.replace("--npm-path npm", "--npm-path bun"),
+      undefined,
       "bun test --pass-with-no-tests",
     ],
   ])("%s fills the stable developer slots", (kind, lint, build, testScript) => {
@@ -245,8 +246,9 @@ describe("profiles", () => {
       lint,
       format: "biome format --write",
       typecheck: "tsc --project tsconfig.typecheck.json --noEmit",
-      build,
+      ...(build ? { build } : {}),
     });
+    if (!build) expect(packageJson.scripts.build).toBeUndefined();
     expect(packageJson.scripts.clean).toBe("rm -rf dist");
     expect(packageJson.scripts.test).toBe(testScript);
     if (kind === "library") {
@@ -338,7 +340,7 @@ describe("profiles", () => {
             (path) =>
               path !== "tsconfig.declarations.json" || kind === "library",
           ),
-          ...(kind === "agent-skill" ? [] : changelogTemplates().keys()),
+          ...changelogTemplates().keys(),
           ...(kind === "forge-app"
             ? ["vitest.config.ts", ...SECRETS_ASSETS]
             : []),

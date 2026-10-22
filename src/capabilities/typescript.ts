@@ -16,6 +16,8 @@ import { npmTools, REPOSITORY, runTool } from "../core/tool-run.ts";
 import { TOOL_VERSIONS } from "../core/versions.ts";
 
 export const TYPESCRIPT_TEMPLATE = "templates/typescript";
+/** Bun projects share no Forge or Node assumptions, so they seed their own compiler base. */
+export const TYPESCRIPT_BUN_TEMPLATE = "templates/typescript-bun";
 export const TYPESCRIPT_CONFIGS = [
   "tsconfig.json",
   "tsconfig.typecheck.json",
@@ -26,6 +28,9 @@ export const TYPESCRIPT_SCRIPTS = {
   typecheck: "tsc --project tsconfig.typecheck.json --noEmit",
   "lint:check:typecheck": "npm run typecheck",
 } as const;
+
+const templateFor = (runtime: string) =>
+  runtime === "bun" ? TYPESCRIPT_BUN_TEMPLATE : TYPESCRIPT_TEMPLATE;
 
 /** Seed the uncomposed pair; update adds the declarations config for tsdown projects. */
 function seedTypeScript(destination: Directory, source: Directory): Directory {
@@ -158,7 +163,7 @@ async function updateTypeScript(
     "package.json.devDependencies",
     pkg?.devDependencies === undefined ? {} : pkg.devDependencies,
   );
-  const source = dag.currentModule().source().directory(TYPESCRIPT_TEMPLATE);
+  const source = dag.currentModule().source().directory(templateFor(runtime));
   const tsdown = Object.hasOwn(dependencies, "tsdown");
   for (const path of TYPESCRIPT_CONFIGS) {
     // declarations config is only seeded for tsdown projects
@@ -241,7 +246,9 @@ export function typeScriptToolchain({
       },
     },
     init(project) {
-      project.templates.push(templateTree(TYPESCRIPT_TEMPLATE, seedTypeScript));
+      project.templates.push(
+        templateTree(templateFor(runtime), seedTypeScript),
+      );
     },
     update: (directory) => updateTypeScript(directory, runtime),
     validate: validateTypeScript,

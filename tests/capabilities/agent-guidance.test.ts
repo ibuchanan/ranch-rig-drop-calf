@@ -1,6 +1,7 @@
 import { expect, spyOn, test } from "bun:test";
 import { dag } from "@dagger.io/dagger";
 import {
+  AGENT_SKILL_AIDEV_TEMPLATE,
   AIDEV_TEMPLATE,
   LIBRARY_AIDEV_TEMPLATE,
 } from "../../src/capabilities/aidev.ts";
@@ -44,13 +45,15 @@ test.each(kinds)(
         ? AIDEV_TEMPLATE
         : kind === "library"
           ? LIBRARY_AIDEV_TEMPLATE
-          : null;
+          : kind === "agent-skill"
+            ? AGENT_SKILL_AIDEV_TEMPLATE
+            : null;
     expect(project.templates.map((template) => template.path)).toEqual(
       expectedTemplate ? [expectedTemplate] : [],
     );
     expect(project.files).toEqual(before.files);
     expect(noOpReasons([capability])).toEqual([
-      ...(["forge-app", "library"].includes(kind)
+      ...(["forge-app", "library", "agent-skill"].includes(kind)
         ? []
         : [
             {
@@ -327,7 +330,7 @@ test.each([undefined, "all"])(
   },
 );
 
-test.each(["forge-app", "library"])(
+test.each(["forge-app", "library", "agent-skill"])(
   "excluding aidev prevents %s guidance generation",
   (kind) => {
     const without = ["aidev"];
@@ -336,12 +339,16 @@ test.each(["forge-app", "library"])(
         (template) => template.path,
       ),
     ).not.toContain(
-      kind === "library" ? LIBRARY_AIDEV_TEMPLATE : AIDEV_TEMPLATE,
+      kind === "library"
+        ? LIBRARY_AIDEV_TEMPLATE
+        : kind === "agent-skill"
+          ? AGENT_SKILL_AIDEV_TEMPLATE
+          : AIDEV_TEMPLATE,
     );
     expect(() =>
       buildProject(kind, "sample", "tester", "", ["aidev"], without),
     ).toThrow(InvalidOptionsError);
-    for (const unsupported of ["tool", "agent-skill"])
+    for (const unsupported of ["tool"])
       expect(() =>
         buildProject(unsupported, "sample", "tester", "", [], without),
       ).toThrow(InvalidOptionsError);

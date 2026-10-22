@@ -44,9 +44,12 @@ import {
   libraryReleaseTemplates,
   packageCheckTemplates,
   promptfooTemplates,
+  skillStarterTemplates,
+  typescriptBunTemplates,
   typescriptTemplates,
   vitestTemplates,
 } from "../support/templates-source.ts";
+import { isBunKind } from "../support/kinds.ts";
 
 const root = join(import.meta.dir, "../..");
 const vendor = join(root, PINNED_OSS);
@@ -236,7 +239,7 @@ describe("pinned OSS templates", () => {
           writes
             .get("DEVELOPMENT.md")
             ?.startsWith(
-              kind === "tool"
+              isBunKind(kind)
                 ? (
                     docsTemplates().get("DEVELOPMENT.md") ??
                     "missing docs template"
@@ -249,33 +252,36 @@ describe("pinned OSS templates", () => {
         ).toBe(true);
         const seeded = new Map([
           ...biomeTemplates(),
-          ...[...typescriptTemplates()].filter(
-            ([path]) => path !== "tsconfig.declarations.json",
-          ),
+          ...[
+            ...(["tool", "agent-skill"].includes(kind)
+              ? typescriptBunTemplates()
+              : typescriptTemplates()),
+          ].filter(([path]) => path !== "tsconfig.declarations.json"),
+          ...(kind === "agent-skill" ? skillStarterTemplates() : []),
           ...(kind === "library" ? libraryBuildTemplates() : []),
           ...(kind === "library" ? packageCheckTemplates() : []),
           ...(kind === "library" ? libraryReleaseTemplates() : []),
           ...(["library", "tool"].includes(kind) ? fallowTemplates() : []),
           ...(kind === "forge-app" ? vitestTemplates() : []),
-          ...(kind === "forge-app" && preset === "all"
+          ...(["forge-app", "agent-skill"].includes(kind) && preset === "all"
             ? promptfooTemplates()
             : []),
           ...gitHooksTemplates(),
           ...docsTemplates(),
-          ...(kind === "agent-skill" ? [] : changelogTemplates()),
+          ...changelogTemplates(),
         ]);
         for (const [path, contents] of seeded)
           if (path !== "DEVELOPMENT.md")
             expect(writes.get(path)).toBe(
-              kind === "tool" && path === "lefthook.yml"
+              ["tool", "agent-skill"].includes(kind) && path === "lefthook.yml"
                 ? contents.replaceAll(
                     /npm run (\S+) --if-present/g,
                     "bun run --if-present $1",
                   )
                 : contents,
             );
-        expect(writes.has("cliff.toml")).toBe(kind !== "agent-skill");
-        expect(writes.has("CHANGELOG.md")).toBe(kind !== "agent-skill");
+        expect(writes.has("cliff.toml")).toBe(true);
+        expect(writes.has("CHANGELOG.md")).toBe(true);
         if (kind === "forge-app") {
           expect(writes.get("secretspec.toml")).toContain('name = "sample"');
           expect(writes.get("secretspec.toml")).not.toContain("[project-name]");
@@ -296,10 +302,12 @@ describe("pinned OSS templates", () => {
               "package.json",
               "catalog-info.yaml",
               ".gitignore",
-              ...(["forge-app", "library"].includes(kind) ? ["AGENTS.md"] : []),
+              ...(["forge-app", "library", "agent-skill"].includes(kind)
+                ? ["AGENTS.md"]
+                : []),
               ...(kind === "forge-app" ? SECRETS_ASSETS : []),
               ...project.files.keys(),
-              ...(kind === "tool" ? ["bunfig.toml"] : []),
+              ...(isBunKind(kind) ? ["bunfig.toml"] : []),
               ...OSS_ASSETS,
               ...seeded.keys(),
               ...(kind === "library" ? ["tsconfig.declarations.json"] : []),

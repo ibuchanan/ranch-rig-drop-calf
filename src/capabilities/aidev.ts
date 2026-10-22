@@ -4,6 +4,7 @@ import { EVALS_TEMPLATE, templateTree } from "../core/templates.ts";
 
 export const AIDEV_TEMPLATE = "templates/aidev/forge-app";
 export const LIBRARY_AIDEV_TEMPLATE = "templates/aidev/library";
+export const AGENT_SKILL_AIDEV_TEMPLATE = "templates/aidev/agent-skill";
 
 export type AidevOptions = {
   /** Authored template tree path; omit when no guidance should be seeded. */

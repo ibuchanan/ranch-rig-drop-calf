@@ -13,12 +13,12 @@ import {
 import { mockContainer } from "../support/container-source.ts";
 import { mockDirectory } from "../support/module-source.ts";
 
-const kinds = ["library", "forge-app", "agent-skill"];
+const kinds = ["library", "forge-app"];
 const licenseCatalog =
   "metadata:\n  annotations:\n    forge-ranch/license: Apache-2.0\n";
 
 describe("node baseline", () => {
-  test.each(["library", "forge-app", "agent-skill"])(
+  test.each(["library", "forge-app"])(
     "%s pins one Node baseline across package.json, .nvmrc and .npmrc",
     (kind) => {
       const { packageJson: pkg, files } = buildProject(
@@ -180,7 +180,7 @@ test("default Node policy still preserves newer owner type ranges", async () => 
       ],
     ]),
   );
-  const output = await runUpdate(capabilityOf("agent-skill", "node"), input);
+  const output = await runUpdate(nodeBaseline(), input);
   expect(
     JSON.parse(await output.file("package.json").contents()).devDependencies[
       "@types/node"
@@ -314,7 +314,7 @@ test.each(["linux/amd64", "linux/arm64"])(
   },
 );
 
-test.each(["library", "forge-app", "agent-skill"])(
+test.each(["library", "forge-app"])(
   "%s Node pulls catalog license, preserving other package values and catalog bytes",
   async (kind) => {
     const pkg = {
@@ -346,7 +346,7 @@ test.each(["library", "forge-app", "agent-skill"])(
 
 test("Node adds a missing package license from catalog without adding dependencies", async () => {
   const output = await runUpdate(
-    capabilityOf("agent-skill", "node"),
+    nodeBaseline(),
     mockDirectory(
       new Map([
         ["package.json", "{}"],
@@ -372,15 +372,12 @@ test.each([
     const files = new Map([["package.json", "{}"]]);
     if (contents !== undefined) files.set("catalog-info.yaml", contents);
     await expect(
-      runUpdate(capabilityOf("agent-skill", "node"), mockDirectory(files)),
+      runUpdate(nodeBaseline(), mockDirectory(files)),
     ).rejects.toThrow("catalog-info.yaml");
   },
 );
 
 test("Node does not require catalog or create package.json when package is absent", async () => {
-  const output = await runUpdate(
-    capabilityOf("agent-skill", "node"),
-    mockDirectory(),
-  );
+  const output = await runUpdate(nodeBaseline(), mockDirectory());
   expect(await output.exists("package.json")).toBe(false);
 });

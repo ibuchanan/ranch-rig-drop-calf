@@ -15,6 +15,7 @@ import {
 import { buildProject } from "../../src/composition/profiles.ts";
 import { TOOL_VERSIONS } from "../../src/core/versions.ts";
 import { typescriptTemplates } from "../support/templates-source.ts";
+import { isBunKind } from "../support/kinds.ts";
 
 function config(text: string | undefined) {
   const result = ts.parseConfigFileTextToJson("tsconfig.json", text ?? "");
@@ -108,7 +109,7 @@ test("generated TypeScript configs typecheck and compile a sample entry", () => 
             seed,
             seed,
             project.packageJson.devDependencies,
-            kind === "tool" ? "bun" : "node",
+            isBunKind(kind) ? "bun" : "node",
           ),
         );
       }
@@ -129,7 +130,7 @@ test("generated TypeScript configs typecheck and compile a sample entry", () => 
             .getPreEmitDiagnostics(program)
             .map((d) => ts.flattenDiagnosticMessageText(d.messageText, " ")),
         ).toEqual([]);
-        if (path === "tsconfig.json" && kind !== "tool") {
+        if (path === "tsconfig.json" && !isBunKind(kind)) {
           expect(program.emit().emitSkipped).toBe(false);
           expect(readFileSync(join(folder, "dist/index.js"), "utf8")).toContain(
             "export const value",
@@ -142,9 +143,9 @@ test("generated TypeScript configs typecheck and compile a sample entry", () => 
   }
 });
 
-test.each(["agent-skill"])("%s emits TypeScript from src into dist", (kind) => {
+test.each(["agent-skill"])("%s typechecks without building", (kind) => {
   const project = buildProject(kind, "sample", "tester");
-  expect(project.packageJson.scripts.build).toBe("tsc --project tsconfig.json");
+  expect(project.packageJson.scripts.build).toBeUndefined();
   expect(project.packageJson.scripts.typecheck).toBe(
     "tsc --project tsconfig.typecheck.json --noEmit",
   );

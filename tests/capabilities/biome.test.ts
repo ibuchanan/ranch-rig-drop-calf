@@ -11,6 +11,7 @@ import { runUpdate, verb } from "../support/capability-fixtures.ts";
 import { mockContainer } from "../support/container-source.ts";
 import { mockDirectory } from "../support/module-source.ts";
 import { biomeTemplates } from "../support/templates-source.ts";
+import { isBunKind } from "../support/kinds.ts";
 
 const kinds = ["library", "forge-app", "tool", "agent-skill"];
 
@@ -78,7 +79,7 @@ test.each(kinds)(
   "%s Biome verbs preserve a freshly initialized repository byte-exact",
   async (kind) => {
     const capability = biomeToolchain({
-      packageManager: kind === "tool" ? "bun" : "npm",
+      packageManager: isBunKind(kind) ? "bun" : "npm",
     });
     expect(typeof capability.init).toBe("function");
     expect(typeof capability.update).toBe("function");

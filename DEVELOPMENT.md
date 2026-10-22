@@ -397,9 +397,8 @@ Dagger-generated and initialized scaffolds. It needs an engine and network for
 test-tool installation, but never registers or deploys an app.
 
 `templates/changelog/cliff.toml` is seeded the same way, with one condition the
-TypeScript tree does not need: only the kinds that ship a `changelog` script are
-offered the policy, so `agent-skill` never receives a config it has no command
-to read. Edit that file to change a release policy — its commit preprocessors
+TypeScript tree does not need: every kind ships a `changelog` script, so every kind
+receives the policy. Edit that file to change a release policy — its commit preprocessors
 assume Atlassian headers such as `feat(kinds): NONE …`, which is the format this
 repository writes, so a project that commits differently should replace the file
 rather than have it rewritten.

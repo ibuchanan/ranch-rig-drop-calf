@@ -1,6 +1,7 @@
 import { expect, test } from "bun:test";
 import type { Directory } from "@dagger.io/dagger";
 import {
+  AGENT_SKILL_AIDEV_TEMPLATE,
   AIDEV_TEMPLATE,
   LIBRARY_AIDEV_TEMPLATE,
 } from "../../src/capabilities/aidev.ts";
@@ -15,7 +16,11 @@ import { LIBRARY_BUILD_TEMPLATE } from "../../src/capabilities/library-build.ts"
 import { PINNED_OSS } from "../../src/capabilities/oss.ts";
 import { PACKAGE_CHECK_TEMPLATE } from "../../src/capabilities/package-check.ts";
 import { SECRETS_TEMPLATE } from "../../src/capabilities/secrets.ts";
-import { TYPESCRIPT_TEMPLATE } from "../../src/capabilities/typescript.ts";
+import { SKILL_STARTER_TEMPLATE } from "../../src/capabilities/skill-starter.ts";
+import {
+  TYPESCRIPT_BUN_TEMPLATE,
+  TYPESCRIPT_TEMPLATE,
+} from "../../src/capabilities/typescript.ts";
 import { buildProject, PROFILES } from "../../src/composition/profiles.ts";
 import { type Capability, noOp } from "../../src/core/capability.ts";
 import {
@@ -33,12 +38,13 @@ test.each(kinds)("%s declares only its selected template trees", (kind) => {
       [
         ...(kind === "forge-app" ? [AIDEV_TEMPLATE] : []),
         ...(kind === "library" ? [LIBRARY_AIDEV_TEMPLATE] : []),
-        ...(kind === "tool" ? ["templates/bun"] : []),
+        ...(kind === "agent-skill" ? [AGENT_SKILL_AIDEV_TEMPLATE] : []),
+        ...(["tool", "agent-skill"].includes(kind) ? ["templates/bun"] : []),
         BIOME_TEMPLATE,
         CATALOG_TEMPLATE,
         PINNED_OSS,
         PINNED_GITIGNORE,
-        ...(kind === "agent-skill" ? [] : [CHANGELOG_TEMPLATE]),
+        CHANGELOG_TEMPLATE,
         DOCS_TEMPLATE,
         GIT_HOOKS_TEMPLATE,
         ...(kind === "library"
@@ -50,8 +56,13 @@ test.each(kinds)("%s declares only its selected template trees", (kind) => {
           : []),
         ...(["library", "tool"].includes(kind) ? [FALLOW_TEMPLATE] : []),
         ...(kind === "forge-app" ? [SECRETS_TEMPLATE, "templates/vitest"] : []),
-        ...(kind === "forge-app" && preset === "all" ? [EVALS_TEMPLATE] : []),
-        TYPESCRIPT_TEMPLATE,
+        ...(kind === "agent-skill" ? [SKILL_STARTER_TEMPLATE] : []),
+        ...(["forge-app", "agent-skill"].includes(kind) && preset === "all"
+          ? [EVALS_TEMPLATE]
+          : []),
+        ["tool", "agent-skill"].includes(kind)
+          ? TYPESCRIPT_BUN_TEMPLATE
+          : TYPESCRIPT_TEMPLATE,
       ].sort(),
     );
   }

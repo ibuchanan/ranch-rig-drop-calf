@@ -41,7 +41,7 @@ Every kind:
 | Formatting | biome | biome | biome | biome |
 | Type checking | tsc | tsc | tsc | tsc |
 | Testing | bun test (+ watch/coverage) | vitest (+ watch/coverage) | bun test (+ watch/coverage) | bun test (+ watch/coverage) |
-| Build | tsdown | tsc | bun build --compile | tsc |
+| Build | tsdown | tsc | bun build --compile | none (no-op) |
 | Clean | rm -rf dist | rm -rf dist | rm -rf dist | rm -rf dist |
 
 Kind-specific policies:
@@ -64,7 +64,18 @@ Kind-specific policies:
   checking with `noEmit: true`, `allowImportingTsExtensions: true`,
   `moduleResolution: Bundler`, and `types: ["bun"]`. No `.nvmrc`, `.npmrc`, or
   `@types/node` are seeded. Tool wrappers, hooks, and documentation use Bun.
-- **`agent-skill`** uses Bun testing like `library` and `tool`, including for shipped
+- **`agent-skill`** is modeled on the
+  [`agent-skills-toolkit`](https://github.com/ibuchanan/agent-skills-toolkit)
+  repository. It uses Bun as the packageManager baseline like `tool`, with no
+  `.nvmrc`, `.npmrc`, or `@types/node`; type checks do not emit, and there is no
+  `build` script because skill scripts run directly under Bun. Like `tool`, it seeds
+  the Bun compiler base from `templates/typescript-bun` rather than the Forge/Node
+  base. Skills live in `skills/<name>/`, created by `skill:new` and checked by the
+  `lint:check:skills` producer from the `skill-toolkit` capability. `skill-starter`
+  seeds one script (`src/scripts/list-skills.ts`) with its test, a first skill
+  (`skills/example-skill/`), and that skill's spec in the agent-skills-toolkit style
+  (`specs/example-skill.md`). `citation` seeds `CITATION.cff`. `evals` is opt-in, as
+  for `forge-app`. It selects `changelog` and seeds authored `AGENTS.md` guidance. It uses Bun testing like `library` and `tool`, including for shipped
   scripts. Every kind exposes `test`, `test:watch`, and `test:coverage`; no testing
   opt-out is provided.
 
@@ -80,7 +91,7 @@ Each kind additionally selects project-functions (see
 | `library` | `catalog`, `package-metadata`, `oss`, `gitignore`, `node`, `changelog`, `biome`, `lint`, `library-build`, `package-check`, `library-release`, `typescript`, `test`, `fallow` (Default; `--without-functions fallow`), `clean-build`, `todo`, `docs`, `git-hooks`, `aidev` (Default; `--without-functions aidev`) |
 | `forge-app` | `catalog`, `package-metadata`, `oss`, `gitignore`, `node`, `forge-manifest`, `changelog`, `secrets`, `prelint`, `biome`, `lint`, `test`, `typescript`, `forge-ahead`, `size-limit`, `clean-build`, `todo`, `docs`, `git-hooks`, `evals` (Opt-in; `--with-functions evals`; `--without-functions evals`; `--preset all`), `aidev` (Default; `--without-functions aidev`) |
 | `tool` | `catalog`, `package-metadata`, `oss`, `gitignore`, `bun`, `changelog`, `biome`, `lint`, `bun-build`, `typescript`, `test`, `fallow` (Default; `--without-functions fallow`), `clean-build`, `todo`, `docs`, `git-hooks`, `aidev` |
-| `agent-skill` | `catalog`, `package-metadata`, `oss`, `gitignore`, `node`, `biome`, `lint`, `typescript`, `test`, `clean-build`, `todo`, `docs`, `git-hooks`, `aidev` |
+| `agent-skill` | `catalog`, `package-metadata`, `oss`, `gitignore`, `bun`, `citation`, `changelog`, `biome`, `lint`, `skill-toolkit`, `skill-starter`, `typescript`, `test`, `clean-build`, `todo`, `docs`, `git-hooks`, `evals` (Opt-in; `--with-functions evals`; `--without-functions evals`; `--preset all`), `aidev` (Default; `--without-functions aidev`) |
 <!-- capability-inventory:end -->
 
 Notes:
@@ -89,12 +100,15 @@ Notes:
   dependency update must be visible to compiler-policy reconciliation on the first pass.
   The generated inventory follows `src/composition/profiles.ts` execution order.
 - `evals` is enabled by `--preset all` or `--with evals`, never by default.
-- `aidev` is composed in every kind. `library` and `forge-app` select separate
-  authored `AGENTS.md` templates and can exclude them with `--without aidev`.
-  Other kinds have an explicit init no-op. Update and validate are explicit
+- `aidev` is composed in every kind. `library`, `forge-app`, and `agent-skill` select
+  separate authored `AGENTS.md` templates and can exclude them with `--without aidev`.
+  `tool` has an explicit init no-op. Update and validate are explicit
   no-ops in every kind.
 - `tool` and `agent-skill` are **new kinds** with no `init-repo` counterpart; their
   compositions above are provisional and should be revisited after first use.
+  `agent-skill` is derived from `agent-skills-toolkit`; the toolkit-specific
+  `vendor/` submodules, `bootstrap` script, and per-skill spelling dictionaries
+  are deliberately not generalized.
 - Optional-function selection (`--with`/`--without`) applies on top of the kind; it cannot
   remove a kind-mandated slot implementation.
 

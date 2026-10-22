@@ -29,6 +29,7 @@ import {
 } from "../support/capability-fixtures.ts";
 import { mockDirectory, mockModuleSource } from "../support/module-source.ts";
 import { catalogTemplates } from "../support/templates-source.ts";
+import { isBunKind } from "../support/kinds.ts";
 
 const kinds = ["library", "forge-app", "tool", "agent-skill"];
 const catalog = () =>
@@ -124,26 +125,25 @@ test.each(kinds)(
       const output = await new DropCalf().update(input, kind);
       expect(await manifest(output)).toEqual({
         ...pkg,
-        ...(kind === "tool"
+        ...(isBunKind(kind)
           ? { packageManager: `bun@${TOOL_VERSIONS.bun}` }
           : {}),
         scripts: {
           custom: "echo custom",
           ...BIOME_SCRIPTS,
           ...GIT_HOOKS_SCRIPTS,
-          lint:
-            kind === "tool"
-              ? LINT_COMMAND.replace("--npm-path npm", "--npm-path bun")
-              : LINT_COMMAND,
-          "lint:check:biome": `${kind === "tool" ? "bun" : "npm"} run lint:check`,
-          "lint:check:format": `${kind === "tool" ? "bun" : "npm"} run format:check`,
-          "lint:check:typecheck": `${kind === "tool" ? "bun" : "npm"} run typecheck`,
+          lint: isBunKind(kind)
+            ? LINT_COMMAND.replace("--npm-path npm", "--npm-path bun")
+            : LINT_COMMAND,
+          "lint:check:biome": `${isBunKind(kind) ? "bun" : "npm"} run lint:check`,
+          "lint:check:format": `${isBunKind(kind) ? "bun" : "npm"} run format:check`,
+          "lint:check:typecheck": `${isBunKind(kind) ? "bun" : "npm"} run typecheck`,
           clean: "rm -rf dist",
           "lint:docs": DOCS_COMMAND,
           ...(kind === "library" || kind === "tool"
             ? {
                 "lint:fallow": FALLOW_SCRIPT,
-                "lint:check:fallow": `${kind === "tool" ? "bun" : "npm"} run lint:fallow`,
+                "lint:check:fallow": `${isBunKind(kind) ? "bun" : "npm"} run lint:fallow`,
               }
             : {}),
           ...(kind === "forge-app" ? { "size:check": SIZE_LIMIT_COMMAND } : {}),
@@ -155,14 +155,21 @@ test.each(kinds)(
                 prepare: "npm run build && (lefthook install || true)",
               }
             : {}),
-          ...(kind === "agent-skill" ? {} : { changelog: CHANGELOG_COMMAND }),
+          changelog: CHANGELOG_COMMAND,
           typecheck: TYPESCRIPT_SCRIPTS.typecheck,
-          build:
-            kind === "library"
-              ? "sh scripts/build.sh"
-              : kind === "tool"
-                ? "bun build --compile ./src/index.ts --outfile ./dist/cli"
-                : TYPESCRIPT_SCRIPTS.build,
+          ...(kind === "agent-skill"
+            ? {
+                "lint:check:skills": "check-skill --all",
+                "skill:new": "init-skill",
+              }
+            : {
+                build:
+                  kind === "library"
+                    ? "sh scripts/build.sh"
+                    : kind === "tool"
+                      ? "bun build --compile ./src/index.ts --outfile ./dist/cli"
+                      : TYPESCRIPT_SCRIPTS.build,
+              }),
           ...(kind === "forge-app"
             ? {
                 ...VITEST_SCRIPTS,

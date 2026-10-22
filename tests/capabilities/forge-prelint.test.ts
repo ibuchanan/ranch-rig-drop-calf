@@ -17,6 +17,7 @@ import {
 import { TOOL_VERSIONS } from "../../src/core/versions.ts";
 import { DropCalf } from "../../src/index.ts";
 import { mockDirectory, mockModuleSource } from "../support/module-source.ts";
+import { isBunKind } from "../support/kinds.ts";
 
 const updateReason =
   "Prelint owns no files; its package.json contribution enforces the lint subtasks and keeps the seeded ast-grep dependency fresh; the @forge-ahead/prelint GitHub reference is owner-managed.";
@@ -123,7 +124,7 @@ test.each(["library", "forge-app", "tool", "agent-skill"])(
       );
       const pkg = JSON.parse(await initialized.file("package.json").contents());
       expect(pkg.scripts.lint).toBe(
-        kind === "tool"
+        isBunKind(kind)
           ? LINT_COMMAND.replace("--npm-path npm", "--npm-path bun")
           : LINT_COMMAND,
       );

@@ -65,6 +65,8 @@ type DocsLayout = {
   testDirectory: string;
   testPurpose: string;
   scriptsPurpose?: string;
+  /** Kind-specific layout entries, each already a `path`: purpose pair. */
+  extraLayout?: string[];
   packageManager?: string;
 };
 
@@ -77,11 +79,12 @@ const commonLayout = [
 ];
 
 function repositoryLayout(
-  { testDirectory, testPurpose, scriptsPurpose }: DocsLayout,
+  { testDirectory, testPurpose, scriptsPurpose, extraLayout = [] }: DocsLayout,
   evaluations: boolean,
 ): string {
   const lines = [...commonLayout, `- \`${testDirectory}/\`: ${testPurpose}.`];
   if (scriptsPurpose) lines.push(`- \`scripts/\`: ${scriptsPurpose}.`);
+  for (const entry of extraLayout) lines.push(`- ${entry}`);
   if (evaluations)
     lines.push("- `prompts/`: Prompt templates for evaluations.");
   return `${lines.join("\n")}\n`;

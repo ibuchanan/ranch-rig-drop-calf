@@ -18,6 +18,7 @@ import { runInit, verb } from "../support/capability-fixtures.ts";
 import { mockContainer } from "../support/container-source.ts";
 import { mockDirectory, mockModuleSource } from "../support/module-source.ts";
 import { docsTemplates } from "../support/templates-source.ts";
+import { isBunKind } from "../support/kinds.ts";
 
 test("docs template paths do not overlap other generated files", () => {
   for (const kind of ["library", "forge-app", "tool", "agent-skill"]) {
@@ -138,7 +139,7 @@ test.each(["library", "forge-app", "tool", "agent-skill"])(
         if (path === "DEVELOPMENT.md")
           expect(
             actual.startsWith(
-              kind === "tool"
+              isBunKind(kind)
                 ? text
                     .replaceAll("npm install", "bun install")
                     .replaceAll("npm run", "bun run")
@@ -159,7 +160,9 @@ test.each(["library", "forge-app", "tool", "agent-skill"])(
           ? [...shared, "test/", "scripts/"]
           : kind === "library"
             ? [...shared, "tests/", "scripts/"]
-            : [...shared, "tests/"];
+            : kind === "agent-skill"
+              ? [...shared, "tests/", "skills/"]
+              : [...shared, "tests/"];
       expect(
         bullets?.map((line) => line.match(/^- `([^`]+)`: .+\.$/)?.[1]),
       ).toEqual(expected);

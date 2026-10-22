@@ -25,6 +25,7 @@ import {
   mockModuleSource,
   pinnedGitignore,
 } from "../support/module-source.ts";
+import { isBunKind } from "../support/kinds.ts";
 
 const pin = pinnedGitignore();
 
@@ -77,7 +78,7 @@ test.each(["library", "forge-app", "tool", "agent-skill"])(
     try {
       const names = resolveProfile(kind).map((capability) => capability.name);
       expect(names.indexOf("gitignore")).toBe(names.indexOf("oss") + 1);
-      expect(names.indexOf(kind === "tool" ? "bun" : "node")).toBe(
+      expect(names.indexOf(isBunKind(kind) ? "bun" : "node")).toBe(
         names.indexOf("gitignore") + 1,
       );
       const module = new DropCalf();

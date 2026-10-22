@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { type Directory, dag } from "@dagger.io/dagger";
 import {
+  AGENT_SKILL_AIDEV_TEMPLATE,
   AIDEV_TEMPLATE,
   LIBRARY_AIDEV_TEMPLATE,
 } from "../../src/capabilities/aidev.ts";
@@ -18,7 +19,11 @@ import {
   SECRETS_EXECUTABLES,
   SECRETS_TEMPLATE,
 } from "../../src/capabilities/secrets.ts";
-import { TYPESCRIPT_TEMPLATE } from "../../src/capabilities/typescript.ts";
+import {
+  TYPESCRIPT_BUN_TEMPLATE,
+  TYPESCRIPT_TEMPLATE,
+} from "../../src/capabilities/typescript.ts";
+import { SKILL_STARTER_TEMPLATE } from "../../src/capabilities/skill-starter.ts";
 import { EVALS_TEMPLATE } from "../../src/core/templates.ts";
 import { mockContainer } from "./container-source.ts";
 import {
@@ -34,6 +39,8 @@ import {
   packageCheckTemplates,
   promptfooTemplates,
   secretsTemplates,
+  skillStarterTemplates,
+  typescriptBunTemplates,
   typescriptTemplates,
   vitestTemplates,
 } from "./templates-source.ts";
@@ -142,6 +149,7 @@ export function mockModuleSource(
   const trees = new Map<string, ReturnType<typeof tree>>([
     [AIDEV_TEMPLATE, tree(aidevTemplates())],
     [LIBRARY_AIDEV_TEMPLATE, tree(aidevTemplates("library"))],
+    [AGENT_SKILL_AIDEV_TEMPLATE, tree(aidevTemplates("agent-skill"))],
     [CATALOG_TEMPLATE, tree(catalogTemplates())],
     ["templates/docs", tree(docs)],
     [
@@ -159,6 +167,8 @@ export function mockModuleSource(
       ),
     ],
     [TYPESCRIPT_TEMPLATE, tree(typeScript)],
+    [TYPESCRIPT_BUN_TEMPLATE, tree(typescriptBunTemplates())],
+    [SKILL_STARTER_TEMPLATE, tree(skillStarterTemplates())],
     [BIOME_TEMPLATE, tree(biome)],
     [FALLOW_TEMPLATE, tree(fallowTemplates())],
     [CHANGELOG_TEMPLATE, tree(changelog)],

@@ -3,8 +3,10 @@ import { dag } from "@dagger.io/dagger";
 import ts from "typescript";
 import {
   reconcileTypeScriptConfig,
+  TYPESCRIPT_BUN_TEMPLATE,
   TYPESCRIPT_CONFIGS,
   TYPESCRIPT_SCRIPTS,
+  TYPESCRIPT_TEMPLATE,
   typeScriptToolchain,
 } from "../../src/capabilities/typescript.ts";
 import { PROFILES } from "../../src/composition/profiles.ts";
@@ -16,9 +18,11 @@ import { runInit, runUpdate, verb } from "../support/capability-fixtures.ts";
 import { mockContainer } from "../support/container-source.ts";
 import { mockDirectory, mockModuleSource } from "../support/module-source.ts";
 import {
+  typescriptBunTemplates,
   typescriptTemplates,
   vitestTemplates,
 } from "../support/templates-source.ts";
+import { isBunKind } from "../support/kinds.ts";
 
 const parsed = (contents: string) =>
   ts.parseConfigFileTextToJson("config.json", contents).config;
@@ -78,7 +82,7 @@ const initPolicy = {
   library: { bundler: true, tests: false, declarations: true },
   "forge-app": { bundler: false, tests: true, declarations: false },
   tool: { bundler: true, tests: false, declarations: false },
-  "agent-skill": { bundler: false, tests: false, declarations: false },
+  "agent-skill": { bundler: true, tests: false, declarations: false },
 } as const;
 
 test.each(Object.entries(initPolicy))(
@@ -106,13 +110,13 @@ test.each(Object.entries(initPolicy))(
       );
       expect(base.compilerOptions).toMatchObject({
         strict: true,
-        sourceMap: true,
+        ...(isBunKind(kind) ? { noEmit: true } : { sourceMap: true }),
         module: "ESNext",
-        types: kind === "tool" ? ["bun"] : ["node"],
+        types: isBunKind(kind) ? ["bun"] : ["node"],
         moduleResolution: policy.bundler ? "Bundler" : "Node",
       });
       expect(check.compilerOptions.types).toEqual(
-        kind === "tool" ? ["bun"] : policy.tests ? ["node"] : ["node", "bun"],
+        isBunKind(kind) ? ["bun"] : policy.tests ? ["node"] : ["node", "bun"],
       );
       expect(check.extends).toBe("./tsconfig.json");
       expect(check.compilerOptions.noEmit).toBe(true);
@@ -144,7 +148,7 @@ test("every TypeScript output has exactly one init contributor per profile", () 
           (key) => key === "build" || key === "typecheck",
         ),
         ...project.templates.flatMap(({ path: tree }) =>
-          tree === "templates/typescript"
+          tree === TYPESCRIPT_TEMPLATE || tree === TYPESCRIPT_BUN_TEMPLATE
             ? [...configs.keys()]
             : tree === "templates/vitest"
               ? [...vitestTemplates().keys()]
@@ -154,16 +158,23 @@ test("every TypeScript output has exactly one init contributor per profile", () 
       for (const path of paths)
         owners.set(path, [...(owners.get(path) ?? []), capability.name]);
     }
-    for (const path of [
-      "typescript",
-      "build",
-      "typecheck",
-      ...TYPESCRIPT_CONFIGS,
-    ])
+    for (const path of ["typescript", "typecheck", ...TYPESCRIPT_CONFIGS])
       expect(owners.get(path), path).toHaveLength(1);
+    // Kinds without a build, such as agent-skill, may leave the script unowned.
+    expect(owners.get("build")?.length ?? 1, "build").toBe(1);
   }
   expect(baseline("tsconfig.json")).toContain("Node selected by .nvmrc");
   expect(baseline("tsconfig.json")).not.toContain("Node 18");
+});
+
+test("the Bun base carries no Forge bundler or Node assumptions", () => {
+  const bun = typescriptBunTemplates().get("tsconfig.json") ?? "";
+  expect(bun).not.toMatch(/Forge|\.nvmrc|"jsx"|sourceMap|"node"/);
+  expect(parsed(bun).compilerOptions).toMatchObject({
+    noEmit: true,
+    types: ["bun"],
+    moduleResolution: "Bundler",
+  });
 });
 
 test("owner comments, unrelated settings and package fields survive; trigger removal resets policy", async () => {

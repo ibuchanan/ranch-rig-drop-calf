@@ -18,6 +18,7 @@ import {
 import { updateCapabilities } from "../../src/core/capability.ts";
 import { TOOL_VERSIONS } from "../../src/core/versions.ts";
 import { mockDirectory } from "../support/module-source.ts";
+import { isBunKind } from "../support/kinds.ts";
 
 const root = resolve(import.meta.dir, "../..");
 const members = (scripts: Record<string, string>) =>
@@ -37,7 +38,7 @@ for (const kind of Object.keys(PROFILES)) {
       "tester",
     );
     expect(forward.packageJson.scripts.lint).toBe(
-      kind === "tool"
+      isBunKind(kind)
         ? LINT_COMMAND.replace("--npm-path npm", "--npm-path bun")
         : LINT_COMMAND,
     );
@@ -49,6 +50,7 @@ for (const kind of Object.keys(PROFILES)) {
       [
         "lint:check:biome",
         ...(kind === "library" || kind === "tool" ? ["lint:check:fallow"] : []),
+        ...(kind === "agent-skill" ? ["lint:check:skills"] : []),
         "lint:check:format",
         ...(kind === "forge-app"
           ? ["lint:check:forge", "lint:check:prelint"]

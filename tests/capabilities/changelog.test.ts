@@ -35,7 +35,7 @@ const directory = (present: boolean) => {
 };
 
 test("changelog kinds install a pinned tool and script without authoring a policy", () => {
-  for (const kind of ["library", "forge-app", "tool"]) {
+  for (const kind of ["library", "forge-app", "tool", "agent-skill"]) {
     const project = buildProject(kind, "sample", "tester");
     expect(project.packageJson.devDependencies["git-cliff"]).toBe(
       TOOL_VERSIONS.gitCliff,
@@ -45,10 +45,6 @@ test("changelog kinds install a pinned tool and script without authoring a polic
     // capability, so no kind carries it in the blueprint.
     expect(project.files.has("cliff.toml")).toBe(false);
   }
-  const skill = buildProject("agent-skill", "sample", "tester");
-  expect(skill.packageJson.scripts.changelog).toBeUndefined();
-  expect(skill.packageJson.devDependencies["git-cliff"]).toBeUndefined();
-  expect(skill.files.has("cliff.toml")).toBe(false);
 });
 
 test("the release tree ships the policy file the changelog command reads", () => {

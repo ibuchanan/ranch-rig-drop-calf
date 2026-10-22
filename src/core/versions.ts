@@ -23,6 +23,7 @@ export const TOOL_VERSIONS = {
   lefthook: pin.lefthook,
   npmRunAll2: pin["npm-run-all2"],
   astGrep: pin["@ast-grep/cli"],
+  agentSkillsToolkit: pin["agent-skills-toolkit"],
   forgePrelint: pin["@forge-ahead/prelint"],
   fallow: pin.fallow,
   forgeAheadApiTypes: pin["@forge-ahead/atlassian-api-types"],

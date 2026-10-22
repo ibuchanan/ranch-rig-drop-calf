@@ -21,6 +21,7 @@ import { runInit, verb } from "../support/capability-fixtures.ts";
 import { mockContainer } from "../support/container-source.ts";
 import { mockDirectory, mockModuleSource } from "../support/module-source.ts";
 import { gitHooksTemplates } from "../support/templates-source.ts";
+import { isBunKind } from "../support/kinds.ts";
 
 test.each([false, true])(
   "init and update enforce only the selected pin and hook dispatch scripts (buildOnPrepare=%s)",
@@ -102,13 +103,12 @@ test.each(["library", "forge-app", "tool", "agent-skill"])(
         "tester",
         "sample",
       );
-      const expectedConfig =
-        kind === "tool"
-          ? config().replaceAll(
-              /npm run (\S+) --if-present/g,
-              "bun run --if-present $1",
-            )
-          : config();
+      const expectedConfig = isBunKind(kind)
+        ? config().replaceAll(
+            /npm run (\S+) --if-present/g,
+            "bun run --if-present $1",
+          )
+        : config();
       expect(await initialized.file("lefthook.yml").contents()).toBe(
         expectedConfig,
       );
@@ -147,10 +147,9 @@ test.each(["library", "forge-app", "tool", "agent-skill"])(
       expect(updated.scripts).toEqual({
         ...pkg.scripts,
         ...GIT_HOOKS_SCRIPTS,
-        lint:
-          kind === "tool"
-            ? LINT_COMMAND.replace("--npm-path npm", "--npm-path bun")
-            : LINT_COMMAND,
+        lint: isBunKind(kind)
+          ? LINT_COMMAND.replace("--npm-path npm", "--npm-path bun")
+          : LINT_COMMAND,
         prepare,
       });
       expect(updated.devDependencies.lefthook).toBe(TOOL_VERSIONS.lefthook);
@@ -272,21 +271,20 @@ test.each(["library", "forge-app", "tool", "agent-skill"])(
         : "lefthook install || true",
     );
     expect(scripts.lint).toBe(
-      kind === "tool"
+      isBunKind(kind)
         ? LINT_COMMAND.replace("--npm-path npm", "--npm-path bun")
         : LINT_COMMAND,
     );
     expect(scripts.check).toBe("lefthook run pre-push --force");
     const ymlBase = config();
-    const yml =
-      kind === "tool"
-        ? ymlBase.replaceAll(
-            /npm run (\S+) --if-present/g,
-            "bun run --if-present $1",
-          )
-        : ymlBase;
+    const yml = isBunKind(kind)
+      ? ymlBase.replaceAll(
+          /npm run (\S+) --if-present/g,
+          "bun run --if-present $1",
+        )
+      : ymlBase;
     expect(yml).not.toMatch(/^lint:/m);
-    if (kind === "tool") {
+    if (isBunKind(kind)) {
       expect(yml).toContain("run: bun run --if-present lint");
       expect(yml).toContain("run: bun run --if-present size:check");
       expect(yml).not.toMatch(/run: bun run --if-present size\s/);

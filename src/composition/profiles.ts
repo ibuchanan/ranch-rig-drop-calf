@@ -1,5 +1,6 @@
 import type { Directory } from "@dagger.io/dagger";
 import {
+  AGENT_SKILL_AIDEV_TEMPLATE,
   AIDEV_TEMPLATE,
   aidev,
   LIBRARY_AIDEV_TEMPLATE,
@@ -8,6 +9,7 @@ import { biomeToolchain } from "../capabilities/biome.ts";
 import { bunBaseline, bunBuild } from "../capabilities/bun.ts";
 import { bunTesting } from "../capabilities/bun-testing.ts";
 import { catalog } from "../capabilities/catalog.ts";
+import { citation } from "../capabilities/citation.ts";
 import { changelogToolchain } from "../capabilities/changelog.ts";
 import { cleanBuild } from "../capabilities/clean-build.ts";
 import { docsLinting } from "../capabilities/docs.ts";
@@ -27,6 +29,8 @@ import { packageMetadata } from "../capabilities/package-metadata.ts";
 import { prelint } from "../capabilities/prelint.ts";
 import { forgeSecrets } from "../capabilities/secrets.ts";
 import { bundleSize } from "../capabilities/size-limit.ts";
+import { skillStarter } from "../capabilities/skill-starter.ts";
+import { skillToolkit } from "../capabilities/skill-toolkit.ts";
 import { todo } from "../capabilities/todo.ts";
 import { typeScriptToolchain } from "../capabilities/typescript.ts";
 import { vitestTesting } from "../capabilities/vitest.ts";
@@ -117,16 +121,28 @@ export const PROFILES: Record<string, Capability[]> = {
     packageMetadata({ enforcePrivate: true }),
     oss(),
     gitignore(),
-    nodeBaseline(),
-    biomeToolchain(),
-    lint(),
-    typeScriptToolchain(),
+    bunBaseline(),
+    citation(),
+    changelogToolchain(),
+    biomeToolchain({ packageManager: "bun" }),
+    lint({ packageManager: "bun" }),
+    skillToolkit(),
+    skillStarter(),
+    typeScriptToolchain({ ownsBuild: false, runtime: "bun" }),
     bunTesting(),
     cleanBuild(),
     todo(),
-    docsLinting(),
-    gitHooks(),
-    aidev(),
+    docsLinting({
+      testDirectory: "tests",
+      testPurpose: "Bun tests for skill scripts",
+      extraLayout: [
+        "`skills/`: Agent skills, one `<name>/SKILL.md` package per directory.",
+      ],
+      packageManager: "bun",
+    }),
+    gitHooks({ packageManager: "bun" }),
+    evals(),
+    aidev({ guidance: AGENT_SKILL_AIDEV_TEMPLATE }),
   ],
 };
 

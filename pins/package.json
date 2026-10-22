@@ -11,6 +11,7 @@
     "@forge-ahead/logging": "github:ibuchanan/forge-ahead-logging",
     "@forge-ahead/prelint": "github:ibuchanan/tool-forge-prelint-ast-grep",
     "@forge/cli": "14.2.0",
+    "agent-skills-toolkit": "github:ibuchanan/agent-skills-toolkit",
     "cspell": "10.4.0",
     "fallow": "3.33.1",
     "git-cliff": "2.14.2",

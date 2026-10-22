@@ -18,7 +18,7 @@ const templatesIn = (tree: string) => {
 };
 
 export const aidevTemplates = (
-  guidance: "forge-app" | "library" = "forge-app",
+  guidance: "forge-app" | "library" | "agent-skill" = "forge-app",
 ) => templatesIn(`aidev/${guidance}`);
 
 export const catalogTemplates = () => templatesIn("catalog");
@@ -26,6 +26,10 @@ export const catalogTemplates = () => templatesIn("catalog");
 export const docsTemplates = () => templatesIn("docs");
 
 export const typescriptTemplates = () => templatesIn("typescript");
+
+export const skillStarterTemplates = () => templatesIn("skill-starter");
+
+export const typescriptBunTemplates = () => templatesIn("typescript-bun");
 
 export const biomeTemplates = () => templatesIn("biome");
 

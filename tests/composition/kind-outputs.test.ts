@@ -85,7 +85,7 @@ test.each(["library", "forge-app", "tool", "agent-skill"])(
       expect(Boolean(scripts["size:check"])).toBe(kind === "forge-app");
       expect(Boolean(scripts.todo)).toBe(true);
       expect(Boolean(scripts["lint:docs"])).toBe(true);
-      expect(Boolean(scripts.changelog)).toBe(kind !== "agent-skill");
+      expect(Boolean(scripts.changelog)).toBe(true);
       expect(Boolean(scripts["lint:forge"])).toBe(kind === "forge-app");
       expect(Boolean(scripts["lint:prelint"])).toBe(kind === "forge-app");
       expect(Boolean(scripts["lint:fallow"])).toBe(

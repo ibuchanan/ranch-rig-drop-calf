@@ -76,7 +76,7 @@ Profiles are defined in `src/composition/profiles.ts` as arrays of capabilities.
 | `library` | biome | biome | tsc | bun test (with `--pass-with-no-tests`) |
 | `forge-app` | forge lint | biome | forge-pinned tsc | vitest (with `--passWithNoTests`) |
 | `tool` | biome | biome | tsc | bun test (with `--pass-with-no-tests`) |
-| `agent-skill` | biome | biome | tsc | bun test (with `--pass-with-no-tests`) |
+| `agent-skill` | biome | biome | tsc (no emit) | bun test (with `--pass-with-no-tests`) |
 
 ### 7.2 Future profiles
 
