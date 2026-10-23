@@ -170,8 +170,25 @@ test("fresh composed Forge init/update is unchanged and seeds no helper files", 
   }
 });
 
-test("validation accepts owner edits without external execution", async () => {
-  const input = seededSecrets().withNewFile("secretspec.toml", VALID_TOML);
+test.each(["manifest", "runtime"])(
+  "validation accepts owner edits in %s scopes without external execution",
+  async (scope) => {
+    const input = seededSecrets().withNewFile(
+      "secretspec.toml",
+      VALID_TOML.replace("[scopes.runtime]", `[scopes.${scope}]`),
+    );
+    expect(await validateCapabilities(input, [forgeSecrets()])).toEqual([
+      { capability: "secrets", status: "validated" },
+    ]);
+  },
+);
+
+test("validation allows Forge CLI keys in manifest scope", async () => {
+  const contents = VALID_TOML.replaceAll("API_TOKEN", "FORGE_SITE").replace(
+    "[scopes.runtime]",
+    "[scopes.manifest]",
+  );
+  const input = seededSecrets().withNewFile("secretspec.toml", contents);
   expect(await validateCapabilities(input, [forgeSecrets()])).toEqual([
     { capability: "secrets", status: "validated" },
   ]);
@@ -187,6 +204,14 @@ test.each([
   ],
   ['[project]\nname="x"\nrevision="1.0"', "profiles.default"],
   [`${VALID_TOML}[scopes.manifest]\nsecrets="API_TOKEN"\n`, "array of names"],
+  [
+    VALID_TOML.replace('secrets=["API_TOKEN"]', 'secrets=["API_TOKEN", 1]'),
+    "array of names",
+  ],
+  [
+    VALID_TOML.replace('secrets=["API_TOKEN"]', 'secrets=["defaults"]'),
+    "not declared",
+  ],
   [
     VALID_TOML.replace('secrets=["API_TOKEN"]', 'secrets=["MISSING"]'),
     "not declared",

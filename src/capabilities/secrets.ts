@@ -123,6 +123,21 @@ function checkProfiles(profiles: unknown): Record<string, unknown> {
 
 const SCOPES = ["manifest", "runtime"] as const;
 
+function checkScopeMember(
+  scope: string,
+  key: string,
+  profile: Record<string, unknown>,
+): void {
+  if (key === "defaults" || !Object.hasOwn(profile, key))
+    throw new Error(
+      `secretspec.toml: scopes.${scope} member ${key} is not declared in profiles.default`,
+    );
+  if (scope === "runtime" && key.startsWith("FORGE_"))
+    throw new Error(
+      `secretspec.toml: FORGE_* keys target the CLI and must not be in scopes.runtime (${key})`,
+    );
+}
+
 /** Scope members must be declared; runtime members upload, so local controls stay out. */
 function checkScopes(scopes: unknown, profile: Record<string, unknown>): void {
   if (scopes === undefined) return;
@@ -135,16 +150,7 @@ function checkScopes(scopes: unknown, profile: Record<string, unknown>): void {
       throw new Error(
         `secretspec.toml: scopes.${scope}.secrets must be an array of names`,
       );
-    for (const key of members) {
-      if (key === "defaults" || !Object.hasOwn(profile, key))
-        throw new Error(
-          `secretspec.toml: scopes.${scope} member ${key} is not declared in profiles.default`,
-        );
-      if (scope === "runtime" && key.startsWith("FORGE_"))
-        throw new Error(
-          `secretspec.toml: FORGE_* keys target the CLI and must not be in scopes.runtime (${key})`,
-        );
-    }
+    for (const key of members) checkScopeMember(scope, key, profile);
   }
 }
 
