@@ -2,10 +2,10 @@ import { expect, test } from "bun:test";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import {
-  deliverRepository,
   inspectCheckout,
   sourceFingerprint,
-} from "../../scripts/repository.ts";
+} from "../../scripts/repository/checkout.ts";
+import { deliverRepository } from "../../scripts/repository/delivery.ts";
 import { git } from "../../src/core/git.ts";
 import {
   finishRepository,

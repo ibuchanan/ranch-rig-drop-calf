@@ -9,6 +9,8 @@
   "dynamicallyLoaded": [
     // Run manually per DEVELOPMENT.md, not from a package.json script.
     "scripts/refresh-capability-docs.ts",
+    // The local init/update launcher: run as `bun run scripts/repository.ts`.
+    "scripts/repository.ts",
     // Copied into scaffolded projects, never imported here.
     "templates/**"
   ]

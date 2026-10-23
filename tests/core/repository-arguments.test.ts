@@ -2,7 +2,10 @@ import { expect, test } from "bun:test";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { daggerArguments, OPERATIONS } from "../../scripts/repository.ts";
+import {
+  daggerArguments,
+  OPERATIONS,
+} from "../../scripts/repository/request.ts";
 
 type Request = Parameters<typeof daggerArguments>[0];
 

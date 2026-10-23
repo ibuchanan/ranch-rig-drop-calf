@@ -223,7 +223,10 @@ Repository Git workflows share containerized init and update logic:
 - `src/core/git.ts`, `repository-policy.ts`, `repository-types.ts`: isolated Git
   execution, option and credential checks, and the options and result types. The
   container mounts these beside `repository-git.ts`.
-- `scripts/repository.ts`: local launcher, checkout preflight, and bundle delivery.
+- `scripts/repository.ts`: local launcher entry point.
+- `scripts/repository/`: `checkout.ts` (source fingerprint and checkout preflight),
+  `request.ts` (CLI parsing and Dagger arguments), and `delivery.ts` (bundle
+  delivery into the checkout).
 - `tests/core/repository-*.test.ts`: disposable repositories and bare-remote tests.
 - `tests/e2e/repository.e2e.test.ts`: local launcher/container round trip.
 
