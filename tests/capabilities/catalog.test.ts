@@ -126,6 +126,17 @@ test("catalog name truncation trims trailing punctuation", () => {
   ).toBe("x".repeat(62));
 });
 
+test("catalog identifiers preserve valid names apart from lowercase normalization", () => {
+  fc.assert(
+    fc.property(
+      fc.stringMatching(/^[a-zA-Z0-9](?:[a-zA-Z0-9._-]{0,61}[a-zA-Z0-9])?$/),
+      (name) => {
+        expect(parse(seeded({ name })).metadata.name).toBe(name.toLowerCase());
+      },
+    ),
+  );
+});
+
 test("catalog identifiers are bounded, normalized and stable while original names survive", () => {
   fc.assert(
     fc.property(

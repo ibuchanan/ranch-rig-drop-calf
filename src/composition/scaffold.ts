@@ -149,7 +149,7 @@ export async function adoptScaffoldTypeScript(
 }
 
 // Files supplied by forge create that Drop Calf replaces or regenerates.
-export const UNWANTED = [
+const UNWANTED = [
   "AGENTS.md",
   ".eslintrc",
   "README.md",

@@ -236,9 +236,7 @@ test("distinct section entries assemble independently of contributor order", () 
           contributor(key, { [lifecycle]: { [section]: { [key]: value } } }),
         );
         const assembled = assemblePackage(contributors);
-        expect(assembled[lifecycle]).toEqual(
-          contributors.length ? { [section]: entries } : {},
-        );
+        expect(assembled[lifecycle]).toEqual({ [section]: entries });
         expect(assemblePackage([...contributors].reverse())).toEqual(assembled);
       },
     ),

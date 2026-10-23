@@ -234,7 +234,7 @@ export function updatePackage(
 
 // Metadata forge create invents for the scaffold; the blueprint supplies the
 // real values, so a leftover value here would silently win over them.
-export const SCAFFOLD_FIELDS = [
+const SCAFFOLD_FIELDS = [
   "name",
   "version",
   "description",
@@ -245,7 +245,7 @@ export const SCAFFOLD_FIELDS = [
 // Sections Drop Calf regenerates from capabilities. The scaffold's entries are
 // its own scaffolding commands, not the project's, so they are emptied rather
 // than kept; generation then fills them from the profile.
-export const EMPTY_SECTIONS = ["scripts", "devDependencies"] as const;
+const EMPTY_SECTIONS = ["scripts", "devDependencies"] as const;
 
 function isEmptyObject(value: unknown): boolean {
   return (
