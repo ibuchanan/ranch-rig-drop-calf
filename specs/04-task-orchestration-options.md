@@ -15,7 +15,6 @@ the stable `lint` workflow without requiring an edit to a separate, centrally
 maintained list of checks?
 
 Two composition models are in scope:
-
 1. **Task-family aggregation:** a check contributes a package script whose name
    places it in a convention-based family; `lint` selects all scripts matching
    that family.
@@ -36,17 +35,17 @@ merely whether it can run commands in parallel.
 
 ## 2. Fitness criteria
 
-| Criterion | Question |
-| --- | --- |
-| Producer-owned composition | Can the capability that adds a check also declare its participation, without editing a central list of checks? |
-| No duplicated membership list | Does adding/removing a capability change `lint` automatically after composition? |
-| Kind and selection awareness | Does the result include only capabilities selected for the project kind and preset, including optional functions? |
-| Stable script interface | Can users run an individual check, and does the generated project retain the stable `lint` command? |
-| Git independence | Can `lint` run without Lefthook, Git metadata, or hook configuration? |
-| Runtime fit | Can the same model support Bun-oriented `library`, `tool`, and `agent-skill` projects and native-Node `forge-app` projects? |
-| Graph value | Does the solution add useful prerequisite ordering, task inspection, input/output modeling, or caching beyond parallel fan-out? |
-| Composition and update cost | Can init/update safely assemble, preserve, and validate the task configuration without conflicting with owner edits? |
-| Proportionality | Does the execution and configuration model pay for itself for the current project scale, without blocking a future monorepo kind? |
+| Criterion                     | Question                                                                                                                          |
+| ----------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| Producer-owned composition    | Can the capability that adds a check also declare its participation, without editing a central list of checks?                    |
+| No duplicated membership list | Does adding/removing a capability change `lint` automatically after composition?                                                  |
+| Kind and selection awareness  | Does the result include only capabilities selected for the project kind and preset, including optional functions?                 |
+| Stable script interface       | Can users run an individual check, and does the generated project retain the stable `lint` command?                               |
+| Git independence              | Can `lint` run without Lefthook, Git metadata, or hook configuration?                                                             |
+| Runtime fit                   | Can the same model support Bun-oriented `library`, `tool`, and `agent-skill` projects and native-Node `forge-app` projects?       |
+| Graph value                   | Does the solution add useful prerequisite ordering, task inspection, input/output modeling, or caching beyond parallel fan-out?   |
+| Composition and update cost   | Can init/update safely assemble, preserve, and validate the task configuration without conflicting with owner edits?              |
+| Proportionality               | Does the execution and configuration model pay for itself for the current project scale, without blocking a future monorepo kind? |
 
 ## 3. Current lint surface
 
@@ -55,7 +54,6 @@ Current script ownership is deliberately distributed across capabilities in
 `lint` and `check` package scripts; `templates/git-hooks/lefthook.yml` owns hook
 dispatch. The hook's `lint` group explicitly runs the following entries with
 `--if-present` and in parallel:
-
 - `lint:prelint` from `prelint` (selected for `forge-app`);
 - `lint:check` from `biome` (all kinds; Biome formatting checks are also run
   separately);
@@ -69,12 +67,12 @@ All kinds select `docs`, which contributes `lint:docs`, but Lefthook's current
 `lint` group does **not** invoke that script. Thus the current logical lint
 membership is:
 
-| Project kind | Lint checks after capability selection |
-| --- | --- |
-| `library` | Biome, Fallow by default (optional), typecheck, format check |
-| `forge-app` | prelint, Biome, Forge lint, typecheck, format check |
-| `tool` | Biome, Fallow by default (optional), typecheck, format check |
-| `agent-skill` | Biome, typecheck, format check |
+| Project kind  | Lint checks after capability selection                       |
+| ------------- | ------------------------------------------------------------ |
+| `library`     | Biome, Fallow by default (optional), typecheck, format check |
+| `forge-app`   | prelint, Biome, Forge lint, typecheck, format check          |
+| `tool`        | Biome, Fallow by default (optional), typecheck, format check |
+| `agent-skill` | Biome, typecheck, format check                               |
 
 These are the current Lefthook members, not an endorsement that every check
 should remain classified as lint. The `docs` capability contributes `lint:docs`,
@@ -86,7 +84,6 @@ checking when those scripts exist. Those tasks are outside this lint comparison.
 
 There are currently two compatibility details to preserve or explicitly
 reconsider:
-
 - `lint:check` is a leaf script name today. A wildcard convention such as
   `lint:check:*` would require renaming the Biome leaf (for example,
   `lint:check:biome`) and namespacing other check leaves consistently.
@@ -237,7 +234,6 @@ A Turbo lint aggregate can therefore be modeled with dependencies such as
 must be written somewhere. If every linter capability contributes a Turbo task
 definition, Turbo can execute/cache those tasks, but that alone does not connect
 newly contributed tasks to `lint`. Either:
-
 - a central composer enumerates the selected task IDs and emits `turbo.json`; or
 - a pre-build step derives Turbo config from capability declarations.
 
@@ -259,12 +255,12 @@ may be elegant, but requires generated `.moon` configuration and a clear
 owner/merge strategy. Moon also brings project/workspace and toolchain concepts
 beyond the immediate one-package task-family need.
 
-| Candidate | How checks join `lint` | Can selected capability add a check without editing explicit membership list? | Runner / cache model |
-| --- | --- | ---: | --- |
-| `npm-run-all2` | `run-p` selects scripts by colon-pattern | Yes, by contributing a script in the designated namespace | Parallel/sequential script orchestration; no task cache or input/output graph |
-| Nx | `lint` target `dependsOn` wildcard selects same-project targets | Yes, by contributing a target whose name matches the wildcard | Full task graph, caching, inputs/outputs, graph inspection; Bun and Node package-manager support |
-| Turborepo | `lint` task lists prerequisite task names | Not natively shown for wildcard family membership; requires composed list/config | Full task graph, caching, inputs/outputs; strongest familiar monorepo fit, but list composition remains |
-| Moon | `lint` task lists named `deps`; inherited config can merge dependencies | Not established for wildcard dependencies; needs composed config or explicit dependency list | Full task graph, inputs/outputs, cache, Bun/Node toolchains and project model |
+| Candidate      | How checks join `lint`                                                  |                Can selected capability add a check without editing explicit membership list? | Runner / cache model                                                                                    |
+| -------------- | ----------------------------------------------------------------------- | -------------------------------------------------------------------------------------------: | ------------------------------------------------------------------------------------------------------- |
+| `npm-run-all2` | `run-p` selects scripts by colon-pattern                                |                                    Yes, by contributing a script in the designated namespace | Parallel/sequential script orchestration; no task cache or input/output graph                           |
+| Nx             | `lint` target `dependsOn` wildcard selects same-project targets         |                                Yes, by contributing a target whose name matches the wildcard | Full task graph, caching, inputs/outputs, graph inspection; Bun and Node package-manager support        |
+| Turborepo      | `lint` task lists prerequisite task names                               |             Not natively shown for wildcard family membership; requires composed list/config | Full task graph, caching, inputs/outputs; strongest familiar monorepo fit, but list composition remains |
+| Moon           | `lint` task lists named `deps`; inherited config can merge dependencies | Not established for wildcard dependencies; needs composed config or explicit dependency list | Full task graph, inputs/outputs, cache, Bun/Node toolchains and project model                           |
 
 ## 5. Cross-cutting composition model
 
@@ -288,7 +284,6 @@ declarations, consider adding a typed contribution concept separate from
 
 The composer would resolve only selected capabilities, reject duplicate task
 IDs, and build the execution model. A runner adapter could then emit either:
-
 - a package-script family and `run-p` command;
 - Nx targets and `dependsOn` edges;
 - Turbo task config with explicit prerequisites; or
@@ -333,7 +328,6 @@ be deterministic and tested from the resolved capability list.
 
 Before choosing a runner, reproduce these cases against generated manifests for
 all four kinds:
-
 1. `lint` runs without Git metadata and without Lefthook installed/configured.
 2. Only selected tasks run: Fallow is absent when opted out; Forge tasks occur
    only in `forge-app`; docs remains included where selected.

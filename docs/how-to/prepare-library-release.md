@@ -19,7 +19,6 @@ registry publication are separate, deliberate operations.
    not in generated `CHANGELOG.md`.
 
 3. Check that the repository has exactly one supported lockfile:
-
    - For npm, use `package-lock.json` format 2 or 3 with root name and version
      matching `package.json`.
    - For Bun, use a text `bun.lock` format 1 or 2 with a single, versionless root

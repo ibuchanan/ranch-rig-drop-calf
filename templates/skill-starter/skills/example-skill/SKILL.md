@@ -8,6 +8,8 @@ description: Use this skill when the user asks for the example task this reposit
 Replace this body with the skill's instructions. Keep it short and move detail
 into `references/`.
 
+## Outline
+
 - **Purpose**: What this skill helps with.
 - **When to use**: Typical triggers.
 - **Workflow**: Steps the skill performs.

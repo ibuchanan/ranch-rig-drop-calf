@@ -10,7 +10,6 @@ translation example using the evaluation steps below.
 Use Forge CLI 10.6.0 or newer for prompt resources.
 Drop Calf does not edit `manifest.yml`: choose the agent and wire its prompt
 yourself.
-
 1. Put your agent's instructions in `prompts/agent-instructions.md`, replacing
    the translation example with your real prompt.
 2. In `manifest.yml`, set your existing `rovo:agent` prompt and add a resource

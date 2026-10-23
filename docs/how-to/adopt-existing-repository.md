@@ -12,7 +12,6 @@ from the same Drop Calf revision that you run with Dagger.
 `init` and `init-changes` are for first-time setup. Do not delete or temporarily
 move a guard file to make them run: init can clean scaffold files and replace
 owner content. `update` does not create the catalog or restore init-only files.
-
 1. **Inspect the repository before editing.** Record its current Git status and
    review `package.json`, `.atlassian/OWNER`, `LICENSE`, `manifest.yml` (for a
    Forge app), and any existing `catalog-info.yaml`. Choose the correct profile

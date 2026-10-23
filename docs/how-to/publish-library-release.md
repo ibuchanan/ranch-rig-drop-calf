@@ -82,7 +82,6 @@ or invokes registry publication.
 
 Do not delete evidence, force-push, reset history, or rerun preparation blindly.
 The helper performs no destructive automatic rollback.
-
 - **Before staging:** correct the reported precondition and retry publication if
   the same prepared baseline and outputs remain valid. Restore or preserve any
   unrelated work separately. If release files or policy need edits, abandon

@@ -15,7 +15,6 @@ is a single coherent document, but no module owned it.
 A `package-json` module owns `package.json`. Capabilities do not edit it
 directly; each declares a contribution of **seed** and **policy** entries (see
 `GLOSSARY.md`), computed from the capability's own options when it is built.
-
 - `init` creates the file from a template, or cleans and merges into the
   `forge create` scaffold (the module owns that cleanup), then applies every
   selected capability's seed and policy, so a freshly initialized repository

@@ -20,7 +20,6 @@ to one resource, such as `package.json` or `manifest.yml`.
 ## Decision
 
 Every capability has three required verbs:
-
 - **`init`** seeds starting content and initial settings. It is first-time setup,
   not the operation for maintaining an already-initialized repository.
 - **`update`** applies a policy-driven delta, such as updating a pinned tool or
@@ -49,7 +48,6 @@ validation. Substitution details, including copyright-year handling, are decided
 in the OSS policy, not here.
 
 Top-level operations compose separate passes in the selected profile's order:
-
 - **`init`** = scaffold steps, then every capability's `init`, then every
   capability's `update`.
 - **`update`** = every capability's `update`.

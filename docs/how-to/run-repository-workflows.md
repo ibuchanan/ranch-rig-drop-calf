@@ -108,7 +108,7 @@ on:
   repository_dispatch:
     types: [drop-calf-updated]
   schedule:
-    - cron: '0 6 * * 1'
+    - cron: "0 6 * * 1"
 permissions:
   contents: write
 concurrency:

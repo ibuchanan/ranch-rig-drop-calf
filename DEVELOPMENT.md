@@ -60,11 +60,23 @@ shell.
 ## Development loop
 
 ```bash
+bun run check
+```
+
+`check` runs Lefthook's `pre-push` commands (`lint` and `test`) in parallel,
+the same dispatch generated `tool` repositories use. `lint` runs every
+`lint:check:*` script (Biome lint, Biome format, typecheck, and Fallow) in
+parallel. To run one step on its own:
+
+```bash
 bun run test
 bun run typecheck
 bun run lint
 bun run format:check
 ```
+
+`bun run prepare` (run by `bun install`) installs the Git hooks; the pre-commit
+hook needs [gitleaks](https://github.com/gitleaks/gitleaks) on your `PATH`.
 
 `bun run format` and `bun run lint:fix` modify files. The unit suite under
 `tests/` runs without starting Dagger. To exercise the Dagger boundary without
@@ -98,18 +110,18 @@ Or run one suite:
 bun test tests/e2e/init.e2e.test.ts --path-ignore-patterns='vendor/**'
 ```
 
-| Suite | Notes |
-|---|---|
-| `init` | `init-changes` export from empty directories, all profiles and presets |
-| `lint` | Generated script-family aggregation through Bun and npm, all kinds, without Git or Lefthook |
-| `scaffold-typescript` | In-place export, compiler diagnostics, update preservation |
-| `node` | Runtime normalization through a real init |
-| `forge-manifest` | Credential-prerequisite reporting only, not authenticated acceptance |
-| `docs` | Config loading only, not Markdown content |
-| `package-check` | Controlled tarballs, lifecycle safety, checker failures, and default-build declaration compatibility |
-| `library-release` | Disposable release repositories; requires Bun, Git, and the pinned git-cliff on PATH, no Dagger or network |
-| `library-prepare` | Disposable local Git dependency, real build tools, and ESM/CommonJS consumption; requires npm and network access |
-| `biome`, `evals`, `git-hooks`, `library-build`, `secrets`, `testing`, `typescript`, `vitest` | |
+| Suite                                                                                        | Notes                                                                                                            |
+| -------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| `init`                                                                                       | `init-changes` export from empty directories, all profiles and presets                                           |
+| `lint`                                                                                       | Generated script-family aggregation through Bun and npm, all kinds, without Git or Lefthook                      |
+| `scaffold-typescript`                                                                        | In-place export, compiler diagnostics, update preservation                                                       |
+| `node`                                                                                       | Runtime normalization through a real init                                                                        |
+| `forge-manifest`                                                                             | Credential-prerequisite reporting only, not authenticated acceptance                                             |
+| `docs`                                                                                       | Config loading only, not Markdown content                                                                        |
+| `package-check`                                                                              | Controlled tarballs, lifecycle safety, checker failures, and default-build declaration compatibility             |
+| `library-release`                                                                            | Disposable release repositories; requires Bun, Git, and the pinned git-cliff on PATH, no Dagger or network       |
+| `library-prepare`                                                                            | Disposable local Git dependency, real build tools, and ESM/CommonJS consumption; requires npm and network access |
+| `biome`, `evals`, `git-hooks`, `library-build`, `secrets`, `testing`, `typescript`, `vitest` |                                                                                                                  |
 
 `forge-create` is excluded from `test:e2e` because it runs a real
 `forge create`, which registers an app in your developer space. It stays behind
@@ -142,12 +154,10 @@ its rules are recorded in
 [ADR 0004](docs/adr/0004-source-subpackages.md).
 
 Entry point:
-
 - `src/index.ts`: Dagger `DropCalf` entry point (`init`, `initChanges`,
   `update`, `validate`).
 
 `src/core/`, shared machinery that names no capability:
-
 - `src/core/capability.ts`: the `Capability` contract and `noOp(reason)`.
 - `src/core/project.ts`: `ProjectBlueprint` and Dagger directory rendering.
 - `src/core/package-json.ts`: `package.json` assembly from capability
@@ -162,14 +172,12 @@ Entry point:
 - `src/core/errors.ts`: `ParseError` and `InvalidOptionsError`.
 
 `src/composition/`, the one place that knows every capability:
-
 - `src/composition/profiles.ts`: ordered capabilities, policy options, and
   scaffold steps per kind.
 - `src/composition/scaffold.ts`: scaffold steps for fresh `forge create` output
   (preclean, TypeScript adoption).
 
 `src/capabilities/`, one module per capability:
-
 - `src/capabilities/aidev.ts`: shared init-only agent guidance with separate
   `templates/aidev/library` and `templates/aidev/forge-app` authored seeds.
 - `src/capabilities/biome.ts`: Biome config, `.editorconfig`, and format/lint
@@ -208,7 +216,6 @@ Entry point:
 - `src/capabilities/vitest.ts`: Vitest config and scripts.
 
 Repository Git workflows share containerized init and update logic:
-
 - `src/core/repository.ts`: Dagger orchestration, recovery export, and publication.
 - `src/core/repository-git.ts`: Bun-executed Git prepare, finish, recover, and
   publish stages; repository options and result types.
@@ -217,7 +224,6 @@ Repository Git workflows share containerized init and update logic:
 - `tests/e2e/repository.e2e.test.ts`: local launcher/container round trip.
 
 Elsewhere:
-
 - `templates/`: authored seed trees, one directory per capability.
 - `pins/package.json`: exact npm tool pins (see
   [Refreshing tool pins](#refreshing-tool-pins)).

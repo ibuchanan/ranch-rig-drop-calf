@@ -26,23 +26,22 @@ A human declares intent by choosing a profile (e.g., `library`, `forge-app`, `to
 
 ## 4. Core concepts
 
-| Term | Definition |
-|---|---|
-| **Profile** | A named, ordered bundle of capabilities that defines a project kind. Examples: `library`, `forge-app`, `tool`, `agent-skill`. |
-| **Capability** | One repository concern with explicit initialization, update policy, and tool-validation behavior, such as formatting, testing, or OSS documents. |
-| **Capability slot** | A role in a profile, such as `linting`, `formatting`, `typechecking`, `testing`. A profile always has the same slots, but implementations vary and slots may deliberately be no-ops. |
-| **Init** | First-time setup that seeds starting content and initial settings; at the top level, scaffold preparation followed by all capability inits and then all capability updates. |
-| **Update** | Application of a capability's current policy to a repository; repeating it with the same inputs and policy produces no further changes. |
-| **Validate** | A read-only check of whether consuming tools accept the repository, independent of Drop Calf policy and of any prior init or update. |
-| **No-op reason** | An explicit explanation of why a capability has no work for a required verb; not an omitted operation. |
-| **Scaffold step** | Preparation of fresh scaffolder output before capability initialization; it has no work on an empty directory and does not run during update. |
-| **ProjectBlueprint** | A pure TypeScript model of a project: a `package.json` object plus a map of file paths to contents. |
-| **Seam** | The boundary between the pure blueprint manipulation and the Dagger `Directory` rendering. |
+| Term                 | Definition                                                                                                                                                                           |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Profile**          | A named, ordered bundle of capabilities that defines a project kind. Examples: `library`, `forge-app`, `tool`, `agent-skill`.                                                        |
+| **Capability**       | One repository concern with explicit initialization, update policy, and tool-validation behavior, such as formatting, testing, or OSS documents.                                     |
+| **Capability slot**  | A role in a profile, such as `linting`, `formatting`, `typechecking`, `testing`. A profile always has the same slots, but implementations vary and slots may deliberately be no-ops. |
+| **Init**             | First-time setup that seeds starting content and initial settings; at the top level, scaffold preparation followed by all capability inits and then all capability updates.          |
+| **Update**           | Application of a capability's current policy to a repository; repeating it with the same inputs and policy produces no further changes.                                              |
+| **Validate**         | A read-only check of whether consuming tools accept the repository, independent of Drop Calf policy and of any prior init or update.                                                 |
+| **No-op reason**     | An explicit explanation of why a capability has no work for a required verb; not an omitted operation.                                                                               |
+| **Scaffold step**    | Preparation of fresh scaffolder output before capability initialization; it has no work on an empty directory and does not run during update.                                        |
+| **ProjectBlueprint** | A pure TypeScript model of a project: a `package.json` object plus a map of file paths to contents.                                                                                  |
+| **Seam**             | The boundary between the pure blueprint manipulation and the Dagger `Directory` rendering.                                                                                           |
 
 ## 5. Capability contract
 
 Every capability requires `init`, `update`, and `validate`. A verb with no work is an explicit no-op with a non-empty, enumerable reason that answers why there is no work for that verb and anchors its documentation.
-
 - `init` seeds starting content and initial settings.
 - `update` applies the capability's documented policy and is idempotent for unchanged inputs and policy.
 - `validate` checks tool acceptance without changing the repository. It is not policy-aware: a tool-valid configuration passes even if it differs from the capability's baseline.
@@ -55,15 +54,15 @@ The previous `addTo` interface was superseded by [ADR 0001](../docs/adr/0001-cap
 
 Every non-empty capability slot contributes to the stable developer API. The exact command may vary by profile.
 
-| Slot | Script(s) | Example implementations |
-|---|---|---|
-| Linting | `lint`, `lint:fix` (optional) | `biome lint`, `forge lint` |
-| Formatting | `format`, `format:check` | `biome format --write`, `biome format` |
-| Type checking | `typecheck` | `tsc --noEmit` |
-| Testing | `test`, `test:watch`, `test:coverage` | Bun (`library`, `tool`, `agent-skill`), Vitest (`forge-app`), both with a no-tests starter flag |
-| Build | `build` | `tsc` |
-| Clean | `clean` | `rm -rf dist` |
-| TODO lookup | `todo` | `git grep` on tracked files |
+| Slot          | Script(s)                             | Example implementations                                                                         |
+| ------------- | ------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| Linting       | `lint`, `lint:fix` (optional)         | `biome lint`, `forge lint`                                                                      |
+| Formatting    | `format`, `format:check`              | `biome format --write`, `biome format`                                                          |
+| Type checking | `typecheck`                           | `tsc --noEmit`                                                                                  |
+| Testing       | `test`, `test:watch`, `test:coverage` | Bun (`library`, `tool`, `agent-skill`), Vitest (`forge-app`), both with a no-tests starter flag |
+| Build         | `build`                               | `tsc`                                                                                           |
+| Clean         | `clean`                               | `rm -rf dist`                                                                                   |
+| TODO lookup   | `todo`                                | `git grep` on tracked files                                                                     |
 
 ## 7. Profiles
 
@@ -71,12 +70,12 @@ Profiles are defined in `src/composition/profiles.ts` as arrays of capabilities.
 
 ### 7.1 Initial profiles
 
-| Profile | Linting | Formatting | Type checking | Testing |
-|---|---|---|---|---|
-| `library` | biome | biome | tsc | bun test (with `--pass-with-no-tests`) |
-| `forge-app` | forge lint | biome | forge-pinned tsc | vitest (with `--passWithNoTests`) |
-| `tool` | biome | biome | tsc | bun test (with `--pass-with-no-tests`) |
-| `agent-skill` | biome | biome | tsc (no emit) | bun test (with `--pass-with-no-tests`) |
+| Profile       | Linting    | Formatting | Type checking    | Testing                                |
+| ------------- | ---------- | ---------- | ---------------- | -------------------------------------- |
+| `library`     | biome      | biome      | tsc              | bun test (with `--pass-with-no-tests`) |
+| `forge-app`   | forge lint | biome      | forge-pinned tsc | vitest (with `--passWithNoTests`)      |
+| `tool`        | biome      | biome      | tsc              | bun test (with `--pass-with-no-tests`) |
+| `agent-skill` | biome      | biome      | tsc (no emit)    | bun test (with `--pass-with-no-tests`) |
 
 ### 7.2 Future profiles
 
@@ -95,7 +94,6 @@ Detailed policies and substitutions belong to the owning capability's specificat
 ## 9. Repository initialization
 
 Top-level `init` composes these phases in order:
-
 1. Run scaffold steps to prepare fresh `forge create` output, or do nothing on an empty directory.
 2. Run every selected capability's `init` in profile order.
 3. Run every selected capability's `update` in profile order against the initialized repository.
@@ -106,7 +104,6 @@ Top-level `init` composes these phases in order:
 ## 10. Repository update and validation
 
 The former `sync` convergence engine is superseded by [ADR 0001](../docs/adr/0001-capability-verbs-by-intent.md). The canonical term is `update`.
-
 - Top-level `update` runs every selected capability's `update` in profile order against the supplied repository. The caller can review the resulting Git diff and commit it. Repeating an update with the same inputs and policy produces no changes.
 - Top-level `validate` independently runs every selected capability's `validate` against the same fully composed repository, reporting validated, skipped with a reason, or failed. It does not change repository contents or require prior initialization or update.
 - Neither `init` nor `update` automatically invokes validation for now. Any future automatic validation runs only after all mutation phases complete, since shared resources such as `package.json` and `manifest.yml` may be changed by several capabilities. Standalone validation remains available.
@@ -115,7 +112,6 @@ The former `sync` convergence engine is superseded by [ADR 0001](../docs/adr/000
 ## 11. Example-driven canonicalization
 
 Profiles may be derived from existing example repositories:
-
 1. Extract a `ProjectBlueprint` from each example repo.
 2. Canonicalize the set of blueprints into a profile (common scripts, dependencies, config files).
 3. Human reviews and curates the derived profile and its capability policies.
@@ -146,7 +142,6 @@ Dagger does **not** track persistent project state. State lives in Git and in th
 
 The [OKF parity decision register](03-okf-parity-open-questions.md) records
 unresolved differences from the OKF example without changing current policy.
-
 - How should the README reflect the chosen test runner and other capabilities? Currently the base README is static.
 - Should profile selection support a default based on project metadata, or only explicit selection?
 - Should `update` support selecting only certain capability slots?
@@ -158,7 +153,6 @@ unresolved differences from the OKF example without changing current policy.
 These ideas from the [`init-repo`](https://github.com/ibuchanan/init-repo) design
 (`specs/esa-repo-init-spec.md`) have no counterpart here yet. Each needs its own
 decision before it is specified.
-
 - **Prerequisite report (`doctor`).** Report missing host tools that generated
   projects still need outside Dagger (`forge`, `secretspec`, `gitleaks`, `git`)
   without installing them. `validate` checks repositories, not hosts.

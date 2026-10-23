@@ -4,7 +4,6 @@ Use this workflow in a repository initialized with the `library` profile and
 with a source entry matching its owner-managed tsdown configuration. Install its
 dependencies first. The checks require a working build, local checker binaries,
 npm, a POSIX shell, and writable temporary storage.
-
 1. Run source tests separately:
 
    ```sh

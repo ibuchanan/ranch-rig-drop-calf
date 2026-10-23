@@ -13,7 +13,6 @@ change from wiring a capability into the machinery or the machinery into a
 capability.
 
 The modules fall into three groups by role:
-
 - **Framework and shared machinery.** `capability.ts` (the contract),
   `project.ts` (blueprint and rendering seam), `templates.ts`,
   `package-json.ts` (contribution assembly), `tool-run.ts`, `versions.ts`, and
@@ -60,15 +59,14 @@ src/
 
 Allowed imports, enforced by review:
 
-| Subpackage | May import | Must not import |
-|---|---|---|
-| `core/` | other `core/` | `capabilities/`, `composition/`, `index.ts` |
-| `capabilities/` | `core/`, and `catalog.ts` readers | any other capability, `composition/` |
-| `composition/` | `core/`, all `capabilities/` | `index.ts` |
-| `index.ts` | `core/`, `composition/` | (nothing imports it) |
+| Subpackage      | May import                        | Must not import                             |
+| --------------- | --------------------------------- | ------------------------------------------- |
+| `core/`         | other `core/`                     | `capabilities/`, `composition/`, `index.ts` |
+| `capabilities/` | `core/`, and `catalog.ts` readers | any other capability, `composition/`        |
+| `composition/`  | `core/`, all `capabilities/`      | `index.ts`                                  |
+| `index.ts`      | `core/`, `composition/`           | (nothing imports it)                        |
 
 Two rules are explicit rather than incidental:
-
 - **`catalog.ts` is the one deliberate shared dependency between capabilities.**
   The functions specification already makes it the language-independent
   metadata source, read by `package-metadata`, `node`, and `oss`. Keeping it
@@ -103,7 +101,7 @@ and that asymmetry is worth a directory.
 
 A `capabilities/forge/` directory, or directories per capability slot
 (`test/`, `lint/`, `build/`), would reduce the flat list. Both mislead. Project
-kind is *data*: `PROFILES` selects capabilities, and the specifications are
+kind is _data_: `PROFILES` selects capabilities, and the specifications are
 explicit that kind membership is not baked into a capability. Slot folders
 would assert a taxonomy the profile table already owns, and would require a
 directory for each of roughly eleven slots holding about two files each.
