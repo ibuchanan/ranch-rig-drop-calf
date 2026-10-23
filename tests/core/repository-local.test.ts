@@ -1,11 +1,9 @@
-import { afterEach, expect, test } from "bun:test";
+import { expect, test } from "bun:test";
 import {
   cpSync,
   existsSync,
   mkdirSync,
-  mkdtempSync,
   readFileSync,
-  rmSync,
   writeFileSync,
 } from "node:fs";
 import { join } from "node:path";
@@ -18,31 +16,17 @@ import {
   finishRepository,
   git,
   prepareRepository,
-  type RepositoryOptions,
 } from "../../src/core/repository-git.ts";
+import { repositoryWorkspaces } from "../support/repository-fixtures.ts";
 
-const roots: string[] = [];
-afterEach(() => {
-  for (const root of roots.splice(0))
-    rmSync(root, { recursive: true, force: true });
-});
+const workspace = repositoryWorkspaces();
 function fixture() {
-  mkdirSync(join(import.meta.dir, "../../.scratch"), { recursive: true });
-  const root = mkdtempSync(
-    join(import.meta.dir, "../../.scratch/tmp_rovo_delivery_"),
-  );
-  roots.push(root);
+  const { root, options } = workspace();
   const source = join(root, "source"),
     isolated = join(root, "isolated"),
     tree = join(root, "tree"),
     output = join(root, "output");
   for (const path of [source, isolated, tree]) mkdirSync(path);
-  const options: RepositoryOptions = {
-    operation: "init",
-    branch: "main",
-    authorName: "Test",
-    authorEmail: "test@example.com",
-  };
   return { root, source, isolated, tree, output, options };
 }
 

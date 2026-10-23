@@ -1,5 +1,5 @@
-import { afterEach, expect, test } from "bun:test";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { expect, test } from "bun:test";
+import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import {
   finishRepository,
@@ -7,32 +7,18 @@ import {
   INIT_COMMIT,
   INITIAL_COMMIT,
   prepareRepository,
-  type RepositoryOptions,
   type RepositoryResult,
 } from "../../src/core/repository-git.ts";
+import { repositoryWorkspaces } from "../support/repository-fixtures.ts";
 
-const roots: string[] = [];
-afterEach(() => {
-  for (const root of roots.splice(0))
-    rmSync(root, { recursive: true, force: true });
-});
-function fixture(operation: "init" | "update" = "init") {
-  mkdirSync(join(import.meta.dir, "../../.scratch"), { recursive: true });
-  const root = mkdtempSync(
-    join(import.meta.dir, "../../.scratch/tmp_rovo_git_"),
-  );
-  roots.push(root);
+const workspace = repositoryWorkspaces();
+function fixture() {
+  const { root, options } = workspace();
   const repo = join(root, "repo"),
     tree = join(root, "tree"),
     output = join(root, "output");
   mkdirSync(repo);
   mkdirSync(tree);
-  const options: RepositoryOptions = {
-    operation,
-    branch: "main",
-    authorName: "Test",
-    authorEmail: "test@example.com",
-  };
   return { root, repo, tree, output, options };
 }
 
