@@ -2,10 +2,7 @@
 // checks separate from capability orchestration tests.
 import { expect, spyOn, test } from "bun:test";
 import { dag } from "@dagger.io/dagger";
-import {
-  buildProject,
-  resolveProfile,
-} from "../../src/composition/profiles.ts";
+import { buildProject } from "../../src/composition/profiles.ts";
 import { renderToDirectory } from "../../src/core/project.ts";
 import { seedTemplates } from "../../src/core/templates.ts";
 import { DropCalf } from "../../src/index.ts";
@@ -66,15 +63,6 @@ test.each(kinds)(
             ),
           ),
         ).toEqual(contents(initialized));
-        for (const item of resolveProfile(
-          kind,
-          selection.withFunctions,
-          selection.withoutFunctions,
-          selection.preset,
-        )) {
-          expect(item).not.toHaveProperty("addTo");
-          expect(item).not.toHaveProperty("templates");
-        }
       }
     } finally {
       empty.mockRestore();

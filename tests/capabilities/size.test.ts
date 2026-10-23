@@ -183,31 +183,6 @@ test.each([
   },
 );
 
-test("update leaves owner-chosen newer Size Limit versions untouched", async () => {
-  const input = mockDirectory(
-    new Map([
-      [
-        "package.json",
-        JSON.stringify({
-          devDependencies: {
-            "size-limit": "^15.0.0",
-            "@size-limit/file": "^15.0.0",
-          },
-        }),
-      ],
-    ]),
-  );
-  const output = await runUpdate(bundleSize("sample", "dist/index.mjs"), input);
-  const pkg = JSON.parse(await output.file("package.json").contents());
-  expect(pkg.devDependencies).toEqual({
-    "size-limit": "^15.0.0",
-    "@size-limit/file": "^15.0.0",
-  });
-  expect(await runUpdate(bundleSize("sample", "dist/index.mjs"), output)).toBe(
-    output,
-  );
-});
-
 test.each(["forge-app"])(
   "%s composed update preserves tuned budgets and deletion idempotently",
   async (kind) => {

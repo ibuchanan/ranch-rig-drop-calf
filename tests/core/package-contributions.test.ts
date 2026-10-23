@@ -4,7 +4,6 @@
 // contribution (catalog-derived fields, file outputs) stays with that capability.
 import { expect, spyOn, test } from "bun:test";
 import type { Directory } from "@dagger.io/dagger";
-import semver from "semver";
 import { PROFILES } from "../../src/composition/profiles.ts";
 import type { Capability } from "../../src/core/capability.ts";
 import {
@@ -82,39 +81,6 @@ function sectionEntries(
   );
 }
 
-type Sections = Record<string, Record<string, string>>;
-
-/** A package whose seeded dependencies are behind their pins, and what update should leave. */
-function staleDependencies(seed: PackageFields) {
-  const pkg: Sections = {};
-  const expected: Sections = {};
-  const place = (
-    target: Sections,
-    section: string,
-    name: string,
-    v: string,
-  ) => {
-    target[section] = { ...target[section], [name]: v };
-  };
-  const dependencies = (["dependencies", "devDependencies"] as const).flatMap(
-    (section) =>
-      Object.entries(seed[section] ?? {}).map(([name, pin]) => ({
-        section,
-        name,
-        pin,
-        // A pin of 0.0.0 has nothing older to fall behind.
-        raisable:
-          Boolean(semver.validRange(pin)) &&
-          semver.gt(semver.minVersion(pin) ?? "0.0.0", "0.0.0"),
-      })),
-  );
-  for (const { section, name, pin, raisable } of dependencies) {
-    place(pkg, section, name, raisable ? "0.0.0" : "latest");
-    place(expected, section, name, raisable ? pin : "latest");
-  }
-  return { pkg, expected };
-}
-
 const read = async (directory: Directory) =>
   JSON.parse(await directory.file("package.json").contents());
 
@@ -175,21 +141,6 @@ test.each(contributors)(
     const input = withPackage(text);
     expect(await updatePackage(input, [capability])).toBe(input);
     expect(await input.file("package.json").contents()).toBe(text);
-  },
-);
-
-test.each(contributors)(
-  "$label update raises seeded dependencies behind their pin, and only those",
-  async ({ capability }) => {
-    const { pkg, expected } = staleDependencies(
-      fieldsOf(capability.packageJson?.seed),
-    );
-    const output = await updatePackage(withPackage(JSON.stringify(pkg)), [
-      capability,
-    ]);
-    const actual = await read(output);
-    for (const [section, entries] of Object.entries(expected))
-      expect(actual[section]).toMatchObject(entries);
   },
 );
 

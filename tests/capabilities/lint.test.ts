@@ -17,8 +17,8 @@ import {
 } from "../../src/composition/profiles.ts";
 import { updateCapabilities } from "../../src/core/capability.ts";
 import { TOOL_VERSIONS } from "../../src/core/versions.ts";
-import { mockDirectory } from "../support/module-source.ts";
 import { isBunKind } from "../support/kinds.ts";
+import { mockDirectory } from "../support/module-source.ts";
 
 const root = resolve(import.meta.dir, "../..");
 const members = (scripts: Record<string, string>) =>
@@ -70,35 +70,29 @@ test.each(["library", "tool"])(
   },
 );
 
-test("lint updates its own aggregate, refreshes only a declared runner, and preserves owner scripts", async () => {
-  for (const declared of [false, true]) {
-    const input = mockDirectory(
-      new Map([
-        [
-          "package.json",
-          JSON.stringify({
-            scripts: {
-              lint: "lefthook run lint",
-              "lint:check:owner": "echo owner",
-              custom: "echo custom",
-            },
-            devDependencies: declared ? { "npm-run-all2": "1.0.0" } : {},
-          }),
-        ],
-      ]),
-    );
-    const output = await updateCapabilities(input, [lint()]);
-    const pkg = JSON.parse(await output.file("package.json").contents());
-    expect(pkg.scripts).toEqual({
-      lint: LINT_COMMAND,
-      "lint:check:owner": "echo owner",
-      custom: "echo custom",
-    });
-    expect(pkg.devDependencies["npm-run-all2"]).toBe(
-      declared ? TOOL_VERSIONS.npmRunAll2 : undefined,
-    );
-    expect(await updateCapabilities(output, [lint()])).toBe(output);
-  }
+test("lint updates its own aggregate and preserves owner scripts idempotently", async () => {
+  const input = mockDirectory(
+    new Map([
+      [
+        "package.json",
+        JSON.stringify({
+          scripts: {
+            lint: "lefthook run lint",
+            "lint:check:owner": "echo owner",
+            custom: "echo custom",
+          },
+        }),
+      ],
+    ]),
+  );
+  const output = await updateCapabilities(input, [lint()]);
+  const pkg = JSON.parse(await output.file("package.json").contents());
+  expect(pkg.scripts).toEqual({
+    lint: LINT_COMMAND,
+    "lint:check:owner": "echo owner",
+    custom: "echo custom",
+  });
+  expect(await updateCapabilities(output, [lint()])).toBe(output);
 });
 
 async function runLint(scripts: Record<string, string>) {

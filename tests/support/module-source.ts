@@ -119,36 +119,15 @@ export function mockModuleSource(
         path === PINNED_GITIGNORE ? gitignore : templates.get(path),
     }),
   };
-  const tree = (
-    files: ReadonlyMap<string, string>,
-    permissions = new Map<string, number>(),
-  ) => ({
-    files,
-    permissions,
-    withoutFile: (path: string) =>
-      tree(
-        new Map([...files].filter(([name]) => name !== path)),
-        new Map([...permissions].filter(([name]) => name !== path)),
-      ),
-    glob: async () => [...files.keys()],
-    exists: async (path: string) => files.has(path),
-    stat: (path: string) => ({
-      permissions: async () => permissions.get(path) ?? 0o644,
-    }),
-    file: (path: string) => ({
-      text: files.get(path),
-      contents: async () => files.get(path),
-    }),
-  });
-  const trees = new Map<string, ReturnType<typeof tree>>([
-    [AIDEV_TEMPLATE, tree(aidevTemplates())],
-    [LIBRARY_AIDEV_TEMPLATE, tree(aidevTemplates("library"))],
-    [AGENT_SKILL_AIDEV_TEMPLATE, tree(aidevTemplates("agent-skill"))],
-    [CATALOG_TEMPLATE, tree(catalogTemplates())],
-    ["templates/docs", tree(docs)],
+  const trees = new Map<string, ReturnType<typeof mockDirectory>>([
+    [AIDEV_TEMPLATE, mockDirectory(aidevTemplates())],
+    [LIBRARY_AIDEV_TEMPLATE, mockDirectory(aidevTemplates("library"))],
+    [AGENT_SKILL_AIDEV_TEMPLATE, mockDirectory(aidevTemplates("agent-skill"))],
+    [CATALOG_TEMPLATE, mockDirectory(catalogTemplates())],
+    ["templates/docs", mockDirectory(docs)],
     [
       BUN_TEMPLATE,
-      tree(
+      mockDirectory(
         new Map([
           [
             "bunfig.toml",
@@ -160,19 +139,19 @@ export function mockModuleSource(
         ]),
       ),
     ],
-    [TYPESCRIPT_TEMPLATE, tree(typeScript)],
-    [TYPESCRIPT_BUN_TEMPLATE, tree(typescriptBunTemplates())],
-    [SKILL_STARTER_TEMPLATE, tree(skillStarterTemplates())],
-    [BIOME_TEMPLATE, tree(biome)],
-    [FALLOW_TEMPLATE, tree(fallowTemplates())],
-    [CHANGELOG_TEMPLATE, tree(changelog)],
-    [GIT_HOOKS_TEMPLATE, tree(gitHooks)],
-    [SECRETS_TEMPLATE, tree(secrets)],
-    ["templates/vitest", tree(vitestTemplates())],
-    ["templates/library-build", tree(libraryBuildTemplates())],
-    ["templates/package-check", tree(packageCheckTemplates())],
-    ["templates/release", tree(releaseTemplates())],
-    [EVALS_TEMPLATE, tree(promptfooTemplates())],
+    [TYPESCRIPT_TEMPLATE, mockDirectory(typeScript)],
+    [TYPESCRIPT_BUN_TEMPLATE, mockDirectory(typescriptBunTemplates())],
+    [SKILL_STARTER_TEMPLATE, mockDirectory(skillStarterTemplates())],
+    [BIOME_TEMPLATE, mockDirectory(biome)],
+    [FALLOW_TEMPLATE, mockDirectory(fallowTemplates())],
+    [CHANGELOG_TEMPLATE, mockDirectory(changelog)],
+    [GIT_HOOKS_TEMPLATE, mockDirectory(gitHooks)],
+    [SECRETS_TEMPLATE, mockDirectory(secrets)],
+    ["templates/vitest", mockDirectory(vitestTemplates())],
+    ["templates/library-build", mockDirectory(libraryBuildTemplates())],
+    ["templates/package-check", mockDirectory(packageCheckTemplates())],
+    ["templates/release", mockDirectory(releaseTemplates())],
+    [EVALS_TEMPLATE, mockDirectory(promptfooTemplates())],
   ]);
   const container = mockContainer();
   const module = spyOn(dag, "currentModule").mockReturnValue({
