@@ -175,16 +175,14 @@ const KIND_EXPECTATIONS: Record<string, KindExpectations> = {
     devDependencies: {
       "@ast-grep/cli": TOOL_VERSIONS.astGrep,
       "@forge-ahead/prelint": TOOL_VERSIONS.forgePrelint,
+      "fence-rider": TOOL_VERSIONS.fenceRider,
     },
     scripts: { ...PRELINT_SCRIPTS, clean: "rm -rf dist" },
     typescript: typescriptTemplates,
     templates: (preset) => [vitestTemplates(), ...whenPresetAll(preset)],
     extraFiles: ["AGENTS.md", ...SECRETS_ASSETS],
     readFromOutput: [],
-    fileModes: {
-      "scripts/env-var.sh": 0o755,
-      "scripts/forge-vars-from-secretspec.js": 0o755,
-    },
+    fileModes: {},
     contains: [["secretspec.toml", 'name = "sample"']],
     excludes: [["secretspec.toml", "[project-name]"]],
   },

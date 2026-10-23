@@ -159,7 +159,7 @@ Missing files or prerequisites can also cause a validator to skip or fail.
 | `forge-app`, `agent-skill` | `package-metadata` | Required | [npm-package-json-lint](https://www.npmjs.com/package/npm-package-json-lint) — Checks package metadata field types and formats with explicit structural rules.<br>[npm](https://docs.npmjs.com/cli/) — Reference for package.json schema and metadata format | **No-op:** Package metadata owns no files; its package.json contribution seeds version 0.1.0, type module, and private true; initialization supplies the initial package name. | Derive name/description/author from catalog; enforce type module and private true, preserving release version. | Check metadata field types/formats with explicit structural rules, not policy compliance. |
 | `forge-app` | `node` | Required | [fnm (Fast Node Manager)](https://github.com/Schniz/fnm) — Selects and, when needed, installs the Node version requested by .nvmrc.<br>[Node.js](https://nodejs.org/) — Reference for Node.js versions and TypeScript type definitions | Seed Node 24 .nvmrc, public-registry .npmrc, and @types/node; no engines declaration. | Replace .nvmrc/.npmrc, derive package license from catalog, and remove engines; keep @types/node fresh. | Use fnm to select .nvmrc (may download Node); no baseline, type-version, or deployment check. |
 | `forge-app` | `forge-manifest` | Required | [Forge CLI](https://developer.atlassian.com/platform/forge/cli-reference/) — Lints Forge manifests and app source against platform requirements. | **No-op:** The Forge manifest is supplied by forge create or the owner; Drop Calf does not seed app identity or module wiring. | Derive app.runtime.name from numeric .nvmrc in an existing manifest; preserve other settings. | Run pinned forge lint, including source checks, with supplied dependencies and explicit Forge credentials; no fixes or deployment. |
-| `forge-app` | `secrets` | Required | [SecretSpec](https://secretspec.dev) — Manages environment variable injection and secret validation for Forge CLI commands<br>[Atlassian Forge CLI](https://developer.atlassian.com/platform/forge/cli-reference/) — Reference for forge register, deploy, install, and upgrade command syntax | Seed owner SecretSpec declarations and app-variable allowlist, executable helpers, and six Forge dispatch scripts. | Enforce helper contents/modes; preserve declarations/allowlist, rejecting unmigrated embedded keys. | Parse TOML and allowlist, check helper presence and executable modes; no secret resolution or Forge execution. |
+| `forge-app` | `secrets` | Required | [Fence Rider](https://github.com/ibuchanan/ranch-rig-fence-rider) — Wraps the Forge CLI so each workflow runs with values resolved from secretspec.toml and uploads runtime variables encrypted<br>[SecretSpec](https://secretspec.dev) — Declares local, manifest and runtime variables once and resolves them from each developer's chosen provider<br>[Atlassian Forge CLI](https://developer.atlassian.com/platform/forge/cli-reference/) — Reference for forge register, deploy, install, and upgrade command syntax | Seed owner SecretSpec declarations and the six forge:* scripts that delegate to Fence Rider. | **No-op:** Secrets owns only owner declarations; its package.json contribution enforces the forge:* scripts, and the Fence Rider GitHub reference is owner-managed. | Parse TOML, check the default profile and that scope members are declared; no secret resolution or Forge execution. |
 | `forge-app` | `prelint` | Required | [ast-grep](https://ast-grep.github.io/) — AST-based pattern scanner for semantic code analysis and linting<br>[@forge-ahead/prelint](https://github.com/ibuchanan/tool-forge-prelint-ast-grep) — Forge app linting rules for manifest, module wiring, and handler patterns | **No-op:** Prelint has no repository-local configuration to seed; its rules ship in the dependency package, and its package.json contribution supplies the tool dependencies and scripts. | **No-op:** Prelint owns no files; its package.json contribution enforces the lint subtasks and keeps the seeded ast-grep dependency fresh; the @forge-ahead/prelint GitHub reference is owner-managed. | **No-op:** Prelint has no repository-local configuration to validate; its rules ship in the dependency package. Source scanning belongs to the lint workflow. |
 | `forge-app` | `test` | Required | [Vitest](https://vitest.dev/) — Runs Forge app tests with mocking and V8 coverage support. | Seed Vitest, matching V8 coverage, test/watch/coverage scripts, and vitest.config.ts; no sample tests. | **No-op:** Vitest configuration and test sources are owner-managed after init; its package.json contribution enforces the test scripts and keeps the seeded runner and coverage provider fresh. | Load Vitest config, discover test files, and initialize coverage configuration without executing tests. |
 | `forge-app` | `typescript` | Required | [TypeScript](https://www.typescriptlang.org/docs/) — Type-checks source and emits JavaScript or library declarations. | Seed TypeScript, typecheck/build scripts, and compiler configuration (declarations config only with tsdown). | Reconcile compiler configuration with policy selected by declared dependencies. | Run tsc --showConfig for applicable compiler configs, without compiling source or declarations. |
@@ -564,59 +564,42 @@ every kind, including `agent-skill`.
 
 ### `secrets`
 
-Forge-only SecretSpec workflow. Owner declarations are separate from maintained
-helper code. Secretspec and Gitleaks remain external prerequisites; the capability
-never installs them or injects secret values.
-- **init** overlays four assets from `templates/secretspec`: owner-managed
-  `secretspec.toml` and `forge-variable-keys.json`, plus the two maintained helpers
-  `scripts/env-var.sh` and `scripts/forge-vars-from-secretspec.js`. The TOML project
-  name is substituted with string escaping; the helpers are seeded executable
-  (`0755`). The JSON allowlist starts as `[]`. `FORGE_SITE` is required, with no
-  assumed site. Init is first-time setup, not create-if-absent maintenance: an
-  existing asset is replaced. The capability declares its seed step for TOML
-  name substitution and explicit executable permissions; generic assembly
-  executes the step without knowing either policy.
-- **update** preserves both owner files byte-for-byte, including permissions,
-  edits and deletions. It authoritatively replaces or restores both helpers with
-  template bytes and `0755` permissions. It maintains only six package scripts:
-  `forge:register`, `forge:deploy`, `forge:install`, `forge:uninstall`,
-  `forge:upgrade` and `forge:variables:set`; unrelated scripts (including custom
-  `forge:*` scripts), dependencies and package fields survive. No package is
-  invented if `package.json` is absent. Non-interactive and scope-confirmation
-  flags remain only on commands that support them (deploy, install and upgrade;
-  confirmation is install/upgrade only).
-- **migration safety**: before any tooling write, update statically inspects a
-  legacy push helper. A nonempty, computed or mutated `APP_VARIABLE_KEYS` blocks
-  update with instructions to move its keys into `forge-variable-keys.json` and
-  remove the embedded declaration/references. Owner JavaScript is never run.
-  An unmodified empty legacy list can be replaced. Update does not invent the
-  owner JSON; an older repository must supply `[]` or its migrated keys before
-  the new workflow is used.
-- **validate** checks local structure, not baseline policy: TOML syntax (including
-  duplicate keys), a nonempty project name, revision `1.0`, a default-profile
-  table, declaration tables, optional description/default string types and
-  boolean or named-group-array requirements. Profile defaults and other
-  extension fields are not exhaustively schema-checked. The JSON must be an
-  array of unique environment-variable names; `FORGE_*` CLI-targeting keys are
-  not app variables. Every listed key must be declared locally in
-  `profiles.default`; inherited declarations are not resolved. Both helper
-  files must exist and have at least one execute bit (not necessarily `0755`).
-  Missing TOML reports skipped; malformed/present incomplete workflows fail.
-  No canonical-script/template comparison, secret resolution, helper execution,
-  provider access or Forge mutation occurs. This is a local structural check,
-  not proof of full SecretSpec CLI acceptance, installed prerequisites, or
-  availability of values. Syntax diagnostics do not echo TOML source lines.
-
-`env-var.sh` runs commands through `secretspec --file … run --provider dotenv
---reason … --profile … --`, so variables expand after injection and reads have
-an audit reason. The push helper reads the JSON allowlist relative to its own
-repository root and explicitly selects the default profile and root TOML.
-An empty list does not invoke either external tool. Invalid or CLI-targeting
-keys fail before secret access. Only selected values and `FORGE_ENVIRONMENT`
-are captured from the injected environment; all selected values are checked
-before any push. Each push is encrypted, and output/error handling never prints
-values or child-process command details. Runtime secret delivery and CLI
-prerequisite checks belong on the developer machine or CI, not in validation.
+Forge-only SecretSpec workflow, delegated to
+[Fence Rider](https://github.com/ibuchanan/ranch-rig-fence-rider). Owner
+declarations stay in `secretspec.toml`; Fence Rider carries every helper. SecretSpec,
+the Forge CLI and Gitleaks remain external prerequisites; the capability never
+installs them or injects secret values.
+- **init** overlays one asset from `templates/secretspec`: owner-managed
+  `secretspec.toml`. The TOML project name is substituted with string escaping.
+  `FORGE_SITE` is required, with no assumed site; `FORGE_PRODUCT` and
+  `FORGE_ENVIRONMENT` have defaults. Runtime and manifest variables are declared in
+  the default profile and listed in `[scopes.runtime]` or `[scopes.manifest]`; the
+  template carries them as comments. Init is first-time setup: an existing asset is
+  replaced. The package contribution seeds the `fence-rider` dev dependency as a
+  GitHub reference from `pins/package.json`.
+- **update** has no file work. Its package contribution enforces six package
+  scripts that keep the `forge:*` names: `forge:register` (`forge register`),
+  `forge:deploy`, `forge:install`, `forge:uninstall`, `forge:upgrade` (each
+  `cmd=$(fence-rider … ) && sh -c "$cmd" sh`) and `forge:variables:set`
+  (`fence-rider variables`). Unrelated scripts (including custom `forge:*`
+  scripts), dependencies and package fields survive, and the GitHub reference is
+  owner-managed. Non-interactive and scope-confirmation flags are passed after `--`
+  only for commands that support them (deploy, install and upgrade; confirmation is
+  install/upgrade only).
+- **migration**: this is a clean break. Projects initialized with the earlier
+  helpers keep `scripts/env-var.sh`, `scripts/forge-vars-from-secretspec.js` and
+  `forge-variable-keys.json` until the owner removes them, moves the allowlisted keys
+  into `[scopes.runtime]` in `secretspec.toml` and runs `npm install`. Update never
+  deletes or reads them.
+- **validate** checks local structure: TOML syntax (including duplicate keys), a
+  nonempty project name, revision `1.0`, a default-profile table, declaration
+  tables, optional description/default string types and boolean or named-group-array
+  requirements. `scopes.runtime` and `scopes.manifest` members must be arrays of
+  names declared in `profiles.default`, and `FORGE_*` CLI-targeting keys are not
+  allowed in the runtime scope. Inherited declarations are not resolved. Missing
+  TOML reports skipped. No secret resolution, Fence Rider execution, provider
+  access or Forge mutation occurs; `fence-rider doctor` covers installed tools and
+  resolution. Syntax diagnostics do not echo TOML source lines.
 
 ### `format`
 

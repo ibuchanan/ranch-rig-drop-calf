@@ -37,8 +37,8 @@ Drop Calf project kind. Until a question is decided, the current behavior in
 ### 14 — Forge custom scopes before deployment
 
 - **Current state:** The OKF example creates custom scopes from
-  `custom-scopes.yaml` before deploy. Drop Calf's `forge:deploy` runs through the
-  SecretSpec helper without that step; `forge-manifest` does not seed module
+  `custom-scopes.yaml` before deploy. Drop Calf's `forge:deploy` runs through
+  Fence Rider without that step; `forge-manifest` does not seed module
   wiring.
 - **Question:** Should projects needing custom scopes opt in, should a manifest
   trigger the behavior, or should owners manage it themselves? If supported,

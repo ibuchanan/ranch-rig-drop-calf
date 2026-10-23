@@ -15,10 +15,7 @@ import { FALLOW_TEMPLATE } from "../../src/capabilities/fallow.ts";
 import { GIT_HOOKS_TEMPLATE } from "../../src/capabilities/git-hooks.ts";
 import { PINNED_GITIGNORE } from "../../src/capabilities/gitignore.ts";
 import { OSS_ASSETS } from "../../src/capabilities/oss.ts";
-import {
-  SECRETS_EXECUTABLES,
-  SECRETS_TEMPLATE,
-} from "../../src/capabilities/secrets.ts";
+import { SECRETS_TEMPLATE } from "../../src/capabilities/secrets.ts";
 import {
   TYPESCRIPT_BUN_TEMPLATE,
   TYPESCRIPT_TEMPLATE,
@@ -143,9 +140,6 @@ export function mockModuleSource(
       contents: async () => files.get(path),
     }),
   });
-  const secretsPermissions = new Map(
-    SECRETS_EXECUTABLES.map((path) => [path, 0o755]),
-  );
   const trees = new Map<string, ReturnType<typeof tree>>([
     [AIDEV_TEMPLATE, tree(aidevTemplates())],
     [LIBRARY_AIDEV_TEMPLATE, tree(aidevTemplates("library"))],
@@ -173,7 +167,7 @@ export function mockModuleSource(
     [FALLOW_TEMPLATE, tree(fallowTemplates())],
     [CHANGELOG_TEMPLATE, tree(changelog)],
     [GIT_HOOKS_TEMPLATE, tree(gitHooks)],
-    [SECRETS_TEMPLATE, tree(secrets, secretsPermissions)],
+    [SECRETS_TEMPLATE, tree(secrets)],
     ["templates/vitest", tree(vitestTemplates())],
     ["templates/library-build", tree(libraryBuildTemplates())],
     ["templates/package-check", tree(packageCheckTemplates())],

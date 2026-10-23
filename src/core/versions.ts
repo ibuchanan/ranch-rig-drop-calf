@@ -26,6 +26,7 @@ export const TOOL_VERSIONS = {
   agentSkillsToolkit: pin["agent-skills-toolkit"],
   forgePrelint: pin["@forge-ahead/prelint"],
   fallow: pin.fallow,
+  fenceRider: pin["fence-rider"],
   forgeAheadApiTypes: pin["@forge-ahead/atlassian-api-types"],
   forgeAheadErrors: pin["@forge-ahead/errors"],
   forgeAheadLogging: pin["@forge-ahead/logging"],

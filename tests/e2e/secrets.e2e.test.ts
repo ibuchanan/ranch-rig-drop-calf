@@ -1,23 +1,19 @@
 import { expect, test } from "bun:test";
 import { execFileSync } from "node:child_process";
 import {
-  chmodSync,
+  existsSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
   rmSync,
-  statSync,
   writeFileSync,
 } from "node:fs";
 import { join } from "node:path";
-import {
-  FORGE_SECRETS_SCRIPTS,
-  SECRETS_EXECUTABLES,
-} from "../../src/capabilities/secrets.ts";
+import { FORGE_SECRETS_SCRIPTS } from "../../src/capabilities/secrets.ts";
 
 const repo = join(import.meta.dir, "../..");
 
-test("Dagger secrets seed, owner edits, executable validation and idempotent update", () => {
+test("Dagger secrets seed, owner edits, validation and idempotent update", () => {
   mkdirSync(join(repo, ".scratch"), { recursive: true });
   const root = mkdtempSync(join(repo, ".scratch/tmp_rovo_secrets_e2e_"));
   const call = (...args: string[]) =>
@@ -48,10 +44,10 @@ test("Dagger secrets seed, owner edits, executable validation and idempotent upd
       "--path",
       seed,
     );
-    const config = `${readFileSync(join(seed, "secretspec.toml"), "utf8")}API_TOKEN = { required = true }\n`;
-    const keys = '["API_TOKEN"]\n';
+    expect(existsSync(join(seed, "scripts/env-var.sh"))).toBe(false);
+    expect(existsSync(join(seed, "forge-variable-keys.json"))).toBe(false);
+    const config = `${readFileSync(join(seed, "secretspec.toml"), "utf8")}API_TOKEN = { required = true }\n[scopes.runtime]\nsecrets = ["API_TOKEN"]\n`;
     writeFileSync(join(seed, "secretspec.toml"), config);
-    writeFileSync(join(seed, "forge-variable-keys.json"), keys);
     const validate = () =>
       JSON.parse(
         call("validate", "--directory", seed, "--profile", "forge-app"),
@@ -60,11 +56,15 @@ test("Dagger secrets seed, owner edits, executable validation and idempotent upd
       capability: "secrets",
       status: "validated",
     });
-    chmodSync(join(seed, SECRETS_EXECUTABLES[0]), 0o644);
+    writeFileSync(
+      join(seed, "secretspec.toml"),
+      `${config}[scopes.manifest]\nsecrets = ["MISSING"]\n`,
+    );
     expect(validate()).toMatchObject({
       status: "failed",
-      reason: `${SECRETS_EXECUTABLES[0]} is not executable`,
+      reason: expect.stringContaining("not declared"),
     });
+    writeFileSync(join(seed, "secretspec.toml"), config);
     writeFileSync(
       join(seed, "package.json"),
       '{"scripts":{"forge:deploy":"old","custom":"keep"}}\n',
@@ -94,11 +94,6 @@ test("Dagger secrets seed, owner edits, executable validation and idempotent upd
       expect(readFileSync(join(directory, "secretspec.toml"), "utf8")).toBe(
         config,
       );
-      expect(
-        readFileSync(join(directory, "forge-variable-keys.json"), "utf8"),
-      ).toBe(keys);
-      for (const path of SECRETS_EXECUTABLES)
-        expect(statSync(join(directory, path)).mode & 0o777).toBe(0o755);
       expect(
         JSON.parse(readFileSync(join(directory, "package.json"), "utf8"))
           .scripts,

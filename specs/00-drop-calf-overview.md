@@ -168,7 +168,8 @@ decision before it is specified.
   projects at a path (workspaces, Turbo); see
   [`01-project-kinds.md`](01-project-kinds.md#6-future-kinds).
 - **Additional scripts.** `dev` (watch), `generate`/`generate:rovo`, and
-  `forge:variables:set-encrypted` from the `init-repo` script table.
+  a separate encrypted-variables script from the `init-repo` script table;
+  `forge:variables:set` already uploads encrypted through Fence Rider.
 - **Error classes.** `PrerequisiteError` and `ValidationError` alongside
   `ParseError` and `InvalidOptionsError`.
 

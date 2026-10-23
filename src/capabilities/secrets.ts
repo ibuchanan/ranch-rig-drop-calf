@@ -1,22 +1,13 @@
-import { type Directory, dag } from "@dagger.io/dagger";
+import type { Directory } from "@dagger.io/dagger";
 import { parse as parseToml } from "smol-toml";
-import ts from "typescript";
-import type { Capability, Validation } from "../core/capability.ts";
-import { ensureFile } from "../core/files.ts";
+import { type Capability, noOp, type Validation } from "../core/capability.ts";
 import { templateTree } from "../core/templates.ts";
+import { TOOL_VERSIONS } from "../core/versions.ts";
 
-/** Owner declarations are init-only; helpers and the six dispatch scripts track policy. */
+/** The owner's declarations are init-only; Fence Rider carries every helper. */
 export const SECRETS_TEMPLATE = "templates/secretspec";
-export const FORGE_VARIABLE_KEYS = "forge-variable-keys.json";
-export const SECRETS_EXECUTABLES = [
-  "scripts/env-var.sh",
-  "scripts/forge-vars-from-secretspec.js",
-] as const;
-export const SECRETS_ASSETS = [
-  "secretspec.toml",
-  FORGE_VARIABLE_KEYS,
-  ...SECRETS_EXECUTABLES,
-] as const;
+export const SECRETS_ASSETS = ["secretspec.toml"] as const;
+export const FENCE_RIDER_PACKAGE = "fence-rider";
 
 export function transformSecretsTemplate(
   path: string,
@@ -28,7 +19,7 @@ export function transformSecretsTemplate(
   return contents.replaceAll('"[project-name]"', JSON.stringify(name));
 }
 
-/** This seeding boundary handles TOML name substitution and explicit helper modes. */
+/** This seeding boundary handles TOML name substitution. */
 export async function copySecretsAssets(
   destination: Directory,
   source: Directory,
@@ -36,150 +27,34 @@ export async function copySecretsAssets(
   paths: readonly string[] = SECRETS_ASSETS,
 ): Promise<Directory> {
   let result = destination;
-  for (const path of paths) {
+  for (const path of paths)
     result = result.withNewFile(
       path,
       transformSecretsTemplate(path, await source.file(path).contents(), name),
-      SECRETS_EXECUTABLES.includes(path as (typeof SECRETS_EXECUTABLES)[number])
-        ? { permissions: 0o755 }
-        : {},
     );
-  }
   return result;
 }
 
-/** Variables expand in the inner shell, after SecretSpec injects them. */
-function throughEnvVar(command: string): string {
-  return `bash scripts/env-var.sh '${command}'`;
+/** Fence Rider prints a script that runs Forge with resolved values; `sh -c` runs it only if printing succeeded. */
+function throughFenceRider(command: string, forgeArgs = ""): string {
+  const args = forgeArgs ? ` -- ${forgeArgs}` : "";
+  return `cmd=$(fence-rider ${command}${args}) && sh -c "$cmd" sh`;
 }
 
 export const FORGE_SECRETS_SCRIPTS = {
-  "forge:register": throughEnvVar("forge register"),
-  "forge:deploy": throughEnvVar(
-    'forge deploy --non-interactive --environment "$FORGE_ENVIRONMENT"',
+  "forge:register": "forge register",
+  "forge:deploy": throughFenceRider("deploy", "--non-interactive"),
+  "forge:install": throughFenceRider(
+    "install",
+    "--confirm-scopes --non-interactive",
   ),
-  "forge:install": throughEnvVar(
-    'forge install --non-interactive --confirm-scopes --site "$FORGE_SITE" --product "$FORGE_PRODUCT" --environment "$FORGE_ENVIRONMENT"',
+  "forge:uninstall": throughFenceRider("uninstall"),
+  "forge:upgrade": throughFenceRider(
+    "install",
+    "--upgrade --confirm-scopes --non-interactive",
   ),
-  "forge:uninstall": throughEnvVar(
-    'forge uninstall --site "$FORGE_SITE" --product "$FORGE_PRODUCT" --environment "$FORGE_ENVIRONMENT"',
-  ),
-  "forge:upgrade": throughEnvVar(
-    'forge install --upgrade --non-interactive --confirm-scopes --site "$FORGE_SITE" --product "$FORGE_PRODUCT" --environment "$FORGE_ENVIRONMENT"',
-  ),
-  "forge:variables:set": "node scripts/forge-vars-from-secretspec.js",
+  "forge:variables:set": "fence-rider variables",
 } as const;
-
-/** Every identifier in `source` spelled `name`. */
-function identifiersNamed(
-  source: ts.SourceFile,
-  name: string,
-): ts.Identifier[] {
-  const found: ts.Identifier[] = [];
-  const visit = (node: ts.Node): void => {
-    if (ts.isIdentifier(node) && node.text === name) found.push(node);
-    ts.forEachChild(node, visit);
-  };
-  visit(source);
-  return found;
-}
-
-/** `const APP_VARIABLE_KEYS = [];` */
-function isEmptyDeclaration(name: ts.Identifier): boolean {
-  const { parent } = name;
-  return (
-    ts.isVariableDeclaration(parent) &&
-    parent.name === name &&
-    parent.initializer !== undefined &&
-    ts.isArrayLiteralExpression(parent.initializer) &&
-    parent.initializer.elements.length === 0
-  );
-}
-
-/** `APP_VARIABLE_KEYS.length === ...` */
-function isLengthComparison(name: ts.Identifier): boolean {
-  const { parent } = name;
-  return (
-    ts.isPropertyAccessExpression(parent) &&
-    parent.expression === name &&
-    parent.name.text === "length" &&
-    ts.isBinaryExpression(parent.parent) &&
-    parent.parent.left === parent &&
-    parent.parent.operatorToken.kind === ts.SyntaxKind.EqualsEqualsEqualsToken
-  );
-}
-
-/** `for (... of APP_VARIABLE_KEYS)` */
-function isIteration(name: ts.Identifier): boolean {
-  return ts.isForOfStatement(name.parent) && name.parent.expression === name;
-}
-
-/** Uses of the legacy allowlist that cannot carry owner keys; any other use might. */
-const HARMLESS_ALLOWLIST_USES = [
-  isEmptyDeclaration,
-  isLengthComparison,
-  isIteration,
-];
-
-/** Never execute owner JavaScript to discover whether its legacy allowlist is empty. */
-function guardLegacyAllowlist(contents: string): void {
-  const source = ts.createSourceFile(
-    "helper.js",
-    contents,
-    ts.ScriptTarget.Latest,
-    true,
-    ts.ScriptKind.JS,
-  );
-  const unsafe = identifiersNamed(source, "APP_VARIABLE_KEYS").some(
-    (name) => !HARMLESS_ALLOWLIST_USES.some((harmless) => harmless(name)),
-  );
-  if (unsafe)
-    throw new Error(
-      `secrets: legacy APP_VARIABLE_KEYS in scripts/forge-vars-from-secretspec.js may contain owner keys. Move the keys to ${FORGE_VARIABLE_KEYS} and remove the embedded APP_VARIABLE_KEYS declaration and references before update.`,
-    );
-}
-
-/** Apply tooling policy without creating, parsing, or rewriting owner declarations. */
-async function updateSecrets(directory: Directory): Promise<Directory> {
-  const helper = SECRETS_EXECUTABLES[1];
-  if (await directory.exists(helper))
-    guardLegacyAllowlist(await directory.file(helper).contents());
-  const source = dag.currentModule().source().directory(SECRETS_TEMPLATE);
-  let result = directory;
-  for (const path of SECRETS_EXECUTABLES) {
-    result = await ensureFile(
-      result,
-      path,
-      await source.file(path).contents(),
-      { permissions: 0o755 },
-    );
-  }
-  return result;
-}
-
-function parseForgeVariableKeys(contents: string): string[] {
-  let keys: unknown;
-  try {
-    keys = JSON.parse(contents);
-  } catch {
-    throw new Error(`${FORGE_VARIABLE_KEYS}: invalid JSON`);
-  }
-  if (
-    !Array.isArray(keys) ||
-    keys.some(
-      (key) => typeof key !== "string" || !/^[A-Za-z_][A-Za-z0-9_]*$/.test(key),
-    ) ||
-    new Set(keys).size !== keys.length
-  )
-    throw new Error(
-      `${FORGE_VARIABLE_KEYS}: expected an array of unique environment-variable names`,
-    );
-  if (keys.some((key) => key.startsWith("FORGE_")))
-    throw new Error(
-      `${FORGE_VARIABLE_KEYS}: FORGE_* keys target the CLI and must not be pushed as app variables`,
-    );
-  return keys;
-}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === "object" && !Array.isArray(value);
@@ -226,11 +101,11 @@ function checkDeclaration(
     throw new Error(`secretspec.toml: ${path}.default must be a string`);
 }
 
-/** Returns the default profile, which the helpers resolve allowlisted keys from. */
+/** Returns the default profile, which Fence Rider resolves. */
 function checkProfiles(profiles: unknown): Record<string, unknown> {
   if (!isRecord(profiles) || !isRecord(profiles.default))
     throw new Error(
-      "secretspec.toml: profiles.default must be a table for the helpers' default profile",
+      "secretspec.toml: profiles.default must be a table for Fence Rider's default profile",
     );
   for (const [name, profile] of Object.entries(profiles)) {
     if (!isRecord(profile))
@@ -246,36 +121,34 @@ function checkProfiles(profiles: unknown): Record<string, unknown> {
   return profiles.default;
 }
 
-async function readForgeVariableKeys(directory: Directory): Promise<string[]> {
-  if (!(await directory.exists(FORGE_VARIABLE_KEYS)))
-    throw new Error(
-      `${FORGE_VARIABLE_KEYS} is missing; create an empty array or migrate the legacy allowlist`,
-    );
-  return parseForgeVariableKeys(
-    await directory.file(FORGE_VARIABLE_KEYS).contents(),
-  );
-}
+const SCOPES = ["manifest", "runtime"] as const;
 
-function checkKeysDeclared(
-  keys: readonly string[],
-  profile: Record<string, unknown>,
-): void {
-  for (const key of keys)
-    if (key === "defaults" || !Object.hasOwn(profile, key))
+/** Scope members must be declared; runtime members upload, so local controls stay out. */
+function checkScopes(scopes: unknown, profile: Record<string, unknown>): void {
+  if (scopes === undefined) return;
+  if (!isRecord(scopes))
+    throw new Error("secretspec.toml: scopes must be a table");
+  for (const scope of SCOPES) {
+    const members = isRecord(scopes[scope]) ? scopes[scope].secrets : undefined;
+    if (members === undefined) continue;
+    if (!Array.isArray(members) || !members.every(isString))
       throw new Error(
-        `${FORGE_VARIABLE_KEYS}: ${key} is not declared in secretspec.toml profiles.default`,
+        `secretspec.toml: scopes.${scope}.secrets must be an array of names`,
       );
-}
-
-async function checkExecutables(directory: Directory): Promise<void> {
-  for (const path of SECRETS_EXECUTABLES) {
-    if (!(await directory.exists(path))) throw new Error(`${path} is missing`);
-    if (((await directory.stat(path).permissions()) & 0o111) === 0)
-      throw new Error(`${path} is not executable`);
+    for (const key of members) {
+      if (key === "defaults" || !Object.hasOwn(profile, key))
+        throw new Error(
+          `secretspec.toml: scopes.${scope} member ${key} is not declared in profiles.default`,
+        );
+      if (scope === "runtime" && key.startsWith("FORGE_"))
+        throw new Error(
+          `secretspec.toml: FORGE_* keys target the CLI and must not be in scopes.runtime (${key})`,
+        );
+    }
   }
 }
 
-/** Local structural acceptance only; never resolve values, run helpers, or contact Forge. */
+/** Local structural acceptance only; never resolve values, run Fence Rider, or contact Forge. */
 async function validateSecrets(directory: Directory): Promise<Validation> {
   if (!(await directory.exists("secretspec.toml")))
     return { status: "skipped", reason: "secretspec.toml is missing" };
@@ -283,9 +156,7 @@ async function validateSecrets(directory: Directory): Promise<Validation> {
     await directory.file("secretspec.toml").contents(),
   );
   checkProject(config.project);
-  const defaultProfile = checkProfiles(config.profiles);
-  checkKeysDeclared(await readForgeVariableKeys(directory), defaultProfile);
-  await checkExecutables(directory);
+  checkScopes(config.scopes, checkProfiles(config.profiles));
   return { status: "validated" };
 }
 
@@ -295,10 +166,16 @@ export function forgeSecrets(): Capability {
     documentation: {
       tools: [
         {
+          name: "Fence Rider",
+          url: "https://github.com/ibuchanan/ranch-rig-fence-rider",
+          purpose:
+            "Wraps the Forge CLI so each workflow runs with values resolved from secretspec.toml and uploads runtime variables encrypted",
+        },
+        {
           name: "SecretSpec",
           url: "https://secretspec.dev",
           purpose:
-            "Manages environment variable injection and secret validation for Forge CLI commands",
+            "Declares local, manifest and runtime variables once and resolves them from each developer's chosen provider",
         },
         {
           name: "Atlassian Forge CLI",
@@ -307,13 +184,16 @@ export function forgeSecrets(): Capability {
             "Reference for forge register, deploy, install, and upgrade command syntax",
         },
       ],
-      init: "Seed owner SecretSpec declarations and app-variable allowlist, executable helpers, and six Forge dispatch scripts.",
-      update:
-        "Enforce helper contents/modes; preserve declarations/allowlist, rejecting unmigrated embedded keys.",
+      init: "Seed owner SecretSpec declarations and the six forge:* scripts that delegate to Fence Rider.",
       validate:
-        "Parse TOML and allowlist, check helper presence and executable modes; no secret resolution or Forge execution.",
+        "Parse TOML, check the default profile and that scope members are declared; no secret resolution or Forge execution.",
     },
-    packageJson: { policy: { scripts: FORGE_SECRETS_SCRIPTS } },
+    packageJson: {
+      seed: {
+        devDependencies: { [FENCE_RIDER_PACKAGE]: TOOL_VERSIONS.fenceRider },
+      },
+      policy: { scripts: FORGE_SECRETS_SCRIPTS },
+    },
     init(project) {
       const name = project.packageJson.name;
       project.templates.push(
@@ -322,7 +202,9 @@ export function forgeSecrets(): Capability {
         ),
       );
     },
-    update: updateSecrets,
+    update: noOp(
+      "Secrets owns only owner declarations; its package.json contribution enforces the forge:* scripts, and the Fence Rider GitHub reference is owner-managed.",
+    ),
     validate: validateSecrets,
   };
 }
