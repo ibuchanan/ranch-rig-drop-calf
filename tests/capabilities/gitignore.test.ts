@@ -1,6 +1,7 @@
 import { describe, expect, spyOn, test } from "bun:test";
 import type { Directory, File } from "@dagger.io/dagger";
 import { dag } from "@dagger.io/dagger";
+import fc from "fast-check";
 import {
   ADDITIONAL_IGNORES,
   availableSets,
@@ -20,14 +21,24 @@ import { resolveProfile } from "../../src/composition/profiles.ts";
 import { validateCapabilities } from "../../src/core/capability.ts";
 import { InvalidOptionsError } from "../../src/core/errors.ts";
 import { DropCalf } from "../../src/index.ts";
+import { isBunKind } from "../support/kinds.ts";
 import {
   mockDirectory,
   mockModuleSource,
   pinnedGitignore,
 } from "../support/module-source.ts";
-import { isBunKind } from "../support/kinds.ts";
 
 const pin = pinnedGitignore();
+
+const ownerLines = fc.array(
+  fc
+    .tuple(
+      fc.constantFrom("# owner ", "owner/", "!owner/", "\\#"),
+      fc.stringMatching(/^[a-zA-Z0-9 _./!*?#\\\t-]{0,40}$/),
+    )
+    .map(([prefix, text]) => prefix + text),
+  { maxLength: 4 },
+);
 
 /**
  * A miniature upstream response: every default topic, a Patch section, a rule
@@ -285,6 +296,56 @@ describe("updateGitignore", () => {
     expect(updateGitignore(wanted, template)).toBe(wanted);
   });
 
+  test("refreshes only managed blocks across topic selections and owner text", () => {
+    fc.assert(
+      fc.property(
+        fc.array(
+          fc.record({
+            owner: ownerLines,
+            sets: fc.subarray([...GITIGNORE_TEMPLATES]),
+            eol: fc.constantFrom("\n", "\r\n"),
+          }),
+          { minLength: 1, maxLength: 3 },
+        ),
+        ownerLines,
+        fc.boolean(),
+        fc.boolean(),
+        (blocks, tail, finalNewline, extras) => {
+          const old: string[] = [];
+          const wanted: string[] = [];
+          for (const { owner, sets, eol } of blocks) {
+            const prefix = owner.length ? `${owner.join(eol)}${eol}` : "";
+            old.push(prefix + upstream(sets.join(",")).replaceAll("\n", eol));
+            wanted.push(
+              prefix +
+                buildGitignore(template, sets).split(
+                  "\n# Created by drop-calf",
+                )[0],
+            );
+          }
+          if (extras) {
+            old.push(
+              "# Created by drop-calf additional ignores\nstale/\n# End of drop-calf additional ignores\n",
+            );
+            wanted.push(ADDITIONAL_IGNORES);
+          }
+          const suffix = tail.length ? `${tail.join("\r\n")}\r\n` : "";
+          const contents = (old.join("") + suffix).replace(
+            /\r?\n$/,
+            finalNewline ? "$&" : "",
+          );
+          const expected = (wanted.join("") + suffix).replace(
+            /\r?\n$/,
+            finalNewline ? "$&" : "",
+          );
+          const updated = updateGitignore(contents, template);
+          expect(updated).toBe(expected);
+          expect(updateGitignore(updated, template)).toBe(updated);
+        },
+      ),
+    );
+  });
+
   test("uses URL topics, not section headings or the full pin", () => {
     const result = updateGitignore(
       upstream("linux", "### Node ###\n"),
@@ -392,23 +453,39 @@ describe("copyGitignoreAssets", () => {
   });
 
   test("appends missing blocks without changing owner content, including EOF bytes", async () => {
-    for (const owner of ["# owner\r\ncustom/\r\n", "# owner\ncustom/"]) {
-      const input = mockDirectory(
-        new Map([
-          [".gitignore", owner],
-          ["owner.txt", "untouched"],
-        ]),
-      );
-      const output = await copyGitignoreAssets(input, fakeFile(template), [
-        "node",
-      ]);
-      const wanted = `${owner}${owner.endsWith("\n") ? "" : "\n"}\n${buildGitignore(template, ["node"])}`;
-      expect(await gitignoreOf(output)).toBe(wanted);
-      expect(await output.file("owner.txt").contents()).toBe("untouched");
-      expect(await copyGitignoreAssets(output, fakeFile(template))).toBe(
-        output,
-      );
-    }
+    await fc.assert(
+      fc.asyncProperty(
+        ownerLines,
+        fc.constantFrom("\n", "\r\n"),
+        fc.boolean(),
+        fc.subarray([...GITIGNORE_TEMPLATES]),
+        async (lines, eol, finalNewline, sets) => {
+          const owner =
+            lines.join(eol) + (lines.length && finalNewline ? eol : "");
+          const input = mockDirectory(
+            new Map([
+              [".gitignore", owner],
+              ["owner.txt", "untouched"],
+            ]),
+          );
+          const before = [...input.files];
+          const output = await copyGitignoreAssets(
+            input,
+            fakeFile(template),
+            sets,
+          );
+          const separator = owner ? (owner.endsWith("\n") ? "\n" : "\n\n") : "";
+          expect(await gitignoreOf(output)).toBe(
+            owner + separator + buildGitignore(template, sets),
+          );
+          expect(await output.file("owner.txt").contents()).toBe("untouched");
+          expect([...input.files]).toEqual(before);
+          expect(
+            await copyGitignoreAssets(output, fakeFile(template), sets),
+          ).toBe(output);
+        },
+      ),
+    );
   });
 
   test("an explicit subset replaces only the upstream block and records the chosen URL", async () => {

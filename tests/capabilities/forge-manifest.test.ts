@@ -1,5 +1,6 @@
 import { expect, spyOn, test } from "bun:test";
 import { dag, type Secret } from "@dagger.io/dagger";
+import fc from "fast-check";
 import { parseDocument } from "yaml";
 import {
   forgeManifest,
@@ -91,6 +92,58 @@ test("replacing runtime preserves quotes and inline comments", () => {
     contents.replace("nodejs24.x", runtime),
   );
 });
+test.each(["", "'", '"'])(
+  "runtime edits preserve surrounding bytes with %j quoting",
+  (quote) => {
+    fc.assert(
+      fc.property(
+        fc.record({
+          major: fc.integer({ min: 1, max: 999 }),
+          matching: fc.boolean(),
+          indent: fc.integer({ min: 2, max: 6 }),
+          eol: fc.constantFrom("\n", "\r\n"),
+          finalNewline: fc.boolean(),
+          id: fc.stringMatching(/^[a-zA-Z0-9_-]{1,32}$/),
+          memoryMB: fc.constantFrom(128, 256, 512, 1024),
+        }),
+        ({ major, matching, indent, eol, finalNewline, id, memoryMB }) => {
+          const current = `nodejs${major}.x`;
+          const wanted = `nodejs${major + (matching ? 0 : 1)}.x`;
+          const pad = " ".repeat(indent);
+          const prefix =
+            [
+              `# owner ${id}`,
+              "app: # registration",
+              `${pad}id: '${id}' # owner identity`,
+              `${pad}runtime: # deployment`,
+            ].join(eol) + eol;
+          const suffix =
+            [
+              " # selected runtime",
+              `${pad}${pad}memoryMB: ${memoryMB} # owner budget`,
+              `${pad}${pad}architecture: "arm64"`,
+              "modules: {} # owner wiring",
+            ].join(eol) + (finalNewline ? eol : "");
+          const contents = `${prefix}${pad}${pad}name: ${quote}${current}${quote}${suffix}`;
+          const expected = `${prefix}${pad}${pad}name: ${quote}${wanted}${quote}${suffix}`;
+          const updated = reconcileForgeRuntime(contents, wanted);
+          expect(updated).toBe(expected);
+          const document = parseDocument(updated);
+          expect(document.errors).toEqual([]);
+          expect(document.toJS()).toEqual({
+            app: {
+              id,
+              runtime: { name: wanted, memoryMB, architecture: "arm64" },
+            },
+            modules: {},
+          });
+          expect(reconcileForgeRuntime(updated, wanted)).toBe(updated);
+        },
+      ),
+    );
+  },
+);
+
 test("adding runtime preserves comments, key order, indentation and sibling settings", () => {
   const contents = `# App settings
 app:
