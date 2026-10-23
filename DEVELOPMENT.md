@@ -219,7 +219,10 @@ Entry point:
 Repository Git workflows share containerized init and update logic:
 - `src/core/repository.ts`: Dagger orchestration, recovery export, and publication.
 - `src/core/repository-git.ts`: Bun-executed Git prepare, finish, recover, and
-  publish stages; repository options and result types.
+  publish stages, dispatched from one stage table.
+- `src/core/git.ts`, `repository-policy.ts`, `repository-types.ts`: isolated Git
+  execution, option and credential checks, and the options and result types. The
+  container mounts these beside `repository-git.ts`.
 - `scripts/repository.ts`: local launcher, checkout preflight, and bundle delivery.
 - `tests/core/repository-*.test.ts`: disposable repositories and bare-remote tests.
 - `tests/e2e/repository.e2e.test.ts`: local launcher/container round trip.

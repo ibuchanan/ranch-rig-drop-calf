@@ -1,156 +1,26 @@
-import { execFileSync } from "node:child_process";
 import {
   cpSync,
   existsSync,
   mkdirSync,
   readdirSync,
+  readFileSync,
   rmSync,
   writeFileSync,
 } from "node:fs";
 import { join, resolve } from "node:path";
+import { git, optionalGit } from "./git.ts";
 import { enforce, type Guard, withEnv } from "./guards.ts";
 import { INIT_MARKERS } from "./init-markers.ts";
-
-export type RepositoryOptions = {
-  operation: "init" | "update";
-  branch: string;
-  authorName: string;
-  authorEmail: string;
-  remoteUrl?: string;
-  provenance?: string;
-};
-
-export type RepositoryResult = {
-  status: "initialized" | "updated" | "unchanged" | "failed";
-  targetBranch: string;
-  base: string;
-  head: string;
-  updateBranch?: string;
-  updateCommit?: string;
-  error?: string;
-  published?: boolean;
-};
+import { checkOptions, checkStagedFiles } from "./repository-policy.ts";
+import type {
+  RepositoryOptions,
+  RepositoryResult,
+} from "./repository-types.ts";
 
 export const INITIAL_COMMIT = "chore(scaffold): NONE Capture initial project";
 export const INIT_COMMIT = "chore(drop-calf): NONE Initialize project tooling";
 const UPDATE_COMMIT = "chore(drop-calf): NONE Update project tooling";
 const MERGE_COMMIT = "chore(drop-calf): NONE Merge tooling update";
-
-/** Git runs with isolated configuration, without repository hooks or interactive prompts. */
-export function git(directory: string, ...args: string[]): string {
-  return execFileSync(
-    "git",
-    [
-      "-c",
-      "core.hooksPath=/dev/null",
-      "-c",
-      "core.fsmonitor=false",
-      "-c",
-      "commit.gpgSign=false",
-      "-c",
-      "tag.gpgSign=false",
-      "-C",
-      directory,
-      ...args,
-    ],
-    {
-      encoding: "utf8",
-      env: {
-        ...process.env,
-        GIT_TERMINAL_PROMPT: "0",
-        GIT_CONFIG_NOSYSTEM: "1",
-        GIT_CONFIG_GLOBAL: "/dev/null",
-      },
-      stdio: ["ignore", "pipe", "pipe"],
-    },
-  ).trim();
-}
-
-export function optionalGit(
-  directory: string,
-  ...args: string[]
-): string | undefined {
-  try {
-    return git(directory, ...args);
-  } catch {
-    return undefined;
-  }
-}
-
-/** Remote URL forms, tried in order; the first that applies decides acceptability. */
-const REMOTE_FORMS: readonly {
-  applies: (url: string) => boolean;
-  acceptable: (url: string) => boolean;
-  message: string;
-}[] = [
-  {
-    applies: (url) => url.startsWith("https://") || url.startsWith("ssh://"),
-    acceptable: (url) => {
-      const { password, protocol, username, search, hash } = new URL(url);
-      return !(
-        password ||
-        (protocol === "https:" && username) ||
-        search ||
-        hash
-      );
-    },
-    message:
-      "Remote URL must not contain credentials, query parameters, or fragments.",
-  },
-  {
-    applies: () => true,
-    acceptable: (url) => /^git@[^:/]+:.+/.test(url),
-    message: "Remote URL must use credential-free HTTPS or SSH.",
-  },
-];
-
-/** Why a remote URL is unacceptable, or undefined when it is fine. */
-function remoteProblem(url: string): string | undefined {
-  const form = REMOTE_FORMS.find(({ applies }) => applies(url));
-  return form && !form.acceptable(url) ? form.message : undefined;
-}
-
-const OPTION_GUARDS: readonly Guard<RepositoryOptions>[] = [
-  {
-    fails: ({ authorName, authorEmail }) =>
-      !authorName.trim() ||
-      !authorEmail.trim() ||
-      /[\r\n\0]/.test(authorName + authorEmail),
-    message: "Git author name and email must be nonblank single-line values.",
-  },
-  {
-    fails: ({ remoteUrl }) => Boolean(remoteUrl && remoteProblem(remoteUrl)),
-    message: ({ remoteUrl }) => remoteProblem(remoteUrl ?? "") ?? "",
-  },
-];
-
-/** Refuse common credential files even if an incomplete scaffold ignore file misses them. */
-export function checkStagedFiles(directory: string): void {
-  const paths = git(
-    directory,
-    "diff",
-    "--cached",
-    "--name-only",
-    "--diff-filter=ACMR",
-    "-z",
-  ).split("\0");
-  const suspicious = paths.filter(
-    (path) =>
-      /(^|\/)(\.env(?:\..+)?|\.npmrc|\.netrc|credentials(?:\.json)?|id_(?:rsa|ed25519)|[^/]+\.(?:pem|key|p12|pfx))$/.test(
-        path,
-      ) && !/(^|\/)\.env\.(?:example|sample|template)$/.test(path),
-  );
-  // A generated .npmrc is ordinary configuration; authentication directives are not.
-  const unsafe = suspicious.filter(
-    (path) =>
-      !path.endsWith(".npmrc") ||
-      /(?:_auth|password|token)\s*=/i.test(git(directory, "show", `:${path}`)),
-  );
-  if (unsafe.length)
-    throw new Error(
-      `Refusing to commit potential credentials: ${unsafe.join(", ")}. Ignore or remove them first.`,
-    );
-}
 
 type Checkout = {
   directory: string;
@@ -246,7 +116,7 @@ export function prepareRepository(
   options: RepositoryOptions,
   history?: string,
 ): void {
-  enforce(options, OPTION_GUARDS);
+  checkOptions(options);
   mkdirSync(directory, { recursive: true });
   git(directory, "check-ref-format", "--branch", options.branch);
   const checkout: Checkout = { directory, options, history };
@@ -287,6 +157,16 @@ function commit(
   );
 }
 
+const resultPath = (output: string) => join(output, "result.json");
+
+function readResult(output: string): RepositoryResult {
+  return JSON.parse(readFileSync(resultPath(output), "utf8"));
+}
+
+function writeResult(output: string, result: RepositoryResult): void {
+  writeFileSync(resultPath(output), `${JSON.stringify(result, null, 2)}\n`);
+}
+
 function exportRepository(
   directory: string,
   output: string,
@@ -296,10 +176,7 @@ function exportRepository(
   const bundle = resolve(output, "repository.bundle");
   rmSync(bundle, { force: true });
   git(directory, "bundle", "create", bundle, "--branches", "--tags");
-  writeFileSync(
-    join(output, "result.json"),
-    `${JSON.stringify(result, null, 2)}\n`,
-  );
+  writeResult(output, result);
 }
 
 /** Replace only the isolated worktree with the transformed tree. */
@@ -475,40 +352,39 @@ export function publishRepository(
   return { ...result, published: true };
 }
 
-if (import.meta.main) {
-  const [stage, config, directory, output, extra] = process.argv.slice(2);
-  if (!stage || !config || !directory || !output)
-    throw new Error(
-      "Expected stage, config, repository, output, and optional tree/history.",
-    );
-  const options: RepositoryOptions = await Bun.file(config).json();
-  // Credentials affect transport only and are never persisted in repository configuration.
-  if (process.env.DROP_CALF_AUTH_HEADER) {
-    process.env.GIT_CONFIG_COUNT = "1";
-    process.env.GIT_CONFIG_KEY_0 = "http.extraHeader";
-    process.env.GIT_CONFIG_VALUE_0 = process.env.DROP_CALF_AUTH_HEADER;
-  }
-  if (stage === "prepare") prepareRepository(directory, options, extra);
-  else if (stage === "finish" && extra)
+/** What a workflow stage is invoked with: the CLI arguments after the stage name. */
+type StageArguments = {
+  options: RepositoryOptions;
+  directory: string;
+  output: string;
+  /** A history bundle for `prepare`, a tree for `finish`, or a message for `recover`. */
+  extra?: string;
+};
+
+const PUBLICATION_FAILED =
+  "Publication failed; update branch and merge retained in bundle. Check remote refs before retrying.";
+
+/** Every stage the container script can run; `repository.ts` names them by this type. */
+const STAGES = {
+  prepare: ({ options, directory, extra }) =>
+    prepareRepository(directory, options, extra),
+  finish: ({ options, directory, output, extra }) => {
+    if (!extra) throw new Error("finish requires the transformed tree.");
     finishRepository(directory, extra, options, output);
-  else if (stage === "publish") {
-    const result: RepositoryResult = await Bun.file(
-      join(output, "result.json"),
-    ).json();
+  },
+  publish: ({ options, directory, output }) =>
     exportRepository(
       directory,
       output,
-      publishRepository(directory, options, result),
-    );
-  } else if (stage === "publication-failed") {
-    const result: RepositoryResult = await Bun.file(
-      join(output, "result.json"),
-    ).json();
-    writeFileSync(
-      join(output, "result.json"),
-      `${JSON.stringify({ ...result, status: "failed", error: "Publication failed; update branch and merge retained in bundle. Check remote refs before retrying." }, null, 2)}\n`,
-    );
-  } else if (stage === "recover") {
+      publishRepository(directory, options, readResult(output)),
+    ),
+  "publication-failed": ({ output }) =>
+    writeResult(output, {
+      ...readResult(output),
+      status: "failed",
+      error: PUBLICATION_FAILED,
+    }),
+  recover: ({ options, directory, output, extra }) => {
     const base = git(directory, "rev-parse", `refs/heads/${options.branch}`);
     exportRepository(directory, output, {
       status: "failed",
@@ -517,5 +393,27 @@ if (import.meta.main) {
       head: base,
       error: extra ?? "Repository workflow failed",
     });
-  } else throw new Error(`Unknown stage: ${stage}`);
+  },
+} satisfies Record<string, (stage: StageArguments) => void>;
+
+export type WorkflowStage = keyof typeof STAGES;
+
+const isStage = (name: string): name is WorkflowStage =>
+  Object.hasOwn(STAGES, name);
+
+if (import.meta.main) {
+  const [stage = "", config, directory, output, extra] = process.argv.slice(2);
+  if (!config || !directory || !output)
+    throw new Error(
+      "Expected stage, config, repository, output, and optional tree/history.",
+    );
+  if (!isStage(stage)) throw new Error(`Unknown stage: ${stage}`);
+  const options: RepositoryOptions = JSON.parse(readFileSync(config, "utf8"));
+  // Credentials affect transport only and are never persisted in repository configuration.
+  if (process.env.DROP_CALF_AUTH_HEADER) {
+    process.env.GIT_CONFIG_COUNT = "1";
+    process.env.GIT_CONFIG_KEY_0 = "http.extraHeader";
+    process.env.GIT_CONFIG_VALUE_0 = process.env.DROP_CALF_AUTH_HEADER;
+  }
+  STAGES[stage]({ options, directory, output, extra });
 }

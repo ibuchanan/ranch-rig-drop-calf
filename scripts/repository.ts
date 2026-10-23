@@ -14,14 +14,11 @@ import {
 } from "node:fs";
 import { basename, join, resolve } from "node:path";
 import { parseArgs } from "node:util";
-import { scaffoldName } from "../src/core/package-json.ts";
+import { git, optionalGit } from "../src/core/git.ts";
 import { enforce, type Guard, withEnv } from "../src/core/guards.ts";
-import {
-  checkStagedFiles,
-  git,
-  optionalGit,
-  type RepositoryResult,
-} from "../src/core/repository-git.ts";
+import { scaffoldName } from "../src/core/package-json.ts";
+import { checkStagedFiles } from "../src/core/repository-policy.ts";
+import type { RepositoryResult } from "../src/core/repository-types.ts";
 
 /** Snapshot all source, including ignored files, without reading .git or dependency trees. */
 export function sourceFingerprint(directory: string): string {

@@ -2,9 +2,9 @@ import { expect, test } from "bun:test";
 import { execFileSync } from "node:child_process";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { git } from "../../src/core/git.ts";
 import {
   finishRepository,
-  git,
   prepareRepository,
   publishRepository,
 } from "../../src/core/repository-git.ts";

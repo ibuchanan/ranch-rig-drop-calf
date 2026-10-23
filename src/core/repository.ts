@@ -8,7 +8,8 @@ import {
   type Socket,
 } from "@dagger.io/dagger";
 import { enforce, type Guard } from "./guards.ts";
-import type { RepositoryOptions } from "./repository-git.ts";
+import type { WorkflowStage } from "./repository-git.ts";
+import type { RepositoryOptions } from "./repository-types.ts";
 import { nodeContainer } from "./tool-run.ts";
 import { TOOL_VERSIONS } from "./versions.ts";
 
@@ -44,6 +45,18 @@ const PREFLIGHT: readonly Guard<Preflight>[] = [
   },
 ];
 
+const WORKFLOW = "/workflow";
+
+/** Modules the container script imports by relative path, so they sit beside it. */
+const WORKFLOW_MODULES = [
+  "repository-git.ts",
+  "git.ts",
+  "guards.ts",
+  "init-markers.ts",
+  "repository-policy.ts",
+  "repository-types.ts",
+] as const;
+
 type Step = (container: Container) => Container;
 
 /** Applies `apply` with the value when one was supplied, and leaves the container alone otherwise. */
@@ -56,12 +69,12 @@ const given =
     value === undefined ? container : apply(value, container);
 
 /** A Git workflow stage, run by the bun script that Drop Calf mounts into the container. */
-const gitStage = (stage: string, ...extra: string[]) => [
+const gitStage = (stage: WorkflowStage, ...extra: string[]) => [
   "bun",
   "run",
-  "/workflow/git.ts",
+  `${WORKFLOW}/repository-git.ts`,
   stage,
-  "/workflow/options.json",
+  `${WORKFLOW}/options.json`,
   "/repo",
   "/output",
   ...extra,
@@ -99,24 +112,22 @@ export async function repositoryWorkflow(
     ...options
   } = input;
   const helper = (path: string) => dag.currentModule().source().file(path);
-  const script = helper("src/core/repository-git.ts");
-  const base = nodeContainer()
-    .withFile(
+  const base = WORKFLOW_MODULES.reduce(
+    (container, name) =>
+      container.withFile(`${WORKFLOW}/${name}`, helper(`src/core/${name}`)),
+    nodeContainer().withFile(
       "/usr/local/bin/bun",
       dag
         .container()
         .from(`oven/bun:${TOOL_VERSIONS.bun}`)
         .file("/usr/local/bin/bun"),
-    )
-    .withFile("/workflow/git.ts", script)
-    // git.ts imports its helpers by relative path, so they sit beside it.
-    .withFile("/workflow/guards.ts", helper("src/core/guards.ts"))
-    .withFile("/workflow/init-markers.ts", helper("src/core/init-markers.ts"))
-    .withNewFile("/workflow/options.json", JSON.stringify(options))
+    ),
+  )
+    .withNewFile(`${WORKFLOW}/options.json`, JSON.stringify(options))
     .withWorkdir("/repo");
   // What this invocation brings into the container, each applied only when supplied.
   const contributions: Step[] = [
-    given(history, (file, c) => c.withFile("/workflow/input.bundle", file)),
+    given(history, (file, c) => c.withFile(`${WORKFLOW}/input.bundle`, file)),
     given(!history && !options.remoteUrl ? directory : undefined, (source, c) =>
       c.withDirectory("/repo", source, {
         exclude: [".git", "**/.git", "node_modules", "**/node_modules"],
@@ -127,8 +138,8 @@ export async function repositoryWorkflow(
     ),
     given(sshAgent, (socket, c) =>
       c
-        .withUnixSocket("/workflow/ssh-agent", socket)
-        .withEnvVariable("SSH_AUTH_SOCK", "/workflow/ssh-agent"),
+        .withUnixSocket(`${WORKFLOW}/ssh-agent`, socket)
+        .withEnvVariable("SSH_AUTH_SOCK", `${WORKFLOW}/ssh-agent`),
     ),
     given(knownHosts, (file, c) => c.withFile("/root/.ssh/known_hosts", file)),
     // Git fetch/push are external effects. A new invocation must never reuse their exec cache.
@@ -137,7 +148,7 @@ export async function repositoryWorkflow(
   const configured = contributions.reduce((c, apply) => apply(c), base);
   const prepared = await settle(
     configured.withExec(
-      gitStage("prepare", ...(history ? ["/workflow/input.bundle"] : [])),
+      gitStage("prepare", ...(history ? [`${WORKFLOW}/input.bundle`] : [])),
     ),
   );
   const stages: Stage[] = [

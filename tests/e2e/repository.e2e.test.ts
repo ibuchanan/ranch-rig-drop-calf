@@ -9,7 +9,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { join } from "node:path";
-import { git } from "../../src/core/repository-git.ts";
+import { git } from "../../src/core/git.ts";
 
 const module = join(import.meta.dir, "../..");
 

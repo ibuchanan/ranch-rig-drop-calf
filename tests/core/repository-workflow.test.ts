@@ -41,7 +41,7 @@ function fakeContainer(ops: string[], failing: ReadonlySet<string>) {
     withSecretVariable: (name: string) => next(`secret ${name}`),
     withUnixSocket: (path: string) => next(`socket ${path}`),
     withEnvVariable: (name: string) => next(`env ${name}`),
-    // args: bun run /workflow/git.ts <stage> options repo output ...extra
+    // args: bun run /workflow/repository-git.ts <stage> options repo output ...extra
     withExec: (args: string[]) =>
       next(["exec", args[3], ...args.slice(7)].join(" ")),
     sync: async () => {
@@ -230,7 +230,7 @@ test("an existing .git requires a history bundle", async () => {
 });
 
 test("every relative import of the mounted git script is mounted beside it", async () => {
-  // The container receives repository-git.ts alone as /workflow/git.ts, so an
+  // The container receives repository-git.ts alone as /workflow/repository-git.ts, so an
   // import such as "./guards.ts" resolves only if that file is mounted too.
   const script = readFileSync(
     join(import.meta.dir, "../../src/core/repository-git.ts"),

@@ -6,9 +6,9 @@ import {
   inspectCheckout,
   sourceFingerprint,
 } from "../../scripts/repository.ts";
+import { git } from "../../src/core/git.ts";
 import {
   finishRepository,
-  git,
   prepareRepository,
 } from "../../src/core/repository-git.ts";
 import { repositoryWorkspaces } from "../support/repository-fixtures.ts";

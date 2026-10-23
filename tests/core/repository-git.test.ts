@@ -1,14 +1,14 @@
 import { expect, test } from "bun:test";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { git } from "../../src/core/git.ts";
 import {
   finishRepository,
-  git,
   INIT_COMMIT,
   INITIAL_COMMIT,
   prepareRepository,
-  type RepositoryResult,
 } from "../../src/core/repository-git.ts";
+import type { RepositoryResult } from "../../src/core/repository-types.ts";
 import { repositoryWorkspaces } from "../support/repository-fixtures.ts";
 
 const workspace = repositoryWorkspaces();

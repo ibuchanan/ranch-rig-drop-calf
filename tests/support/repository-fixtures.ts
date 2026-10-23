@@ -1,7 +1,7 @@
 import { afterEach } from "bun:test";
 import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
 import { join } from "node:path";
-import type { RepositoryOptions } from "../../src/core/repository-git.ts";
+import type { RepositoryOptions } from "../../src/core/repository-types.ts";
 
 // Call once per suite so cleanup state is never shared between suites.
 export function repositoryWorkspaces() {
