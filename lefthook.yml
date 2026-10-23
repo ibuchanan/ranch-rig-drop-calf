@@ -1,0 +1,31 @@
+colors: false
+output:
+  - meta
+  - summary
+  - failure
+
+pre-commit:
+  parallel: true
+  commands:
+    gitleaks:
+      run: |
+        command -v gitleaks >/dev/null 2>&1 || {
+          echo "gitleaks not found on PATH. Install it with: brew install gitleaks" >&2
+          exit 1
+        }
+        gitleaks git --pre-commit --staged
+    format:
+      run: bun run --if-present format
+      stage_fixed: true
+
+pre-push:
+  parallel: true
+  commands:
+    lint:
+      run: bun run --if-present lint
+    test:
+      run: bun run --if-present test
+    size:
+      run: bun run --if-present size:check
+    pack:
+      run: bun run --if-present pack:check

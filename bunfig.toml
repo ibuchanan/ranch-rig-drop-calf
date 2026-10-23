@@ -6,3 +6,9 @@ registry = "https://registry.npmjs.org/"
 
 [test]
 pathIgnorePatterns = ["vendor/**", "tests/e2e/**"]
+# Generated, vendored, and fixture code is not measured: the Dagger SDK is
+# generated, tests and templates are inputs rather than shipped behavior.
+coveragePathIgnorePatterns = ["sdk/**", "vendor/**", "tests/**", "templates/**"]
+
+[run]
+bun = true
