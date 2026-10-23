@@ -1,26 +1,15 @@
 import { expect, spyOn, test } from "bun:test";
 import { dag } from "@dagger.io/dagger";
+import fc from "fast-check";
 import { parseDocument } from "yaml";
-import { BIOME_SCRIPTS } from "../../src/capabilities/biome.ts";
 import {
   CATALOG_FILE,
   PACKAGE_NAME,
   renderCatalog,
 } from "../../src/capabilities/catalog.ts";
-import { CHANGELOG_COMMAND } from "../../src/capabilities/changelog.ts";
-import { DOCS_COMMAND } from "../../src/capabilities/docs.ts";
-import { FALLOW_SCRIPT } from "../../src/capabilities/fallow.ts";
-import { GIT_HOOKS_SCRIPTS } from "../../src/capabilities/git-hooks.ts";
-import { LINT_COMMAND } from "../../src/capabilities/lint.ts";
-import { PRELINT_SCRIPTS } from "../../src/capabilities/prelint.ts";
-import { FORGE_SECRETS_SCRIPTS } from "../../src/capabilities/secrets.ts";
-import { SIZE_LIMIT_COMMAND } from "../../src/capabilities/size-limit.ts";
-import { TYPESCRIPT_SCRIPTS } from "../../src/capabilities/typescript.ts";
-import { VITEST_SCRIPTS } from "../../src/capabilities/vitest.ts";
 import { buildProject } from "../../src/composition/profiles.ts";
 import { validateCapabilities } from "../../src/core/capability.ts";
 import { ParseError } from "../../src/core/errors.ts";
-import { TOOL_VERSIONS } from "../../src/core/versions.ts";
 import { DropCalf } from "../../src/index.ts";
 import {
   capabilityOf,
@@ -29,7 +18,6 @@ import {
 } from "../support/capability-fixtures.ts";
 import { mockDirectory, mockModuleSource } from "../support/module-source.ts";
 import { catalogTemplates } from "../support/templates-source.ts";
-import { isBunKind } from "../support/kinds.ts";
 
 const kinds = ["library", "forge-app", "tool", "agent-skill"];
 const catalog = () =>
@@ -95,136 +83,63 @@ test.each(kinds)(
   },
 );
 
-const BUN_TEST_SCRIPTS = {
-  test: "bun test --pass-with-no-tests",
-  "test:watch": "bun test --watch --pass-with-no-tests",
-  "test:coverage": "bun test --coverage --pass-with-no-tests",
-};
-
-/** What a kind's package.json carries beyond the scripts every kind shares. */
-type KindPackage = {
-  /** Scripts that depend on the kind's package-manager command (`npm` or `bun`). */
-  scripts: (run: string) => Record<string, string>;
-  /** Dependencies a scaffolder or owner already declared. */
-  dependencies?: Record<string, string>;
-  private: boolean;
-};
-
-const KIND_PACKAGES: Record<string, KindPackage> = {
-  library: {
-    scripts: (run) => ({
-      "lint:fallow": FALLOW_SCRIPT,
-      "lint:check:fallow": `${run} run lint:fallow`,
-      "pack:check": "npm run build && sh scripts/pack-check.sh",
-      "release:check":
-        "npm run test && npm run typecheck && npm run pack:check",
-      prepare: "npm run build && (lefthook install || true)",
-      build: "sh scripts/build.sh",
-      clean: "rm -rf node_modules package-lock.json dist",
-      ...BUN_TEST_SCRIPTS,
-    }),
-    private: false,
-  },
-  "forge-app": {
-    scripts: () => ({
-      "size:check": SIZE_LIMIT_COMMAND,
-      build: TYPESCRIPT_SCRIPTS.build,
-      ...VITEST_SCRIPTS,
-      ...PRELINT_SCRIPTS,
-      ...FORGE_SECRETS_SCRIPTS,
-    }),
-    dependencies: {
-      "@forge-ahead/errors": "github:ibuchanan/forge-ahead-errors",
-      "@forge-ahead/logging": "github:ibuchanan/forge-ahead-logging",
-    },
-    private: true,
-  },
-  tool: {
-    scripts: (run) => ({
-      "lint:fallow": FALLOW_SCRIPT,
-      "lint:check:fallow": `${run} run lint:fallow`,
-      build: "bun build --compile ./src/index.ts --outfile ./dist/cli",
-      ...BUN_TEST_SCRIPTS,
-    }),
-    private: false,
-  },
-  "agent-skill": {
-    scripts: () => ({
-      "lint:check:skills": "check-skill --all",
-      "skill:new": "init-skill",
-      ...BUN_TEST_SCRIPTS,
-    }),
-    private: true,
-  },
-};
-
-/** Scripts every kind gets, with `run` standing in for the kind's package manager. */
-function sharedScripts(run: string, bun: boolean) {
-  return {
-    custom: "echo custom",
-    ...BIOME_SCRIPTS,
-    ...GIT_HOOKS_SCRIPTS,
-    lint: bun
-      ? LINT_COMMAND.replace("--npm-path npm", "--npm-path bun")
-      : LINT_COMMAND,
-    "lint:check:biome": `${run} run lint:check`,
-    "lint:check:format": `${run} run format:check`,
-    "lint:check:typecheck": `${run} run typecheck`,
-    clean: "rm -rf dist",
-    "lint:docs": DOCS_COMMAND,
-    changelog: CHANGELOG_COMMAND,
-    release: "bash scripts/release.sh",
-    "release:check": `${run} run test && ${run} run typecheck`,
-    typecheck: TYPESCRIPT_SCRIPTS.typecheck,
-  };
-}
-
 test.each(kinds)(
-  "%s update overwrites owned metadata and preserves release and unrelated fields",
+  "%s metadata update preserves owner fields and release versions",
   async (kind) => {
-    const expected = KIND_PACKAGES[kind];
-    if (!expected) throw new Error(`No expectations for ${kind}`);
-    const bun = isBunKind(kind);
-    const pkg = {
-      name: "package-edit",
-      description: "Package edit",
-      author: { name: "Package author" },
-      version: "2.4.1",
-      type: "commonjs",
-      private: false,
-      license: "MIT",
-      scripts: { custom: "echo custom" },
-      dependencies: { custom: "^1.0.0", ...expected.dependencies },
-      publishConfig: { access: "public" },
-      custom: [1, 2],
-    };
-    const source = mockModuleSource();
-    try {
-      const input = repository(pkg);
-      const output = await new DropCalf().update(input, kind);
-      expect(await manifest(output)).toEqual({
-        ...pkg,
-        ...(bun ? { packageManager: `bun@${TOOL_VERSIONS.bun}` } : {}),
-        scripts: {
-          ...sharedScripts(bun ? "bun" : "npm", bun),
-          ...expected.scripts(bun ? "bun" : "npm"),
+    const capability = capabilityOf(kind, "package-metadata");
+    await fc.assert(
+      fc.asyncProperty(
+        fc.record({
+          version: fc
+            .tuple(
+              fc.nat({ max: 999 }),
+              fc.nat({ max: 999 }),
+              fc.nat({ max: 999 }),
+            )
+            .map((parts) => parts.join(".")),
+          private: fc.boolean(),
+          scripts: fc.dictionary(
+            fc.stringMatching(/^[a-z][a-z0-9-]{0,15}$/),
+            fc.string({ maxLength: 80 }),
+            { maxKeys: 4 },
+          ),
+          custom: fc.jsonValue({ maxDepth: 3 }),
+        }),
+        async (owner) => {
+          const pkg = {
+            ...owner,
+            name: "package-edit",
+            description: "Package edit",
+            author: { name: "Package author" },
+            type: "commonjs",
+            license: "MIT",
+            dependencies: { custom: "^1.0.0" },
+            publishConfig: { access: "public" },
+          };
+          const input = repository(pkg);
+          const before = [...input.files];
+          const stored = await manifest(input);
+          const output = await runUpdate(capability, input);
+          expect(await manifest(output)).toEqual({
+            ...stored,
+            name: "@scope/sample",
+            description: "Catalog description",
+            author: "tester",
+            type: "module",
+            private:
+              kind === "forge-app" || kind === "agent-skill"
+                ? true
+                : owner.private,
+          });
+          expect(await output.file(CATALOG_FILE).contents()).toBe(
+            await input.file(CATALOG_FILE).contents(),
+          );
+          expect(await output.file("owner.txt").contents()).toBe("untouched");
+          expect([...input.files]).toEqual(before);
+          expect(await runUpdate(capability, output)).toBe(output);
         },
-        name: "@scope/sample",
-        description: "Catalog description",
-        author: "tester",
-        license: "Apache-2.0",
-        type: "module",
-        private: expected.private,
-      });
-      expect(await output.file(CATALOG_FILE).contents()).toBe(
-        await input.file(CATALOG_FILE).contents(),
-      );
-      expect(await output.file("owner.txt").contents()).toBe("untouched");
-      expect(await manifest(input)).toEqual(pkg);
-      expect(await new DropCalf().update(output, kind)).toBe(output);
-    } finally {
-      source.mockRestore();
-    }
+      ),
+    );
   },
 );
 

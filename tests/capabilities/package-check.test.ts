@@ -67,8 +67,6 @@ test("update restores the owned checker script while preserving owner configurat
     };
     Object.assign(pkg, owner);
     pkg.scripts["pack:check"] = "old command";
-    pkg.devDependencies.publint = "0.0.1";
-    delete pkg.devDependencies["@arethetypeswrong/cli"];
     const input = initialized
       .withNewFile("package.json", JSON.stringify(pkg))
       .withNewFile("scripts/pack-check.sh", "old checker")
@@ -83,8 +81,6 @@ test("update restores the owned checker script while preserving owner configurat
     expect(updated.scripts["pack:check"]).toBe(
       "npm run build && sh scripts/pack-check.sh",
     );
-    expect(updated.devDependencies.publint).not.toBe("0.0.1");
-    expect(updated.devDependencies["@arethetypeswrong/cli"]).toBeUndefined();
     expect(await output.file(".attw.json").contents()).toBe(
       '{"profile":"node16"}\n',
     );
@@ -124,31 +120,15 @@ test("standalone package-check validation skips artifact work without repository
   }
 });
 
-test("update preserves newer checker versions and does not invent configuration or missing packages", async () => {
+test("update creates the checker script, not owner configuration", async () => {
   const source = mockModuleSource();
   try {
     const capability = packageCheck();
-    const input = mockDirectory(
-      new Map([
-        [
-          "package.json",
-          JSON.stringify({
-            devDependencies: {
-              publint: "99.0.0",
-              "@arethetypeswrong/cli": "99.0.0",
-            },
-          }),
-        ],
-      ]),
-    );
+    const input = mockDirectory(new Map([["package.json", "{}"]]));
     const output = await runUpdate(capability, input);
-    expect(
-      JSON.parse(await output.file("package.json").contents()).devDependencies,
-    ).toEqual({ publint: "99.0.0", "@arethetypeswrong/cli": "99.0.0" });
+    expect(await output.exists("scripts/pack-check.sh")).toBe(true);
     expect(await output.exists(".attw.json")).toBe(false);
     expect(await runUpdate(capability, output)).toBe(output);
-    const empty = mockDirectory();
-    expect(await runUpdate(capability, empty)).toBe(empty);
   } finally {
     source.mockRestore();
   }

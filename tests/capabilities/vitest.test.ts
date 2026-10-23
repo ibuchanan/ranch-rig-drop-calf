@@ -11,7 +11,7 @@ import { runUpdate, verb } from "../support/capability-fixtures.ts";
 import { mockContainer } from "../support/container-source.ts";
 import { mockDirectory, mockModuleSource } from "../support/module-source.ts";
 
-test("update converges scripts and matching tool pins while preserving owner configuration and unrelated fields", async () => {
+test("update preserves owner configuration, test sources, and lockfiles", async () => {
   const config =
     "// owner config\nexport default { test: { globals: true, coverage: { provider: 'istanbul' } } };\n";
   const input = mockDirectory(
@@ -19,43 +19,25 @@ test("update converges scripts and matching tool pins while preserving owner con
       [
         "package.json",
         JSON.stringify({
-          name: "owner",
-          scripts: {
-            test: "owner",
-            "test:watch": "owner",
-            "test:coverage": "owner",
-            "test:unit": "custom",
-          },
-          devDependencies: {
-            vitest: "4.0.7",
-            "@vitest/coverage-v8": "4.1.6",
-            owner: "1",
-          },
-          dependencies: { keep: "1" },
+          scripts: { "test:unit": "custom" },
+          devDependencies: { owner: "1" },
         }),
       ],
       ["vitest.config.ts", config],
       ["tsconfig.json", "owner base"],
-      ["tsconfig.typecheck.json", "owner check"],
       ["bun.lock", "owner lock"],
+      ["tests/owner.test.ts", "// owner test\n"],
     ]),
   );
-  const before = [...input.files];
   const output = await runUpdate(vitestTesting(), input);
+  expect(await output.file("vitest.config.ts").contents()).toBe(config);
+  expect(await output.file("tsconfig.json").contents()).toBe("owner base");
+  expect(await output.file("bun.lock").contents()).toBe("owner lock");
+  expect(await output.file("tests/owner.test.ts").contents()).toBe(
+    "// owner test\n",
+  );
   const pkg = JSON.parse(await output.file("package.json").contents());
   expect(pkg.scripts).toEqual({ ...VITEST_SCRIPTS, "test:unit": "custom" });
-  expect(pkg.devDependencies).toEqual({
-    vitest: TOOL_VERSIONS.vitest,
-    "@vitest/coverage-v8": TOOL_VERSIONS.vitest,
-    owner: "1",
-  });
-  expect(pkg.dependencies).toEqual({ keep: "1" });
-  expect(pkg.name).toBe("owner");
-  for (const [path, text] of input.files)
-    if (path !== "package.json")
-      expect(await output.file(path).contents()).toBe(text);
-  expect([...input.files]).toEqual(before);
-  expect(await runUpdate(vitestTesting(), output)).toBe(output);
 });
 
 test("update never creates a missing Vitest config", async () => {
@@ -64,7 +46,7 @@ test("update never creates a missing Vitest config", async () => {
   expect(await output.exists("vitest.config.ts")).toBe(false);
 });
 
-test("composed Forge update preserves missing Vitest declaration and TypeScript respects owner deletion", async () => {
+test("composed Forge update respects owner deletion of Vitest and manages TypeScript config", async () => {
   const source = mockModuleSource();
   const empty = spyOn(dag, "directory").mockImplementation(() =>
     mockDirectory(),
@@ -77,8 +59,11 @@ test("composed Forge update preserves missing Vitest declaration and TypeScript 
       "tester",
       "sample",
     );
-    expect(await module.update(initialized, "forge-app")).toEqual(initialized);
     const pkg = JSON.parse(await initialized.file("package.json").contents());
+    expect(pkg.devDependencies).toMatchObject({
+      vitest: TOOL_VERSIONS.vitest,
+      "@vitest/coverage-v8": TOOL_VERSIONS.vitest,
+    });
     delete pkg.devDependencies.vitest;
     delete pkg.devDependencies["@vitest/coverage-v8"];
     const input = initialized

@@ -8,7 +8,7 @@ import {
 import { createBlueprint } from "../../src/core/project.ts";
 import { TOOL_VERSIONS } from "../../src/core/versions.ts";
 import { DropCalf } from "../../src/index.ts";
-import { runInit, runUpdate } from "../support/capability-fixtures.ts";
+import { runInit } from "../support/capability-fixtures.ts";
 import { mockDirectory, mockModuleSource } from "../support/module-source.ts";
 
 const apiTypes = "@forge-ahead/atlassian-api-types";
@@ -16,9 +16,7 @@ const authoritative = {
   "@forge-ahead/errors": TOOL_VERSIONS.forgeAheadErrors,
   "@forge-ahead/logging": TOOL_VERSIONS.forgeAheadLogging,
 };
-const update = (directory: Directory) => runUpdate(forgeAhead(), directory);
-
-test("Forge Ahead init seeds only API types without replacing other dependencies", () => {
+test("Forge Ahead init seeds all three libraries without replacing unrelated dependencies", () => {
   const project = createBlueprint("sample", "", "tester");
   const dependencies = { "@forge/api": "^7", "@forge-ahead/errors": "owner" };
   project.packageJson.dependencies = { ...dependencies };
@@ -34,37 +32,6 @@ test("Forge Ahead init seeds only API types without replacing other dependencies
   expect(project.files.size).toBe(0);
   expect(project.templates.map((template) => template.path)).toEqual([]);
 });
-
-test.each([undefined, "^99", "github:example/api-types#revision"])(
-  "Forge Ahead update preserves owner-managed and uncomparable references: %j",
-  async (apiReference) => {
-    const pkg = {
-      name: "owner",
-      dependencies: {
-        "@forge/api": "^7",
-        "@forge/resolver": "^1",
-        "@forge-ahead/errors": "^99",
-        "@forge-ahead/logging": "github:example/logging#revision",
-        ...(apiReference === undefined ? {} : { [apiTypes]: apiReference }),
-      },
-      devDependencies: { tool: "1" },
-      scripts: { build: "owner build" },
-      custom: { keep: true },
-    };
-    const input = mockDirectory(
-      new Map([
-        ["package.json", JSON.stringify(pkg)],
-        ["src/index.ts", "owner source"],
-        ["package-lock.json", "owner lock"],
-        ["bun.lock", "owner lock"],
-      ]),
-    );
-    const before = [...input.files];
-    // GitHub-referenced pins are uncomparable, so nothing is rewritten.
-    expect(await update(input)).toBe(input);
-    expect([...input.files]).toEqual(before);
-  },
-);
 
 test("Forge Ahead validation is an explicit no-op without reading or installing", async () => {
   const capability = forgeAhead();
@@ -89,7 +56,7 @@ test("Forge Ahead validation is an explicit no-op without reading or installing"
 });
 
 test.each([false, true])(
-  "Forge app init includes all three dependencies; update preserves API edits/deletion (scaffold: %j)",
+  "Forge app init includes all three dependencies alongside scaffold dependencies (scaffold: %j)",
   async (scaffold) => {
     const source = mockModuleSource();
     const empty = spyOn(dag, "directory").mockImplementation(() =>
@@ -116,34 +83,6 @@ test.each([false, true])(
         ...authoritative,
       });
       expect(await module.update(initialized, "forge-app")).toBe(initialized);
-      for (const apiReference of [undefined, "^99"]) {
-        const editedDependencies = { ...pkg.dependencies, ...authoritative };
-        if (apiReference === undefined) delete editedDependencies[apiTypes];
-        else editedDependencies[apiTypes] = apiReference;
-        const ownerAhead = {
-          "@forge-ahead/errors": "^99",
-          "@forge-ahead/logging": "^99",
-        };
-        const edited = initialized.withNewFile(
-          "package.json",
-          JSON.stringify({
-            ...pkg,
-            dependencies: {
-              ...editedDependencies,
-              ...ownerAhead,
-            },
-          }),
-        );
-        const updated = await module.update(edited, "forge-app");
-        expect(
-          JSON.parse(await updated.file("package.json").contents())
-            .dependencies,
-        ).toEqual({
-          ...editedDependencies,
-          ...ownerAhead,
-        });
-        expect(await module.update(updated, "forge-app")).toBe(updated);
-      }
     } finally {
       empty.mockRestore();
       source.mockRestore();

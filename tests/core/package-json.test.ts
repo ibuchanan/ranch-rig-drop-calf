@@ -72,79 +72,104 @@ test("update enforces policy and removals, leaving seeds and owner entries alone
   expect(await updatePackage(output, contributors)).toBe(output);
 });
 
-const freshness = [
-  contributor("tools", {
-    seed: {
-      dependencies: { runtime: "2.0.0" },
-      devDependencies: {
-        behind: "2.0.0",
-        caret: "2.0.0",
-        ahead: "2.0.0",
-        floor: "2.0.0",
-        git: "github:owner/git",
-        tag: "2.0.0",
-        any: "2.0.0",
-        removed: "2.0.0",
-      },
-    },
-  }),
-];
+test.each(["dependencies", "devDependencies"] as const)(
+  "%s freshness raises only older declarations, preserves deletions, and converges",
+  async (section) => {
+    await fc.assert(
+      fc.asyncProperty(
+        fc.tuple(
+          fc.nat({ max: 999 }),
+          fc.nat({ max: 999 }),
+          fc.nat({ max: 999 }),
+        ),
+        fc.integer({ min: 0, max: 2 }),
+        fc.constantFrom("", "^", "~"),
+        fc.constantFrom("", "^", "~"),
+        async (parts, component, ownerPrefix, pinPrefix) => {
+          const [older, equal, newer] = [0, 1, 2].map((step) =>
+            parts
+              .map((part, index) => part + (index === component ? step : 0))
+              .join("."),
+          );
+          const pin = `${pinPrefix}${equal}`;
+          const declared = {
+            older: `${ownerPrefix}${older}`,
+            equal: `${ownerPrefix}${equal}`,
+            newer: `${ownerPrefix}${newer}`,
+            unseeded: "0.0.0",
+          };
+          const contributors = [
+            contributor("tools", {
+              seed: {
+                [section]: { older: pin, equal: pin, newer: pin, removed: pin },
+              },
+            }),
+          ];
+          const pkg = { name: "owner", [section]: declared };
+          const input = mockDirectory(
+            new Map([["package.json", JSON.stringify(pkg)]]),
+          );
+          const before = [...input.files];
+          const output = await updatePackage(input, contributors);
+          expect(await read(output)).toEqual({
+            ...pkg,
+            [section]: { ...declared, older: pin },
+          });
+          expect([...input.files]).toEqual(before);
+          expect(await updatePackage(output, contributors)).toBe(output);
+          const absent = mockDirectory(new Map([["package.json", "{}"]]));
+          expect(await updatePackage(absent, contributors)).toBe(absent);
+        },
+      ),
+    );
+  },
+);
 
-test("update raises seeded dependencies behind their pin and leaves the rest", async () => {
-  const input = mockDirectory(
-    new Map([
-      [
-        "package.json",
-        JSON.stringify({
-          dependencies: { runtime: "^1.9.0" },
-          devDependencies: {
-            behind: "1",
-            caret: "~1.5.0",
-            ahead: "^3",
-            floor: "^2.0.0",
-            git: "0.0.1",
-            tag: "latest",
-            any: "*",
-            unseeded: "0.0.1",
-          },
-        }),
-      ],
-    ]),
-  );
-  const output = await updatePackage(input, freshness);
-  expect(await read(output)).toEqual({
-    dependencies: { runtime: "2.0.0" },
-    devDependencies: {
-      behind: "2.0.0",
-      caret: "2.0.0",
-      ahead: "^3",
-      floor: "^2.0.0",
-      git: "0.0.1",
-      tag: "latest",
-      any: "*",
-      unseeded: "0.0.1",
-    },
-  });
-  expect(await updatePackage(output, freshness)).toBe(output);
-});
-
-test("update never re-adds a removed dependency or creates its section", async () => {
-  const input = mockDirectory(
-    new Map([["package.json", JSON.stringify({ name: "x" })]]),
-  );
-  expect(await updatePackage(input, freshness)).toBe(input);
-});
-
-test("init writes every seeded dependency at its pin", () => {
-  const pkg: Record<string, unknown> = {
-    devDependencies: { behind: "1" },
+test.each([
+  ["1", "2.0.0", "2.0.0"],
+  ["^1.9.0", "2.0.0", "2.0.0"],
+  ["~1.5.0", "2.0.0", "2.0.0"],
+  ["^2.0.0", "2.0.0", "^2.0.0"],
+  ["^3.0.0", "2.0.0", "^3.0.0"],
+  ["2.0.0-beta.1", "2.0.0", "2.0.0"],
+  ["2.0.0", "2.0.0-beta.1", "2.0.0"],
+  ...[
+    "github:owner/tool#revision",
+    "latest",
+    "*",
+    "workspace:^",
+    "file:../tool",
+  ].flatMap((reference) => [
+    [reference, "2.0.0", reference],
+    ["0.0.1", reference, "0.0.1"],
+  ]),
+])("freshness reconciles %s against %s to %s", async (current, pin, wanted) => {
+  const pkg = {
+    dependencies: { tool: current },
+    devDependencies: { tool: current },
   };
-  seedPackage(pkg, freshness);
-  expect(pkg.dependencies).toEqual({ runtime: "2.0.0" });
-  expect(pkg.devDependencies).toMatchObject({
-    behind: "2.0.0",
-    git: "github:owner/git",
+  const input = mockDirectory(new Map([["package.json", JSON.stringify(pkg)]]));
+  const contributors = [
+    contributor("tools", {
+      seed: { dependencies: { tool: pin }, devDependencies: { tool: pin } },
+    }),
+  ];
+  const output = await updatePackage(input, contributors);
+  expect(await read(output)).toEqual({
+    dependencies: { tool: wanted },
+    devDependencies: { tool: wanted },
   });
+  if (wanted === current) expect(output).toBe(input);
+});
+
+test("init writes seeded dependency references verbatim", () => {
+  const pkg: Record<string, unknown> = { dependencies: { tool: "owner" } };
+  seedPackage(pkg, [
+    contributor("tools", {
+      seed: { dependencies: { tool: "2.0.0", git: "github:owner/git" } },
+    }),
+  ]);
+  expect(pkg.dependencies).toEqual({ tool: "2.0.0", git: "github:owner/git" });
 });
 
 test("update leaves a missing package.json missing", async () => {
