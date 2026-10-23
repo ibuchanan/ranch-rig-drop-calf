@@ -18,25 +18,37 @@ import { mockContainer } from "../support/container-source.ts";
 import { mockDirectory, mockModuleSource } from "../support/module-source.ts";
 import { promptfooTemplates } from "../support/templates-source.ts";
 
-test("evals documents a Rovo resource that resolves to the prompt used by every case", () => {
-  const files = promptfooTemplates();
-  const guide = files.get("docs/how-to/evaluate-rovo-agent.md");
-  expect(guide).toBeDefined();
+type RovoManifest = {
+  modules: { "rovo:agent": { prompt: string }[] };
+  resources: { key: string; path: string }[];
+};
+
+/** The first YAML snippet in a guide, parsed. */
+function yamlSnippet<T>(guide: string | undefined): T | undefined {
   const snippet = guide?.match(/^[ \t]*```yaml\n([\s\S]*?)^[ \t]*```/m)?.[1];
-  expect(snippet).toBeDefined();
-  const manifest = YAML.parse(snippet ?? "") as {
-    modules: { "rovo:agent": { prompt: string }[] };
-    resources: { key: string; path: string }[];
-  };
-  const prompt = manifest.modules["rovo:agent"][0]?.prompt ?? "";
-  const [resourceKey, relativePath] = prompt
+  return snippet === undefined ? undefined : (YAML.parse(snippet) as T);
+}
+
+/** Where the agent's `resource:<key>;<file>` prompt reference points, relative to the app. */
+function promptPathOf(manifest: RovoManifest): string | undefined {
+  const [resourceKey, relativePath = ""] = (
+    manifest.modules["rovo:agent"][0]?.prompt ?? ""
+  )
     .replace("resource:", "")
     .split(";");
   const resource = manifest.resources.find(({ key }) => key === resourceKey);
-  expect(resource).toBeDefined();
-  const promptPath = posix.join(resource?.path ?? "", relativePath ?? "");
+  return resource && posix.join(resource.path, relativePath);
+}
+
+test("evals documents a Rovo resource that resolves to the prompt used by every case", () => {
+  const files = promptfooTemplates();
+  const manifest = yamlSnippet<RovoManifest>(
+    files.get("docs/how-to/evaluate-rovo-agent.md"),
+  );
+  expect(manifest).toBeDefined();
+  const promptPath = manifest && promptPathOf(manifest);
   expect(promptPath).toBe("prompts/agent-instructions.md");
-  expect(files.get(promptPath)).toBeTruthy();
+  expect(files.get(promptPath ?? "")).toBeTruthy();
 
   const cases = YAML.parse(files.get("test/promptfoo-test.yaml") ?? "") as {
     vars: { agent_instructions: string };

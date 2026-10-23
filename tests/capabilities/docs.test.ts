@@ -119,63 +119,98 @@ test("update maintains only docs tools and script, preserving owner words, prose
   expect(await updateCapabilities(output, [capability])).toBe(output);
 });
 
-test.each(["library", "forge-app", "tool", "agent-skill"])(
-  "%s composed init seeds docs and update preserves owner edits and intentional deletion",
-  async (kind) => {
-    const source = mockModuleSource();
-    const empty = spyOn(dag, "directory").mockImplementation(() =>
+const DOC_KINDS = ["library", "forge-app", "tool", "agent-skill"];
+
+/** The folders DEVELOPMENT.md documents, in order, by kind. */
+const SHARED_LAYOUT = [".atlassian/", "src/", "docs/", "specs/", "dist/"];
+const KIND_LAYOUT: Record<string, string[]> = {
+  library: [...SHARED_LAYOUT, "tests/", "scripts/"],
+  "forge-app": [...SHARED_LAYOUT, "test/", "scripts/"],
+  tool: [...SHARED_LAYOUT, "tests/"],
+  "agent-skill": [...SHARED_LAYOUT, "tests/", "skills/"],
+};
+
+/** Descriptions only some kinds' layouts carry. */
+const KIND_LAYOUT_NOTES: Record<string, string[]> = {
+  "forge-app": [
+    "Forge app tests (Vitest)",
+    "Forge setup and deployment helpers",
+  ],
+};
+
+/** Run `scenario` against a freshly initialized project of `kind`, with module sources mocked. */
+async function withInitialized(
+  kind: string,
+  scenario: (fixture: {
+    module: DropCalf;
+    initialized: Awaited<ReturnType<DropCalf["init"]>>;
+  }) => Promise<void>,
+) {
+  const source = mockModuleSource();
+  const empty = spyOn(dag, "directory").mockImplementation(() =>
+    mockDirectory(),
+  );
+  try {
+    const module = new DropCalf();
+    const initialized = await module.init(
       mockDirectory(),
+      kind,
+      "tester",
+      "sample",
     );
-    try {
-      const module = new DropCalf();
-      const initialized = await module.init(
-        mockDirectory(),
-        kind,
-        "tester",
-        "sample",
-      );
-      for (const [path, text] of docsTemplates()) {
-        const actual = await initialized.file(path).contents();
-        if (path === "DEVELOPMENT.md")
-          expect(
-            actual.startsWith(
-              isBunKind(kind)
-                ? text
-                    .replaceAll("npm install", "bun install")
-                    .replaceAll("npm run", "bun run")
-                : text,
-            ),
-          ).toBe(true);
-        else expect(actual).toBe(text);
-      }
+    await scenario({ module, initialized });
+  } finally {
+    empty.mockRestore();
+    source.mockRestore();
+  }
+}
+
+/** The guide as a kind's package manager phrases it. */
+const guideFor = (kind: string, text: string) =>
+  isBunKind(kind)
+    ? text
+        .replaceAll("npm install", "bun install")
+        .replaceAll("npm run", "bun run")
+    : text;
+
+test.each(DOC_KINDS)("%s composed init seeds every docs template", (kind) =>
+  withInitialized(kind, async ({ initialized }) => {
+    for (const [path, text] of docsTemplates()) {
+      const actual = await initialized.file(path).contents();
+      // DEVELOPMENT.md gains a repository-layout section after its template text.
+      if (path === "DEVELOPMENT.md")
+        expect(actual.startsWith(guideFor(kind, text))).toBe(true);
+      else expect(actual).toBe(text);
+    }
+  }),
+);
+
+test.each(DOC_KINDS)(
+  "%s DEVELOPMENT.md documents the repository layout for its kind",
+  (kind) =>
+    withInitialized(kind, async ({ initialized }) => {
       const development = await initialized.file("DEVELOPMENT.md").contents();
       expect(development).toContain("## Repository layout\n");
       const bullets = development
         .split("## Repository layout\n")[1]
         ?.trim()
         .split("\n");
-      const shared = [".atlassian/", "src/", "docs/", "specs/", "dist/"];
-      const expected =
-        kind === "forge-app"
-          ? [...shared, "test/", "scripts/"]
-          : kind === "library"
-            ? [...shared, "tests/", "scripts/"]
-            : kind === "agent-skill"
-              ? [...shared, "tests/", "skills/"]
-              : [...shared, "tests/"];
       expect(
         bullets?.map((line) => line.match(/^- `([^`]+)`: .+\.$/)?.[1]),
-      ).toEqual(expected);
-      expect(development).toContain(
+      ).toEqual(KIND_LAYOUT[kind]);
+      for (const description of [
         "`specs/`: Specifications and reference material; excluded from Biome checks.",
-      );
-      expect(development).toContain(
         "`dist/`: Build output; ignored by Git and excluded from Biome checks.",
-      );
-      if (kind === "forge-app") {
-        expect(development).toContain("Forge app tests (Vitest)");
-        expect(development).toContain("Forge setup and deployment helpers");
-      }
+        ...(KIND_LAYOUT_NOTES[kind] ?? []),
+      ])
+        expect(development).toContain(description);
+    }),
+);
+
+test.each(DOC_KINDS)(
+  "%s update preserves owner edits to docs and restores tooling policy",
+  (kind) =>
+    withInitialized(kind, async ({ module, initialized }) => {
       const pkg = JSON.parse(await initialized.file("package.json").contents());
       pkg.scripts["lint:docs"] = "owner command";
       pkg.devDependencies.cspell = "0.0.1";
@@ -195,15 +230,18 @@ test.each(["library", "forge-app", "tool", "agent-skill"])(
         TOOL_VERSIONS.markdownlintCli2,
       );
       expect(await module.update(output, kind)).toBe(output);
-      let deleted = output;
+    }),
+);
+
+test.each(DOC_KINDS)(
+  "%s update leaves intentionally deleted docs deleted",
+  (kind) =>
+    withInitialized(kind, async ({ module, initialized }) => {
+      let deleted = initialized;
       for (const path of docsTemplates().keys())
         deleted = deleted.withoutFile(path);
       expect(await module.update(deleted, kind)).toBe(deleted);
-    } finally {
-      empty.mockRestore();
-      source.mockRestore();
-    }
-  },
+    }),
 );
 
 test("Forge eval selection includes prompts only when selected", async () => {

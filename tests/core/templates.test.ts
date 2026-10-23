@@ -31,38 +31,62 @@ import {
 
 const kinds = ["library", "forge-app", "tool", "agent-skill"];
 
+/** Template trees every kind seeds. */
+const COMMON_TEMPLATES = [
+  BIOME_TEMPLATE,
+  CATALOG_TEMPLATE,
+  PINNED_OSS,
+  PINNED_GITIGNORE,
+  CHANGELOG_TEMPLATE,
+  DOCS_TEMPLATE,
+  GIT_HOOKS_TEMPLATE,
+];
+
+/** Template trees added per kind; `withEvals` ones appear only under `--preset all`. */
+const KIND_TEMPLATES: Record<
+  string,
+  { paths: string[]; withEvals?: string[] }
+> = {
+  library: {
+    paths: [
+      LIBRARY_AIDEV_TEMPLATE,
+      LIBRARY_BUILD_TEMPLATE,
+      PACKAGE_CHECK_TEMPLATE,
+      "templates/library-release",
+      FALLOW_TEMPLATE,
+      TYPESCRIPT_TEMPLATE,
+    ],
+  },
+  "forge-app": {
+    paths: [
+      AIDEV_TEMPLATE,
+      SECRETS_TEMPLATE,
+      "templates/vitest",
+      TYPESCRIPT_TEMPLATE,
+    ],
+    withEvals: [EVALS_TEMPLATE],
+  },
+  tool: { paths: ["templates/bun", FALLOW_TEMPLATE, TYPESCRIPT_BUN_TEMPLATE] },
+  "agent-skill": {
+    paths: [
+      AGENT_SKILL_AIDEV_TEMPLATE,
+      "templates/bun",
+      SKILL_STARTER_TEMPLATE,
+      TYPESCRIPT_BUN_TEMPLATE,
+    ],
+    withEvals: [EVALS_TEMPLATE],
+  },
+};
+
 test.each(kinds)("%s declares only its selected template trees", (kind) => {
+  const { paths = [], withEvals = [] } = KIND_TEMPLATES[kind] ?? {};
   for (const preset of [undefined, "all"]) {
     const project = buildProject(kind, "sample", "tester", "", [], [], preset);
     expect(project.templates.map((template) => template.path).sort()).toEqual(
       [
-        ...(kind === "forge-app" ? [AIDEV_TEMPLATE] : []),
-        ...(kind === "library" ? [LIBRARY_AIDEV_TEMPLATE] : []),
-        ...(kind === "agent-skill" ? [AGENT_SKILL_AIDEV_TEMPLATE] : []),
-        ...(["tool", "agent-skill"].includes(kind) ? ["templates/bun"] : []),
-        BIOME_TEMPLATE,
-        CATALOG_TEMPLATE,
-        PINNED_OSS,
-        PINNED_GITIGNORE,
-        CHANGELOG_TEMPLATE,
-        DOCS_TEMPLATE,
-        GIT_HOOKS_TEMPLATE,
-        ...(kind === "library"
-          ? [
-              LIBRARY_BUILD_TEMPLATE,
-              PACKAGE_CHECK_TEMPLATE,
-              "templates/library-release",
-            ]
-          : []),
-        ...(["library", "tool"].includes(kind) ? [FALLOW_TEMPLATE] : []),
-        ...(kind === "forge-app" ? [SECRETS_TEMPLATE, "templates/vitest"] : []),
-        ...(kind === "agent-skill" ? [SKILL_STARTER_TEMPLATE] : []),
-        ...(["forge-app", "agent-skill"].includes(kind) && preset === "all"
-          ? [EVALS_TEMPLATE]
-          : []),
-        ["tool", "agent-skill"].includes(kind)
-          ? TYPESCRIPT_BUN_TEMPLATE
-          : TYPESCRIPT_TEMPLATE,
+        ...COMMON_TEMPLATES,
+        ...paths,
+        ...(preset === "all" ? withEvals : []),
       ].sort(),
     );
   }

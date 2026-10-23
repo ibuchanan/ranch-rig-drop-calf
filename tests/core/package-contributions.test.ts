@@ -60,6 +60,61 @@ function restored(capability: Capability, owner: Record<string, unknown>) {
   return expected;
 }
 
+/** Section entries either lifecycle declares, with the value update would enforce for each. */
+function sectionEntries(
+  seed: PackageFields | undefined,
+  policy: PackageFields | undefined,
+): [section: string, entry: string, wanted: unknown][] {
+  const enforced = fieldsOf(policy);
+  return [fieldsOf(seed), enforced].flatMap((fields) =>
+    Object.entries(fields)
+      .filter(([field]) => isSection(field))
+      .flatMap(([field, value]) =>
+        Object.entries(value as object).map(
+          ([entry, version]): [string, string, unknown] => [
+            field,
+            entry,
+            (enforced[field] as Record<string, unknown> | undefined)?.[entry] ??
+              version,
+          ],
+        ),
+      ),
+  );
+}
+
+type Sections = Record<string, Record<string, string>>;
+
+/** A package whose seeded dependencies are behind their pins, and what update should leave. */
+function staleDependencies(seed: PackageFields) {
+  const pkg: Sections = {};
+  const expected: Sections = {};
+  const place = (
+    target: Sections,
+    section: string,
+    name: string,
+    v: string,
+  ) => {
+    target[section] = { ...target[section], [name]: v };
+  };
+  const dependencies = (["dependencies", "devDependencies"] as const).flatMap(
+    (section) =>
+      Object.entries(seed[section] ?? {}).map(([name, pin]) => ({
+        section,
+        name,
+        pin,
+        // A pin of 0.0.0 has nothing older to fall behind.
+        raisable:
+          Boolean(semver.validRange(pin)) &&
+          semver.gt(semver.minVersion(pin) ?? "0.0.0", "0.0.0"),
+      })),
+  );
+  for (const { section, name, pin, raisable } of dependencies) {
+    place(pkg, section, name, raisable ? "0.0.0" : "latest");
+    place(expected, section, name, raisable ? pin : "latest");
+  }
+  return { pkg, expected };
+}
+
 const read = async (directory: Directory) =>
   JSON.parse(await directory.file("package.json").contents());
 
@@ -76,17 +131,8 @@ test.each(contributors)(
     const { seed, policy, remove = [] } = capability.packageJson ?? {};
     const pkg: Record<string, unknown> = { [remove[0] ?? "unused"]: "owner" };
     seedPackage(pkg, [capability]);
-    for (const fields of [fieldsOf(seed), fieldsOf(policy)])
-      for (const [field, value] of Object.entries(fields)) {
-        if (!isSection(field)) continue;
-        for (const [entry, version] of Object.entries(value as object)) {
-          const enforced = fieldsOf(policy)[field] as
-            | Record<string, unknown>
-            | undefined;
-          const wanted = enforced?.[entry] ?? version;
-          expect(pkg[field]).toHaveProperty([entry], wanted);
-        }
-      }
+    for (const [section, entry, wanted] of sectionEntries(seed, policy))
+      expect(pkg[section]).toHaveProperty([entry], wanted);
     for (const [field, value] of Object.entries(fieldsOf(policy)))
       if (!isSection(field)) expect(pkg[field]).toEqual(value);
     for (const field of remove) expect(pkg).not.toHaveProperty(field);
@@ -135,19 +181,9 @@ test.each(contributors)(
 test.each(contributors)(
   "$label update raises seeded dependencies behind their pin, and only those",
   async ({ capability }) => {
-    const seed = fieldsOf(capability.packageJson?.seed);
-    const pkg: Record<string, Record<string, string>> = {};
-    const expected: Record<string, Record<string, string>> = {};
-    for (const section of ["dependencies", "devDependencies"] as const)
-      for (const [name, pin] of Object.entries(seed[section] ?? {})) {
-        const floor = semver.validRange(pin) && semver.minVersion(pin);
-        const stale = floor && semver.gt(floor, "0.0.0") ? "0.0.0" : undefined;
-        pkg[section] = { ...pkg[section], [name]: stale ?? "latest" };
-        expected[section] = {
-          ...expected[section],
-          [name]: stale ? pin : "latest",
-        };
-      }
+    const { pkg, expected } = staleDependencies(
+      fieldsOf(capability.packageJson?.seed),
+    );
     const output = await updatePackage(withPackage(JSON.stringify(pkg)), [
       capability,
     ]);

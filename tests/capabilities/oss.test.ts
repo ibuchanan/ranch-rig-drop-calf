@@ -49,7 +49,6 @@ import {
   typescriptTemplates,
   vitestTemplates,
 } from "../support/templates-source.ts";
-import { isBunKind } from "../support/kinds.ts";
 
 const root = join(import.meta.dir, "../..");
 const vendor = join(root, PINNED_OSS);
@@ -70,6 +69,205 @@ const input = () =>
       ["package.json", '{"license":"MIT","custom":true}'],
     ]),
   );
+
+/** A Directory double that records every write so tests can inspect the generated tree. */
+function recordingDirectory() {
+  const writes = new Map<string, string>();
+  const modes = new Map<string, number | undefined>();
+  const directory = {
+    files: writes,
+    exists: async (path: string) => writes.has(path),
+    file: (path: string) => ({ contents: async () => writes.get(path) }),
+    withNewFile(
+      path: string,
+      contents: string,
+      options?: { permissions?: number },
+    ) {
+      writes.set(path, contents);
+      modes.set(path, options?.permissions);
+      return directory;
+    },
+    withFile(path: string, file: { text: string }) {
+      writes.set(path, file.text);
+      return directory;
+    },
+    withDirectory(
+      _path: string,
+      source: { files: ReadonlyMap<string, string> },
+    ) {
+      for (const [path, contents] of source.files) writes.set(path, contents);
+      return directory;
+    },
+  } as unknown as Directory;
+  return { directory, writes, modes };
+}
+
+/** How a kind's package manager shows up in seeded guides and hook commands. */
+type Runner = {
+  rewrite: (guide: string) => string;
+  rewriteHooks: (hooks: string) => string;
+};
+const NPM_RUNNER: Runner = {
+  rewrite: (guide) => guide,
+  rewriteHooks: (h) => h,
+};
+const BUN_RUNNER: Runner = {
+  rewrite: (guide) =>
+    guide
+      .replaceAll("npm install", "bun install")
+      .replaceAll("npm run", "bun run"),
+  rewriteHooks: (hooks) =>
+    hooks.replaceAll(/npm run (\S+) --if-present/g, "bun run --if-present $1"),
+};
+
+const BUN_TEST_SCRIPTS = {
+  test: "bun test --pass-with-no-tests",
+  "test:watch": "bun test --watch --pass-with-no-tests",
+  "test:coverage": "bun test --coverage --pass-with-no-tests",
+};
+
+/** What `init` must add on top of the common project for one kind. */
+type KindExpectations = {
+  runner: Runner;
+  /** Package.json content layered over the composed project. */
+  dependencies?: Record<string, string>;
+  devDependencies?: Record<string, string>;
+  scripts: Record<string, string>;
+  typescript: () => ReadonlyMap<string, string>;
+  /** Template trees seeded beyond the common ones, in seeding order. */
+  templates: (preset: string | undefined) => ReadonlyMap<string, string>[];
+  /** Files written through the recorder that are not templates. */
+  extraFiles: readonly string[];
+  /** Files only visible in the directory `init` returns. */
+  readFromOutput: readonly string[];
+  fileModes: Record<string, number>;
+  /** `[path, fragment]` pairs the written file must / must not contain. */
+  contains: readonly [string, string][];
+  excludes: readonly [string, string][];
+};
+
+const whenPresetAll = (preset: string | undefined) =>
+  preset === "all" ? [promptfooTemplates()] : [];
+
+const KIND_EXPECTATIONS: Record<string, KindExpectations> = {
+  library: {
+    runner: NPM_RUNNER,
+    scripts: { ...BUN_TEST_SCRIPTS, clean: "rm -rf dist" },
+    typescript: typescriptTemplates,
+    templates: () => [
+      libraryBuildTemplates(),
+      packageCheckTemplates(),
+      libraryReleaseTemplates(),
+      fallowTemplates(),
+    ],
+    extraFiles: ["AGENTS.md"],
+    readFromOutput: ["tsconfig.declarations.json"],
+    fileModes: {},
+    contains: [],
+    excludes: [],
+  },
+  "forge-app": {
+    runner: NPM_RUNNER,
+    dependencies: {
+      "@forge-ahead/errors": TOOL_VERSIONS.forgeAheadErrors,
+      "@forge-ahead/logging": TOOL_VERSIONS.forgeAheadLogging,
+    },
+    devDependencies: {
+      "@ast-grep/cli": TOOL_VERSIONS.astGrep,
+      "@forge-ahead/prelint": TOOL_VERSIONS.forgePrelint,
+    },
+    scripts: { ...PRELINT_SCRIPTS, clean: "rm -rf dist" },
+    typescript: typescriptTemplates,
+    templates: (preset) => [vitestTemplates(), ...whenPresetAll(preset)],
+    extraFiles: ["AGENTS.md", ...SECRETS_ASSETS],
+    readFromOutput: [],
+    fileModes: {
+      "scripts/env-var.sh": 0o755,
+      "scripts/forge-vars-from-secretspec.js": 0o755,
+    },
+    contains: [["secretspec.toml", 'name = "sample"']],
+    excludes: [["secretspec.toml", "[project-name]"]],
+  },
+  tool: {
+    runner: BUN_RUNNER,
+    scripts: { ...BUN_TEST_SCRIPTS, clean: "rm -rf dist" },
+    typescript: typescriptBunTemplates,
+    templates: () => [fallowTemplates()],
+    extraFiles: ["bunfig.toml"],
+    readFromOutput: [],
+    fileModes: {},
+    contains: [],
+    excludes: [],
+  },
+  "agent-skill": {
+    runner: BUN_RUNNER,
+    scripts: { ...BUN_TEST_SCRIPTS, clean: "rm -rf dist" },
+    typescript: typescriptBunTemplates,
+    templates: (preset) => [skillStarterTemplates(), ...whenPresetAll(preset)],
+    extraFiles: ["AGENTS.md", "bunfig.toml"],
+    readFromOutput: [],
+    fileModes: {},
+    contains: [],
+    excludes: [],
+  },
+};
+
+function expectedPackageJson(
+  project: ReturnType<typeof buildProject>["packageJson"],
+  { dependencies, devDependencies, scripts }: KindExpectations,
+) {
+  return {
+    ...project,
+    ...(dependencies && {
+      dependencies: { ...project.dependencies, ...dependencies },
+    }),
+    scripts: { ...project.scripts, ...scripts },
+    devDependencies: { ...project.devDependencies, ...devDependencies },
+    license: "Apache-2.0",
+  };
+}
+
+/** Every template tree `init` seeds for a kind, later trees overriding earlier ones. */
+function seededTemplates(expected: KindExpectations, preset?: string) {
+  return new Map([
+    ...biomeTemplates(),
+    ...[...expected.typescript()].filter(
+      ([path]) => path !== "tsconfig.declarations.json",
+    ),
+    ...expected.templates(preset).flatMap((tree) => [...tree]),
+    ...gitHooksTemplates(),
+    ...docsTemplates(),
+    ...changelogTemplates(),
+  ]);
+}
+
+/** The exact text `init` writes for every file fully determined by a template. */
+function expectedContents(
+  expected: KindExpectations,
+  seeded: ReadonlyMap<string, string>,
+): Map<string, string | undefined> {
+  const oss = ossTemplates();
+  return new Map<string, string | undefined>([
+    // DEVELOPMENT.md only has to start with its template; it gains a layout section.
+    ...[...seeded]
+      .filter(([path]) => path !== "DEVELOPMENT.md")
+      .map(([path, contents]): [string, string] => [
+        path,
+        path === "lefthook.yml"
+          ? expected.runner.rewriteHooks(contents)
+          : contents,
+      ]),
+    ["README.md", oss.get("README.md")?.replaceAll("[Project name]", "sample")],
+    ["CODE_OF_CONDUCT.md", oss.get("CODE_OF_CONDUCT.md")],
+    [".atlassian/OWNER", "tester"],
+    [
+      "LICENSE",
+      oss
+        .get("LICENSE")
+        ?.replaceAll("[YYYY]", String(new Date().getFullYear())),
+    ],
+  ]);
+}
 
 describe("pinned OSS templates", () => {
   test("records the upstream commit it was pinned from", () => {
@@ -135,35 +333,11 @@ describe("pinned OSS templates", () => {
   )(
     "$kind init renders the selected package and all assets (preset $presetName)",
     async ({ kind, preset }) => {
-      const writes = new Map<string, string>();
-      const modes = new Map<string, number | undefined>();
-      const directory = {
-        files: writes,
-        exists: async (path: string) => writes.has(path),
-        file: (path: string) => ({ contents: async () => writes.get(path) }),
-        withNewFile(
-          path: string,
-          contents: string,
-          options?: { permissions?: number },
-        ) {
-          writes.set(path, contents);
-          modes.set(path, options?.permissions);
-          return directory;
-        },
-        withFile(path: string, file: { text: string }) {
-          writes.set(path, file.text);
-          return directory;
-        },
-        withDirectory(
-          _path: string,
-          source: { files: ReadonlyMap<string, string> },
-        ) {
-          for (const [path, contents] of source.files)
-            writes.set(path, contents);
-          return directory;
-        },
-      } as unknown as Directory;
-      const stub = spyOn(dag, "directory").mockReturnValue(directory);
+      const expected = KIND_EXPECTATIONS[kind];
+      if (!expected) throw new Error(`No expectations for kind ${kind}`);
+      const recorder = recordingDirectory();
+      const { writes, modes } = recorder;
+      const stub = spyOn(dag, "directory").mockReturnValue(recorder.directory);
       const oss = mockOssSource();
       try {
         const output = await new DropCalf().init(
@@ -176,15 +350,9 @@ describe("pinned OSS templates", () => {
           [],
           preset,
         );
-        writes.set(
-          "package.json",
-          await output.file("package.json").contents(),
-        );
-        if (kind === "library")
-          writes.set(
-            "tsconfig.declarations.json",
-            await output.file("tsconfig.declarations.json").contents(),
-          );
+        // These files come back in the returned directory, not through the recorder.
+        for (const path of ["package.json", ...expected.readFromOutput])
+          writes.set(path, await output.file(path).contents());
         const project = buildProject(
           kind,
           "sample",
@@ -194,123 +362,41 @@ describe("pinned OSS templates", () => {
           [],
           preset,
         );
-        expect(JSON.parse(writes.get("package.json") ?? "null")).toEqual({
-          ...project.packageJson,
-          ...(kind === "forge-app"
-            ? {
-                dependencies: {
-                  ...project.packageJson.dependencies,
-                  "@forge-ahead/errors": TOOL_VERSIONS.forgeAheadErrors,
-                  "@forge-ahead/logging": TOOL_VERSIONS.forgeAheadLogging,
-                },
-              }
-            : {}),
-          scripts: {
-            ...project.packageJson.scripts,
-            clean: "rm -rf dist",
-            ...(kind === "forge-app"
-              ? PRELINT_SCRIPTS
-              : {
-                  test: "bun test --pass-with-no-tests",
-                  "test:watch": "bun test --watch --pass-with-no-tests",
-                  "test:coverage": "bun test --coverage --pass-with-no-tests",
-                }),
-          },
-          devDependencies: {
-            ...project.packageJson.devDependencies,
-            ...(kind === "forge-app"
-              ? {
-                  "@ast-grep/cli": TOOL_VERSIONS.astGrep,
-                  "@forge-ahead/prelint": TOOL_VERSIONS.forgePrelint,
-                }
-              : {}),
-          },
-          license: "Apache-2.0",
-        });
-        expect(writes.get("README.md")).toBe(
-          ossTemplates()
-            .get("README.md")
-            ?.replaceAll("[Project name]", "sample"),
+        expect(JSON.parse(writes.get("package.json") ?? "null")).toEqual(
+          expectedPackageJson(project.packageJson, expected),
         );
-        expect(writes.get("CODE_OF_CONDUCT.md")).toBe(
-          ossTemplates().get("CODE_OF_CONDUCT.md"),
-        );
+        const seeded = seededTemplates(expected, preset);
+        for (const [path, contents] of expectedContents(expected, seeded))
+          expect(writes.get(path), path).toBe(contents);
         expect(
           writes
             .get("DEVELOPMENT.md")
             ?.startsWith(
-              isBunKind(kind)
-                ? (
-                    docsTemplates().get("DEVELOPMENT.md") ??
-                    "missing docs template"
-                  )
-                    .replaceAll("npm install", "bun install")
-                    .replaceAll("npm run", "bun run")
-                : (docsTemplates().get("DEVELOPMENT.md") ??
-                    "missing docs template"),
+              expected.runner.rewrite(
+                docsTemplates().get("DEVELOPMENT.md") ??
+                  "missing docs template",
+              ),
             ),
         ).toBe(true);
-        const seeded = new Map([
-          ...biomeTemplates(),
-          ...[
-            ...(["tool", "agent-skill"].includes(kind)
-              ? typescriptBunTemplates()
-              : typescriptTemplates()),
-          ].filter(([path]) => path !== "tsconfig.declarations.json"),
-          ...(kind === "agent-skill" ? skillStarterTemplates() : []),
-          ...(kind === "library" ? libraryBuildTemplates() : []),
-          ...(kind === "library" ? packageCheckTemplates() : []),
-          ...(kind === "library" ? libraryReleaseTemplates() : []),
-          ...(["library", "tool"].includes(kind) ? fallowTemplates() : []),
-          ...(kind === "forge-app" ? vitestTemplates() : []),
-          ...(["forge-app", "agent-skill"].includes(kind) && preset === "all"
-            ? promptfooTemplates()
-            : []),
-          ...gitHooksTemplates(),
-          ...docsTemplates(),
-          ...changelogTemplates(),
-        ]);
-        for (const [path, contents] of seeded)
-          if (path !== "DEVELOPMENT.md")
-            expect(writes.get(path)).toBe(
-              ["tool", "agent-skill"].includes(kind) && path === "lefthook.yml"
-                ? contents.replaceAll(
-                    /npm run (\S+) --if-present/g,
-                    "bun run --if-present $1",
-                  )
-                : contents,
-            );
         expect(writes.has("cliff.toml")).toBe(true);
         expect(writes.has("CHANGELOG.md")).toBe(true);
-        if (kind === "forge-app") {
-          expect(writes.get("secretspec.toml")).toContain('name = "sample"');
-          expect(writes.get("secretspec.toml")).not.toContain("[project-name]");
-          expect(modes.get("scripts/env-var.sh")).toBe(0o755);
-          expect(modes.get("scripts/forge-vars-from-secretspec.js")).toBe(
-            0o755,
-          );
-        }
-        expect(writes.get(".atlassian/OWNER")).toBe("tester");
-        expect(writes.get("LICENSE")).toBe(
-          ossTemplates()
-            .get("LICENSE")
-            ?.replaceAll("[YYYY]", String(new Date().getFullYear())),
-        );
+        for (const [path, fragment] of expected.contains)
+          expect(writes.get(path)).toContain(fragment);
+        for (const [path, fragment] of expected.excludes)
+          expect(writes.get(path)).not.toContain(fragment);
+        for (const [path, mode] of Object.entries(expected.fileModes))
+          expect(modes.get(path)).toBe(mode);
         expect([...writes.keys()].sort()).toEqual(
           [
             ...new Set([
               "package.json",
               "catalog-info.yaml",
               ".gitignore",
-              ...(["forge-app", "library", "agent-skill"].includes(kind)
-                ? ["AGENTS.md"]
-                : []),
-              ...(kind === "forge-app" ? SECRETS_ASSETS : []),
+              ...expected.extraFiles,
+              ...expected.readFromOutput,
               ...project.files.keys(),
-              ...(isBunKind(kind) ? ["bunfig.toml"] : []),
               ...OSS_ASSETS,
               ...seeded.keys(),
-              ...(kind === "library" ? ["tsconfig.declarations.json"] : []),
             ]),
           ].sort(),
         );

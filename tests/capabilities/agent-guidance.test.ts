@@ -1,5 +1,5 @@
 import { expect, spyOn, test } from "bun:test";
-import { dag } from "@dagger.io/dagger";
+import { type Directory, dag } from "@dagger.io/dagger";
 import {
   AGENT_SKILL_AIDEV_TEMPLATE,
   AIDEV_TEMPLATE,
@@ -15,6 +15,7 @@ import {
   validateCapabilities,
 } from "../../src/core/capability.ts";
 import { InvalidOptionsError } from "../../src/core/errors.ts";
+import { readOptionalFile } from "../../src/core/files.ts";
 import { createBlueprint } from "../../src/core/project.ts";
 import { seedTemplates } from "../../src/core/templates.ts";
 import { DropCalf } from "../../src/index.ts";
@@ -69,76 +70,106 @@ test.each(kinds)(
   },
 );
 
+const GUIDED_KINDS = ["forge-app", "library"];
+const PRESETS = [undefined, "all"];
+
+/** Run `scenario` with module sources mocked, restoring them afterwards. */
+async function withMockedModule(scenario: (module: DropCalf) => Promise<void>) {
+  const source = mockModuleSource();
+  const empty = spyOn(dag, "directory").mockImplementation(() =>
+    mockDirectory(),
+  );
+  try {
+    await scenario(new DropCalf());
+  } finally {
+    empty.mockRestore();
+    source.mockRestore();
+  }
+}
+
+const initGuided = (
+  module: DropCalf,
+  kind: string,
+  preset: string | undefined,
+  without: string[],
+) =>
+  module.init(
+    mockDirectory(),
+    kind,
+    "tester",
+    "sample",
+    "",
+    [],
+    without,
+    preset,
+  );
+
+/** Every kind and preset, with and without the guidance function selected. */
+const GUIDANCE_CASES = GUIDED_KINDS.flatMap((kind) =>
+  PRESETS.flatMap((preset) =>
+    [[], ["aidev"]].map((without) => ({ kind, preset, without })),
+  ),
+);
+
+test.each(GUIDANCE_CASES)(
+  "$kind init seeds guidance only when selected (preset $preset, without $without)",
+  ({ kind, preset, without }) =>
+    withMockedModule(async (module) => {
+      const initialized = await initGuided(module, kind, preset, without);
+      const selected = !without.includes("aidev");
+      expect(await initialized.exists("AGENTS.md")).toBe(selected);
+      expect(await initialized.exists("evals.md")).toBe(false);
+      if (!selected) return;
+      // Evals guidance is appended only for a Forge app that selected evals.
+      const evals =
+        kind === "forge-app" && preset === "all"
+          ? aidevTemplates().get("evals.md")
+          : "";
+      expect(await initialized.file("AGENTS.md").contents()).toBe(
+        (aidevTemplates(kind as "forge-app" | "library").get("AGENTS.md") ??
+          "") + evals,
+      );
+    }),
+);
+
+/** The two ways an owner can leave guidance: edited, or deleted on purpose. */
+const OWNER_STATES = {
+  edited: (initialized: Directory) =>
+    initialized.withNewFile(
+      "AGENTS.md",
+      "# Owner guidance\nKeep my changes.\n",
+    ),
+  deleted: (initialized: Directory) => initialized.withoutFile("AGENTS.md"),
+};
+
 test.each(
-  ["forge-app", "library"].flatMap((kind) =>
-    [undefined, "all"].map((preset) => ({ kind, preset })),
+  GUIDANCE_CASES.flatMap((scenario) =>
+    Object.keys(OWNER_STATES).map((state) => ({ ...scenario, state })),
   ),
 )(
-  "$kind init seeds guidance and update preserves edits and deletions ($preset)",
-  async ({ kind, preset }) => {
-    const source = mockModuleSource();
-    const empty = spyOn(dag, "directory").mockImplementation(() =>
-      mockDirectory(),
-    );
-    try {
-      const module = new DropCalf();
-      for (const without of [[], ["aidev"]]) {
-        const initialized = await module.init(
-          mockDirectory(),
+  "$kind update preserves $state guidance for any preset (preset $preset, without $without)",
+  ({ kind, preset, without, state }) =>
+    withMockedModule(async (module) => {
+      const initialized = await initGuided(module, kind, preset, without);
+      const repository =
+        OWNER_STATES[state as keyof typeof OWNER_STATES](initialized);
+      expect(await module.update(repository, kind, [], without, preset)).toBe(
+        repository,
+      );
+      for (const nextPreset of PRESETS) {
+        const updated = await module.update(
+          repository,
           kind,
-          "tester",
-          "sample",
-          "",
           [],
           without,
-          preset,
+          nextPreset,
         );
-        expect(await initialized.exists("AGENTS.md")).toBe(
-          !without.includes("aidev"),
+        // Absent stays absent; present stays byte for byte what the owner left.
+        expect(await readOptionalFile(updated, "AGENTS.md")).toBe(
+          await readOptionalFile(repository, "AGENTS.md"),
         );
-        expect(await initialized.exists("evals.md")).toBe(false);
-        if (!without.includes("aidev")) {
-          expect(await initialized.file("AGENTS.md").contents()).toBe(
-            (aidevTemplates(kind as "forge-app" | "library").get("AGENTS.md") ??
-              "") +
-              (kind === "forge-app" && preset === "all"
-                ? aidevTemplates().get("evals.md")
-                : ""),
-          );
-        }
-        for (const repository of [
-          initialized.withNewFile(
-            "AGENTS.md",
-            "# Owner guidance\nKeep my changes.\n",
-          ),
-          initialized.withoutFile("AGENTS.md"),
-        ]) {
-          expect(
-            await module.update(repository, kind, [], without, preset),
-          ).toBe(repository);
-          for (const nextPreset of [undefined, "all"]) {
-            const updated = await module.update(
-              repository,
-              kind,
-              [],
-              without,
-              nextPreset,
-            );
-            expect(await updated.exists("AGENTS.md")).toBe(
-              await repository.exists("AGENTS.md"),
-            );
-            if (await repository.exists("AGENTS.md"))
-              expect(await updated.file("AGENTS.md").contents()).toBe(
-                await repository.file("AGENTS.md").contents(),
-              );
-          }
-        }
       }
-    } finally {
-      empty.mockRestore();
-      source.mockRestore();
-    }
-  },
+    }),
 );
 
 test.each(kinds)(

@@ -15,7 +15,6 @@ import {
 import { buildProject } from "../../src/composition/profiles.ts";
 import { TOOL_VERSIONS } from "../../src/core/versions.ts";
 import { typescriptTemplates } from "../support/templates-source.ts";
-import { isBunKind } from "../support/kinds.ts";
 
 function config(text: string | undefined) {
   const result = ts.parseConfigFileTextToJson("tsconfig.json", text ?? "");
@@ -73,75 +72,115 @@ test("library build publishes the same entry and declarations that tsdown emits"
   );
 });
 
-test("generated TypeScript configs typecheck and compile a sample entry", () => {
-  mkdirSync(join(process.cwd(), ".scratch"), { recursive: true });
-  const root = mkdtempSync(join(process.cwd(), ".scratch/tmp_rovo_build_"));
-  try {
-    for (const kind of ["library", "forge-app", "tool", "agent-skill"]) {
-      const project = buildProject(kind, "sample", "tester");
-      expect(project.packageJson.type).toBe("module");
+/** How each kind's sample project is laid out and what its compiler must do. */
+type SampleTraits = {
+  /** Whether a tests/ folder exists for the typecheck config to pick up. */
+  tests: boolean;
+  /** The runtime that decides module resolution and whether `tsc` emits. */
+  runtime: "node" | "bun";
+};
+
+const SAMPLES: Record<string, SampleTraits> = {
+  library: { tests: true, runtime: "node" },
+  "forge-app": { tests: false, runtime: "node" },
+  tool: { tests: true, runtime: "bun" },
+  "agent-skill": { tests: true, runtime: "bun" },
+};
+
+/** Lay out a minimal project whose configs are reconciled exactly as `update` would. */
+function writeSampleProject(
+  folder: string,
+  kind: string,
+  traits: SampleTraits,
+) {
+  const project = buildProject(kind, "sample", "tester");
+  expect(project.packageJson.type).toBe("module");
+  mkdirSync(join(folder, "src"), { recursive: true });
+  writeFileSync(
+    join(folder, "package.json"),
+    JSON.stringify(project.packageJson),
+  );
+  writeFileSync(
+    join(folder, "src/index.ts"),
+    "export const value: number = 1;\n",
+  );
+  if (traits.tests) {
+    mkdirSync(join(folder, "tests"));
+    writeFileSync(
+      join(folder, "tests/index.test.ts"),
+      'import { test } from "bun:test";\ntest("sample", () => {});\n',
+    );
+  }
+  const configs = TYPESCRIPT_CONFIGS.filter(
+    (path) => path !== "tsconfig.declarations.json" || kind === "library",
+  );
+  for (const path of configs) {
+    const seed = typescriptTemplates().get(path) ?? "";
+    writeFileSync(
+      join(folder, path),
+      reconcileTypeScriptConfig(
+        path,
+        seed,
+        seed,
+        project.packageJson.devDependencies,
+        traits.runtime,
+      ),
+    );
+  }
+  return configs;
+}
+
+/** What the compiler says about one generated config, without asserting anything itself. */
+function compile(folder: string, path: string) {
+  const parsed = ts.getParsedCommandLineOfConfigFile(
+    join(folder, path),
+    {},
+    { ...ts.sys, onUnRecoverableConfigFileDiagnostic: () => {} },
+  );
+  const program = parsed && ts.createProgram(parsed.fileNames, parsed.options);
+  return {
+    errors: parsed?.errors ?? [],
+    includesTests:
+      parsed?.fileNames.some((name) => name.endsWith("index.test.ts")) ?? false,
+    diagnostics: program
+      ? ts
+          .getPreEmitDiagnostics(program)
+          .map((d) => ts.flattenDiagnosticMessageText(d.messageText, " "))
+      : [],
+    program,
+  };
+}
+
+test.each(Object.entries(SAMPLES))(
+  "%s generated TypeScript configs typecheck and compile a sample entry",
+  (kind, traits) => {
+    mkdirSync(join(process.cwd(), ".scratch"), { recursive: true });
+    const root = mkdtempSync(join(process.cwd(), ".scratch/tmp_rovo_build_"));
+    try {
       const folder = join(root, kind);
-      mkdirSync(join(folder, "src"), { recursive: true });
-      writeFileSync(
-        join(folder, "package.json"),
-        JSON.stringify(project.packageJson),
-      );
-      writeFileSync(
-        join(folder, "src/index.ts"),
-        "export const value: number = 1;\n",
-      );
-      if (kind !== "forge-app") {
-        mkdirSync(join(folder, "tests"));
-        writeFileSync(
-          join(folder, "tests/index.test.ts"),
-          'import { test } from "bun:test";\ntest("sample", () => {});\n',
+      for (const path of writeSampleProject(folder, kind, traits)) {
+        const { errors, includesTests, diagnostics, program } = compile(
+          folder,
+          path,
         );
-      }
-      const configs = TYPESCRIPT_CONFIGS.filter(
-        (path) => path !== "tsconfig.declarations.json" || kind === "library",
-      );
-      for (const path of configs) {
-        const seed = typescriptTemplates().get(path) ?? "";
-        writeFileSync(
-          join(folder, path),
-          reconcileTypeScriptConfig(
-            path,
-            seed,
-            seed,
-            project.packageJson.devDependencies,
-            isBunKind(kind) ? "bun" : "node",
-          ),
+        expect(errors).toEqual([]);
+        expect(includesTests).toBe(
+          path === "tsconfig.typecheck.json" && traits.tests,
         );
-      }
-      for (const path of configs) {
-        const parsed = ts.getParsedCommandLineOfConfigFile(
-          join(folder, path),
-          {},
-          { ...ts.sys, onUnRecoverableConfigFileDiagnostic: () => {} },
-        );
-        expect(parsed?.errors).toEqual([]);
-        if (!parsed) continue;
-        expect(
-          parsed.fileNames.some((name) => name.endsWith("index.test.ts")),
-        ).toBe(path === "tsconfig.typecheck.json" && kind !== "forge-app");
-        const program = ts.createProgram(parsed.fileNames, parsed.options);
-        expect(
-          ts
-            .getPreEmitDiagnostics(program)
-            .map((d) => ts.flattenDiagnosticMessageText(d.messageText, " ")),
-        ).toEqual([]);
-        if (path === "tsconfig.json" && !isBunKind(kind)) {
-          expect(program.emit().emitSkipped).toBe(false);
+        expect(diagnostics).toEqual([]);
+        // Only the main config of a Node project emits JavaScript.
+        if (path === "tsconfig.json" && traits.runtime === "node") {
+          expect(program?.emit().emitSkipped).toBe(false);
           expect(readFileSync(join(folder, "dist/index.js"), "utf8")).toContain(
             "export const value",
           );
         }
       }
+    } finally {
+      rmSync(root, { recursive: true, force: true });
     }
-  } finally {
-    rmSync(root, { recursive: true, force: true });
-  }
-});
+  },
+);
 
 test.each(["agent-skill"])("%s typechecks without building", (kind) => {
   const project = buildProject(kind, "sample", "tester");

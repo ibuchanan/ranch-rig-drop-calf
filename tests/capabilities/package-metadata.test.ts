@@ -95,9 +95,93 @@ test.each(kinds)(
   },
 );
 
+const BUN_TEST_SCRIPTS = {
+  test: "bun test --pass-with-no-tests",
+  "test:watch": "bun test --watch --pass-with-no-tests",
+  "test:coverage": "bun test --coverage --pass-with-no-tests",
+};
+
+/** What a kind's package.json carries beyond the scripts every kind shares. */
+type KindPackage = {
+  /** Scripts that depend on the kind's package-manager command (`npm` or `bun`). */
+  scripts: (run: string) => Record<string, string>;
+  /** Dependencies a scaffolder or owner already declared. */
+  dependencies?: Record<string, string>;
+  private: boolean;
+};
+
+const KIND_PACKAGES: Record<string, KindPackage> = {
+  library: {
+    scripts: (run) => ({
+      "lint:fallow": FALLOW_SCRIPT,
+      "lint:check:fallow": `${run} run lint:fallow`,
+      "pack:check": "npm run build && sh scripts/pack-check.sh",
+      "release:prepare": "bun run scripts/release-prepare.ts",
+      "release:publish": "bun run scripts/release-publish.ts",
+      prepare: "npm run build && (lefthook install || true)",
+      build: "sh scripts/build.sh",
+      ...BUN_TEST_SCRIPTS,
+    }),
+    private: false,
+  },
+  "forge-app": {
+    scripts: () => ({
+      "size:check": SIZE_LIMIT_COMMAND,
+      build: TYPESCRIPT_SCRIPTS.build,
+      ...VITEST_SCRIPTS,
+      ...PRELINT_SCRIPTS,
+      ...FORGE_SECRETS_SCRIPTS,
+    }),
+    dependencies: {
+      "@forge-ahead/errors": "github:ibuchanan/forge-ahead-errors",
+      "@forge-ahead/logging": "github:ibuchanan/forge-ahead-logging",
+    },
+    private: true,
+  },
+  tool: {
+    scripts: (run) => ({
+      "lint:fallow": FALLOW_SCRIPT,
+      "lint:check:fallow": `${run} run lint:fallow`,
+      build: "bun build --compile ./src/index.ts --outfile ./dist/cli",
+      ...BUN_TEST_SCRIPTS,
+    }),
+    private: false,
+  },
+  "agent-skill": {
+    scripts: () => ({
+      "lint:check:skills": "check-skill --all",
+      "skill:new": "init-skill",
+      ...BUN_TEST_SCRIPTS,
+    }),
+    private: true,
+  },
+};
+
+/** Scripts every kind gets, with `run` standing in for the kind's package manager. */
+function sharedScripts(run: string, bun: boolean) {
+  return {
+    custom: "echo custom",
+    ...BIOME_SCRIPTS,
+    ...GIT_HOOKS_SCRIPTS,
+    lint: bun
+      ? LINT_COMMAND.replace("--npm-path npm", "--npm-path bun")
+      : LINT_COMMAND,
+    "lint:check:biome": `${run} run lint:check`,
+    "lint:check:format": `${run} run format:check`,
+    "lint:check:typecheck": `${run} run typecheck`,
+    clean: "rm -rf dist",
+    "lint:docs": DOCS_COMMAND,
+    changelog: CHANGELOG_COMMAND,
+    typecheck: TYPESCRIPT_SCRIPTS.typecheck,
+  };
+}
+
 test.each(kinds)(
   "%s update overwrites owned metadata and preserves release and unrelated fields",
   async (kind) => {
+    const expected = KIND_PACKAGES[kind];
+    if (!expected) throw new Error(`No expectations for ${kind}`);
+    const bun = isBunKind(kind);
     const pkg = {
       name: "package-edit",
       description: "Package edit",
@@ -107,15 +191,7 @@ test.each(kinds)(
       private: false,
       license: "MIT",
       scripts: { custom: "echo custom" },
-      dependencies: {
-        custom: "^1.0.0",
-        ...(kind === "forge-app"
-          ? {
-              "@forge-ahead/errors": "github:ibuchanan/forge-ahead-errors",
-              "@forge-ahead/logging": "github:ibuchanan/forge-ahead-logging",
-            }
-          : {}),
-      },
+      dependencies: { custom: "^1.0.0", ...expected.dependencies },
       publishConfig: { access: "public" },
       custom: [1, 2],
     };
@@ -125,69 +201,17 @@ test.each(kinds)(
       const output = await new DropCalf().update(input, kind);
       expect(await manifest(output)).toEqual({
         ...pkg,
-        ...(isBunKind(kind)
-          ? { packageManager: `bun@${TOOL_VERSIONS.bun}` }
-          : {}),
+        ...(bun ? { packageManager: `bun@${TOOL_VERSIONS.bun}` } : {}),
         scripts: {
-          custom: "echo custom",
-          ...BIOME_SCRIPTS,
-          ...GIT_HOOKS_SCRIPTS,
-          lint: isBunKind(kind)
-            ? LINT_COMMAND.replace("--npm-path npm", "--npm-path bun")
-            : LINT_COMMAND,
-          "lint:check:biome": `${isBunKind(kind) ? "bun" : "npm"} run lint:check`,
-          "lint:check:format": `${isBunKind(kind) ? "bun" : "npm"} run format:check`,
-          "lint:check:typecheck": `${isBunKind(kind) ? "bun" : "npm"} run typecheck`,
-          clean: "rm -rf dist",
-          "lint:docs": DOCS_COMMAND,
-          ...(kind === "library" || kind === "tool"
-            ? {
-                "lint:fallow": FALLOW_SCRIPT,
-                "lint:check:fallow": `${isBunKind(kind) ? "bun" : "npm"} run lint:fallow`,
-              }
-            : {}),
-          ...(kind === "forge-app" ? { "size:check": SIZE_LIMIT_COMMAND } : {}),
-          ...(kind === "library"
-            ? {
-                "pack:check": "npm run build && sh scripts/pack-check.sh",
-                "release:prepare": "bun run scripts/release-prepare.ts",
-                "release:publish": "bun run scripts/release-publish.ts",
-                prepare: "npm run build && (lefthook install || true)",
-              }
-            : {}),
-          changelog: CHANGELOG_COMMAND,
-          typecheck: TYPESCRIPT_SCRIPTS.typecheck,
-          ...(kind === "agent-skill"
-            ? {
-                "lint:check:skills": "check-skill --all",
-                "skill:new": "init-skill",
-              }
-            : {
-                build:
-                  kind === "library"
-                    ? "sh scripts/build.sh"
-                    : kind === "tool"
-                      ? "bun build --compile ./src/index.ts --outfile ./dist/cli"
-                      : TYPESCRIPT_SCRIPTS.build,
-              }),
-          ...(kind === "forge-app"
-            ? {
-                ...VITEST_SCRIPTS,
-                ...PRELINT_SCRIPTS,
-                ...FORGE_SECRETS_SCRIPTS,
-              }
-            : {
-                test: "bun test --pass-with-no-tests",
-                "test:watch": "bun test --watch --pass-with-no-tests",
-                "test:coverage": "bun test --coverage --pass-with-no-tests",
-              }),
+          ...sharedScripts(bun ? "bun" : "npm", bun),
+          ...expected.scripts(bun ? "bun" : "npm"),
         },
         name: "@scope/sample",
         description: "Catalog description",
         author: "tester",
         license: "Apache-2.0",
         type: "module",
-        private: kind === "forge-app" || kind === "agent-skill",
+        private: expected.private,
       });
       expect(await output.file(CATALOG_FILE).contents()).toBe(
         await input.file(CATALOG_FILE).contents(),
