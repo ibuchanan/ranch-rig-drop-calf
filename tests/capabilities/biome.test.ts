@@ -9,9 +9,9 @@ import { ParseError } from "../../src/core/errors.ts";
 import { TOOL_VERSIONS } from "../../src/core/versions.ts";
 import { runUpdate, verb } from "../support/capability-fixtures.ts";
 import { mockContainer } from "../support/container-source.ts";
+import { isBunKind } from "../support/kinds.ts";
 import { mockDirectory } from "../support/module-source.ts";
 import { biomeTemplates } from "../support/templates-source.ts";
-import { isBunKind } from "../support/kinds.ts";
 
 const kinds = ["library", "forge-app", "tool", "agent-skill"];
 

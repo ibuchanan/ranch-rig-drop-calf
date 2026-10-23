@@ -16,9 +16,9 @@ import { TOOL_VERSIONS } from "../../src/core/versions.ts";
 import { DropCalf } from "../../src/index.ts";
 import { runInit, verb } from "../support/capability-fixtures.ts";
 import { mockContainer } from "../support/container-source.ts";
+import { isBunKind } from "../support/kinds.ts";
 import { mockDirectory, mockModuleSource } from "../support/module-source.ts";
 import { docsTemplates } from "../support/templates-source.ts";
-import { isBunKind } from "../support/kinds.ts";
 
 test("docs template paths do not overlap other generated files", () => {
   for (const kind of ["library", "forge-app", "tool", "agent-skill"]) {

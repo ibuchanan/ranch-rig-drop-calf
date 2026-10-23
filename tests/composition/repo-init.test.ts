@@ -13,6 +13,7 @@ import { createBlueprint } from "../../src/core/project.ts";
 import { TOOL_VERSIONS } from "../../src/core/versions.ts";
 import { DropCalf } from "../../src/index.ts";
 import { runInit } from "../support/capability-fixtures.ts";
+import { isBunKind } from "../support/kinds.ts";
 import { mockDirectory, mockModuleSource } from "../support/module-source.ts";
 import {
   biomeTemplates,
@@ -21,7 +22,6 @@ import {
   typescriptTemplates,
   vitestTemplates,
 } from "../support/templates-source.ts";
-import { isBunKind } from "../support/kinds.ts";
 
 let moduleSource: ReturnType<typeof mockModuleSource>;
 beforeEach(() => {

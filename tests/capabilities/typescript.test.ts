@@ -16,13 +16,13 @@ import { TOOL_VERSIONS } from "../../src/core/versions.ts";
 import { DropCalf } from "../../src/index.ts";
 import { runInit, runUpdate, verb } from "../support/capability-fixtures.ts";
 import { mockContainer } from "../support/container-source.ts";
+import { isBunKind } from "../support/kinds.ts";
 import { mockDirectory, mockModuleSource } from "../support/module-source.ts";
 import {
   typescriptBunTemplates,
   typescriptTemplates,
   vitestTemplates,
 } from "../support/templates-source.ts";
-import { isBunKind } from "../support/kinds.ts";
 
 const parsed = (contents: string) =>
   ts.parseConfigFileTextToJson("config.json", contents).config;

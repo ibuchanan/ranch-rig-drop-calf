@@ -16,8 +16,8 @@ import {
 } from "../../src/core/capability.ts";
 import { TOOL_VERSIONS } from "../../src/core/versions.ts";
 import { DropCalf } from "../../src/index.ts";
-import { mockDirectory, mockModuleSource } from "../support/module-source.ts";
 import { isBunKind } from "../support/kinds.ts";
+import { mockDirectory, mockModuleSource } from "../support/module-source.ts";
 
 const updateReason =
   "Prelint owns no files; its package.json contribution enforces the lint subtasks and keeps the seeded ast-grep dependency fresh; the @forge-ahead/prelint GitHub reference is owner-managed.";
