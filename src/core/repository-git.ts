@@ -9,6 +9,7 @@ import {
 } from "node:fs";
 import { join, resolve } from "node:path";
 import { enforce, type Guard, withEnv } from "./guards.ts";
+import { INIT_MARKERS } from "./init-markers.ts";
 
 export type RepositoryOptions = {
   operation: "init" | "update";
@@ -209,8 +210,6 @@ const BEFORE_ACQUIRE: readonly Guard<Checkout>[] = [
     message: "Select a target branch, not a Drop Calf update branch.",
   },
 ];
-
-const INIT_MARKERS = ["catalog-info.yaml", ".atlassian/OWNER"];
 
 const AFTER_ACQUIRE: readonly Guard<Checkout>[] = [
   {

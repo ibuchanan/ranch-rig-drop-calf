@@ -1,9 +1,18 @@
 import { type Capability, noOp } from "../core/capability.ts";
+import type {
+  PackageManager,
+  PackageManagerOption,
+} from "../core/package-manager.ts";
 import { TOOL_VERSIONS } from "../core/versions.ts";
 
-export const LINT_COMMAND = 'run-p --npm-path npm --print-label "lint:check:*"';
+const lintCommand = (manager: PackageManager) =>
+  `run-p --npm-path ${manager} --print-label "lint:check:*"`;
 
-export function lint({ packageManager = "npm" } = {}): Capability {
+export const LINT_COMMAND = lintCommand("npm");
+
+export function lint({
+  packageManager = "npm",
+}: PackageManagerOption = {}): Capability {
   return {
     name: "lint",
     documentation: {
@@ -19,12 +28,7 @@ export function lint({ packageManager = "npm" } = {}): Capability {
     packageJson: {
       seed: { devDependencies: { "npm-run-all2": TOOL_VERSIONS.npmRunAll2 } },
       policy: {
-        scripts: {
-          lint: LINT_COMMAND.replace(
-            "--npm-path npm",
-            `--npm-path ${packageManager}`,
-          ),
-        },
+        scripts: { lint: lintCommand(packageManager) },
       },
     },
     init: noOp(

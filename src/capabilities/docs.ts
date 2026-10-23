@@ -1,5 +1,9 @@
 import type { Directory } from "@dagger.io/dagger";
 import { type Capability, noOp, type Validation } from "../core/capability.ts";
+import {
+  forPackageManager,
+  type PackageManagerOption,
+} from "../core/package-manager.ts";
 import { EVALS_TEMPLATE, templateTree } from "../core/templates.ts";
 import { bunTools, REPOSITORY, runTool } from "../core/tool-run.ts";
 import { TOOL_VERSIONS } from "../core/versions.ts";
@@ -67,8 +71,7 @@ type DocsLayout = {
   scriptsPurpose?: string;
   /** Kind-specific layout entries, each already a `path`: purpose pair. */
   extraLayout?: string[];
-  packageManager?: string;
-};
+} & PackageManagerOption;
 
 const commonLayout = [
   "- `.atlassian/`: Repository ownership metadata.",
@@ -137,7 +140,7 @@ export function docsLinting(
           );
           return seeded.withNewFile(
             path,
-            `${layout.packageManager === "bun" ? contents.replaceAll("npm install", "bun install").replaceAll("npm run", "bun run") : contents}\n## Repository layout\n\n${repositoryLayout(layout, evaluations)}`,
+            `${forPackageManager(contents, layout.packageManager ?? "npm")}\n## Repository layout\n\n${repositoryLayout(layout, evaluations)}`,
           );
         }),
       );

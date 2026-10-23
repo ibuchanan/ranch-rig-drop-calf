@@ -12,19 +12,26 @@ import {
 } from "@dagger.io/dagger";
 import {
   blueprintFor,
-  type ProjectProfile,
   resolveProfile,
   scaffoldSteps,
 } from "./composition/profiles.ts";
 import { updateCapabilities, validateCapabilities } from "./core/capability.ts";
 import { carryFile, firstExisting, readOptionalFile } from "./core/files.ts";
+import { INIT_MARKERS } from "./core/init-markers.ts";
 import { mergeScaffoldPackage, scaffoldName } from "./core/package-json.ts";
 import { renderToDirectory } from "./core/project.ts";
 import { repositoryWorkflow } from "./core/repository.ts";
 import { seedTemplates } from "./core/templates.ts";
 
-/** Files whose presence means the project was already initialized. */
-const INIT_MARKERS = ["catalog-info.yaml", ".atlassian/OWNER"];
+/** Commit trailer recording which Drop Calf source and selection produced a change. */
+async function provenance(
+  profile: string,
+  withFunctions: string[],
+  withoutFunctions: string[],
+  preset?: string,
+): Promise<string> {
+  return `Drop-Calf-Source: ${await dag.currentModule().source().digest()}\nProfile: ${profile}\nWith: ${withFunctions.join(",")}\nWithout: ${withoutFunctions.join(",")}\nPreset: ${preset ?? "default"}`;
+}
 
 @object()
 export class DropCalf {
@@ -69,7 +76,12 @@ export class DropCalf {
           authorName,
           authorEmail,
           publish: false,
-          provenance: `Drop-Calf-Source: ${await dag.currentModule().source().digest()}\nProfile: ${profile}\nWith: ${withFunctions.join(",")}\nWithout: ${withoutFunctions.join(",")}\nPreset: ${preset ?? "default"}`,
+          provenance: await provenance(
+            profile,
+            withFunctions,
+            withoutFunctions,
+            preset,
+          ),
         },
         (input) =>
           this.init(
@@ -96,8 +108,7 @@ export class DropCalf {
       );
     const scaffold = await readOptionalFile(directory, "package.json");
     let cleaned = directory;
-    for (const step of scaffoldSteps(profile as ProjectProfile))
-      cleaned = await step(cleaned);
+    for (const step of scaffoldSteps(profile)) cleaned = await step(cleaned);
     const name =
       packageName ??
       scaffoldName(scaffold) ??
@@ -191,7 +202,12 @@ export class DropCalf {
           authHeader,
           sshAgent,
           knownHosts,
-          provenance: `Drop-Calf-Source: ${await dag.currentModule().source().digest()}\nProfile: ${profile}\nWith: ${withFunctions.join(",")}\nWithout: ${withoutFunctions.join(",")}\nPreset: ${preset ?? "default"}`,
+          provenance: await provenance(
+            profile,
+            withFunctions,
+            withoutFunctions,
+            preset,
+          ),
         },
         (input) =>
           this.update(input, profile, withFunctions, withoutFunctions, preset),

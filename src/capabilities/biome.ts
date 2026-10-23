@@ -2,6 +2,10 @@ import type { Container, Directory } from "@dagger.io/dagger";
 import ts from "typescript";
 import type { Capability, Validation } from "../core/capability.ts";
 import { ParseError } from "../core/errors.ts";
+import {
+  type PackageManagerOption,
+  runScript,
+} from "../core/package-manager.ts";
 import { templateTree } from "../core/templates.ts";
 import { npmTools, REPOSITORY, runTool } from "../core/tool-run.ts";
 import { TOOL_VERSIONS } from "../core/versions.ts";
@@ -95,7 +99,9 @@ async function validateBiome(directory: Directory): Promise<Validation> {
 }
 
 /** Configuration and EditorConfig are owner-managed after init; only Biome migrates the root config. */
-export function biomeToolchain({ packageManager = "npm" } = {}): Capability {
+export function biomeToolchain({
+  packageManager = "npm",
+}: PackageManagerOption = {}): Capability {
   return {
     name: "biome",
     documentation: {
@@ -118,8 +124,8 @@ export function biomeToolchain({ packageManager = "npm" } = {}): Capability {
       policy: {
         scripts: {
           ...BIOME_SCRIPTS,
-          "lint:check:biome": `${packageManager} run lint:check`,
-          "lint:check:format": `${packageManager} run format:check`,
+          "lint:check:biome": runScript(packageManager, "lint:check"),
+          "lint:check:format": runScript(packageManager, "format:check"),
         },
       },
     },

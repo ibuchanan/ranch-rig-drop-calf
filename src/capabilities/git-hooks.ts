@@ -1,5 +1,10 @@
 import type { Directory } from "@dagger.io/dagger";
 import { type Capability, noOp, type Validation } from "../core/capability.ts";
+import {
+  forPackageManager,
+  type PackageManagerOption,
+  runScript,
+} from "../core/package-manager.ts";
 import { templateTree } from "../core/templates.ts";
 import { npmTools, REPOSITORY } from "../core/tool-run.ts";
 import { TOOL_VERSIONS } from "../core/versions.ts";
@@ -15,7 +20,7 @@ export const GIT_HOOKS_SCRIPTS = {
 export function gitHooks({
   buildOnPrepare = false,
   packageManager = "npm",
-} = {}): Capability {
+}: PackageManagerOption & { buildOnPrepare?: boolean } = {}): Capability {
   return {
     name: "git-hooks",
     documentation: {
@@ -45,7 +50,7 @@ export function gitHooks({
         scripts: {
           ...GIT_HOOKS_SCRIPTS,
           prepare: buildOnPrepare
-            ? `${packageManager} run build && (${GIT_HOOKS_SCRIPTS.prepare})`
+            ? `${runScript(packageManager, "build")} && (${GIT_HOOKS_SCRIPTS.prepare})`
             : GIT_HOOKS_SCRIPTS.prepare,
         },
       },
@@ -56,12 +61,7 @@ export function gitHooks({
           const contents = await source.file("lefthook.yml").contents();
           return destination.withNewFile(
             "lefthook.yml",
-            packageManager === "bun"
-              ? contents.replaceAll(
-                  /npm run (\S+) --if-present/g,
-                  "bun run --if-present $1",
-                )
-              : contents,
+            forPackageManager(contents, packageManager),
           );
         }),
       );

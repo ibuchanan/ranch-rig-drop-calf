@@ -111,6 +111,7 @@ export async function repositoryWorkflow(
     .withFile("/workflow/git.ts", script)
     // git.ts imports its helpers by relative path, so they sit beside it.
     .withFile("/workflow/guards.ts", helper("src/core/guards.ts"))
+    .withFile("/workflow/init-markers.ts", helper("src/core/init-markers.ts"))
     .withNewFile("/workflow/options.json", JSON.stringify(options))
     .withWorkdir("/repo");
   // What this invocation brings into the container, each applied only when supplied.

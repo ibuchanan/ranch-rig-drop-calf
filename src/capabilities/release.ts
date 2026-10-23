@@ -2,22 +2,25 @@ import { dag } from "@dagger.io/dagger";
 import { type Capability, noOp } from "../core/capability.ts";
 import { ensureFile } from "../core/files.ts";
 import { editPackageJson } from "../core/package-json.ts";
+import {
+  type PackageManagerOption,
+  runScript,
+} from "../core/package-manager.ts";
 import { templateTree } from "../core/templates.ts";
 
 /** Own release wiring, leaving changelog policy and the shared tool pin with their owners. */
 export function release({
   packageManager = "npm",
   library = false,
-}: {
-  packageManager?: "npm" | "bun";
+}: PackageManagerOption & {
   library?: boolean;
 } = {}): Capability {
   const checks = ["test", "typecheck", ...(library ? ["pack:check"] : [])]
-    .map((check) => `${packageManager} run ${check}`)
+    .map((check) => runScript(packageManager, check))
     .join(" && ");
   const render = (template: string) =>
     template
-      .replace("@CHECK_COMMAND@", `${packageManager} run release:check`)
+      .replace("@CHECK_COMMAND@", runScript(packageManager, "release:check"))
       .replace(
         "@UPDATE_VERSION@",
         packageManager === "npm"

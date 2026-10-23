@@ -40,7 +40,10 @@ import { seedPackage } from "../core/package-json.ts";
 import { createBlueprint, type ProjectBlueprint } from "../core/project.ts";
 import { adoptScaffoldTypeScript, applyPreclean } from "./scaffold.ts";
 
-export const PROFILES: Record<string, Capability[]> = {
+const PROJECT_KINDS = ["library", "forge-app", "tool", "agent-skill"] as const;
+export type ProjectKind = (typeof PROJECT_KINDS)[number];
+
+export const PROFILES: Record<ProjectKind, Capability[]> = {
   library: [
     catalog("library"),
     packageMetadata(),
@@ -105,7 +108,7 @@ export const PROFILES: Record<string, Capability[]> = {
     biomeToolchain({ packageManager: "bun" }),
     lint({ packageManager: "bun" }),
     bunBuild(),
-    typeScriptToolchain({ ownsBuild: false, runtime: "bun" }),
+    typeScriptToolchain({ ownsBuild: false, packageManager: "bun" }),
     bunTesting(),
     fallow({ packageManager: "bun" }),
     cleanBuild(),
@@ -131,7 +134,7 @@ export const PROFILES: Record<string, Capability[]> = {
     lint({ packageManager: "bun" }),
     skillToolkit(),
     skillStarter(),
-    typeScriptToolchain({ ownsBuild: false, runtime: "bun" }),
+    typeScriptToolchain({ ownsBuild: false, packageManager: "bun" }),
     bunTesting(),
     cleanBuild(),
     todo(),
@@ -149,13 +152,21 @@ export const PROFILES: Record<string, Capability[]> = {
   ],
 };
 
-export type ProjectProfile = keyof typeof PROFILES;
+/** The one place a user-supplied kind is validated. */
+function projectKind(profile: string | undefined): ProjectKind {
+  const kind = PROJECT_KINDS.find((known) => known === profile);
+  if (!kind)
+    throw new InvalidOptionsError(
+      `Select a project kind with --profile: ${PROJECT_KINDS.join(", ")} (received ${JSON.stringify(profile)}).`,
+    );
+  return kind;
+}
 
 /** Prepares fresh scaffolder output before capability init; never runs on update. */
 export type ScaffoldStep = (directory: Directory) => Promise<Directory>;
 
 // Order matters: Forge adoption renames scaffold source before preclean removes files.
-const SCAFFOLD_STEPS: Record<ProjectProfile, ScaffoldStep[]> = {
+const SCAFFOLD_STEPS: Record<ProjectKind, ScaffoldStep[]> = {
   library: [applyPreclean],
   "forge-app": [adoptScaffoldTypeScript, applyPreclean],
   tool: [applyPreclean],
@@ -163,15 +174,8 @@ const SCAFFOLD_STEPS: Record<ProjectProfile, ScaffoldStep[]> = {
 };
 
 /** The selected kind's scaffold steps, in application order. */
-export function scaffoldSteps(
-  profile: ProjectProfile,
-): readonly ScaffoldStep[] {
-  const steps = SCAFFOLD_STEPS[profile];
-  if (!steps || !Object.hasOwn(SCAFFOLD_STEPS, profile))
-    throw new InvalidOptionsError(
-      `No scaffold steps are declared for project kind ${JSON.stringify(profile)}.`,
-    );
-  return steps;
+export function scaffoldSteps(profile: string): readonly ScaffoldStep[] {
+  return SCAFFOLD_STEPS[projectKind(profile)];
 }
 
 export function resolveProfile(
@@ -180,12 +184,7 @@ export function resolveProfile(
   withoutFunctions: string[] = [],
   preset?: string,
 ): Capability[] {
-  const capabilities = profile ? PROFILES[profile] : undefined;
-  if (!profile || !capabilities || !Object.hasOwn(PROFILES, profile)) {
-    throw new InvalidOptionsError(
-      `Select a project kind with --profile: library, forge-app, tool, agent-skill (received ${JSON.stringify(profile)}).`,
-    );
-  }
+  const capabilities = PROFILES[projectKind(profile)];
   if (preset !== undefined && preset !== "all") {
     throw new InvalidOptionsError(
       `Unknown preset ${JSON.stringify(preset)}; use all or omit --preset.`,

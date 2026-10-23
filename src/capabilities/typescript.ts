@@ -11,6 +11,10 @@ import {
 import type { Capability, Validation } from "../core/capability.ts";
 import { ParseError } from "../core/errors.ts";
 import { readPackageJson } from "../core/package-json.ts";
+import {
+  type PackageManagerOption,
+  runScript,
+} from "../core/package-manager.ts";
 import { templateTree } from "../core/templates.ts";
 import { npmTools, REPOSITORY, runTool } from "../core/tool-run.ts";
 import { TOOL_VERSIONS } from "../core/versions.ts";
@@ -258,8 +262,9 @@ async function validateTypeScript(directory: Directory): Promise<Validation> {
 /** `ownsBuild: false` leaves the build script to the selected build capability. */
 export function typeScriptToolchain({
   ownsBuild = true,
-  runtime = "node",
-} = {}): Capability {
+  packageManager = "npm",
+}: PackageManagerOption & { ownsBuild?: boolean } = {}): Capability {
+  const runtime = packageManager === "bun" ? "bun" : "node";
   return {
     name: "typescript",
     documentation: {
@@ -284,7 +289,7 @@ export function typeScriptToolchain({
       policy: {
         scripts: {
           typecheck: TYPESCRIPT_SCRIPTS.typecheck,
-          "lint:check:typecheck": `${runtime === "bun" ? "bun" : "npm"} run typecheck`,
+          "lint:check:typecheck": runScript(packageManager, "typecheck"),
           // A separate build capability owns build when selected.
           ...(ownsBuild ? { build: TYPESCRIPT_SCRIPTS.build } : {}),
         },
