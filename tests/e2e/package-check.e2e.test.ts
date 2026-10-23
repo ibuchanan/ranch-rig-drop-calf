@@ -186,11 +186,11 @@ test("Are the Types Wrong rejects declarations advertising a nonexistent default
 });
 
 test.each([
-  { name: "explicit-js", specifier: "./answer.js", status: 0 },
-  { name: "extensionless-blocker", specifier: "./answer", status: 1 },
+  { name: "explicit-js", specifier: "./answer.js" },
+  { name: "extensionless", specifier: "./answer" },
 ])(
   "default build declaration compatibility: $name",
-  ({ name, specifier, status }) => {
+  ({ name, specifier }) => {
     const { cwd, pkg, save } = fixture(name);
     const original = JSON.parse(generated.get("package.json") ?? "{}");
     for (const field of ["main", "types", "exports"])
@@ -207,16 +207,7 @@ test.each([
       "export const answer: number = 42;\n",
     );
     const result = run(cwd, "pack:check");
-    expect(result.status, result.stdout + result.stderr).toBe(status);
-    if (status !== 0) {
-      expect(result.stdout + result.stderr).toContain(
-        "Internal resolution error",
-      );
-      expect(result.stdout + result.stderr).toContain("node16 (from ESM)");
-      expect(readFileSync(join(cwd, "dist/index.d.ts"), "utf8")).toContain(
-        "'./answer'",
-      );
-    }
+    expect(result.status, result.stdout + result.stderr).toBe(0);
   },
   90_000,
 );

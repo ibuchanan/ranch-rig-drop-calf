@@ -706,28 +706,32 @@ that call the existing named subtasks. Owner hook edits remain owner-managed.
 
 ### `library-build`
 
-The `library` composition uses the `forge-ahead-errors` pipeline: tsdown bundles
-ESM and CJS, TypeScript emits declarations, and the build script copies every
-`.d.ts` to its corresponding `.d.cts`, including nested outputs.
+The `library` composition retains separate bundling and declaration stages:
+tsdown bundles ESM and CJS, TypeScript emits declarations, and
+`scripts/declarations.mjs` produces matching `.d.ts` and `.d.cts` trees, including
+nested outputs. Relative imports, re-exports, and import types that resolve to
+emitted sibling declarations use explicit `.js` specifiers for ESM and `.cjs`
+specifiers for CommonJS. Directory references resolve to their emitted index;
+bare package references and string literal types are unchanged.
 
-| Resource                            | Init                                   | Update                                                        |
-| ----------------------------------- | -------------------------------------- | ------------------------------------------------------------- |
-| `devDependencies.tsdown`            | Seed `TOOL_VERSIONS.tsdown` (`0.23.1`) | Enforce the pin                                               |
-| `scripts.build`                     | Seed `sh scripts/build.sh`             | Enforce command                                               |
-| `scripts/build.sh`                  | Overlay reviewed template              | Enforce whole template                                        |
-| `tsdown.config.json`                | Overlay reviewed template              | Enforce `format: ["esm", "cjs"]`; preserve all other settings |
-| `main`, `types`, `exports`, `files` | Seed publishing defaults               | Preserve owner values and deletions                           |
+| Resource                                       | Init                                   | Update                                                        |
+| ---------------------------------------------- | -------------------------------------- | ------------------------------------------------------------- |
+| `devDependencies.tsdown`                       | Seed `TOOL_VERSIONS.tsdown` (`0.23.1`) | Enforce the pin                                               |
+| `scripts.build`                                | Seed `sh scripts/build.sh`             | Enforce command                                               |
+| `scripts/build.sh`, `scripts/declarations.mjs` | Overlay reviewed templates             | Enforce whole templates                                       |
+| `tsdown.config.json`                           | Overlay reviewed template              | Enforce `format: ["esm", "cjs"]`; preserve all other settings |
+| `main`, `types`, `exports`, `files`            | Seed publishing defaults               | Preserve owner values and deletions                           |
 
 The JSON seed contains `entry: {"index": "./src/index.ts"}`, both formats,
 `sourcemap: true`, and `target: "node22"`. Publishing defaults are
-`main: "dist/index.mjs"`, `types: "dist/index.d.ts"`, and `files: ["dist"]`.
+`main: "dist/index.cjs"`, `types: "dist/index.d.ts"`, and `files: ["dist"]`.
 The `.` export has `import` with `types: "./dist/index.d.ts"` and
 `default: "./dist/index.mjs"`, and `require` with `types: "./dist/index.d.cts"`
 and `default: "./dist/index.cjs"`. Additional entries, dependency externals,
 subpath exports and publishing paths are library-specific owner settings.
 - **update**: its package.json contribution (§3) enforces `scripts.build`;
   `devDependencies.tsdown` is seed, kept fresh.
-  `scripts/build.sh` is enforced whole; `tsdown.config.json` enforces only
+  Both build scripts are enforced whole; `tsdown.config.json` enforces only
   `format: ["esm", "cjs"]` and preserves all other settings. Publishing defaults
   (`main`, `types`, `exports`, `files`) are seeded whole but preserved after init.
 
@@ -743,8 +747,10 @@ lockfile change, artifact inspection, or publishing-field reconciliation occurs.
 Library-build precedes TypeScript in composition so adding its dependency selects
 Bundler compiler policy in the same pass. TypeScript alone owns the declaration
 compiler config; library-build never edits tsconfigs. The enforced script runs
-`tsdown --no-dts`, `tsc -p tsconfig.declarations.json`, then copies declarations.
-The script uses the example's fixed `dist` output directory.
+`tsdown --no-dts`, `tsc -p tsconfig.declarations.json`, then the declaration
+formatting helper using the already-installed TypeScript compiler API. The scripts
+use the fixed `dist` output directory; no additional dependency or declaration
+bundler is introduced.
 
 **Validate** is an explicit no-op: tsdown 0.23 exposes no supported
 configuration-only loader. Its exported `resolveUserConfig` is documented as
@@ -784,13 +790,12 @@ owner-managed `lefthook.yml`. Public exports and subpaths, `files`, `sideEffects
 peer dependencies, publishing paths, and compatibility promises remain
 owner-managed; package-check reports problems rather than changing these fields.
 
-**Known declaration compatibility blocker:** the default library build emits
-extensionless source re-exports unchanged in `.d.ts`. For example,
-`export { answer } from './answer'` builds successfully but ATTW reports an
-`Internal resolution error` for Node16 ESM consumers. The controlled default-build
-fixture with an explicit `./answer.js` re-export passes. A general declaration
-resolution fix belongs to separate library-build compatibility work; this
-capability does not suppress the error or rewrite exports to hide it. See
+The default build's declaration trees support both extensionless and explicit
+`.js` source re-exports for emitted siblings. Packed-package regression tests
+check strict Publint and ATTW acceptance, while isolated tarball consumers verify
+ESM imports, CommonJS requires, and TypeScript Node16, NodeNext, Bundler, and
+legacy Node10 root resolution. Owner-added subpaths are tested in modern modes;
+legacy subpath fallbacks remain owner-managed. See
 [Check a library package](../docs/how-to/check-library-package.md).
 
 ### `typescript`

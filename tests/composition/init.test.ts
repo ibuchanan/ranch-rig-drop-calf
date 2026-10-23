@@ -48,7 +48,7 @@ test("generated keys win over the scaffold's", () => {
   const forgeApp = JSON.parse(mergeScaffoldPackage(stale, generated()));
   expect(forgeApp.dependencies[pinned]).toBe(owned.dependencies?.[pinned]);
   const library = JSON.parse(mergeScaffoldPackage(stale, generated("library")));
-  expect(library.main).toBe("dist/index.mjs");
+  expect(library.main).toBe("dist/index.cjs");
 });
 
 test("with no scaffold package.json the generated one is used as is", () => {
@@ -227,7 +227,7 @@ test.each(["library", "tool", "agent-skill"])(
       )) as unknown as Fake;
       expect(result.files.get("manifest.yml")).toBe(manifest);
       const pkg = JSON.parse(result.files.get("package.json") ?? "{}");
-      if (profile === "library") expect(pkg.main).toBe("dist/index.mjs");
+      if (profile === "library") expect(pkg.main).toBe("dist/index.cjs");
       else expect(Object.hasOwn(pkg, "main")).toBe(false);
     } finally {
       spy.mockRestore();

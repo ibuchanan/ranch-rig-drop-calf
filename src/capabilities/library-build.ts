@@ -55,11 +55,14 @@ async function updateLibraryBuild(directory: Directory): Promise<Directory> {
     await owner.file(LIBRARY_BUILD_CONFIG).contents(),
   );
   const withConfig = await ensureFile(directory, LIBRARY_BUILD_CONFIG, config);
-  return ensureFile(
-    withConfig,
-    LIBRARY_BUILD_SCRIPT,
-    await source.file(LIBRARY_BUILD_SCRIPT).contents(),
-  );
+  let output = withConfig;
+  for (const script of [LIBRARY_BUILD_SCRIPT, "scripts/declarations.mjs"])
+    output = await ensureFile(
+      output,
+      script,
+      await source.file(script).contents(),
+    );
+  return output;
 }
 
 export function libraryBuild(): Capability {
@@ -81,7 +84,7 @@ export function libraryBuild(): Capability {
     packageJson: {
       seed: {
         devDependencies: { tsdown: TOOL_VERSIONS.tsdown },
-        main: "dist/index.mjs",
+        main: "dist/index.cjs",
         types: "dist/index.d.ts",
         exports: {
           ".": {

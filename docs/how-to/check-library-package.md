@@ -44,19 +44,19 @@ acceptance without building or packing; package-check explicitly reports skipped
 because its checks need fresh artifacts. Source tests alone do not check the
 published file list or declaration resolution.
 
-## Handle the default declaration-resolution blocker
+## Diagnose declaration-resolution errors
 
-If ATTW reports `Internal resolution error` under `node16 (from ESM)`, inspect
-relative imports and re-exports in emitted `dist/*.d.ts`. The current default
-build can emit `export { answer } from './answer'` unchanged, which does not
-resolve for Node16 ESM consumers even though the source build succeeds.
+If ATTW reports `Internal resolution error`, inspect the declarations in the
+packed file list, not stale local output. Check that every exported type path
+and referenced sibling declaration is included by your package's `files` field.
 
-For the controlled fixture, spelling the source re-export as
-`export { answer } from './answer.js'` passes all checks. Apply explicit runtime
-extensions where appropriate for your library, then rerun `pack:check`. Do not
-suppress the diagnostic to claim compatibility. A general declaration-emission
-fix is separate library-build work; the package-check capability leaves that
-pipeline unchanged.
+Update existing libraries to receive both managed build scripts, then rerun
+`pack:check`. The build handles relative sibling imports and re-exports written
+with or without `.js` extensions, including directory index references. It emits
+explicit `.js` references in `.d.ts` and `.cjs` references in `.d.cts`. Keep
+owner-managed export conditions aligned with those generated artifacts, and add
+legacy subpath fallbacks yourself if you support Node10 resolution. Do not
+suppress diagnostics to claim compatibility.
 
 Keep any deliberate checker configuration, such as `.attw.json`, owner-managed
 and aligned with your actual consumer compatibility promises. Drop Calf seeds no

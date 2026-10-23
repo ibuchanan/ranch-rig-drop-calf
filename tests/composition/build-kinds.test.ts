@@ -59,7 +59,7 @@ test("library build publishes the same entry and declarations that tsdown emits"
   const pkg = project.packageJson;
   expect(pkg.scripts.build).toBe("sh scripts/build.sh");
   expect(pkg.devDependencies.tsdown).toBeDefined();
-  expect(pkg.main).toBe("dist/index.mjs");
+  expect(pkg.main).toBe("dist/index.cjs");
   expect(pkg.types).toBe("dist/index.d.ts");
   expect(pkg.exports?.["."]).toEqual({
     import: { types: "./dist/index.d.ts", default: "./dist/index.mjs" },

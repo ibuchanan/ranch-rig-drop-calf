@@ -42,7 +42,7 @@ test("init seeds reference-style conditional exports, config and shared pipeline
     )) as ReturnType<typeof mockDirectory>;
     const pkg = JSON.parse(await output.file("package.json").contents());
     expect(pkg).toMatchObject({
-      main: "dist/index.mjs",
+      main: "dist/index.cjs",
       types: "dist/index.d.ts",
       files: ["dist"],
       scripts: { build: LIBRARY_BUILD_COMMAND },
@@ -60,6 +60,15 @@ test("init seeds reference-style conditional exports, config and shared pipeline
       templates.get(LIBRARY_BUILD_SCRIPT) ?? "",
     );
     expect(await output.exists("tsconfig.declarations.json")).toBe(true);
+    expect(await output.exists("scripts/declarations.mjs")).toBe(true);
+    const edited = output.withNewFile(
+      "scripts/declarations.mjs",
+      "owner script",
+    );
+    const maintained = await module.update(edited, "library");
+    expect(await maintained.file("scripts/declarations.mjs").contents()).toBe(
+      await output.file("scripts/declarations.mjs").contents(),
+    );
     expect(
       ((await module.update(output, "library")) as typeof output).files,
     ).toEqual(output.files);

@@ -34,6 +34,7 @@ test("installing a controlled Git dependency prepares its consumable library dis
     for (const path of [
       "package.json",
       "scripts/build.sh",
+      "scripts/declarations.mjs",
       "tsdown.config.json",
       "tsconfig.json",
       "tsconfig.declarations.json",
@@ -68,6 +69,7 @@ test("installing a controlled Git dependency prepares its consumable library dis
       "add",
       "package.json",
       "scripts/build.sh",
+      "scripts/declarations.mjs",
       "tsdown.config.json",
       "tsconfig.json",
       "tsconfig.declarations.json",

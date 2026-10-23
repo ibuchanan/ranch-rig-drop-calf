@@ -253,7 +253,7 @@ describe("profiles", () => {
     expect(packageJson.scripts.test).toBe(testScript);
     if (kind === "library") {
       expect(packageJson.devDependencies.tsdown).toBeDefined();
-      expect(packageJson.main).toBe("dist/index.mjs");
+      expect(packageJson.main).toBe("dist/index.cjs");
       expect(packageJson.types).toBe("dist/index.d.ts");
       expect(packageJson.files).toEqual(["dist"]);
       expect(packageJson.exports).toEqual({
