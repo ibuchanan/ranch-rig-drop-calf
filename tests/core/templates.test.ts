@@ -40,6 +40,7 @@ const COMMON_TEMPLATES = [
   CHANGELOG_TEMPLATE,
   DOCS_TEMPLATE,
   GIT_HOOKS_TEMPLATE,
+  "templates/release",
 ];
 
 /** Template trees added per kind; `withEvals` ones appear only under `--preset all`. */
@@ -52,7 +53,6 @@ const KIND_TEMPLATES: Record<
       LIBRARY_AIDEV_TEMPLATE,
       LIBRARY_BUILD_TEMPLATE,
       PACKAGE_CHECK_TEMPLATE,
-      "templates/library-release",
       FALLOW_TEMPLATE,
       TYPESCRIPT_TEMPLATE,
     ],

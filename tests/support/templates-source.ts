@@ -45,7 +45,7 @@ export const vitestTemplates = () => templatesIn("vitest");
 
 export const packageCheckTemplates = () => templatesIn("package-check");
 
-export const libraryReleaseTemplates = () => templatesIn("library-release");
+export const releaseTemplates = () => templatesIn("release");
 
 export const libraryBuildTemplates = () => templatesIn("library-build");
 

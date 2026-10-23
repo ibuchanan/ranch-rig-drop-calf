@@ -9,8 +9,8 @@ import { biomeToolchain } from "../capabilities/biome.ts";
 import { bunBaseline, bunBuild } from "../capabilities/bun.ts";
 import { bunTesting } from "../capabilities/bun-testing.ts";
 import { catalog } from "../capabilities/catalog.ts";
-import { citation } from "../capabilities/citation.ts";
 import { changelogToolchain } from "../capabilities/changelog.ts";
+import { citation } from "../capabilities/citation.ts";
 import { cleanBuild } from "../capabilities/clean-build.ts";
 import { docsLinting } from "../capabilities/docs.ts";
 import { evals } from "../capabilities/evals.ts";
@@ -20,13 +20,13 @@ import { forgeManifest } from "../capabilities/forge-manifest.ts";
 import { gitHooks } from "../capabilities/git-hooks.ts";
 import { gitignore } from "../capabilities/gitignore.ts";
 import { libraryBuild } from "../capabilities/library-build.ts";
-import { libraryRelease } from "../capabilities/library-release.ts";
 import { lint } from "../capabilities/lint.ts";
 import { nodeBaseline } from "../capabilities/node.ts";
 import { oss, validateOssOwner } from "../capabilities/oss.ts";
 import { packageCheck } from "../capabilities/package-check.ts";
 import { packageMetadata } from "../capabilities/package-metadata.ts";
 import { prelint } from "../capabilities/prelint.ts";
+import { release } from "../capabilities/release.ts";
 import { forgeSecrets } from "../capabilities/secrets.ts";
 import { bundleSize } from "../capabilities/size-limit.ts";
 import { skillStarter } from "../capabilities/skill-starter.ts";
@@ -48,11 +48,11 @@ export const PROFILES: Record<string, Capability[]> = {
     gitignore(),
     nodeBaseline({ major: "22" }),
     changelogToolchain(),
+    release({ library: true }),
     biomeToolchain(),
     lint(),
     libraryBuild(),
     packageCheck(),
-    libraryRelease(),
     typeScriptToolchain({ ownsBuild: false }),
     bunTesting(),
     fallow(),
@@ -74,6 +74,7 @@ export const PROFILES: Record<string, Capability[]> = {
     nodeBaseline({ engines: "remove" }),
     forgeManifest(),
     changelogToolchain(),
+    release(),
     forgeSecrets(),
     prelint(),
     biomeToolchain(),
@@ -100,6 +101,7 @@ export const PROFILES: Record<string, Capability[]> = {
     gitignore(),
     bunBaseline(),
     changelogToolchain(),
+    release({ packageManager: "bun" }),
     biomeToolchain({ packageManager: "bun" }),
     lint({ packageManager: "bun" }),
     bunBuild(),
@@ -124,6 +126,7 @@ export const PROFILES: Record<string, Capability[]> = {
     bunBaseline(),
     citation(),
     changelogToolchain(),
+    release({ packageManager: "bun" }),
     biomeToolchain({ packageManager: "bun" }),
     lint({ packageManager: "bun" }),
     skillToolkit(),

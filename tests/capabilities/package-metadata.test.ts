@@ -116,8 +116,8 @@ const KIND_PACKAGES: Record<string, KindPackage> = {
       "lint:fallow": FALLOW_SCRIPT,
       "lint:check:fallow": `${run} run lint:fallow`,
       "pack:check": "npm run build && sh scripts/pack-check.sh",
-      "release:prepare": "bun run scripts/release-prepare.ts",
-      "release:publish": "bun run scripts/release-publish.ts",
+      "release:check":
+        "npm run test && npm run typecheck && npm run pack:check",
       prepare: "npm run build && (lefthook install || true)",
       build: "sh scripts/build.sh",
       ...BUN_TEST_SCRIPTS,
@@ -172,6 +172,8 @@ function sharedScripts(run: string, bun: boolean) {
     clean: "rm -rf dist",
     "lint:docs": DOCS_COMMAND,
     changelog: CHANGELOG_COMMAND,
+    release: "bash scripts/release.sh",
+    "release:check": `${run} run test && ${run} run typecheck`,
     typecheck: TYPESCRIPT_SCRIPTS.typecheck,
   };
 }

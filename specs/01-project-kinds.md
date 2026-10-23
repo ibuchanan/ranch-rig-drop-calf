@@ -87,10 +87,10 @@ Each kind additionally selects project-functions (see
 <!-- biome-ignore format: generated table -->
 | Kind | Capabilities in execution order (including optional capabilities) |
 |---|---|
-| `library` | `catalog`, `package-metadata`, `oss`, `gitignore`, `node`, `changelog`, `biome`, `lint`, `library-build`, `package-check`, `library-release`, `typescript`, `test`, `fallow` (Default; `--without-functions fallow`), `clean-build`, `todo`, `docs`, `git-hooks`, `aidev` (Default; `--without-functions aidev`) |
-| `forge-app` | `catalog`, `package-metadata`, `oss`, `gitignore`, `node`, `forge-manifest`, `changelog`, `secrets`, `prelint`, `biome`, `lint`, `test`, `typescript`, `forge-ahead`, `size-limit`, `clean-build`, `todo`, `docs`, `git-hooks`, `evals` (Opt-in; `--with-functions evals`; `--without-functions evals`; `--preset all`), `aidev` (Default; `--without-functions aidev`) |
-| `tool` | `catalog`, `package-metadata`, `oss`, `gitignore`, `bun`, `changelog`, `biome`, `lint`, `bun-build`, `typescript`, `test`, `fallow` (Default; `--without-functions fallow`), `clean-build`, `todo`, `docs`, `git-hooks`, `aidev` |
-| `agent-skill` | `catalog`, `package-metadata`, `oss`, `gitignore`, `bun`, `citation`, `changelog`, `biome`, `lint`, `skill-toolkit`, `skill-starter`, `typescript`, `test`, `clean-build`, `todo`, `docs`, `git-hooks`, `evals` (Opt-in; `--with-functions evals`; `--without-functions evals`; `--preset all`), `aidev` (Default; `--without-functions aidev`) |
+| `library` | `catalog`, `package-metadata`, `oss`, `gitignore`, `node`, `changelog`, `release`, `biome`, `lint`, `library-build`, `package-check`, `typescript`, `test`, `fallow` (Default; `--without-functions fallow`), `clean-build`, `todo`, `docs`, `git-hooks`, `aidev` (Default; `--without-functions aidev`) |
+| `forge-app` | `catalog`, `package-metadata`, `oss`, `gitignore`, `node`, `forge-manifest`, `changelog`, `release`, `secrets`, `prelint`, `biome`, `lint`, `test`, `typescript`, `forge-ahead`, `size-limit`, `clean-build`, `todo`, `docs`, `git-hooks`, `evals` (Opt-in; `--with-functions evals`; `--without-functions evals`; `--preset all`), `aidev` (Default; `--without-functions aidev`) |
+| `tool` | `catalog`, `package-metadata`, `oss`, `gitignore`, `bun`, `changelog`, `release`, `biome`, `lint`, `bun-build`, `typescript`, `test`, `fallow` (Default; `--without-functions fallow`), `clean-build`, `todo`, `docs`, `git-hooks`, `aidev` |
+| `agent-skill` | `catalog`, `package-metadata`, `oss`, `gitignore`, `bun`, `citation`, `changelog`, `release`, `biome`, `lint`, `skill-toolkit`, `skill-starter`, `typescript`, `test`, `clean-build`, `todo`, `docs`, `git-hooks`, `evals` (Opt-in; `--with-functions evals`; `--without-functions evals`; `--preset all`), `aidev` (Default; `--without-functions aidev`) |
 <!-- capability-inventory:end -->
 
 Notes:

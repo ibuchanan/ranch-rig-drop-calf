@@ -86,6 +86,12 @@ test.each(["library", "forge-app", "tool", "agent-skill"])(
       expect(Boolean(scripts.todo)).toBe(true);
       expect(Boolean(scripts["lint:docs"])).toBe(true);
       expect(Boolean(scripts.changelog)).toBe(true);
+      expect(scripts.release).toBe("bash scripts/release.sh");
+      expect(Boolean(scripts["release:check"])).toBe(true);
+      expect(scripts["release:prepare"]).toBeUndefined();
+      expect(scripts["release:publish"]).toBeUndefined();
+      expect(await result.exists("scripts/release.sh")).toBe(true);
+      expect(await result.exists("scripts/release.ts")).toBe(false);
       expect(Boolean(scripts["lint:forge"])).toBe(kind === "forge-app");
       expect(Boolean(scripts["lint:prelint"])).toBe(kind === "forge-app");
       expect(Boolean(scripts["lint:fallow"])).toBe(

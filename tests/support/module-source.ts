@@ -16,11 +16,11 @@ import { GIT_HOOKS_TEMPLATE } from "../../src/capabilities/git-hooks.ts";
 import { PINNED_GITIGNORE } from "../../src/capabilities/gitignore.ts";
 import { OSS_ASSETS } from "../../src/capabilities/oss.ts";
 import { SECRETS_TEMPLATE } from "../../src/capabilities/secrets.ts";
+import { SKILL_STARTER_TEMPLATE } from "../../src/capabilities/skill-starter.ts";
 import {
   TYPESCRIPT_BUN_TEMPLATE,
   TYPESCRIPT_TEMPLATE,
 } from "../../src/capabilities/typescript.ts";
-import { SKILL_STARTER_TEMPLATE } from "../../src/capabilities/skill-starter.ts";
 import { EVALS_TEMPLATE } from "../../src/core/templates.ts";
 import { mockContainer } from "./container-source.ts";
 import {
@@ -32,9 +32,9 @@ import {
   fallowTemplates,
   gitHooksTemplates,
   libraryBuildTemplates,
-  libraryReleaseTemplates,
   packageCheckTemplates,
   promptfooTemplates,
+  releaseTemplates,
   secretsTemplates,
   skillStarterTemplates,
   typescriptBunTemplates,
@@ -171,7 +171,7 @@ export function mockModuleSource(
     ["templates/vitest", tree(vitestTemplates())],
     ["templates/library-build", tree(libraryBuildTemplates())],
     ["templates/package-check", tree(packageCheckTemplates())],
-    ["templates/library-release", tree(libraryReleaseTemplates())],
+    ["templates/release", tree(releaseTemplates())],
     [EVALS_TEMPLATE, tree(promptfooTemplates())],
   ]);
   const container = mockContainer();

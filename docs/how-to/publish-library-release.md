@@ -1,4 +1,9 @@
-# Publish a prepared library release to Git
+# Publish a prepared library release to Git (legacy two-command workflow)
+
+> **Recommended:** Use the unified [`bun run release`](release-project.md) command
+> instead. It performs preparation, checking, commit, tag, and push in a single
+> invocation for all project kinds. This guide documents the legacy two-command
+> workflow available in existing repositories.
 
 Use this procedure after [preparing and reviewing a library release](prepare-library-release.md).
 This publishes a Git commit and tag, not an npm package. It never changes `private`

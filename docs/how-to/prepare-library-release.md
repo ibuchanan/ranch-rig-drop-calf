@@ -1,8 +1,16 @@
-# Prepare a library release locally
+# Prepare a library release locally (legacy two-command workflow)
 
-Use this procedure in a single-package repository initialized or updated with the
-`library` profile. Preparation changes local files only; Git publication and
-registry publication are separate, deliberate operations.
+> **Recommended:** Use the unified [`bun run release`](release-project.md) command
+> instead. It performs preparation, checking, commit, tag, and push in a single
+> invocation for all project kinds. This guide documents the legacy two-command
+> workflow available in existing repositories.
+
+This procedure is for repositories that continue using the legacy `release:prepare`
+and `release:publish` commands. It applies only to `library` projects and performs
+preparation as a separate step from Git publication.
+
+Preparation changes local files only; Git publication and registry publication are
+separate, deliberate operations.
 
 ## Prepare and review
 

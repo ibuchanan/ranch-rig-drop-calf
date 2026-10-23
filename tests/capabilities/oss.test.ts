@@ -31,6 +31,7 @@ import {
 } from "../../src/core/capability.ts";
 import { TOOL_VERSIONS } from "../../src/core/versions.ts";
 import { DropCalf } from "../../src/index.ts";
+import { capabilityOf, runUpdate } from "../support/capability-fixtures.ts";
 import { mockDirectory } from "../support/module-source.ts";
 import { mockOssSource, ossTemplates } from "../support/oss-source.ts";
 import {
@@ -41,9 +42,9 @@ import {
   fallowTemplates,
   gitHooksTemplates,
   libraryBuildTemplates,
-  libraryReleaseTemplates,
   packageCheckTemplates,
   promptfooTemplates,
+  releaseTemplates,
   skillStarterTemplates,
   typescriptBunTemplates,
   typescriptTemplates,
@@ -157,7 +158,6 @@ const KIND_EXPECTATIONS: Record<string, KindExpectations> = {
     templates: () => [
       libraryBuildTemplates(),
       packageCheckTemplates(),
-      libraryReleaseTemplates(),
       fallowTemplates(),
     ],
     extraFiles: ["AGENTS.md"],
@@ -236,6 +236,7 @@ function seededTemplates(expected: KindExpectations, preset?: string) {
     ...gitHooksTemplates(),
     ...docsTemplates(),
     ...changelogTemplates(),
+    ...releaseTemplates(),
   ]);
 }
 
@@ -364,6 +365,14 @@ describe("pinned OSS templates", () => {
           expectedPackageJson(project.packageJson, expected),
         );
         const seeded = seededTemplates(expected, preset);
+        const releaseOutput = await runUpdate(
+          capabilityOf(kind, "release"),
+          mockDirectory(new Map([["package.json", "{}"]])),
+        );
+        seeded.set(
+          "scripts/release.sh",
+          await releaseOutput.file("scripts/release.sh").contents(),
+        );
         for (const [path, contents] of expectedContents(expected, seeded))
           expect(writes.get(path), path).toBe(contents);
         expect(

@@ -119,7 +119,7 @@ bun test tests/e2e/init.e2e.test.ts --path-ignore-patterns='vendor/**'
 | `forge-manifest`                                                                             | Credential-prerequisite reporting only, not authenticated acceptance                                             |
 | `docs`                                                                                       | Config loading only, not Markdown content                                                                        |
 | `package-check`                                                                              | Controlled tarballs, lifecycle safety, checker failures, and default-build declaration compatibility             |
-| `library-release`                                                                            | Disposable release repositories; requires Bun, Git, and the pinned git-cliff on PATH, no Dagger or network       |
+| `release`                                                                                    | Disposable release repositories; requires Bun, Git, and the pinned git-cliff on PATH, no Dagger or network       |
 | `library-prepare`                                                                            | Disposable local Git dependency, real build tools, and ESM/CommonJS consumption; requires npm and network access |
 | `biome`, `evals`, `git-hooks`, `library-build`, `secrets`, `testing`, `typescript`, `vitest` |                                                                                                                  |
 
@@ -282,44 +282,31 @@ real pinned checkers; it does not modify the reference Forge Ahead repositories.
 bun test tests/e2e/package-check.e2e.test.ts --path-ignore-patterns='vendor/**'
 ```
 
-## Library release preparation
+## Project release
 
-The library-only `library-release` capability maintains `release:prepare` and
-`templates/library-release/scripts/release-prepare.ts`, plus the separate
-`release:publish` command and `scripts/release-publish.ts` helper. It reuses the
-`changelog` capability's centralized git-cliff dependency and never owns its package
-contribution or the owner's `cliff.toml`. Update only restores the helpers and
-commands; standalone release validation executes neither preparation nor
-publication.
+The unified `release` capability maintains one standalone
+`templates/release/scripts/release.sh` Bash script for all four project kinds:
+`library`, `forge-app`, `tool`, and `agent-skill`. The script performs releases
+directly on `main` and pushes to `origin main`. Package metadata commands are
+selected during scaffolding: npm kinds use `npm version`, Bun kinds use `jq`.
+There is no generated TypeScript helper or runtime package-manager detection.
+It reuses the `changelog` capability's centralized git-cliff dependency and owns
+the single `release` package script.
 
-See [Prepare a library release locally](docs/how-to/prepare-library-release.md)
-for preparation, review, supported locks, and recovery. npm version-only lock
-metadata is updated locally; Bun's versionless text lock is preserved. No lock
-refresh, lifecycle command, Git publication, or registry publication runs.
+See [Release a project](docs/how-to/release-project.md) for the unified
+one-command workflow, kind-specific checks, and recovery procedures.
 
-The release E2E suite uses disposable repositories and requires Bun, Git, and
-`git-cliff` at `TOOL_VERSIONS.gitCliff` on PATH. It needs neither Dagger nor a live
-remote. It tests actual git-cliff policy, npm lock formats, a real offline Bun
-lock checked with `--frozen-lockfile`, preflight diagnostics, repeat runs, and
-unchanged Git refs/index. Controlled tool failures exercise render-before-write.
+For repositories still using the legacy two-command `release:prepare` and
+`release:publish` workflow, see the migration guides at
+[Prepare a library release locally](docs/how-to/prepare-library-release.md) and
+[Publish a prepared library release to Git](docs/how-to/publish-library-release.md).
 
-```bash
-bun test tests/e2e/library-release.e2e.test.ts --path-ignore-patterns='vendor/**'
-```
-
-Git publication is a separate explicit maintainer action. See
-[Publish a prepared library release to Git](docs/how-to/publish-library-release.md)
-for required checks, destination input, permissions, atomic pushes, and recovery.
-Preparation records exact outputs locally in Git metadata without changing refs
-or index. Publication verifies that receipt, runs the existing `test`, `typecheck`,
-and `pack:check` scripts, and stages only release outputs. Owner checks and Git hooks
-remain trusted executable code; unexpected side effects stop publication.
-
-The publication E2E suite adds local bare remotes and rejecting hooks to disposable
-repositories. It never contacts live remotes or modifies reference libraries.
+The release E2E test suite validates the complete workflow: checks, version
+updates, changelog rendering, commit, tag, and atomic push for all four project
+kinds in a single invocation.
 
 ```bash
-bun test tests/e2e/library-publish.e2e.test.ts --path-ignore-patterns='vendor/**'
+bun test tests/e2e/release.e2e.test.ts --path-ignore-patterns='vendor/**'
 ```
 
 ## Tool kind Bun defaults
