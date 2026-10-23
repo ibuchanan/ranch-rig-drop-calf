@@ -108,6 +108,18 @@ function firstSighting(): (line: string) => boolean {
   };
 }
 
+/** Collapse blank-line runs left by omitted sections without changing rule bytes. */
+function collapse(lines: string[]): string[] {
+  const collapsed: string[] = [];
+  for (const line of lines) {
+    if (!line.trim() && !collapsed.at(-1)?.trim()) continue;
+    collapsed.push(line);
+  }
+  while (collapsed.at(-1)?.trim() === "") collapsed.pop();
+  while (collapsed[0]?.trim() === "") collapsed.shift();
+  return collapsed;
+}
+
 /** Build one upstream block; its URLs record the actual selected topics. */
 function buildTopicBlock(template: string, sets: readonly string[]): string {
   const { sections } = parseTemplate(template);
@@ -135,12 +147,14 @@ export function buildGitignore(
   return `${buildTopicBlock(template, sets)}\n${ADDITIONAL_IGNORES}`;
 }
 
-type BlockMarker = {
-  opens: boolean;
-  source: string;
-  /** Present for an upstream topic block; absent for the additional-ignores block. */
-  topics?: string[];
-};
+/** The two kinds of block Drop Calf owns; each is replaced whole, never line by line. */
+const BLOCK_KINDS = ["topics", "extras"] as const;
+type BlockKind = (typeof BLOCK_KINDS)[number];
+
+/** An upstream topic block records its topics; the additional-ignores block has none. */
+type BlockSpec = { kind: "extras" } | { kind: "topics"; topics: string[] };
+
+type BlockMarker = { opens: boolean; source: string; spec: BlockSpec };
 
 /** Only owned markers count; other `# Created by` comments are owner content. */
 function parseMarker(line: string): BlockMarker | undefined {
@@ -148,21 +162,23 @@ function parseMarker(line: string): BlockMarker | undefined {
   if (!marker?.[2]) return undefined;
   const opens = marker[1] === "Created by";
   const source = marker[2];
-  if (source === EXTRAS) return { opens, source };
+  if (source === EXTRAS) return { opens, source, spec: { kind: "extras" } };
   const url = TOPIC_URL.exec(source);
   if (!url) return undefined;
-  return { opens, source, topics: url[1] ? url[1].split(",") : [] };
+  const topics = url[1] ? url[1].split(",") : [];
+  return { opens, source, spec: { kind: "topics", topics } };
 }
 
+/** The block as it should now read: recorded topics unless the caller selects others. */
 function replacementBlock(
-  topics: string[] | undefined,
+  spec: BlockSpec,
   template: string,
   sets: readonly string[] | undefined,
 ): string {
-  if (!topics) return ADDITIONAL_IGNORES;
+  if (spec.kind === "extras") return ADDITIONAL_IGNORES;
   return buildTopicBlock(
     template,
-    sets ?? topics.map(normalizeSet).filter((set) => set !== "yarn"),
+    sets ?? spec.topics.map(normalizeSet).filter((set) => set !== "yarn"),
   );
 }
 
@@ -185,7 +201,7 @@ function* scanMarkers(contents: string): Generator<Marker> {
 
 /** A complete owned block: its opening marker through the end marker's line. */
 type OwnedBlock = {
-  topics?: string[];
+  spec: BlockSpec;
   start: number;
   end: number;
   /** An end marker at EOF has no newline, and the replacement must not add one. */
@@ -206,7 +222,7 @@ function* ownedBlocks(contents: string): Generator<OwnedBlock> {
     if (close.value.source !== open.source)
       throw gitignoreError("unmatched managed block end marker");
     yield {
-      topics: open.topics,
+      spec: open.spec,
       start: open.index,
       end: close.value.index + close.value.text.length,
       endsWithNewline: close.value.text.endsWith("\n"),
@@ -214,9 +230,9 @@ function* ownedBlocks(contents: string): Generator<OwnedBlock> {
   }
 }
 
-/** The owned blocks init adds when the file lacks them, keyed by what `rewriteBlocks` found. */
+/** The owned blocks init adds when the file lacks them. */
 const SEEDED_BLOCKS: Record<
-  "topics" | "extras",
+  BlockKind,
   (template: string, sets?: readonly string[]) => string
 > = {
   topics: (template, sets) =>
@@ -225,41 +241,48 @@ const SEEDED_BLOCKS: Record<
 };
 
 /**
- * Replace complete owned blocks, never individual lines or surrounding bytes.
- * A retired Yarn topic is removed from existing selections; other unknown topics
- * fail before writing. Missing blocks are seeded only by an explicit copy/init.
+ * Replace complete owned blocks, never individual lines or surrounding bytes,
+ * and report which kinds were present. A retired Yarn topic is removed from
+ * existing selections; other unknown topics fail before writing.
  */
-function rewriteBlocks(
+function replaceBlocks(
   contents: string,
   template: string,
-  seed = false,
   sets?: readonly string[],
-): string {
+): { text: string; found: ReadonlySet<BlockKind> } {
   let cursor = 0;
-  let result = "";
-  const found = new Set<keyof typeof SEEDED_BLOCKS>();
+  let text = "";
+  const found = new Set<BlockKind>();
   for (const block of ownedBlocks(contents)) {
-    const replacement = replacementBlock(block.topics, template, sets);
+    const replacement = replacementBlock(block.spec, template, sets);
     // The marker's newline belongs to the block; an EOF marker stays at EOF.
-    result +=
+    text +=
       contents.slice(cursor, block.start) +
       (block.endsWithNewline ? replacement : replacement.slice(0, -1));
     cursor = block.end;
-    found.add(block.topics ? "topics" : "extras");
+    found.add(block.spec.kind);
   }
-  result += contents.slice(cursor);
-  if (!seed) return result;
-  return appendBlocks(
-    result,
-    Object.entries(SEEDED_BLOCKS)
-      .filter(([kind]) => !found.has(kind as keyof typeof SEEDED_BLOCKS))
-      .map(([, build]) => build(template, sets)),
-  );
+  return { text: text + contents.slice(cursor), found };
 }
 
 /** Update uses the topics recorded in each owned block; unmarked files are intact. */
 export function updateGitignore(contents: string, template: string): string {
-  return rewriteBlocks(contents, template);
+  return replaceBlocks(contents, template).text;
+}
+
+/** Init does the same, then seeds whichever owned blocks the file lacks. */
+function seedGitignore(
+  contents: string,
+  template: string,
+  sets?: readonly string[],
+): string {
+  const { text, found } = replaceBlocks(contents, template, sets);
+  return appendBlocks(
+    text,
+    BLOCK_KINDS.filter((kind) => !found.has(kind)).map((kind) =>
+      SEEDED_BLOCKS[kind](template, sets),
+    ),
+  );
 }
 
 /** Refuse an absent or malformed pin rather than silently emitting only extras. */
@@ -284,7 +307,7 @@ export async function copyGitignoreAssets(
   const contents = (await destination.exists(".gitignore"))
     ? await destination.file(".gitignore").contents()
     : "";
-  const wanted = rewriteBlocks(contents, template, true, sets);
+  const wanted = seedGitignore(contents, template, sets);
   return wanted === contents
     ? destination
     : destination.withNewFile(".gitignore", wanted);
@@ -328,16 +351,4 @@ export function gitignore(): Capability {
       "Git treats ineffective ignore patterns as nonmatching; checking which paths are ignored would enforce policy, not tool acceptance.",
     ),
   };
-}
-
-/** Collapse blank-line runs left by omitted sections without changing rule bytes. */
-function collapse(lines: string[]): string[] {
-  const collapsed: string[] = [];
-  for (const line of lines) {
-    if (!line.trim() && !collapsed.at(-1)?.trim()) continue;
-    collapsed.push(line);
-  }
-  while (collapsed.at(-1)?.trim() === "") collapsed.pop();
-  while (collapsed[0]?.trim() === "") collapsed.shift();
-  return collapsed;
 }
