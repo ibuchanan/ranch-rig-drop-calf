@@ -224,11 +224,13 @@ for (const { name, config, check, base, source = true, status } of [
   test(`Dagger TypeScript validation: ${name}`, () => {
     const temporary = root();
     try {
-      if (config !== undefined)
-        writeFileSync(join(temporary, "tsconfig.json"), config);
-      if (check !== undefined)
-        writeFileSync(join(temporary, "tsconfig.typecheck.json"), check);
-      if (base !== undefined) writeFileSync(join(temporary, "base.json"), base);
+      const files = [
+        ["tsconfig.json", config],
+        ["tsconfig.typecheck.json", check],
+        ["base.json", base],
+      ].filter((entry): entry is [string, string] => entry[1] !== undefined);
+      for (const [file, contents] of files)
+        writeFileSync(join(temporary, file), contents);
       if (source) {
         mkdirSync(join(temporary, "src"));
         writeFileSync(
@@ -240,14 +242,11 @@ for (const { name, config, check, base, source = true, status } of [
       expect(result.status, result.reason).toBe(status);
       if (status !== "validated")
         expect(result.reason?.length ?? 0).toBeGreaterThan(0);
-      if (config !== undefined)
-        expect(readFileSync(join(temporary, "tsconfig.json"), "utf8")).toBe(
-          config,
-        );
-      if (check !== undefined)
-        expect(
-          readFileSync(join(temporary, "tsconfig.typecheck.json"), "utf8"),
-        ).toBe(check);
+      // Validation reads the configs; it must never rewrite them.
+      for (const [file, contents] of files.filter(([file]) =>
+        file.startsWith("tsconfig"),
+      ))
+        expect(readFileSync(join(temporary, file), "utf8")).toBe(contents);
     } finally {
       rmSync(temporary, { recursive: true, force: true });
     }

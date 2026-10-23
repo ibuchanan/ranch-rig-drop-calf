@@ -103,49 +103,54 @@ const prepare = (cwd: string, env = {}) =>
 const read = (cwd: string, path: string) =>
   readFileSync(join(cwd, path), "utf8");
 
-test("unsupported or contradictory lockfile evidence fails without changing release files", () => {
-  for (const scenario of [
-    "multiple",
-    "missing",
-    "yarn",
-    "pnpm",
-    "bun-binary",
-    "shrinkwrap",
-    "manager-mismatch",
-    "workspaces",
-    "old-lock",
-    "stale-lock",
-    "malformed-lock",
-  ]) {
-    const cwd = fixture();
-    const pkg = JSON.parse(read(cwd, "package.json"));
-    if (scenario === "multiple") writeFileSync(join(cwd, "bun.lock"), "{}");
-    if (scenario === "missing") rmSync(join(cwd, "package-lock.json"));
-    const unsupported: Record<string, string> = {
-      yarn: "yarn.lock",
-      pnpm: "pnpm-lock.yaml",
-      "bun-binary": "bun.lockb",
-      shrinkwrap: "npm-shrinkwrap.json",
-    };
-    const unsupportedLock = unsupported[scenario];
-    if (unsupportedLock)
-      writeFileSync(join(cwd, unsupportedLock), "unsupported");
-    if (scenario === "manager-mismatch") {
+/** Rewrite a JSON file in the fixture after applying `edit` to its parsed contents. */
+function editJson(
+  cwd: string,
+  path: string,
+  edit: (contents: Record<string, unknown>) => void,
+) {
+  const contents = JSON.parse(read(cwd, path));
+  edit(contents);
+  writeFileSync(join(cwd, path), JSON.stringify(contents));
+}
+
+/** A lockfile this release flow does not support, present alongside the npm one. */
+const unsupportedLock = (name: string) => (cwd: string) =>
+  writeFileSync(join(cwd, name), "unsupported");
+
+/** Each way lockfile or package-manager evidence can be unsupported or contradictory. */
+const BAD_LOCK_EVIDENCE: Record<string, (cwd: string) => void> = {
+  multiple: (cwd) => writeFileSync(join(cwd, "bun.lock"), "{}"),
+  missing: (cwd) => rmSync(join(cwd, "package-lock.json")),
+  yarn: unsupportedLock("yarn.lock"),
+  pnpm: unsupportedLock("pnpm-lock.yaml"),
+  "bun-binary": unsupportedLock("bun.lockb"),
+  shrinkwrap: unsupportedLock("npm-shrinkwrap.json"),
+  "manager-mismatch": (cwd) =>
+    editJson(cwd, "package.json", (pkg) => {
       pkg.packageManager = "bun@1.4.2";
-      writeFileSync(join(cwd, "package.json"), JSON.stringify(pkg));
-    }
-    if (scenario === "workspaces") {
+    }),
+  workspaces: (cwd) =>
+    editJson(cwd, "package.json", (pkg) => {
       pkg.workspaces = ["packages/*"];
-      writeFileSync(join(cwd, "package.json"), JSON.stringify(pkg));
-    }
-    if (scenario === "old-lock" || scenario === "stale-lock") {
-      const lock = JSON.parse(read(cwd, "package-lock.json"));
-      if (scenario === "old-lock") lock.lockfileVersion = 99;
-      else lock.packages[""].version = "0.0.1";
-      writeFileSync(join(cwd, "package-lock.json"), JSON.stringify(lock));
-    }
-    if (scenario === "malformed-lock")
-      writeFileSync(join(cwd, "package-lock.json"), "{");
+    }),
+  "old-lock": (cwd) =>
+    editJson(cwd, "package-lock.json", (lock) => {
+      lock.lockfileVersion = 99;
+    }),
+  "stale-lock": (cwd) =>
+    editJson(cwd, "package-lock.json", (lock) => {
+      const packages = lock.packages as Record<string, { version: string }>;
+      packages[""] = { ...packages[""], version: "0.0.1" };
+    }),
+  "malformed-lock": (cwd) => writeFileSync(join(cwd, "package-lock.json"), "{"),
+};
+
+test.each(Object.keys(BAD_LOCK_EVIDENCE))(
+  "unsupported or contradictory lockfile evidence (%s) fails without changing release files",
+  (scenario) => {
+    const cwd = fixture();
+    BAD_LOCK_EVIDENCE[scenario]?.(cwd);
     commit(cwd);
     const before = git(cwd, "write-tree");
     const result = prepare(cwd);
@@ -156,8 +161,9 @@ test("unsupported or contradictory lockfile evidence fails without changing rele
     expect(result.stderr).toContain("release:prepare:");
     expect(git(cwd, "status", "--porcelain"), scenario).toBe("");
     expect(git(cwd, "write-tree")).toBe(before);
-  }
-}, 20000);
+  },
+  20000,
+);
 
 test.each([
   "detached",

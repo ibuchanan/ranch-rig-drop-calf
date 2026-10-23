@@ -314,58 +314,95 @@ test("Bun release keeps its versionless lock unchanged and publishes only releas
   );
 });
 
-test.each([
-  "detached",
-  "wrong-branch",
-  "missing-destination",
-  "unknown-remote",
-  "remote-ahead",
-  "local-tag",
-  "remote-tag",
-  "multiple-push-urls",
-  "merge",
-  "shallow",
-  "subdirectory",
-])("publication preflight rejects %s without Git writes", (scenario) => {
-  const { cwd, remote } = fixture();
-  let args = ["--remote", "releases", "--branch", "stable"];
-  if (scenario === "detached") git(cwd, "switch", "--detach");
-  if (scenario === "wrong-branch")
-    args = ["--remote", "releases", "--branch", "other"];
-  if (scenario === "missing-destination") args = [];
-  if (scenario === "unknown-remote")
-    args = ["--remote", "missing", "--branch", "stable"];
-  if (scenario === "remote-ahead")
-    git(
-      cwd,
-      "--git-dir",
-      remote,
-      "update-ref",
-      "refs/heads/stable",
-      git(cwd, "rev-parse", "HEAD^"),
-    );
-  if (scenario === "local-tag") git(cwd, "tag", "v0.2.0");
-  if (scenario === "remote-tag")
-    git(cwd, "push", "releases", "HEAD:refs/tags/v0.2.0");
-  if (scenario === "multiple-push-urls") {
-    git(cwd, "config", "--add", "remote.releases.pushurl", remote);
-    git(cwd, "config", "--add", "remote.releases.pushurl", remote);
-  }
-  if (scenario === "merge")
-    writeFileSync(
-      join(cwd, ".git/MERGE_HEAD"),
-      `${git(cwd, "rev-parse", "HEAD")}\n`,
-    );
-  if (scenario === "shallow")
-    writeFileSync(
-      join(cwd, ".git/shallow"),
-      `${git(cwd, "rev-parse", "HEAD")}\n`,
-    );
-  const head = git(cwd, "rev-parse", "HEAD");
-  const index = git(cwd, "write-tree");
-  const refs = git(cwd, "--git-dir", remote, "show-ref");
-  const result =
-    scenario === "subdirectory"
+type Fixture = ReturnType<typeof fixture>;
+
+/** One way a publication can be refused before it touches Git. */
+type Rejection = {
+  /** Put the repository into the rejected state. */
+  setup?: (fixture: Fixture) => void;
+  /** Overrides the destination arguments; `[]` omits them entirely. */
+  args?: string[];
+  /** Run from `scripts/` instead of the repository root. */
+  fromSubdirectory?: boolean;
+  /** Text the refusal must mention. */
+  diagnostic: string;
+};
+
+const DESTINATION = ["--remote", "releases", "--branch", "stable"];
+
+const REJECTIONS: Record<string, Rejection> = {
+  detached: {
+    setup: ({ cwd }) => git(cwd, "switch", "--detach"),
+    diagnostic: "branch",
+  },
+  "wrong-branch": {
+    args: ["--remote", "releases", "--branch", "other"],
+    diagnostic: "branch",
+  },
+  "missing-destination": { args: [], diagnostic: "--remote" },
+  "unknown-remote": {
+    args: ["--remote", "missing", "--branch", "stable"],
+    diagnostic: "remote",
+  },
+  "remote-ahead": {
+    setup: ({ cwd, remote }) =>
+      git(
+        cwd,
+        "--git-dir",
+        remote,
+        "update-ref",
+        "refs/heads/stable",
+        git(cwd, "rev-parse", "HEAD^"),
+      ),
+    diagnostic: "Remote branch",
+  },
+  "local-tag": {
+    setup: ({ cwd }) => git(cwd, "tag", "v0.2.0"),
+    diagnostic: "already exists",
+  },
+  "remote-tag": {
+    setup: ({ cwd }) => git(cwd, "push", "releases", "HEAD:refs/tags/v0.2.0"),
+    diagnostic: "already exists",
+  },
+  "multiple-push-urls": {
+    setup: ({ cwd, remote }) => {
+      git(cwd, "config", "--add", "remote.releases.pushurl", remote);
+      git(cwd, "config", "--add", "remote.releases.pushurl", remote);
+    },
+    diagnostic: "one push",
+  },
+  merge: {
+    setup: ({ cwd }) =>
+      writeFileSync(
+        join(cwd, ".git/MERGE_HEAD"),
+        `${git(cwd, "rev-parse", "HEAD")}\n`,
+      ),
+    diagnostic: "in progress",
+  },
+  shallow: {
+    setup: ({ cwd }) =>
+      writeFileSync(
+        join(cwd, ".git/shallow"),
+        `${git(cwd, "rev-parse", "HEAD")}\n`,
+      ),
+    diagnostic: "complete",
+  },
+  subdirectory: { fromSubdirectory: true, diagnostic: "repository root" },
+};
+
+test.each(Object.keys(REJECTIONS))(
+  "publication preflight rejects %s without Git writes",
+  (scenario) => {
+    const rejection = REJECTIONS[scenario];
+    if (!rejection) throw new Error(`Unknown scenario ${scenario}`);
+    const state = fixture();
+    const { cwd, remote } = state;
+    rejection.setup?.(state);
+    const args = rejection.args ?? DESTINATION;
+    const head = git(cwd, "rev-parse", "HEAD");
+    const index = git(cwd, "write-tree");
+    const refs = git(cwd, "--git-dir", remote, "show-ref");
+    const result = rejection.fromSubdirectory
       ? run(
           join(cwd, "scripts"),
           process.execPath,
@@ -374,29 +411,17 @@ test.each([
           ...args,
         )
       : publish(cwd, ...args);
-  expect(
-    result.status,
-    `${scenario}: ${result.stdout}${result.stderr}`,
-  ).not.toBe(0);
-  const diagnostic: Record<string, string> = {
-    detached: "branch",
-    "wrong-branch": "branch",
-    "missing-destination": "--remote",
-    "unknown-remote": "remote",
-    "remote-ahead": "Remote branch",
-    "local-tag": "already exists",
-    "remote-tag": "already exists",
-    "multiple-push-urls": "one push",
-    merge: "in progress",
-    shallow: "complete",
-    subdirectory: "repository root",
-  };
-  expect(result.stderr).toContain(diagnostic[scenario] ?? scenario);
-  expect(result.stdout).not.toContain("checked-test");
-  expect(git(cwd, "rev-parse", "HEAD")).toBe(head);
-  expect(git(cwd, "write-tree")).toBe(index);
-  expect(git(cwd, "--git-dir", remote, "show-ref")).toBe(refs);
-});
+    expect(
+      result.status,
+      `${scenario}: ${result.stdout}${result.stderr}`,
+    ).not.toBe(0);
+    expect(result.stderr).toContain(rejection.diagnostic);
+    expect(result.stdout).not.toContain("checked-test");
+    expect(git(cwd, "rev-parse", "HEAD")).toBe(head);
+    expect(git(cwd, "write-tree")).toBe(index);
+    expect(git(cwd, "--git-dir", remote, "show-ref")).toBe(refs);
+  },
+);
 
 test("publication rejects release notes changed after preparation", () => {
   const { cwd } = fixture();
