@@ -34,14 +34,14 @@ Every kind:
 
 ## 3. Capability slots per kind
 
-| Slot          | `library`                   | `forge-app`               | `tool`                      | `agent-skill`               |
-| ------------- | --------------------------- | ------------------------- | --------------------------- | --------------------------- |
-| Linting       | biome                       | forge lint                | biome                       | biome                       |
-| Formatting    | biome                       | biome                     | biome                       | biome                       |
-| Type checking | tsc                         | tsc                       | tsc                         | tsc                         |
-| Testing       | bun test (+ watch/coverage) | vitest (+ watch/coverage) | bun test (+ watch/coverage) | bun test (+ watch/coverage) |
-| Build         | tsdown                      | tsc                       | bun build --compile         | none (no-op)                |
-| Clean         | rm -rf dist                 | rm -rf dist               | rm -rf dist                 | rm -rf dist                 |
+| Slot          | `library`                                  | `forge-app`               | `tool`                      | `agent-skill`               |
+| ------------- | ------------------------------------------ | ------------------------- | --------------------------- | --------------------------- |
+| Linting       | biome                                      | forge lint                | biome                       | biome                       |
+| Formatting    | biome                                      | biome                     | biome                       | biome                       |
+| Type checking | tsc                                        | tsc                       | tsc                         | tsc                         |
+| Testing       | bun test (+ watch/coverage)                | vitest (+ watch/coverage) | bun test (+ watch/coverage) | bun test (+ watch/coverage) |
+| Build         | tsdown                                     | tsc                       | bun build --compile         | none (no-op)                |
+| Clean         | rm -rf node_modules package-lock.json dist | rm -rf dist               | rm -rf dist                 | rm -rf dist                 |
 
 Kind-specific policies:
 - **Package privacy:** every kind starts with `private: true`. Update enforces this

@@ -61,7 +61,7 @@ Every non-empty capability slot contributes to the stable developer API. The exa
 | Type checking | `typecheck`                           | `tsc --noEmit`                                                                                  |
 | Testing       | `test`, `test:watch`, `test:coverage` | Bun (`library`, `tool`, `agent-skill`), Vitest (`forge-app`), both with a no-tests starter flag |
 | Build         | `build`                               | `tsc`                                                                                           |
-| Clean         | `clean`                               | `rm -rf dist`                                                                                   |
+| Clean         | `clean`                               | `rm -rf node_modules package-lock.json dist` (library); `rm -rf dist` (other kinds)             |
 | TODO lookup   | `todo`                                | `git grep` on tracked files                                                                     |
 
 ## 7. Profiles

@@ -153,7 +153,10 @@ const whenPresetAll = (preset: string | undefined) =>
 const KIND_EXPECTATIONS: Record<string, KindExpectations> = {
   library: {
     runner: NPM_RUNNER,
-    scripts: { ...BUN_TEST_SCRIPTS, clean: "rm -rf dist" },
+    scripts: {
+      ...BUN_TEST_SCRIPTS,
+      clean: "rm -rf node_modules package-lock.json dist",
+    },
     typescript: typescriptTemplates,
     templates: () => [
       libraryBuildTemplates(),

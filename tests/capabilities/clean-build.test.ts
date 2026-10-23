@@ -99,17 +99,24 @@ test.each(["library", "forge-app", "tool", "agent-skill"])(
     );
     try {
       const module = new DropCalf();
+      const artifacts = new Map([
+        ["dist/index.js", "build output"],
+        ["node_modules/example/index.js", "installed dependency"],
+      ]);
       const initialized = await module.init(
-        mockDirectory(new Map([["dist/index.js", "build output"]])),
+        mockDirectory(artifacts),
         kind,
         "tester",
         "sample",
       );
       const pkg = JSON.parse(await initialized.file("package.json").contents());
-      expect(pkg.scripts.clean).toBe(command);
-      expect(await initialized.file("dist/index.js").contents()).toBe(
-        "build output",
+      expect(pkg.scripts.clean).toBe(
+        kind === "library"
+          ? "rm -rf node_modules package-lock.json dist"
+          : command,
       );
+      for (const [path, contents] of artifacts)
+        expect(await initialized.file(path).contents()).toBe(contents);
       expect(await module.update(initialized, kind)).toBe(initialized);
       const edited = initialized.withNewFile(
         "package.json",
@@ -122,16 +129,21 @@ test.each(["library", "forge-app", "tool", "agent-skill"])(
           },
         }),
       );
-      const updated = await module.update(edited, kind);
+      const updated = await module.update(
+        edited.withNewFile("package-lock.json", "npm lockfile"),
+        kind,
+      );
+      expect(await updated.file("package-lock.json").contents()).toBe(
+        "npm lockfile",
+      );
       expect(
         JSON.parse(await updated.file("package.json").contents()).scripts,
       ).toEqual({
         ...pkg.scripts,
         "clean:cache": "custom",
       });
-      expect(await updated.file("dist/index.js").contents()).toBe(
-        "build output",
-      );
+      for (const [path, contents] of artifacts)
+        expect(await updated.file(path).contents()).toBe(contents);
       expect(await module.update(updated, kind)).toBe(updated);
     } finally {
       empty.mockRestore();

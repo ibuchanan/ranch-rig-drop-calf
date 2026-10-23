@@ -120,6 +120,7 @@ const KIND_PACKAGES: Record<string, KindPackage> = {
         "npm run test && npm run typecheck && npm run pack:check",
       prepare: "npm run build && (lefthook install || true)",
       build: "sh scripts/build.sh",
+      clean: "rm -rf node_modules package-lock.json dist",
       ...BUN_TEST_SCRIPTS,
     }),
     private: false,

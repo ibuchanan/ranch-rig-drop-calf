@@ -56,7 +56,7 @@ export const PROFILES: Record<string, Capability[]> = {
     typeScriptToolchain({ ownsBuild: false }),
     bunTesting(),
     fallow(),
-    cleanBuild(),
+    cleanBuild({ reinstall: true }),
     todo(),
     docsLinting({
       testDirectory: "tests",

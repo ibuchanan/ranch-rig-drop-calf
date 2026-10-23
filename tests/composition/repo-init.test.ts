@@ -249,7 +249,11 @@ describe("profiles", () => {
       ...(build ? { build } : {}),
     });
     if (!build) expect(packageJson.scripts.build).toBeUndefined();
-    expect(packageJson.scripts.clean).toBe("rm -rf dist");
+    expect(packageJson.scripts.clean).toBe(
+      kind === "library"
+        ? "rm -rf node_modules package-lock.json dist"
+        : "rm -rf dist",
+    );
     expect(packageJson.scripts.test).toBe(testScript);
     if (kind === "library") {
       expect(packageJson.devDependencies.tsdown).toBeDefined();
