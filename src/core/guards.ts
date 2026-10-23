@@ -4,6 +4,13 @@ export type Guard<T> = {
   message: string | ((subject: T) => string);
 };
 
+/** A JSON-style object: not null, not an array. */
+export function isPlainObject(
+  value: unknown,
+): value is Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
 /** Throws for the first failing guard, evaluating guards lazily and in order. */
 export function enforce<T>(subject: T, guards: readonly Guard<T>[]): void {
   const broken = guards.find(({ fails }) => fails(subject));

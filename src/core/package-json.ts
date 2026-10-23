@@ -2,6 +2,7 @@ import type { Directory } from "@dagger.io/dagger";
 import semver from "semver";
 import sortPackageJson from "sort-package-json";
 import { ParseError } from "./errors.ts";
+import { isPlainObject } from "./guards.ts";
 
 /**
  * The one module that reads and writes `package.json` (ADR 0002).
@@ -54,17 +55,16 @@ export function parseJsonObject(
       error instanceof Error ? error.message : String(error),
     );
   }
-  if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed))
-    throw new ParseError(path, "expected an object");
-  return parsed as Record<string, unknown>;
+  if (!isPlainObject(parsed)) throw new ParseError(path, "expected an object");
+  return parsed;
 }
 
 function section(pkg: Package, name: Section): Record<string, unknown> {
   const value = pkg[name];
   if (value === undefined) return {};
-  if (value === null || typeof value !== "object" || Array.isArray(value))
+  if (!isPlainObject(value))
     throw new ParseError(PACKAGE_JSON, `${name} must be an object`);
-  return value as Record<string, unknown>;
+  return value;
 }
 
 function apply(pkg: Package, fields: PackageFields): void {
@@ -247,15 +247,6 @@ const SCAFFOLD_FIELDS = [
 // than kept; generation then fills them from the profile.
 const EMPTY_SECTIONS = ["scripts", "devDependencies"] as const;
 
-function isEmptyObject(value: unknown): boolean {
-  return (
-    value !== null &&
-    typeof value === "object" &&
-    !Array.isArray(value) &&
-    Object.keys(value).length === 0
-  );
-}
-
 /**
  * Strip the metadata `forge create` invents: drop `SCAFFOLD_FIELDS` and empty
  * `EMPTY_SECTIONS`. An already-clean file is returned untouched, so a second
@@ -271,7 +262,7 @@ export function stripScaffold(contents: string): string {
     }
   }
   for (const name of EMPTY_SECTIONS) {
-    if (!isEmptyObject(pkg[name])) {
+    if (!(isPlainObject(pkg[name]) && Object.keys(pkg[name]).length === 0)) {
       pkg[name] = {};
       changed = true;
     }
@@ -301,8 +292,8 @@ export function mergeScaffoldPackage(
   }
   // Scaffold engine constraints are not the development-toolchain baseline.
   const engines = merged.engines;
-  if (engines && typeof engines === "object" && !Array.isArray(engines)) {
-    const { node: _node, ...other } = engines as Record<string, unknown>;
+  if (isPlainObject(engines)) {
+    const { node: _node, ...other } = engines;
     if (Object.keys(other).length) merged.engines = other;
     else delete merged.engines;
   }

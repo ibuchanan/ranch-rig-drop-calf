@@ -1,6 +1,7 @@
 import type { Directory } from "@dagger.io/dagger";
 import { NpmPackageJsonLint } from "npm-package-json-lint";
 import { type Capability, noOp, type Validation } from "../core/capability.ts";
+import { isPlainObject } from "../core/guards.ts";
 import { editPackageJson, readPackageJson } from "../core/package-json.ts";
 import {
   CATALOG_FILE,
@@ -69,12 +70,7 @@ const PACKAGE_RULES = {
 /** An absent author, a string, or an object with a string `name`. */
 function isValidAuthor(author: unknown): boolean {
   if (author === undefined || typeof author === "string") return true;
-  return (
-    typeof author === "object" &&
-    author !== null &&
-    !Array.isArray(author) &&
-    typeof (author as Record<string, unknown>).name === "string"
-  );
+  return isPlainObject(author) && typeof author.name === "string";
 }
 
 async function validatePackageMetadata(

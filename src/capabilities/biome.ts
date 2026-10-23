@@ -2,6 +2,7 @@ import type { Container, Directory } from "@dagger.io/dagger";
 import ts from "typescript";
 import type { Capability, Validation } from "../core/capability.ts";
 import { ParseError } from "../core/errors.ts";
+import { isPlainObject } from "../core/guards.ts";
 import {
   type PackageManagerOption,
   runScript,
@@ -53,11 +54,7 @@ async function updateBiome(directory: Directory): Promise<Directory> {
       path,
       ts.flattenDiagnosticMessageText(parsed.error.messageText, "\n"),
     );
-  if (
-    parsed.config === null ||
-    typeof parsed.config !== "object" ||
-    Array.isArray(parsed.config)
-  )
+  if (!isPlainObject(parsed.config))
     throw new ParseError(path, "expected an object");
   const migrated = await runBiome(
     biomeContainer()

@@ -10,6 +10,7 @@ import {
 } from "jsonc-parser";
 import type { Capability, Validation } from "../core/capability.ts";
 import { ParseError } from "../core/errors.ts";
+import { isPlainObject } from "../core/guards.ts";
 import { readPackageJson } from "../core/package-json.ts";
 import {
   type PackageManagerOption,
@@ -44,10 +45,9 @@ function seedTypeScript(destination: Directory, source: Directory): Directory {
   );
 }
 
-function object(path: string, value: unknown): Record<string, unknown> {
-  if (value === null || typeof value !== "object" || Array.isArray(value))
-    throw new ParseError(path, "expected an object");
-  return value as Record<string, unknown>;
+function expectObject(path: string, value: unknown): Record<string, unknown> {
+  if (!isPlainObject(value)) throw new ParseError(path, "expected an object");
+  return value;
 }
 
 function configObject(path: string, contents: string): Record<string, unknown> {
@@ -70,9 +70,9 @@ function configObject(path: string, contents: string): Record<string, unknown> {
   }
   if (!tree) throw new ParseError(path, "expected an object");
   check(tree);
-  const parsed = object(path, getNodeValue(tree));
+  const parsed = expectObject(path, getNodeValue(tree));
   if (parsed.compilerOptions !== undefined)
-    object(`${path}.compilerOptions`, parsed.compilerOptions);
+    expectObject(`${path}.compilerOptions`, parsed.compilerOptions);
   return parsed;
 }
 
@@ -146,7 +146,7 @@ type Field = { keys: string[]; wanted: unknown };
 /** Value at `keys` in a parsed config, or undefined when any step is missing. */
 const valueAt = (config: Record<string, unknown>, keys: string[]): unknown =>
   keys.reduce<unknown>(
-    (node, key) => (node as Record<string, unknown> | undefined)?.[key],
+    (node, key) => (isPlainObject(node) ? node[key] : undefined),
     config,
   );
 
@@ -170,7 +170,7 @@ export function reconcileTypeScriptConfig(
   const modern = policy.modern(traits);
   const compilerOptions = Object.assign(
     {},
-    object(path, seed.compilerOptions),
+    expectObject(path, seed.compilerOptions),
     ...policy.compilerOptions.map((layer) => layer(traits, modern)),
   );
   const fields: Field[] = [
@@ -201,6 +201,12 @@ export function reconcileTypeScriptConfig(
     );
 }
 
+/** The declarations config exists only for projects that build declarations with tsdown. */
+const applicableConfigs = (declarations: boolean) =>
+  TYPESCRIPT_CONFIGS.filter(
+    (path) => declarations || path !== "tsconfig.declarations.json",
+  );
+
 /** Declared dependencies select compiler policy; package.json itself is contributed. */
 async function updateTypeScript(
   directory: Directory,
@@ -208,15 +214,13 @@ async function updateTypeScript(
 ): Promise<Directory> {
   let result = directory;
   const pkg = await readPackageJson(directory);
-  const dependencies = object(
+  const dependencies = expectObject(
     "package.json.devDependencies",
     pkg?.devDependencies === undefined ? {} : pkg.devDependencies,
   );
   const source = dag.currentModule().source().directory(templateFor(runtime));
   const tsdown = Object.hasOwn(dependencies, "tsdown");
-  for (const path of TYPESCRIPT_CONFIGS) {
-    // declarations config is only seeded for tsdown projects
-    if (path === "tsconfig.declarations.json" && !tsdown) continue;
+  for (const path of applicableConfigs(tsdown)) {
     const baseline = await source.file(path).contents();
     const exists = await directory.exists(path);
     const contents = exists ? await directory.file(path).contents() : baseline;
@@ -235,14 +239,13 @@ async function updateTypeScript(
 
 /** Configuration acceptance only: never compile source, apply policy, or export container changes. */
 async function validateTypeScript(directory: Directory): Promise<Validation> {
-  const declarations = await directory.exists("tsconfig.declarations.json");
-  const missing: string[] = [];
-  const required: string[] = [];
-  for (const path of TYPESCRIPT_CONFIGS) {
-    if (path === "tsconfig.declarations.json" && !declarations) continue;
-    required.push(path);
-    if (!(await directory.exists(path))) missing.push(path);
-  }
+  const required = applicableConfigs(
+    await directory.exists("tsconfig.declarations.json"),
+  );
+  const present = await Promise.all(
+    required.map((path) => directory.exists(path)),
+  );
+  const missing = required.filter((_, index) => !present[index]);
   if (missing.length)
     return {
       status: missing.length === required.length ? "skipped" : "failed",

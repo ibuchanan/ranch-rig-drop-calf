@@ -2,6 +2,7 @@ import { type Directory, dag } from "@dagger.io/dagger";
 import { subset, validRange } from "semver";
 import type { Capability, Validation } from "../core/capability.ts";
 import { ensureFile } from "../core/files.ts";
+import { isPlainObject } from "../core/guards.ts";
 import { editPackageJson, readPackageJson } from "../core/package-json.ts";
 import { nodeContainer, REPOSITORY, runTool } from "../core/tool-run.ts";
 import { NODE_MAJOR, TOOL_VERSIONS } from "../core/versions.ts";
@@ -27,10 +28,7 @@ function withinMajor(types: unknown, major: string): boolean {
 function declaredSections(pkg: Record<string, unknown>) {
   return (["dependencies", "devDependencies"] as const)
     .map((section) => pkg[section])
-    .filter(
-      (value): value is Record<string, unknown> =>
-        typeof value === "object" && value !== null && !Array.isArray(value),
-    );
+    .filter(isPlainObject);
 }
 
 /** Explicit majors constrain existing Node type ranges without restoring removed dependencies. */

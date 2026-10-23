@@ -1,6 +1,7 @@
 import type { Directory } from "@dagger.io/dagger";
 import { parse as parseToml } from "smol-toml";
 import { type Capability, noOp, type Validation } from "../core/capability.ts";
+import { isPlainObject } from "../core/guards.ts";
 import { templateTree } from "../core/templates.ts";
 import { TOOL_VERSIONS } from "../core/versions.ts";
 
@@ -56,10 +57,6 @@ export const FORGE_SECRETS_SCRIPTS = {
   "forge:variables:set": "fence-rider variables",
 } as const;
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return value !== null && typeof value === "object" && !Array.isArray(value);
-}
-
 function parseSecretspec(contents: string): Record<string, unknown> {
   try {
     return parseToml(contents);
@@ -71,7 +68,7 @@ function parseSecretspec(contents: string): Record<string, unknown> {
 
 function checkProject(project: unknown): void {
   if (
-    !isRecord(project) ||
+    !isPlainObject(project) ||
     typeof project.name !== "string" ||
     !project.name.trim() ||
     project.revision !== "1.0"
@@ -103,15 +100,15 @@ function checkDeclaration(
 
 /** Returns the default profile, which Fence Rider resolves. */
 function checkProfiles(profiles: unknown): Record<string, unknown> {
-  if (!isRecord(profiles) || !isRecord(profiles.default))
+  if (!isPlainObject(profiles) || !isPlainObject(profiles.default))
     throw new Error(
       "secretspec.toml: profiles.default must be a table for Fence Rider's default profile",
     );
   for (const [name, profile] of Object.entries(profiles)) {
-    if (!isRecord(profile))
+    if (!isPlainObject(profile))
       throw new Error(`secretspec.toml: profile ${name} must be a table`);
     for (const [key, declaration] of Object.entries(profile)) {
-      if (!isRecord(declaration))
+      if (!isPlainObject(declaration))
         throw new Error(
           `secretspec.toml: ${name}.${key} must be a declaration table`,
         );
@@ -141,10 +138,12 @@ function checkScopeMember(
 /** Scope members must be declared; runtime members upload, so local controls stay out. */
 function checkScopes(scopes: unknown, profile: Record<string, unknown>): void {
   if (scopes === undefined) return;
-  if (!isRecord(scopes))
+  if (!isPlainObject(scopes))
     throw new Error("secretspec.toml: scopes must be a table");
   for (const scope of SCOPES) {
-    const members = isRecord(scopes[scope]) ? scopes[scope].secrets : undefined;
+    const members = isPlainObject(scopes[scope])
+      ? scopes[scope].secrets
+      : undefined;
     if (members === undefined) continue;
     if (!Array.isArray(members) || !members.every(isString))
       throw new Error(
