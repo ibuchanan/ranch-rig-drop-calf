@@ -17,10 +17,14 @@ import {
   scaffoldSteps,
 } from "./composition/profiles.ts";
 import { updateCapabilities, validateCapabilities } from "./core/capability.ts";
+import { carryFile, firstExisting, readOptionalFile } from "./core/files.ts";
 import { mergeScaffoldPackage, scaffoldName } from "./core/package-json.ts";
 import { renderToDirectory } from "./core/project.ts";
 import { repositoryWorkflow } from "./core/repository.ts";
 import { seedTemplates } from "./core/templates.ts";
+
+/** Files whose presence means the project was already initialized. */
+const INIT_MARKERS = ["catalog-info.yaml", ".atlassian/OWNER"];
 
 @object()
 export class DropCalf {
@@ -85,14 +89,12 @@ export class DropCalf {
       withoutFunctions,
       preset,
     );
-    for (const marker of ["catalog-info.yaml", ".atlassian/OWNER"])
-      if (await directory.exists(marker))
-        throw new Error(
-          `init is a one-time operation: ${marker} already exists; use update instead.`,
-        );
-    const scaffold = (await directory.exists("package.json"))
-      ? await directory.file("package.json").contents()
-      : undefined;
+    const marker = await firstExisting(directory, INIT_MARKERS);
+    if (marker)
+      throw new Error(
+        `init is a one-time operation: ${marker} already exists; use update instead.`,
+      );
+    const scaffold = await readOptionalFile(directory, "package.json");
     let cleaned = directory;
     for (const step of scaffoldSteps(profile as ProjectProfile))
       cleaned = await step(cleaned);
@@ -101,20 +103,17 @@ export class DropCalf {
       scaffoldName(scaffold) ??
       basename(fileURLToPath(await dag.currentWorkspace().address()));
     const project = blueprintFor(capabilities, name, owner, description);
-    let rendered = renderToDirectory(project);
-    if (await cleaned.exists(".gitignore"))
-      rendered = rendered.withNewFile(
-        ".gitignore",
-        await cleaned.file(".gitignore").contents(),
-      );
+    const rendered = await carryFile(
+      renderToDirectory(project),
+      cleaned,
+      ".gitignore",
+    );
     const seeded = await seedTemplates(
       rendered,
       dag.currentModule().source(),
       project.templates,
     );
-    const kept = (await cleaned.exists("package.json"))
-      ? await cleaned.file("package.json").contents()
-      : undefined;
+    const kept = await readOptionalFile(cleaned, "package.json");
     const initialized = cleaned
       .withDirectory(".", seeded)
       .withNewFile(

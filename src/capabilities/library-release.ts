@@ -1,5 +1,6 @@
 import { dag } from "@dagger.io/dagger";
 import { type Capability, noOp } from "../core/capability.ts";
+import { ensureFile } from "../core/files.ts";
 import { templateTree } from "../core/templates.ts";
 
 /** Own explicit release commands and helpers, not release policy or tool pins. */
@@ -42,11 +43,7 @@ export function libraryRelease(): Capability {
           .directory("templates/library-release")
           .file(path)
           .contents();
-        if (
-          !(await directory.exists(path)) ||
-          (await directory.file(path).contents()) !== script
-        )
-          directory = directory.withNewFile(path, script);
+        directory = await ensureFile(directory, path, script);
       }
       return directory;
     },

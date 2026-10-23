@@ -1,5 +1,6 @@
 import { type Directory, dag } from "@dagger.io/dagger";
 import { type Capability, noOp } from "../core/capability.ts";
+import { ensureFile } from "../core/files.ts";
 import { templateTree } from "../core/templates.ts";
 import {
   CATALOG_FILE,
@@ -82,11 +83,7 @@ export async function copyOssAssets(
       await source.file(path).contents(),
       metadata,
     );
-    if (
-      !(await result.exists(path)) ||
-      (await result.file(path).contents()) !== wanted
-    )
-      result = result.withNewFile(path, wanted);
+    result = await ensureFile(result, path, wanted);
   }
   return result;
 }

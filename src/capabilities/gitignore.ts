@@ -81,34 +81,44 @@ export function availableSets(template: string): string[] {
   ].sort();
 }
 
+/** Reject topics the pinned upstream template does not define. */
+function rejectUnknownSets(
+  wanted: ReadonlySet<string>,
+  sections: readonly GitignoreSection[],
+): void {
+  const known = new Set(sections.map((section) => section.set));
+  const unknown = [...wanted].filter((set) => !known.has(set));
+  if (!unknown.length) return;
+  throw new InvalidOptionsError(
+    `Unknown ignore set${unknown.length > 1 ? "s" : ""} ${unknown
+      .map((set) => JSON.stringify(set))
+      .join(", ")}; choose from ${[...known].sort().join(", ")}.`,
+  );
+}
+
+/** Keeps comments and blanks, and each rule only the first time it appears. */
+function firstSighting(): (line: string) => boolean {
+  const seen = new Set<string>();
+  return (line) => {
+    const rule = line.trim();
+    if (!rule || rule.startsWith("#")) return true;
+    if (seen.has(rule)) return false;
+    seen.add(rule);
+    return true;
+  };
+}
+
 /** Build one upstream block; its URLs record the actual selected topics. */
 function buildTopicBlock(template: string, sets: readonly string[]): string {
   const { sections } = parseTemplate(template);
-  const known = new Set(sections.map((section) => section.set));
   const wanted = new Set(sets.map(normalizeSet));
-  const unknown = [...wanted].filter((set) => !known.has(set));
-  if (unknown.length)
-    throw new InvalidOptionsError(
-      `Unknown ignore set${unknown.length > 1 ? "s" : ""} ${unknown
-        .map((set) => JSON.stringify(set))
-        .join(", ")}; choose from ${[...known].sort().join(", ")}.`,
-    );
+  rejectUnknownSets(wanted, sections);
   const query = [...wanted].join(",");
   const url = `${GITIGNORE_ENDPOINT}/${query}`;
-  const seen = new Set<string>();
-  const body: string[] = [];
-  for (const section of sections) {
-    if (!wanted.has(section.set)) continue;
-    body.push(section.heading);
-    for (const line of section.lines) {
-      const rule = line.trim();
-      if (rule && !rule.startsWith("#")) {
-        if (seen.has(rule)) continue;
-        seen.add(rule);
-      }
-      body.push(line);
-    }
-  }
+  const keep = firstSighting();
+  const body = sections
+    .filter((section) => wanted.has(section.set))
+    .flatMap((section) => [section.heading, ...section.lines.filter(keep)]);
   return `${collapse([
     `# Created by ${url}`,
     `# Edit at https://www.toptal.com/developers/gitignore?templates=${query}`,
@@ -163,6 +173,57 @@ function appendBlocks(contents: string, blocks: string[]): string {
   return contents + separator + blocks.join("\n");
 }
 
+type Marker = BlockMarker & { index: number; text: string };
+
+/** Owned markers in file order, with where each sits; computed lazily. */
+function* scanMarkers(contents: string): Generator<Marker> {
+  for (const match of contents.matchAll(/[^\n]+\n?|\n/g)) {
+    const marker = parseMarker(match[0].replace(/\r?\n$/, ""));
+    if (marker) yield { ...marker, index: match.index, text: match[0] };
+  }
+}
+
+/** A complete owned block: its opening marker through the end marker's line. */
+type OwnedBlock = {
+  topics?: string[];
+  start: number;
+  end: number;
+  /** An end marker at EOF has no newline, and the replacement must not add one. */
+  endsWithNewline: boolean;
+};
+
+const gitignoreError = (message: string) =>
+  new ParseError(".gitignore", message);
+
+/** Pairs each opening marker with its matching end, failing at the first malformed marker. */
+function* ownedBlocks(contents: string): Generator<OwnedBlock> {
+  const markers = scanMarkers(contents);
+  for (const open of markers) {
+    if (!open.opens) throw gitignoreError("unmatched managed block end marker");
+    const close = markers.next();
+    if (close.done) throw gitignoreError("missing managed block end marker");
+    if (close.value.opens) throw gitignoreError("nested managed block markers");
+    if (close.value.source !== open.source)
+      throw gitignoreError("unmatched managed block end marker");
+    yield {
+      topics: open.topics,
+      start: open.index,
+      end: close.value.index + close.value.text.length,
+      endsWithNewline: close.value.text.endsWith("\n"),
+    };
+  }
+}
+
+/** The owned blocks init adds when the file lacks them, keyed by what `rewriteBlocks` found. */
+const SEEDED_BLOCKS: Record<
+  "topics" | "extras",
+  (template: string, sets?: readonly string[]) => string
+> = {
+  topics: (template, sets) =>
+    buildTopicBlock(template, sets ?? GITIGNORE_TEMPLATES),
+  extras: () => ADDITIONAL_IGNORES,
+};
+
 /**
  * Replace complete owned blocks, never individual lines or surrounding bytes.
  * A retired Yarn topic is removed from existing selections; other unknown topics
@@ -174,42 +235,26 @@ function rewriteBlocks(
   seed = false,
   sets?: readonly string[],
 ): string {
-  let open: (BlockMarker & { start: number }) | undefined;
   let cursor = 0;
   let result = "";
-  let topicsFound = false;
-  let extrasFound = false;
-  for (const match of contents.matchAll(/[^\n]+\n?|\n/g)) {
-    const marker = parseMarker(match[0].replace(/\r?\n$/, ""));
-    if (!marker) continue;
-    if (marker.opens) {
-      if (open)
-        throw new ParseError(".gitignore", "nested managed block markers");
-      open = { ...marker, start: match.index };
-      continue;
-    }
-    if (!open || open.source !== marker.source)
-      throw new ParseError(".gitignore", "unmatched managed block end marker");
-    const replacement = replacementBlock(open.topics, template, sets);
+  const found = new Set<keyof typeof SEEDED_BLOCKS>();
+  for (const block of ownedBlocks(contents)) {
+    const replacement = replacementBlock(block.topics, template, sets);
     // The marker's newline belongs to the block; an EOF marker stays at EOF.
     result +=
-      contents.slice(cursor, open.start) +
-      (match[0].endsWith("\n") ? replacement : replacement.slice(0, -1));
-    cursor = match.index + match[0].length;
-    if (open.topics) topicsFound = true;
-    else extrasFound = true;
-    open = undefined;
+      contents.slice(cursor, block.start) +
+      (block.endsWithNewline ? replacement : replacement.slice(0, -1));
+    cursor = block.end;
+    found.add(block.topics ? "topics" : "extras");
   }
-  if (open)
-    throw new ParseError(".gitignore", "missing managed block end marker");
   result += contents.slice(cursor);
   if (!seed) return result;
-  return appendBlocks(result, [
-    ...(topicsFound
-      ? []
-      : [buildTopicBlock(template, sets ?? GITIGNORE_TEMPLATES)]),
-    ...(extrasFound ? [] : [ADDITIONAL_IGNORES]),
-  ]);
+  return appendBlocks(
+    result,
+    Object.entries(SEEDED_BLOCKS)
+      .filter(([kind]) => !found.has(kind as keyof typeof SEEDED_BLOCKS))
+      .map(([, build]) => build(template, sets)),
+  );
 }
 
 /** Update uses the topics recorded in each owned block; unmarked files are intact. */

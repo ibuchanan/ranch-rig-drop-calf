@@ -2,6 +2,7 @@ import { type Directory, dag } from "@dagger.io/dagger";
 import { parse as parseToml } from "smol-toml";
 import ts from "typescript";
 import type { Capability, Validation } from "../core/capability.ts";
+import { ensureFile } from "../core/files.ts";
 import { templateTree } from "../core/templates.ts";
 
 /** Owner declarations are init-only; helpers and the six dispatch scripts track policy. */
@@ -69,6 +70,57 @@ export const FORGE_SECRETS_SCRIPTS = {
   "forge:variables:set": "node scripts/forge-vars-from-secretspec.js",
 } as const;
 
+/** Every identifier in `source` spelled `name`. */
+function identifiersNamed(
+  source: ts.SourceFile,
+  name: string,
+): ts.Identifier[] {
+  const found: ts.Identifier[] = [];
+  const visit = (node: ts.Node): void => {
+    if (ts.isIdentifier(node) && node.text === name) found.push(node);
+    ts.forEachChild(node, visit);
+  };
+  visit(source);
+  return found;
+}
+
+/** `const APP_VARIABLE_KEYS = [];` */
+function isEmptyDeclaration(name: ts.Identifier): boolean {
+  const { parent } = name;
+  return (
+    ts.isVariableDeclaration(parent) &&
+    parent.name === name &&
+    parent.initializer !== undefined &&
+    ts.isArrayLiteralExpression(parent.initializer) &&
+    parent.initializer.elements.length === 0
+  );
+}
+
+/** `APP_VARIABLE_KEYS.length === ...` */
+function isLengthComparison(name: ts.Identifier): boolean {
+  const { parent } = name;
+  return (
+    ts.isPropertyAccessExpression(parent) &&
+    parent.expression === name &&
+    parent.name.text === "length" &&
+    ts.isBinaryExpression(parent.parent) &&
+    parent.parent.left === parent &&
+    parent.parent.operatorToken.kind === ts.SyntaxKind.EqualsEqualsEqualsToken
+  );
+}
+
+/** `for (... of APP_VARIABLE_KEYS)` */
+function isIteration(name: ts.Identifier): boolean {
+  return ts.isForOfStatement(name.parent) && name.parent.expression === name;
+}
+
+/** Uses of the legacy allowlist that cannot carry owner keys; any other use might. */
+const HARMLESS_ALLOWLIST_USES = [
+  isEmptyDeclaration,
+  isLengthComparison,
+  isIteration,
+];
+
 /** Never execute owner JavaScript to discover whether its legacy allowlist is empty. */
 function guardLegacyAllowlist(contents: string): void {
   const source = ts.createSourceFile(
@@ -78,31 +130,9 @@ function guardLegacyAllowlist(contents: string): void {
     true,
     ts.ScriptKind.JS,
   );
-  let unsafe = false;
-  const visit = (node: ts.Node) => {
-    if (ts.isIdentifier(node) && node.text === "APP_VARIABLE_KEYS") {
-      const parent = node.parent;
-      const emptyDeclaration =
-        ts.isVariableDeclaration(parent) &&
-        parent.name === node &&
-        parent.initializer &&
-        ts.isArrayLiteralExpression(parent.initializer) &&
-        parent.initializer.elements.length === 0;
-      const lengthRead =
-        ts.isPropertyAccessExpression(parent) &&
-        parent.expression === node &&
-        parent.name.text === "length" &&
-        ts.isBinaryExpression(parent.parent) &&
-        parent.parent.left === parent &&
-        parent.parent.operatorToken.kind ===
-          ts.SyntaxKind.EqualsEqualsEqualsToken;
-      const iteration =
-        ts.isForOfStatement(parent) && parent.expression === node;
-      if (!emptyDeclaration && !lengthRead && !iteration) unsafe = true;
-    }
-    ts.forEachChild(node, visit);
-  };
-  visit(source);
+  const unsafe = identifiersNamed(source, "APP_VARIABLE_KEYS").some(
+    (name) => !HARMLESS_ALLOWLIST_USES.some((harmless) => harmless(name)),
+  );
   if (unsafe)
     throw new Error(
       `secrets: legacy APP_VARIABLE_KEYS in scripts/forge-vars-from-secretspec.js may contain owner keys. Move the keys to ${FORGE_VARIABLE_KEYS} and remove the embedded APP_VARIABLE_KEYS declaration and references before update.`,
@@ -117,13 +147,12 @@ async function updateSecrets(directory: Directory): Promise<Directory> {
   const source = dag.currentModule().source().directory(SECRETS_TEMPLATE);
   let result = directory;
   for (const path of SECRETS_EXECUTABLES) {
-    const wanted = await source.file(path).contents();
-    if (
-      !(await directory.exists(path)) ||
-      (await directory.file(path).contents()) !== wanted ||
-      (await directory.stat(path).permissions()) !== 0o755
-    )
-      result = result.withNewFile(path, wanted, { permissions: 0o755 });
+    result = await ensureFile(
+      result,
+      path,
+      await source.file(path).contents(),
+      { permissions: 0o755 },
+    );
   }
   return result;
 }

@@ -107,49 +107,74 @@ export async function editPackageJson(
     : directory.withNewFile(PACKAGE_JSON, render(pkg));
 }
 
-/** Merge every contribution, rejecting any key claimed twice. */
-export function assemblePackage(contributors: readonly Contributor[]): {
+type Assembled = {
   seed: PackageFields;
   policy: PackageFields;
   remove: string[];
-} {
+};
+
+/** One key a contributor owns, and how it lands in the assembled result. */
+type Claim = {
+  owner: string;
+  key: string;
+  place: (assembled: Assembled) => void;
+};
+
+const LIFECYCLES = ["seed", "policy"] as const;
+
+/** Everything one contributor asserts, in the order conflicts should be reported. */
+function claimsBy({ name, packageJson }: Contributor): Claim[] {
+  const contributions = LIFECYCLES.flatMap((lifecycle) =>
+    Object.entries(packageJson?.[lifecycle] ?? {}).flatMap(
+      ([field, value]): Claim[] =>
+        isSection(field)
+          ? Object.entries(value as Record<string, string>).map(
+              ([entry, version]) => ({
+                owner: name,
+                key: `${field}.${entry}`,
+                place: (assembled) => {
+                  const target = assembled[lifecycle];
+                  target[field] = { ...target[field], [entry]: version };
+                },
+              }),
+            )
+          : [
+              {
+                owner: name,
+                key: field,
+                place: (assembled) => {
+                  assembled[lifecycle][field] = value;
+                },
+              },
+            ],
+    ),
+  );
+  const removals = (packageJson?.remove ?? []).map(
+    (field): Claim => ({
+      owner: name,
+      key: field,
+      place: (assembled) => {
+        assembled.remove.push(field);
+      },
+    }),
+  );
+  return [...contributions, ...removals];
+}
+
+/** Merge every contribution, rejecting any key claimed twice. */
+export function assemblePackage(
+  contributors: readonly Contributor[],
+): Assembled {
   const owners = new Map<string, string>();
-  const claim = (key: string, name: string) => {
-    const owner = owners.get(key);
+  const assembled: Assembled = { seed: {}, policy: {}, remove: [] };
+  for (const claim of contributors.flatMap(claimsBy)) {
+    const owner = owners.get(claim.key);
     if (owner !== undefined)
       throw new Error(
-        `package.json: ${key} is contributed by both ${owner} and ${name}; exactly one capability must own it.`,
+        `package.json: ${claim.key} is contributed by both ${owner} and ${claim.owner}; exactly one capability must own it.`,
       );
-    owners.set(key, name);
-  };
-  const assembled = {
-    seed: {} as PackageFields,
-    policy: {} as PackageFields,
-    remove: [] as string[],
-  };
-  for (const { name, packageJson } of contributors) {
-    for (const lifecycle of ["seed", "policy"] as const) {
-      const target = assembled[lifecycle];
-      for (const [field, value] of Object.entries(
-        packageJson?.[lifecycle] ?? {},
-      )) {
-        if (!isSection(field)) {
-          claim(field, name);
-          target[field] = value;
-          continue;
-        }
-        for (const [entry, version] of Object.entries(
-          value as Record<string, string>,
-        )) {
-          claim(`${field}.${entry}`, name);
-          target[field] = { ...target[field], [entry]: version };
-        }
-      }
-    }
-    for (const field of packageJson?.remove ?? []) {
-      claim(field, name);
-      assembled.remove.push(field);
-    }
+    owners.set(claim.key, claim.owner);
+    claim.place(assembled);
   }
   return assembled;
 }

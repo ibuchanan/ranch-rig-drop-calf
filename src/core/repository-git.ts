@@ -8,6 +8,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { join, resolve } from "node:path";
+import { enforce, type Guard, withEnv } from "./guards.ts";
 
 export type RepositoryOptions = {
   operation: "init" | "update";
@@ -31,8 +32,8 @@ export type RepositoryResult = {
 
 export const INITIAL_COMMIT = "chore(scaffold): NONE Capture initial project";
 export const INIT_COMMIT = "chore(drop-calf): NONE Initialize project tooling";
-export const UPDATE_COMMIT = "chore(drop-calf): NONE Update project tooling";
-export const MERGE_COMMIT = "chore(drop-calf): NONE Merge tooling update";
+const UPDATE_COMMIT = "chore(drop-calf): NONE Update project tooling";
+const MERGE_COMMIT = "chore(drop-calf): NONE Merge tooling update";
 
 /** Git runs with isolated configuration, without repository hooks or interactive prompts. */
 export function git(directory: string, ...args: string[]): string {
@@ -64,7 +65,10 @@ export function git(directory: string, ...args: string[]): string {
   ).trim();
 }
 
-function optionalGit(directory: string, ...args: string[]): string | undefined {
+export function optionalGit(
+  directory: string,
+  ...args: string[]
+): string | undefined {
   try {
     return git(directory, ...args);
   } catch {
@@ -72,33 +76,52 @@ function optionalGit(directory: string, ...args: string[]): string | undefined {
   }
 }
 
-function checkOptions(options: RepositoryOptions): void {
-  if (
-    !options.authorName.trim() ||
-    !options.authorEmail.trim() ||
-    /[\r\n\0]/.test(options.authorName + options.authorEmail)
-  )
-    throw new Error(
-      "Git author name and email must be nonblank single-line values.",
-    );
-  if (options.remoteUrl) {
-    const url = options.remoteUrl;
-    if (url.startsWith("https://") || url.startsWith("ssh://")) {
-      const parsed = new URL(url);
-      if (
-        parsed.password ||
-        (parsed.protocol === "https:" && parsed.username) ||
-        parsed.search ||
-        parsed.hash
-      )
-        throw new Error(
-          "Remote URL must not contain credentials, query parameters, or fragments.",
-        );
-    } else if (!/^git@[^:/]+:.+/.test(url)) {
-      throw new Error("Remote URL must use credential-free HTTPS or SSH.");
-    }
-  }
+/** Remote URL forms, tried in order; the first that applies decides acceptability. */
+const REMOTE_FORMS: readonly {
+  applies: (url: string) => boolean;
+  acceptable: (url: string) => boolean;
+  message: string;
+}[] = [
+  {
+    applies: (url) => url.startsWith("https://") || url.startsWith("ssh://"),
+    acceptable: (url) => {
+      const { password, protocol, username, search, hash } = new URL(url);
+      return !(
+        password ||
+        (protocol === "https:" && username) ||
+        search ||
+        hash
+      );
+    },
+    message:
+      "Remote URL must not contain credentials, query parameters, or fragments.",
+  },
+  {
+    applies: () => true,
+    acceptable: (url) => /^git@[^:/]+:.+/.test(url),
+    message: "Remote URL must use credential-free HTTPS or SSH.",
+  },
+];
+
+/** Why a remote URL is unacceptable, or undefined when it is fine. */
+function remoteProblem(url: string): string | undefined {
+  const form = REMOTE_FORMS.find(({ applies }) => applies(url));
+  return form && !form.acceptable(url) ? form.message : undefined;
 }
+
+const OPTION_GUARDS: readonly Guard<RepositoryOptions>[] = [
+  {
+    fails: ({ authorName, authorEmail }) =>
+      !authorName.trim() ||
+      !authorEmail.trim() ||
+      /[\r\n\0]/.test(authorName + authorEmail),
+    message: "Git author name and email must be nonblank single-line values.",
+  },
+  {
+    fails: ({ remoteUrl }) => Boolean(remoteUrl && remoteProblem(remoteUrl)),
+    message: ({ remoteUrl }) => remoteProblem(remoteUrl ?? "") ?? "",
+  },
+];
 
 /** Refuse common credential files even if an incomplete scaffold ignore file misses them. */
 export function checkStagedFiles(directory: string): void {
@@ -128,20 +151,28 @@ export function checkStagedFiles(directory: string): void {
     );
 }
 
-/** Prepare an isolated checkout from a bundle, a remote, or a fresh scaffold. */
-export function prepareRepository(
-  directory: string,
-  options: RepositoryOptions,
-  history?: string,
-): void {
-  checkOptions(options);
-  mkdirSync(directory, { recursive: true });
-  git(directory, "check-ref-format", "--branch", options.branch);
-  if (options.branch.startsWith("drop-calf/update/"))
-    throw new Error("Select a target branch, not a Drop Calf update branch.");
-  if (history || options.remoteUrl) {
-    if (readdirSync(directory).length)
-      throw new Error("Repository checkout destination must be empty.");
+type Checkout = {
+  directory: string;
+  options: RepositoryOptions;
+  history?: string;
+};
+
+/** Where a checkout's content comes from, with the preconditions and cleanliness that implies. */
+type Source = {
+  guards: readonly Guard<Checkout>[];
+  acquire: (checkout: Checkout) => void;
+  /** A fetched repository must arrive clean; a scaffold is expected to be dirty. */
+  mustBeClean: boolean;
+};
+
+const FROM_HISTORY: Source = {
+  guards: [
+    {
+      fails: ({ directory }) => readdirSync(directory).length > 0,
+      message: "Repository checkout destination must be empty.",
+    },
+  ],
+  acquire({ directory, options, history }) {
     git(
       directory,
       "clone",
@@ -151,40 +182,92 @@ export function prepareRepository(
       ".",
     );
     git(directory, "switch", options.branch);
-  } else {
-    if (existsSync(join(directory, ".git")))
-      throw new Error(
-        "Supply repository history as a bundle; do not copy .git.",
-      );
-    if (options.operation === "update")
-      throw new Error("update requires repository history or a remote URL.");
+  },
+  mustBeClean: true,
+};
+
+const FROM_SCAFFOLD: Source = {
+  guards: [
+    {
+      fails: ({ directory }) => existsSync(join(directory, ".git")),
+      message: "Supply repository history as a bundle; do not copy .git.",
+    },
+    {
+      fails: ({ options }) => options.operation === "update",
+      message: "update requires repository history or a remote URL.",
+    },
+  ],
+  acquire({ directory, options }) {
     git(directory, "init", "--initial-branch", options.branch, ".");
-  }
-  if (
-    options.operation === "init" &&
-    ["catalog-info.yaml", ".atlassian/OWNER"].some((path) =>
-      existsSync(join(directory, path)),
-    )
-  )
-    throw new Error("init is a one-time operation; use update instead.");
-  git(directory, "config", "user.name", options.authorName);
-  git(directory, "config", "user.email", options.authorEmail);
-  git(directory, "config", "core.autocrlf", "false");
-  if (git(directory, "status", "--porcelain") && (history || options.remoteUrl))
-    throw new Error("Repository must be clean.");
+  },
+  mustBeClean: false,
+};
+
+const BEFORE_ACQUIRE: readonly Guard<Checkout>[] = [
+  {
+    fails: ({ options }) => options.branch.startsWith("drop-calf/update/"),
+    message: "Select a target branch, not a Drop Calf update branch.",
+  },
+];
+
+const INIT_MARKERS = ["catalog-info.yaml", ".atlassian/OWNER"];
+
+const AFTER_ACQUIRE: readonly Guard<Checkout>[] = [
+  {
+    fails: ({ directory, options }) =>
+      options.operation === "init" &&
+      INIT_MARKERS.some((path) => existsSync(join(directory, path))),
+    message: "init is a one-time operation; use update instead.",
+  },
+];
+
+const NOT_CLEAN: Guard<Checkout> = {
+  fails: ({ directory }) => git(directory, "status", "--porcelain") !== "",
+  message: "Repository must be clean.",
+};
+
+const AFTER_INITIAL_COMMIT: readonly Guard<Checkout>[] = [
+  {
+    fails: ({ directory }) =>
+      git(directory, "rev-parse", "--is-shallow-repository") !== "false",
+    message: "Full Git history is required.",
+  },
+  {
+    fails: ({ directory }) =>
+      git(directory, "ls-files", "--stage")
+        .split("\n")
+        .some((line) => line.startsWith("160000 ")),
+    message: "Submodules are not supported by repository workflows.",
+  },
+];
+
+/** Prepare an isolated checkout from a bundle, a remote, or a fresh scaffold. */
+export function prepareRepository(
+  directory: string,
+  options: RepositoryOptions,
+  history?: string,
+): void {
+  enforce(options, OPTION_GUARDS);
+  mkdirSync(directory, { recursive: true });
+  git(directory, "check-ref-format", "--branch", options.branch);
+  const checkout: Checkout = { directory, options, history };
+  const source = history || options.remoteUrl ? FROM_HISTORY : FROM_SCAFFOLD;
+  enforce(checkout, [...BEFORE_ACQUIRE, ...source.guards]);
+  source.acquire(checkout);
+  enforce(checkout, AFTER_ACQUIRE);
+  for (const [key, value] of Object.entries({
+    "user.name": options.authorName,
+    "user.email": options.authorEmail,
+    "core.autocrlf": "false",
+  }))
+    git(directory, "config", key, value);
+  enforce(checkout, source.mustBeClean ? [NOT_CLEAN] : []);
   if (!optionalGit(directory, "rev-parse", "--verify", "HEAD")) {
     git(directory, "add", "--all");
     checkStagedFiles(directory);
     git(directory, "commit", "--allow-empty", "-m", INITIAL_COMMIT);
   }
-  if (git(directory, "rev-parse", "--is-shallow-repository") !== "false")
-    throw new Error("Full Git history is required.");
-  if (
-    git(directory, "ls-files", "--stage")
-      .split("\n")
-      .some((line) => line.startsWith("160000 "))
-  )
-    throw new Error("Submodules are not supported by repository workflows.");
+  enforce(checkout, AFTER_INITIAL_COMMIT);
 }
 
 function commit(
@@ -193,27 +276,19 @@ function commit(
   options: RepositoryOptions,
   timestamp: number,
 ): void {
-  const oldAuthor = process.env.GIT_AUTHOR_DATE;
-  const oldCommitter = process.env.GIT_COMMITTER_DATE;
-  try {
-    process.env.GIT_AUTHOR_DATE = `${timestamp} +0000`;
-    process.env.GIT_COMMITTER_DATE = `${timestamp} +0000`;
+  const date = `${timestamp} +0000`;
+  withEnv({ GIT_AUTHOR_DATE: date, GIT_COMMITTER_DATE: date }, () =>
     git(
       directory,
       "commit",
       "-m",
       message,
       ...(options.provenance ? ["-m", options.provenance] : []),
-    );
-  } finally {
-    if (oldAuthor === undefined) delete process.env.GIT_AUTHOR_DATE;
-    else process.env.GIT_AUTHOR_DATE = oldAuthor;
-    if (oldCommitter === undefined) delete process.env.GIT_COMMITTER_DATE;
-    else process.env.GIT_COMMITTER_DATE = oldCommitter;
-  }
+    ),
+  );
 }
 
-export function exportRepository(
+function exportRepository(
   directory: string,
   output: string,
   result: RepositoryResult,
@@ -228,6 +303,103 @@ export function exportRepository(
   );
 }
 
+/** Replace only the isolated worktree with the transformed tree. */
+function replaceWorktree(directory: string, tree: string): void {
+  const incoming = readdirSync(tree);
+  if (incoming.includes(".git"))
+    throw new Error("Transformation must not contain .git.");
+  for (const name of readdirSync(directory).filter((n) => n !== ".git"))
+    rmSync(join(directory, name), { recursive: true, force: true });
+  for (const name of incoming)
+    cpSync(join(tree, name), join(directory, name), {
+      recursive: true,
+      dereference: false,
+    });
+}
+
+/** What the transformation turned out to be, handed to the operation that records it. */
+type Change = {
+  directory: string;
+  options: RepositoryOptions;
+  base: string;
+  resultTree: string;
+  timestamp: number;
+};
+
+type Outcome = Pick<RepositoryResult, "status" | "head"> &
+  Partial<Pick<RepositoryResult, "updateBranch" | "updateCommit">>;
+
+/** Unchanged `init` still counts as initialized; unchanged `update` is a no-op. */
+const UNCHANGED_STATUS = {
+  init: "initialized",
+  update: "unchanged",
+} as const;
+
+/** The branch a tooling update lives on, named by the commit and tree it joins. */
+const updateBranchName = ({ base, resultTree }: Change) =>
+  `drop-calf/update/${base.slice(0, 12)}-${resultTree.slice(0, 12)}`;
+
+/** An already-published update branch for this exact change, local first, then origin. */
+function existingUpdate(directory: string, branch: string) {
+  return [`refs/heads/${branch}`, `refs/remotes/origin/${branch}`].reduce<
+    string | undefined
+  >(
+    (found, ref) =>
+      found ?? optionalGit(directory, "rev-parse", "--verify", ref),
+    undefined,
+  );
+}
+
+/** Reuse of an existing update branch is safe only if it holds exactly this change. */
+const holdsThisChange = (
+  { directory, base, resultTree }: Change,
+  existing: string,
+) =>
+  [
+    () => git(directory, "show", "-s", "--format=%P", existing) === base,
+    () => git(directory, "rev-parse", `${existing}^{tree}`) === resultTree,
+    () =>
+      git(directory, "show", "-s", "--format=%s", existing) === UPDATE_COMMIT,
+  ].every((holds) => holds());
+
+/** What each operation does with a transformation that changed the tree. */
+const RECORD_CHANGE: Record<
+  RepositoryOptions["operation"],
+  (change: Change) => Outcome
+> = {
+  init(change) {
+    const { directory, options, timestamp } = change;
+    commit(directory, INIT_COMMIT, options, timestamp);
+    return { status: "initialized", head: git(directory, "rev-parse", "HEAD") };
+  },
+  update(change) {
+    const { directory, options, timestamp } = change;
+    const branch = updateBranchName(change);
+    const existing = existingUpdate(directory, branch);
+    if (existing === undefined) {
+      git(directory, "switch", "--create", branch);
+      commit(directory, UPDATE_COMMIT, options, timestamp);
+    } else {
+      if (!holdsThisChange(change, existing))
+        throw new Error(
+          `Update branch collision: ${branch}; refusing to overwrite it.`,
+        );
+      git(directory, "switch", "-C", branch, existing);
+    }
+    const updateCommit = git(directory, "rev-parse", "HEAD");
+    git(directory, "switch", options.branch);
+    // --no-commit lets the normal commit path supply a stable timestamp.
+    git(directory, "merge", "--no-ff", "--no-commit", branch);
+    commit(directory, MERGE_COMMIT, options, timestamp + 1);
+    return {
+      status: "updated",
+      head: git(directory, "rev-parse", "HEAD"),
+      updateBranch: branch,
+      updateCommit,
+    };
+  },
+};
+
 /** Replace only the isolated worktree, commit the transformation, and retain a real merge. */
 export function finishRepository(
   directory: string,
@@ -238,78 +410,29 @@ export function finishRepository(
   const base = git(directory, "rev-parse", "HEAD");
   const timestamp =
     Number(git(directory, "show", "-s", "--format=%ct", base)) + 1;
-  for (const name of readdirSync(directory))
-    if (name !== ".git")
-      rmSync(join(directory, name), { recursive: true, force: true });
-  for (const name of readdirSync(tree)) {
-    if (name === ".git")
-      throw new Error("Transformation must not contain .git.");
-    cpSync(join(tree, name), join(directory, name), {
-      recursive: true,
-      dereference: false,
-    });
-  }
+  replaceWorktree(directory, tree);
   git(directory, "add", "--all");
   checkStagedFiles(directory);
   const resultTree = git(directory, "write-tree");
-  let result: RepositoryResult = {
-    status: options.operation === "init" ? "initialized" : "unchanged",
+  const unchanged: RepositoryResult = {
+    status: UNCHANGED_STATUS[options.operation],
     targetBranch: options.branch,
     base,
     head: base,
   };
-  if (resultTree !== git(directory, "rev-parse", `${base}^{tree}`)) {
-    if (options.operation === "init") {
-      commit(directory, INIT_COMMIT, options, timestamp);
-      result = {
-        ...result,
-        status: "initialized",
-        head: git(directory, "rev-parse", "HEAD"),
-      };
-    } else {
-      const branch = `drop-calf/update/${base.slice(0, 12)}-${resultTree.slice(0, 12)}`;
-      const existing =
-        optionalGit(
+  const changed = resultTree !== git(directory, "rev-parse", `${base}^{tree}`);
+  const result = changed
+    ? {
+        ...unchanged,
+        ...RECORD_CHANGE[options.operation]({
           directory,
-          "rev-parse",
-          "--verify",
-          `refs/heads/${branch}`,
-        ) ??
-        optionalGit(
-          directory,
-          "rev-parse",
-          "--verify",
-          `refs/remotes/origin/${branch}`,
-        );
-      if (existing) {
-        if (
-          git(directory, "show", "-s", "--format=%P", existing) !== base ||
-          git(directory, "rev-parse", `${existing}^{tree}`) !== resultTree ||
-          git(directory, "show", "-s", "--format=%s", existing) !==
-            UPDATE_COMMIT
-        )
-          throw new Error(
-            `Update branch collision: ${branch}; refusing to overwrite it.`,
-          );
-        git(directory, "switch", "-C", branch, existing);
-      } else {
-        git(directory, "switch", "--create", branch);
-        commit(directory, UPDATE_COMMIT, options, timestamp);
+          options,
+          base,
+          resultTree,
+          timestamp,
+        }),
       }
-      const updateCommit = git(directory, "rev-parse", "HEAD");
-      git(directory, "switch", options.branch);
-      // --no-commit lets the normal commit path supply a stable timestamp.
-      git(directory, "merge", "--no-ff", "--no-commit", branch);
-      commit(directory, MERGE_COMMIT, options, timestamp + 1);
-      result = {
-        ...result,
-        status: "updated",
-        head: git(directory, "rev-parse", "HEAD"),
-        updateBranch: branch,
-        updateCommit,
-      };
-    }
-  }
+    : unchanged;
   exportRepository(directory, output, result);
   return result;
 }

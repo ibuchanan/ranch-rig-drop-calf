@@ -72,9 +72,83 @@ function configObject(path: string, contents: string): Record<string, unknown> {
   return parsed;
 }
 
+type ConfigPath = (typeof TYPESCRIPT_CONFIGS)[number];
+
+/** What the project's declared dependencies and runtime imply for compiler policy. */
+type Traits = {
+  bun: boolean;
+  tsdown: boolean;
+  vitest: boolean;
+  bunTypes: boolean;
+};
+
+/** One slice of owned `compilerOptions`; later layers override earlier ones. */
+type Layer = (traits: Traits, modern: boolean) => Record<string, unknown>;
+
+const MODERN_MODULES: Layer = (_traits, modern) =>
+  modern ? { module: "ESNext", moduleResolution: "Bundler" } : {};
+
+const BUN_COMPILER: Layer = ({ bun }) =>
+  bun ? { noEmit: true, allowImportingTsExtensions: true, types: ["bun"] } : {};
+
+const TYPECHECK_COMPILER: Layer = ({ bun, bunTypes }, modern) => ({
+  rootDir: ".",
+  module: "ESNext",
+  moduleResolution: modern ? "Bundler" : "Node",
+  types: bun ? ["bun"] : ["node", ...(bunTypes ? ["bun"] : [])],
+});
+
+/** The settings Drop Calf owns in one tsconfig file. */
+type ConfigPolicy = {
+  /** Whether bundler-style module resolution applies to this file. */
+  modern: (traits: Traits) => boolean;
+  compilerOptions: readonly Layer[];
+  include: (traits: Traits) => string[];
+  /** Owned top-level keys other than `include`, in the order they are enforced. */
+  extra: Record<string, unknown>;
+};
+
+const BASE_POLICY: ConfigPolicy = {
+  modern: ({ bun, tsdown }) => bun || tsdown,
+  compilerOptions: [MODERN_MODULES, BUN_COMPILER],
+  include: () => ["src"],
+  extra: {},
+};
+
+const CONFIG_POLICIES: Record<ConfigPath, ConfigPolicy> = {
+  "tsconfig.json": BASE_POLICY,
+  "tsconfig.declarations.json": {
+    ...BASE_POLICY,
+    extra: { extends: "./tsconfig.json" },
+  },
+  "tsconfig.typecheck.json": {
+    modern: ({ bun, tsdown, vitest }) => bun || tsdown || vitest,
+    compilerOptions: [MODERN_MODULES, BUN_COMPILER, TYPECHECK_COMPILER],
+    include: ({ vitest }) => [
+      "src",
+      "test",
+      "tests",
+      ...(vitest ? ["vitest.config.ts"] : []),
+    ],
+    extra: {
+      extends: "./tsconfig.json",
+      exclude: ["node_modules", "dist", "coverage", "specs"],
+    },
+  },
+};
+
+type Field = { keys: string[]; wanted: unknown };
+
+/** Value at `keys` in a parsed config, or undefined when any step is missing. */
+const valueAt = (config: Record<string, unknown>, keys: string[]): unknown =>
+  keys.reduce<unknown>(
+    (node, key) => (node as Record<string, unknown> | undefined)?.[key],
+    config,
+  );
+
 /** Enforce owned settings with surgical JSONC edits; all other options and comments survive. */
 export function reconcileTypeScriptConfig(
-  path: (typeof TYPESCRIPT_CONFIGS)[number],
+  path: ConfigPath,
   contents: string,
   baseline: string,
   devDependencies: Record<string, unknown>,
@@ -82,74 +156,45 @@ export function reconcileTypeScriptConfig(
 ): string {
   const current = configObject(path, contents);
   const seed = configObject(path, baseline);
-  const vitest = Object.hasOwn(devDependencies, "vitest");
-  const tsdown = Object.hasOwn(devDependencies, "tsdown");
-  const check = path === "tsconfig.typecheck.json";
-  const declarations = path === "tsconfig.declarations.json";
-  const bun = runtime === "bun";
-  const modern = bun || tsdown || (check && vitest);
-  const compilerOptions = {
-    ...object(path, seed.compilerOptions),
-    ...(modern ? { module: "ESNext", moduleResolution: "Bundler" } : {}),
-    ...(bun
-      ? { noEmit: true, allowImportingTsExtensions: true, types: ["bun"] }
-      : {}),
-    ...(check
-      ? {
-          rootDir: ".",
-          module: "ESNext",
-          moduleResolution: modern ? "Bundler" : "Node",
-          types: bun
-            ? ["bun"]
-            : [
-                "node",
-                ...(Object.hasOwn(devDependencies, "@types/bun")
-                  ? ["bun"]
-                  : []),
-              ],
-        }
-      : {}),
+  const traits: Traits = {
+    bun: runtime === "bun",
+    tsdown: Object.hasOwn(devDependencies, "tsdown"),
+    vitest: Object.hasOwn(devDependencies, "vitest"),
+    bunTypes: Object.hasOwn(devDependencies, "@types/bun"),
   };
-  const fields: [string[], unknown][] = Object.entries(compilerOptions).map(
-    ([key, value]) => [["compilerOptions", key], value],
+  const policy = CONFIG_POLICIES[path];
+  const modern = policy.modern(traits);
+  const compilerOptions = Object.assign(
+    {},
+    object(path, seed.compilerOptions),
+    ...policy.compilerOptions.map((layer) => layer(traits, modern)),
   );
-  fields.push([
-    ["include"],
-    [
-      "src",
-      ...(check
-        ? ["test", "tests", ...(vitest ? ["vitest.config.ts"] : [])]
-        : []),
-    ],
-  ]);
-  if (check) {
-    fields.push([["extends"], "./tsconfig.json"]);
-    fields.push([["exclude"], ["node_modules", "dist", "coverage", "specs"]]);
-  }
-  if (declarations) {
-    fields.push([["extends"], "./tsconfig.json"]);
-  }
-  let result = contents;
-  for (const [keys, wanted] of fields) {
-    const existing =
-      keys.length === 2
-        ? (current.compilerOptions as Record<string, unknown> | undefined)?.[
-            keys[1] ?? ""
-          ]
-        : current[keys[0] ?? ""];
-    if (JSON.stringify(existing) === JSON.stringify(wanted)) continue;
-    result = applyEdits(
-      result,
-      modify(result, keys, wanted, {
-        formattingOptions: {
-          insertSpaces: true,
-          tabSize: 2,
-          eol: contents.includes("\r\n") ? "\r\n" : "\n",
-        },
-      }),
+  const fields: Field[] = [
+    ...Object.entries(compilerOptions).map(([key, wanted]) => ({
+      keys: ["compilerOptions", key],
+      wanted,
+    })),
+    { keys: ["include"], wanted: policy.include(traits) },
+    ...Object.entries(policy.extra).map(([key, wanted]) => ({
+      keys: [key],
+      wanted,
+    })),
+  ];
+  const formattingOptions = {
+    insertSpaces: true,
+    tabSize: 2,
+    eol: contents.includes("\r\n") ? "\r\n" : "\n",
+  };
+  return fields
+    .filter(
+      ({ keys, wanted }) =>
+        JSON.stringify(valueAt(current, keys)) !== JSON.stringify(wanted),
+    )
+    .reduce(
+      (text, { keys, wanted }) =>
+        applyEdits(text, modify(text, keys, wanted, { formattingOptions })),
+      contents,
     );
-  }
-  return result;
 }
 
 /** Declared dependencies select compiler policy; package.json itself is contributed. */

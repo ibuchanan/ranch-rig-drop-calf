@@ -55,6 +55,28 @@ export async function updatePackageLicense(
 }
 
 /** Structural rules only: no recommended preset, baseline comparison, or autofix. */
+const PACKAGE_RULES = {
+  "name-type": "error",
+  "name-format": "error",
+  "version-type": "error",
+  "version-format": "error",
+  "description-type": "error",
+  "private-type": "error",
+  "type-type": "error",
+  "valid-values-type": ["error", ["module", "commonjs"]],
+};
+
+/** An absent author, a string, or an object with a string `name`. */
+function isValidAuthor(author: unknown): boolean {
+  if (author === undefined || typeof author === "string") return true;
+  return (
+    typeof author === "object" &&
+    author !== null &&
+    !Array.isArray(author) &&
+    typeof (author as Record<string, unknown>).name === "string"
+  );
+}
+
 async function validatePackageMetadata(
   directory: Directory,
 ): Promise<Validation> {
@@ -62,31 +84,14 @@ async function validatePackageMetadata(
     return { status: "skipped", reason: "package.json is missing" };
   const pkg = (await readPackageJson(directory)) ?? {};
   // The linter has no author-type rule; valid-values-author enforces an allowlist.
-  if (
-    pkg.author !== undefined &&
-    typeof pkg.author !== "string" &&
-    (pkg.author === null ||
-      typeof pkg.author !== "object" ||
-      Array.isArray(pkg.author) ||
-      typeof (pkg.author as Record<string, unknown>).name !== "string")
-  )
+  if (!isValidAuthor(pkg.author))
     throw new Error(
       "package.json: author must be a string or an object with a string name.",
     );
-  const rules = {
-    "name-type": "error",
-    "name-format": "error",
-    "version-type": "error",
-    "version-format": "error",
-    "description-type": "error",
-    "private-type": "error",
-    "type-type": "error",
-    "valid-values-type": ["error", ["module", "commonjs"]],
-  };
   const report = new NpmPackageJsonLint({
     packageJsonObject: pkg,
     packageJsonFilePath: "package.json",
-    config: { rules },
+    config: { rules: PACKAGE_RULES },
     fix: false,
   }).lint();
   const issues = report.results.flatMap((result) => result.issues);

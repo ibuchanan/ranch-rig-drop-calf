@@ -1,5 +1,12 @@
 import type { Directory } from "@dagger.io/dagger";
-import { isCollection, isMap, isScalar, parseDocument, visit } from "yaml";
+import {
+  isCollection,
+  isMap,
+  isScalar,
+  type Pair,
+  parseDocument,
+  visit,
+} from "yaml";
 import {
   type Capability,
   noOp,
@@ -58,21 +65,25 @@ export function reconcileForgeRuntime(
     Pair(_key, pair) {
       if (!isScalar(pair.key) || !isCollection(pair.value) || pair.value.flow)
         return;
-      const separator = pair.srcToken?.sep ?? [];
-      const inline = separator.findIndex((token) => token.type === "comment");
-      const newline = separator.findIndex((token) => token.type === "newline");
-      if (inline < 0 || (newline >= 0 && inline > newline)) return;
-      const comment = separator[inline]?.source.slice(1);
-      if (pair.value.commentBefore === comment) {
-        pair.key.comment = comment;
-        pair.value.commentBefore = null;
-      }
+      const comment = inlineComment(pair);
+      if (comment === undefined || pair.value.commentBefore !== comment) return;
+      pair.key.comment = comment;
+      pair.value.commentBefore = null;
     },
   });
   let result = document.toString({ indent, lineWidth: 0 });
   if (!contents.endsWith("\n")) result = result.slice(0, -1);
   if (contents.includes("\r\n")) result = result.replaceAll("\n", "\r\n");
   return result;
+}
+
+/** The comment after a key on its own line, when the source shows it was written inline. */
+function inlineComment(pair: Pair): string | undefined {
+  const separator = pair.srcToken?.sep ?? [];
+  const inline = separator.findIndex((token) => token.type === "comment");
+  const newline = separator.findIndex((token) => token.type === "newline");
+  const onKeyLine = inline >= 0 && (newline < 0 || inline < newline);
+  return onKeyLine ? separator[inline]?.source.slice(1) : undefined;
 }
 
 /** Node runs first in the Forge profile; this capability never creates either file. */

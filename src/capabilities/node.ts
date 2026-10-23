@@ -1,6 +1,7 @@
 import { type Directory, dag } from "@dagger.io/dagger";
 import { subset, validRange } from "semver";
 import type { Capability, Validation } from "../core/capability.ts";
+import { ensureFile } from "../core/files.ts";
 import { editPackageJson, readPackageJson } from "../core/package-json.ts";
 import { nodeContainer, REPOSITORY, runTool } from "../core/tool-run.ts";
 import { NODE_MAJOR, TOOL_VERSIONS } from "../core/versions.ts";
@@ -16,39 +17,42 @@ import { updatePackageLicense } from "./package-metadata.ts";
 export const NODE_NVMRC = `${NODE_MAJOR}\n`;
 const NPM_REGISTRY = "https://registry.npmjs.org/";
 export const NPMRC = `# Use the public npm registry (not the default for internal Atlassians)\nregistry=${NPM_REGISTRY}\n`;
+/** Whether a declared `@types/node` range admits only the selected major. */
+function withinMajor(types: unknown, major: string): boolean {
+  const range = typeof types === "string" ? validRange(types) : null;
+  return range !== null && subset(range, `${major}.x`);
+}
+
+/** Dependency sections of a package that are plain objects an owner may have declared. */
+function declaredSections(pkg: Record<string, unknown>) {
+  return (["dependencies", "devDependencies"] as const)
+    .map((section) => pkg[section])
+    .filter(
+      (value): value is Record<string, unknown> =>
+        typeof value === "object" && value !== null && !Array.isArray(value),
+    );
+}
+
 /** Explicit majors constrain existing Node type ranges without restoring removed dependencies. */
 async function updateNode(
   directory: Directory,
   major?: string,
 ): Promise<Directory> {
   let result = await updatePackageLicense(directory, "node");
-  if (await readPackageJson(result)) {
+  if (major !== undefined && (await readPackageJson(result)))
     result = await editPackageJson(result, (pkg) => {
-      if (major !== undefined) {
-        for (const section of ["dependencies", "devDependencies"] as const) {
-          const value = pkg[section];
-          if (!value || typeof value !== "object" || Array.isArray(value))
-            continue;
-          const dependencies = value as Record<string, unknown>;
-          const types = dependencies["@types/node"];
-          if (types === undefined) continue;
-          const range = typeof types === "string" && validRange(types);
-          if (!range || !subset(range, `${major}.x`))
-            dependencies["@types/node"] = major;
-        }
-      }
+      for (const dependencies of declaredSections(pkg))
+        if (
+          dependencies["@types/node"] !== undefined &&
+          !withinMajor(dependencies["@types/node"], major)
+        )
+          dependencies["@types/node"] = major;
     });
-  }
   for (const [path, wanted] of [
     [".nvmrc", `${major ?? NODE_MAJOR}\n`],
     [".npmrc", NPMRC],
-  ] as const) {
-    if (
-      !(await result.exists(path)) ||
-      (await result.file(path).contents()) !== wanted
-    )
-      result = result.withNewFile(path, wanted);
-  }
+  ] as const)
+    result = await ensureFile(result, path, wanted);
   return result;
 }
 

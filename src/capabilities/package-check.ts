@@ -4,7 +4,7 @@ import { templateTree } from "../core/templates.ts";
 import { TOOL_VERSIONS } from "../core/versions.ts";
 
 export const PACKAGE_CHECK_TEMPLATE = "templates/package-check";
-export const PACKAGE_CHECK_SCRIPT = "scripts/pack-check.sh";
+const PACKAGE_CHECK_SCRIPT = "scripts/pack-check.sh";
 
 export function packageCheck(): Capability {
   return {

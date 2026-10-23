@@ -1,5 +1,6 @@
 import { type Directory, dag } from "@dagger.io/dagger";
 import { type Capability, noOp } from "../core/capability.ts";
+import { ensureFile, firstExisting } from "../core/files.ts";
 import { parseJsonObject, readPackageJson } from "../core/package-json.ts";
 import { templateTree } from "../core/templates.ts";
 import { TOOL_VERSIONS } from "../core/versions.ts";
@@ -9,45 +10,56 @@ export const LIBRARY_BUILD_CONFIG = "tsdown.config.json";
 export const LIBRARY_BUILD_SCRIPT = "scripts/build.sh";
 export const LIBRARY_BUILD_COMMAND = "sh scripts/build.sh";
 
-/** Keep the managed JSON pipeline and build script; package.json is contributed. */
-async function updateLibraryBuild(directory: Directory): Promise<Directory> {
-  const pkg = await readPackageJson(directory);
-  if (!pkg) return directory;
-  // Do not silently shadow executable owner configs with a new JSON config.
-  for (const extension of ["ts", "mts", "cts", "js", "mjs", "cjs"]) {
-    const path = `tsdown.config.${extension}`;
-    if (await directory.exists(path))
-      throw new Error(
-        `library-build: ${path} conflicts with the managed JSON pipeline; move its entry and dependency settings to ${LIBRARY_BUILD_CONFIG} and remove ${path}.`,
-      );
-  }
+const CONFIG_EXTENSIONS = ["ts", "mts", "cts", "js", "mjs", "cjs"];
+
+/** The managed JSON pipeline must not be shadowed by an owner's executable or inline config. */
+async function rejectCompetingConfig(
+  directory: Directory,
+  pkg: Record<string, unknown>,
+): Promise<void> {
+  const path = await firstExisting(
+    directory,
+    CONFIG_EXTENSIONS.map((extension) => `tsdown.config.${extension}`),
+  );
+  if (path)
+    throw new Error(
+      `library-build: ${path} conflicts with the managed JSON pipeline; move its entry and dependency settings to ${LIBRARY_BUILD_CONFIG} and remove ${path}.`,
+    );
   if (Object.hasOwn(pkg, "tsdown"))
     throw new Error(
       `library-build: package.json#tsdown conflicts with ${LIBRARY_BUILD_CONFIG}; move its settings to ${LIBRARY_BUILD_CONFIG} and remove the tsdown field.`,
     );
-  const source = dag.currentModule().source().directory(LIBRARY_BUILD_TEMPLATE);
-  const exists = await directory.exists(LIBRARY_BUILD_CONFIG);
-  const contents = await (exists ? directory : source)
-    .file(LIBRARY_BUILD_CONFIG)
-    .contents();
+}
+
+const FORMATS = ["esm", "cjs"];
+
+/** The JSON pipeline with the owned `format` enforced; unrelated settings are kept. */
+function enforceFormats(contents: string): string {
   const config = parseJsonObject(LIBRARY_BUILD_CONFIG, contents);
-  const format = ["esm", "cjs"];
-  const configChanged =
-    JSON.stringify(config.format) !== JSON.stringify(format);
-  config.format = format;
-  let result = directory;
-  if (!exists || configChanged)
-    result = result.withNewFile(
-      LIBRARY_BUILD_CONFIG,
-      configChanged ? `${JSON.stringify(config, null, 2)}\n` : contents,
-    );
-  const script = await source.file(LIBRARY_BUILD_SCRIPT).contents();
-  if (
-    !(await directory.exists(LIBRARY_BUILD_SCRIPT)) ||
-    (await directory.file(LIBRARY_BUILD_SCRIPT).contents()) !== script
-  )
-    result = result.withNewFile(LIBRARY_BUILD_SCRIPT, script);
-  return result;
+  if (JSON.stringify(config.format) === JSON.stringify(FORMATS))
+    return contents;
+  config.format = FORMATS;
+  return `${JSON.stringify(config, null, 2)}\n`;
+}
+
+/** Keep the managed JSON pipeline and build script; package.json is contributed. */
+async function updateLibraryBuild(directory: Directory): Promise<Directory> {
+  const pkg = await readPackageJson(directory);
+  if (!pkg) return directory;
+  await rejectCompetingConfig(directory, pkg);
+  const source = dag.currentModule().source().directory(LIBRARY_BUILD_TEMPLATE);
+  const owner = (await directory.exists(LIBRARY_BUILD_CONFIG))
+    ? directory
+    : source;
+  const config = enforceFormats(
+    await owner.file(LIBRARY_BUILD_CONFIG).contents(),
+  );
+  const withConfig = await ensureFile(directory, LIBRARY_BUILD_CONFIG, config);
+  return ensureFile(
+    withConfig,
+    LIBRARY_BUILD_SCRIPT,
+    await source.file(LIBRARY_BUILD_SCRIPT).contents(),
+  );
 }
 
 export function libraryBuild(): Capability {

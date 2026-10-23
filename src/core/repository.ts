@@ -1,11 +1,13 @@
 import { randomUUID } from "node:crypto";
 import {
+  type Container,
   type Directory,
   dag,
   type File,
   type Secret,
   type Socket,
 } from "@dagger.io/dagger";
+import { enforce, type Guard } from "./guards.ts";
 import type { RepositoryOptions } from "./repository-git.ts";
 import { nodeContainer } from "./tool-run.ts";
 import { TOOL_VERSIONS } from "./versions.ts";
@@ -19,27 +21,74 @@ export type RepositoryInput = RepositoryOptions & {
   publish: boolean;
 };
 
+type Preflight = { input: RepositoryInput; hasGit: boolean };
+
+const PREFLIGHT: readonly Guard<Preflight>[] = [
+  {
+    fails: ({ input }) =>
+      input.publish && (!input.remoteUrl || input.operation !== "update"),
+    message: "Publication requires update with a remote URL.",
+  },
+  {
+    fails: ({ hasGit }) => hasGit,
+    message: "Existing repositories require --history bundle; never copy .git.",
+  },
+  {
+    fails: ({ input }) => Boolean(input.remoteUrl && input.history),
+    message: "Choose remote URL or local history, not both.",
+  },
+  {
+    fails: ({ input }) => Boolean(input.sshAgent && !input.knownHosts),
+    message:
+      "SSH requires a known-hosts file; host verification is never disabled.",
+  },
+];
+
+type Step = (container: Container) => Container;
+
+/** Applies `apply` with the value when one was supplied, and leaves the container alone otherwise. */
+const given =
+  <T>(
+    value: T | undefined,
+    apply: (value: T, container: Container) => Container,
+  ): Step =>
+  (container) =>
+    value === undefined ? container : apply(value, container);
+
+/** A Git workflow stage, run by the bun script that Drop Calf mounts into the container. */
+const gitStage = (stage: string, ...extra: string[]) => [
+  "bun",
+  "run",
+  "/workflow/git.ts",
+  stage,
+  "/workflow/options.json",
+  "/repo",
+  "/output",
+  ...extra,
+];
+
+/** A stage that may fail, and how to preserve the last good state if it does. */
+type Stage = {
+  run: (container: Container) => Promise<Container>;
+  recover: Step;
+};
+
+/** Run a stage and wait for it, so its failure surfaces here and not later. */
+async function settle(container: Container): Promise<Container> {
+  await container.sync();
+  return container;
+}
+
 /** Execute the same Git transaction for local bundle delivery and remote CI publication. */
 export async function repositoryWorkflow(
   input: RepositoryInput,
   transform: (directory: Directory) => Promise<Directory>,
 ): Promise<Directory> {
-  if (input.publish && (!input.remoteUrl || input.operation !== "update"))
-    throw new Error("Publication requires update with a remote URL.");
-  if (
+  const hasGit =
     !input.history &&
     !input.remoteUrl &&
-    (await input.directory.exists(".git"))
-  )
-    throw new Error(
-      "Existing repositories require --history bundle; never copy .git.",
-    );
-  if (input.remoteUrl && input.history)
-    throw new Error("Choose remote URL or local history, not both.");
-  if (input.sshAgent && !input.knownHosts)
-    throw new Error(
-      "SSH requires a known-hosts file; host verification is never disabled.",
-    );
+    (await input.directory.exists(".git"));
+  enforce({ input, hasGit }, PREFLIGHT);
   const {
     directory,
     history,
@@ -49,11 +98,9 @@ export async function repositoryWorkflow(
     publish,
     ...options
   } = input;
-  const script = dag
-    .currentModule()
-    .source()
-    .file("src/core/repository-git.ts");
-  let container = nodeContainer()
+  const helper = (path: string) => dag.currentModule().source().file(path);
+  const script = helper("src/core/repository-git.ts");
+  const base = nodeContainer()
     .withFile(
       "/usr/local/bin/bun",
       dag
@@ -62,86 +109,73 @@ export async function repositoryWorkflow(
         .file("/usr/local/bin/bun"),
     )
     .withFile("/workflow/git.ts", script)
+    // git.ts imports its helpers by relative path, so they sit beside it.
+    .withFile("/workflow/guards.ts", helper("src/core/guards.ts"))
     .withNewFile("/workflow/options.json", JSON.stringify(options))
     .withWorkdir("/repo");
-  if (history)
-    container = container.withFile("/workflow/input.bundle", history);
-  else if (!input.remoteUrl)
-    container = container.withDirectory("/repo", directory, {
-      exclude: [".git", "**/.git", "node_modules", "**/node_modules"],
-    });
-  if (authHeader)
-    container = container.withSecretVariable(
-      "DROP_CALF_AUTH_HEADER",
-      authHeader,
-    );
-  if (sshAgent)
-    container = container
-      .withUnixSocket("/workflow/ssh-agent", sshAgent)
-      .withEnvVariable("SSH_AUTH_SOCK", "/workflow/ssh-agent");
-  if (knownHosts)
-    container = container.withFile("/root/.ssh/known_hosts", knownHosts);
-  // Git fetch/push are external effects. A new invocation must never reuse their exec cache.
-  container = container.withEnvVariable("DROP_CALF_INVOCATION", randomUUID());
-  const args = ["bun", "run", "/workflow/git.ts"];
-  container = container.withExec([
-    ...args,
-    "prepare",
-    "/workflow/options.json",
-    "/repo",
-    "/output",
-    ...(history ? ["/workflow/input.bundle"] : []),
-  ]);
-  await container.sync();
-  const prepared = container;
-  try {
-    const before = container.directory("/repo").withoutDirectory(".git");
-    const after = (await transform(before)).withoutDirectory(".git");
-    container = container
-      .withDirectory("/tree", after)
-      .withExec([
-        ...args,
-        "finish",
-        "/workflow/options.json",
-        "/repo",
-        "/output",
-        "/tree",
-      ]);
-    await container.sync();
-  } catch {
-    // Preserve the baseline even when an immutable Dagger transformation/commit fails.
-    return prepared
-      .withExec([
-        ...args,
-        "recover",
-        "/workflow/options.json",
-        "/repo",
-        "/output",
-        "Transformation or commit failed; inspect Dagger logs for details.",
-      ])
-      .directory("/output");
-  }
-  if (publish) {
-    const committed = container;
+  // What this invocation brings into the container, each applied only when supplied.
+  const contributions: Step[] = [
+    given(history, (file, c) => c.withFile("/workflow/input.bundle", file)),
+    given(!history && !options.remoteUrl ? directory : undefined, (source, c) =>
+      c.withDirectory("/repo", source, {
+        exclude: [".git", "**/.git", "node_modules", "**/node_modules"],
+      }),
+    ),
+    given(authHeader, (secret, c) =>
+      c.withSecretVariable("DROP_CALF_AUTH_HEADER", secret),
+    ),
+    given(sshAgent, (socket, c) =>
+      c
+        .withUnixSocket("/workflow/ssh-agent", socket)
+        .withEnvVariable("SSH_AUTH_SOCK", "/workflow/ssh-agent"),
+    ),
+    given(knownHosts, (file, c) => c.withFile("/root/.ssh/known_hosts", file)),
+    // Git fetch/push are external effects. A new invocation must never reuse their exec cache.
+    (c) => c.withEnvVariable("DROP_CALF_INVOCATION", randomUUID()),
+  ];
+  const configured = contributions.reduce((c, apply) => apply(c), base);
+  const prepared = await settle(
+    configured.withExec(
+      gitStage("prepare", ...(history ? ["/workflow/input.bundle"] : [])),
+    ),
+  );
+  const stages: Stage[] = [
+    {
+      run: async (container) => {
+        const before = container.directory("/repo").withoutDirectory(".git");
+        const after = (await transform(before)).withoutDirectory(".git");
+        return settle(
+          container
+            .withDirectory("/tree", after)
+            .withExec(gitStage("finish", "/tree")),
+        );
+      },
+      // Preserve the baseline even when an immutable Dagger transformation/commit fails.
+      recover: (container) =>
+        container.withExec(
+          gitStage(
+            "recover",
+            "Transformation or commit failed; inspect Dagger logs for details.",
+          ),
+        ),
+    },
+    ...(publish
+      ? [
+          {
+            run: (container: Container) =>
+              settle(container.withExec(gitStage("publish"))),
+            recover: (container: Container) =>
+              container.withExec(gitStage("publication-failed")),
+          },
+        ]
+      : []),
+  ];
+  let container = prepared;
+  for (const stage of stages) {
     try {
-      container = container.withExec([
-        ...args,
-        "publish",
-        "/workflow/options.json",
-        "/repo",
-        "/output",
-      ]);
-      await container.sync();
+      container = await stage.run(container);
     } catch {
-      return committed
-        .withExec([
-          ...args,
-          "publication-failed",
-          "/workflow/options.json",
-          "/repo",
-          "/output",
-        ])
-        .directory("/output");
+      return stage.recover(container).directory("/output");
     }
   }
   return container.directory("/output");
