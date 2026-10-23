@@ -1,5 +1,6 @@
 import { expect, spyOn, test } from "bun:test";
 import { type Directory, dag } from "@dagger.io/dagger";
+import fc from "fast-check";
 import { parse, parseDocument } from "yaml";
 import {
   CATALOG_FILE,
@@ -119,12 +120,43 @@ test("seed values remain YAML data, including multiline strings and token-like i
   });
 });
 
-test("catalog identifiers have alphanumeric ends and bounded length", () => {
-  const output = seeded({ name: `--${"X".repeat(62)}--tail__` });
-  const name = parse(output).metadata.name;
-  expect(name).toBe("x".repeat(62));
-  expect(name.length).toBeLessThanOrEqual(63);
-  expect(() => seeded({ name: "@/___" })).toThrow("letter or digit");
+test("catalog name truncation trims trailing punctuation", () => {
+  expect(
+    parse(seeded({ name: `--${"X".repeat(62)}--tail__` })).metadata.name,
+  ).toBe("x".repeat(62));
+});
+
+test("catalog identifiers are bounded, normalized and stable while original names survive", () => {
+  fc.assert(
+    fc.property(
+      fc.oneof(
+        fc.string({ maxLength: 160 }),
+        fc.string({ unit: "grapheme", maxLength: 160 }),
+      ),
+      (original) => {
+        if (!/[a-z0-9]/.test(original.toLowerCase())) {
+          expect(() => seeded({ name: original })).toThrow("letter or digit");
+          return;
+        }
+        const { metadata } = parse(seeded({ name: original }));
+        expect(metadata.name).toMatch(/^[a-z0-9]([a-z0-9._-]*[a-z0-9])?$/);
+        expect(metadata.name.length).toBeLessThanOrEqual(63);
+        expect(metadata.title).toBe(original);
+        expect(metadata.annotations[PACKAGE_NAME]).toBe(original);
+        expect(parse(seeded({ name: metadata.name })).metadata.name).toBe(
+          metadata.name,
+        );
+      },
+    ),
+    {
+      examples: [
+        [`--${"X".repeat(62)}--tail__`],
+        ["@Scope/My.Project"],
+        ["@/___"],
+        [""],
+      ],
+    },
+  );
 });
 
 test("catalog update is explicitly inactive and leaves both present and missing files alone", async () => {

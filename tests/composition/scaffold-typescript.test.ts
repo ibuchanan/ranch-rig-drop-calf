@@ -1,9 +1,16 @@
 import { expect, test } from "bun:test";
+import fc from "fast-check";
 import { parseDocument } from "yaml";
 import { planScaffoldTypeScript } from "../../src/composition/scaffold.ts";
 
 const backend =
   "modules:\n  function:\n    - key: main\n      handler: index.run\n";
+const sourceStem = fc
+  .array(fc.stringMatching(/^[a-zA-Z0-9_-]{1,16}$/), {
+    minLength: 1,
+    maxLength: 4,
+  })
+  .map((segments) => `src/${segments.join("/")}`);
 
 test("backend scaffold renames source but preserves extensionless handlers", () => {
   expect(
@@ -51,21 +58,48 @@ test("UI Kit rewrites only resources referencing renamed files, preserving other
 test.each(["plain", "single", "double", "folded", "literal", "alias"])(
   "resource path edits keep valid YAML with %s scalar syntax",
   (style) => {
-    const values: Record<string, string> = {
-      plain: "src/index.js",
-      single: "'src/index.js'",
-      double: '"src/index.js"',
-      folded: ">- # folded\n      src/index.js",
-      literal: "|- # literal\n      src/index.js",
-      alias: "*entry",
-    };
-    const manifest = `other: &entry src/index.js\nresources:\n  - key: main\n    path: ${values[style]}\n  - key: next\n    path: static/app/build\n`;
-    const plan = planScaffoldTypeScript(["src/index.js"], manifest);
-    const document = parseDocument(plan.manifest ?? "");
-    expect(document.errors).toEqual([]);
-    expect(document.toJS().resources[0].path).toBe("src/index.ts");
-    expect(document.toJS().resources[1].path).toBe("static/app/build");
-    expect(document.toJS().other).toBe("src/index.js");
+    fc.assert(
+      fc.property(
+        sourceStem,
+        fc.constantFrom("js", "jsx"),
+        fc.constantFrom("\n", "\r\n"),
+        (stem, extension, eol) => {
+          const from = `${stem}.${extension}`;
+          const to = `${stem}.${extension === "js" ? "ts" : "tsx"}`;
+          const values: Record<string, string> = {
+            plain: from,
+            single: `'${from}'`,
+            double: JSON.stringify(from),
+            folded: `>- # folded\n      ${from}`,
+            literal: `|- # literal\n      ${from}`,
+            alias: "*entry",
+          };
+          const manifest =
+            `${backend}other: &entry ${from}\nresources:\n  - key: main\n    path: ${values[style]}\n  - key: same-file\n    path: ${values[style]}\n  - key: next\n    path: static/app/build\n`.replaceAll(
+              "\n",
+              eol,
+            );
+          const plan = planScaffoldTypeScript([from], manifest);
+          expect(plan.renames).toEqual([{ from, to }]);
+          const document = parseDocument(plan.manifest ?? "");
+          expect(document.errors).toEqual([]);
+          expect(document.toJS()).toEqual({
+            modules: { function: [{ key: "main", handler: "index.run" }] },
+            other: from,
+            resources: [
+              { key: "main", path: to },
+              { key: "same-file", path: to },
+              { key: "next", path: "static/app/build" },
+            ],
+          });
+          if (eol === "\r\n") expect(plan.manifest).not.toMatch(/(?<!\r)\n/);
+          expect(planScaffoldTypeScript([to], plan.manifest)).toEqual({
+            renames: [],
+            manifest: plan.manifest,
+          });
+        },
+      ),
+    );
   },
 );
 
@@ -85,13 +119,22 @@ test("already-TypeScript and empty scaffolds are byte-identical no-ops", () => {
 });
 
 test.each([
-  ["src/index.js", "src/index.ts"],
-  ["src/index.jsx", "src/index.tsx"],
+  ["js", "ts"],
+  ["jsx", "tsx"],
 ])(
-  "refuses destination collisions without dropping either file: %j",
-  (from, to) => {
-    expect(() => planScaffoldTypeScript([from, to], backend)).toThrow(
-      `${to} already exists`,
+  "refuses %s to %s destination collisions without changing inputs",
+  (js, ts) => {
+    fc.assert(
+      fc.property(sourceStem, fc.boolean(), (stem, reversed) => {
+        const from = `${stem}.${js}`;
+        const to = `${stem}.${ts}`;
+        const paths = reversed ? [to, from] : [from, to];
+        const before = [...paths];
+        expect(() => planScaffoldTypeScript(paths, backend)).toThrow(
+          `${to} already exists`,
+        );
+        expect(paths).toEqual(before);
+      }),
     );
   },
 );

@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import fc from "fast-check";
 import { applyPreclean, UNWANTED } from "../../src/composition/scaffold.ts";
 import {
   EMPTY_SECTIONS,
@@ -87,22 +88,46 @@ describe("stripScaffold", () => {
     expect(stripScaffold(stripScaffold(input))).toBe(CLEAN);
   });
 
-  test("keeps fields Drop Calf does not own", () => {
-    const result = JSON.parse(stripScaffold(scaffolded));
-    expect(result).toMatchObject({
-      private: true,
-      dependencies: { yaml: "^2.9.1" },
-    });
+  test("preserves owner fields and is byte-idempotent across scaffold packages", () => {
+    const entries = fc.dictionary(
+      fc.stringMatching(/^[a-z][a-z0-9-]{0,15}$/),
+      fc.string(),
+      { maxKeys: 8 },
+    );
+    const packages = fc.record(
+      {
+        name: fc.string(),
+        version: fc.string(),
+        description: fc.string(),
+        license: fc.string(),
+        main: fc.string(),
+        scripts: entries,
+        devDependencies: entries,
+        dependencies: entries,
+        private: fc.boolean(),
+        "x-owner": fc.jsonValue(),
+      },
+      { requiredKeys: [] },
+    );
+    fc.assert(
+      fc.property(packages, fc.integer({ min: 0, max: 8 }), (pkg, indent) => {
+        const input = JSON.stringify(pkg, null, indent);
+        const cleaned = stripScaffold(input);
+        const expected = {
+          ...JSON.parse(input),
+          scripts: {},
+          devDependencies: {},
+        };
+        for (const field of SCAFFOLD_FIELDS) delete expected[field];
+        expect(JSON.parse(cleaned)).toEqual(expected);
+        expect(stripScaffold(cleaned)).toBe(cleaned);
+      }),
+    );
   });
 
   test("returns the input untouched when there is nothing to strip", () => {
     expect(stripScaffold(CLEAN)).toBe(CLEAN);
     expect(stripScaffold(scaffolded)).not.toBe(scaffolded);
-  });
-
-  test("is idempotent: a second pass is a no-op", () => {
-    const once = stripScaffold(scaffolded);
-    expect(stripScaffold(once)).toBe(once);
   });
 
   test("normalizes formatting when it rewrites", () => {

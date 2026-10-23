@@ -1,5 +1,6 @@
 import { expect, test } from "bun:test";
 import type { Directory } from "@dagger.io/dagger";
+import fc from "fast-check";
 import { ParseError } from "../../src/core/errors.ts";
 import {
   assemblePackage,
@@ -196,13 +197,27 @@ test.each([
   expect(() => assemblePackage(contributors)).toThrow(message);
 });
 
-test("distinct entries in one section are not a collision", () => {
-  expect(
-    assemblePackage([
-      contributor("a", { policy: { scripts: { lint: "a" } } }),
-      contributor("b", { policy: { scripts: { format: "b" } } }),
-    ]).policy,
-  ).toEqual({ scripts: { lint: "a", format: "b" } });
+test("distinct section entries assemble independently of contributor order", () => {
+  fc.assert(
+    fc.property(
+      fc.constantFrom("scripts", "dependencies", "devDependencies"),
+      fc.constantFrom("seed", "policy"),
+      fc.dictionary(fc.stringMatching(/^[a-z][a-z0-9-]{0,15}$/), fc.string(), {
+        minKeys: 2,
+        maxKeys: 12,
+      }),
+      (section, lifecycle, entries) => {
+        const contributors = Object.entries(entries).map(([key, value]) =>
+          contributor(key, { [lifecycle]: { [section]: { [key]: value } } }),
+        );
+        const assembled = assemblePackage(contributors);
+        expect(assembled[lifecycle]).toEqual(
+          contributors.length ? { [section]: entries } : {},
+        );
+        expect(assemblePackage([...contributors].reverse())).toEqual(assembled);
+      },
+    ),
+  );
 });
 
 test.each([
