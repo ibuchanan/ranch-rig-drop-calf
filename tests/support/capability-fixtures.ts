@@ -30,7 +30,8 @@ export const selections = (kind: string) => [
 
 /** A kind's own configured capability, so tests exercise the policy options it declares. */
 export function capabilityOf(kind: string, name: string): Capability {
-  const capability = PROFILES[kind]?.find((item) => item.name === name);
+  const profiles: Record<string, Capability[]> = PROFILES;
+  const capability = profiles[kind]?.find((item) => item.name === name);
   if (!capability) throw new Error(`${kind} has no ${name} capability`);
   return capability;
 }
