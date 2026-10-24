@@ -54,7 +54,7 @@ test("tool seeds a Bun-only baseline, binary build, and retained quality workflo
       test: "bun test --pass-with-no-tests",
       typecheck: "tsc --project tsconfig.typecheck.json --noEmit",
       "lint:check:typecheck": "bun run typecheck",
-      "lint:check:fallow": "bun run lint:fallow",
+      "lint:check:fallow": "FALLOW_TELEMETRY=off fallow --summary",
     });
     expect(
       Object.values(pkg.scripts).some((script) =>

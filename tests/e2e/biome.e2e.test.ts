@@ -133,7 +133,6 @@ for (const kind of ["library", "tool", "forge-app", "agent-skill"]) {
           kind === "tool"
             ? LINT_COMMAND.replace("--npm-path npm", "--npm-path bun")
             : LINT_COMMAND,
-        "lint:check:biome": `${kind === "tool" ? "bun" : "npm"} run lint:check`,
         "lint:check:format": `${kind === "tool" ? "bun" : "npm"} run format:check`,
         "lint:check:typecheck": `${kind === "tool" ? "bun" : "npm"} run typecheck`,
       });

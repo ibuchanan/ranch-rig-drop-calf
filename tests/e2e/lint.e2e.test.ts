@@ -72,12 +72,9 @@ for (const kind of ["library", "tool", "forge-app", "agent-skill"]) {
     );
     const pkg = JSON.parse(readFileSync(join(app, "package.json"), "utf8"));
     expect(pkg.devDependencies["npm-run-all2"]).toBe(TOOL_VERSIONS.npmRunAll2);
-    const leaves = [
-      "lint:check",
-      "format:check",
-      "typecheck",
-      ...(kind === "forge-app" ? ["lint:prelint", "lint:forge"] : []),
-    ];
+    const leaves = Object.keys(pkg.scripts).filter((name) =>
+      /^lint:check:[^:]+$/.test(name),
+    );
     // Exercise generated composition, not the unrelated tools or Forge credentials.
     for (const name of leaves) pkg.scripts[name] = `printf '${name}-ran\\n'`;
     pkg.scripts["lint:check:synthetic"] = "printf 'synthetic-ran\\n'";

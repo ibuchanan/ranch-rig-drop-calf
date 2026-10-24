@@ -95,7 +95,7 @@ describe("biomeToolchain capability", () => {
     runInit(capability, project);
     expect(project.packageJson.scripts.format).toBe("biome format --write");
     expect(project.packageJson.scripts["format:check"]).toBe("biome format");
-    expect(project.packageJson.scripts["lint:check"]).toBe("biome lint");
+    expect(project.packageJson.scripts["lint:check:biome"]).toBe("biome lint");
     expect(project.packageJson.scripts.lint).toBeUndefined();
     expect(project.packageJson.scripts["lint:fix"]).toBe("biome lint --write");
     expect(project.packageJson.devDependencies["@biomejs/biome"]).toBe(
@@ -112,7 +112,7 @@ test("generated kinds install pinned Biome and check scripts", () => {
     const version = project.packageJson.devDependencies["@biomejs/biome"];
     expect(scripts.format).toBe("biome format --write");
     expect(scripts["format:check"]).toBe("biome format");
-    expect(scripts["lint:check"]).toBe("biome lint");
+    expect(scripts["lint:check:biome"]).toBe("biome lint");
     expect(scripts.lint).toBe(
       isBunKind(kind)
         ? LINT_COMMAND.replace("--npm-path npm", "--npm-path bun")

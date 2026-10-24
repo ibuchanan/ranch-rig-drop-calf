@@ -150,7 +150,7 @@ Missing files or prerequisites can also cause a validator to skip or fail.
 | `library` | `package-check` | Required | [Publint](https://publint.dev/) — Checks packed library conventions with warnings treated as errors.<br>[Are the Types Wrong?](https://arethetypeswrong.github.io/) — Checks TypeScript declaration resolution against the consumer package. | Seed exact checker dependencies and the lifecycle-free tarball checking script; checker configuration remains owner-managed. | Enforce pack:check and its script; keep existing checker dependencies fresh without re-adding removed tools. Preserve publishing metadata, checker configuration, and hook edits. | **No-op:** Package checks require fresh build artifacts and belong to the developer pack:check workflow; standalone validation does not build or inspect stale distributables. |
 | `library`, `tool`, `agent-skill` | `typescript` | Required | [TypeScript](https://www.typescriptlang.org/docs/) — Type-checks source and emits JavaScript or library declarations. | Seed TypeScript, typecheck, and compiler configuration; the selected build capability owns build (declarations only with tsdown). | Reconcile compiler configuration with policy selected by declared dependencies. | Run tsc --showConfig for applicable compiler configs, without compiling source or declarations. |
 | `library`, `tool`, `agent-skill` | `test` | Required | [Bun test](https://bun.com/docs/test) — Runs library, tool, and agent-skill tests with built-in watch and coverage support. | **No-op:** Seed @types/bun for test typechecking and supply test scripts; test sources remain owner-managed. | **No-op:** Bun testing owns no files; its package.json contribution enforces test scripts and keeps @types/bun fresh, preserving owner test sources. | **No-op:** This capability owns no Bun test configuration to validate. Test execution belongs to the test workflow; comparing scripts to defaults would check policy, not tool acceptance. |
-| `library`, `tool` | `fallow` | Default; `--without-functions fallow` | [Fallow](https://docs.fallow.tools/) — Checks unused code, dependencies, duplication, and complexity. | Seed Fallow, lint:fallow, and an owner-managed config for tool and library projects. | **No-op:** Fallow config is owner-managed after init, including deletion; its package.json contribution enforces lint:fallow and keeps the seeded dependency fresh. | **No-op:** Fallow has no configuration-only check; source analysis belongs to lint:fallow, not capability validation. |
+| `library`, `tool` | `fallow` | Default; `--without-functions fallow` | [Fallow](https://docs.fallow.tools/) — Checks unused code, dependencies, duplication, and complexity. | Seed Fallow, lint:check:fallow, and an owner-managed config for tool and library projects. | **No-op:** Fallow config is owner-managed after init, including deletion; its package.json contribution enforces lint:check:fallow and keeps the seeded dependency fresh. | **No-op:** Fallow has no configuration-only check; source analysis belongs to lint:check:fallow, not capability validation. |
 | `library` | `clean-build` | Required | [rm](https://www.gnu.org/software/coreutils/manual/html_node/rm-invocation.html) — Removes node_modules, package-lock.json, and dist when the owner runs the clean workflow. | **No-op:** Clean build owns no files to seed; its package.json contribution supplies the clean script. | **No-op:** Clean build owns no files; its package.json contribution enforces scripts.clean as rm -rf node_modules package-lock.json dist and never executes it. | **No-op:** Clean build owns no configuration with a separate tool-acceptance check; executing the clean script would delete build output and belongs to the clean workflow. |
 | `library`, `forge-app`, `tool`, `agent-skill` | `todo` | Required | [Git grep](https://git-scm.com/docs/git-grep) — Lists TODO markers in tracked files with paths and line numbers. | **No-op:** Todo owns no files; its package.json contribution seeds scripts.todo for every kind. | **No-op:** The seeded todo script is owner-managed after init; update does not replace or re-add it. | **No-op:** Todo owns no configuration with a separate tool-acceptance check; owners run the script in their Git repository. |
 | `library`, `forge-app`, `tool`, `agent-skill` | `docs` | Required | [markdownlint-cli2](https://github.com/igorshubovych/markdownlint-cli2) — Lints markdown files against consistent style rules<br>[CSpell](https://cspell.org/) — Spell-checks documentation and code comments | Seed Markdown/spelling tools and lint:docs, configs, DEVELOPMENT.md, and Diátaxis/spec starter documents. | **No-op:** Docs configuration and documents are owner-managed after init, including deletions; its package.json contribution enforces lint:docs and keeps the seeded tool dependencies fresh. | Load Markdown/spelling configs and references without scanning documentation quality. |
@@ -604,9 +604,10 @@ installs them or injects secret values.
 
 ### `format`
 
-The `biome` capability owns `@biomejs/biome` at `TOOL_VERSIONS.biome` and four
+The `biome` capability owns `@biomejs/biome` at `TOOL_VERSIONS.biome` and five
 scripts: `format` (`biome format --write`), `format:check` (`biome format`),
-`lint:check` (`biome lint`), and `lint:fix` (`biome lint --write`). It never owns
+`lint:check:biome` (`biome lint`), `lint:check:format` (runs `format:check`),
+and `lint:fix` (`biome lint --write`). It never owns
 `lint`, hook dispatch, or unrelated package fields.
 - **init** seeds the dependency and scripts, and overlays `templates/biome` for
   every kind. Its authored `biome.jsonc` schema matches the registry pin, enforced
@@ -682,8 +683,8 @@ The `prelint` capability is selected only for `forge-app`. It owns
 `devDependencies["@ast-grep/cli"]` at `TOOL_VERSIONS.astGrep` and
 `devDependencies["@forge-ahead/prelint"]` at `TOOL_VERSIONS.forgePrelint`
 (`github:ibuchanan/tool-forge-prelint-ast-grep` by default), plus two scripts:
-- `lint:prelint`: `ast-grep scan --globs '!specs/**' --globs '!node_modules/**' --config ./node_modules/@forge-ahead/prelint/sgconfig.ecosol.yml`
-- `lint:forge`: `forge lint`
+- `lint:check:prelint`: `ast-grep scan --globs '!specs/**' --globs '!node_modules/**' --config ./node_modules/@forge-ahead/prelint/sgconfig.ecosol.yml`
+- `lint:check:forge`: `forge lint`
 
 Policy:
 - **init** is an explicit no-op: "Prelint has no repository-local configuration to
@@ -702,8 +703,8 @@ Policy:
   `forge-manifest` validator.
 
 Prelint never writes `lint` or `lefthook.yml`. The lint capability owns the
-aggregate; prelint contributes `lint:check:prelint` and `lint:check:forge` aliases
-that call the existing named subtasks. Owner hook edits remain owner-managed.
+aggregate; prelint contributes `lint:check:prelint` and `lint:check:forge` scripts
+that invoke their tools directly. Owner hook edits remain owner-managed.
 
 ### `library-build`
 
@@ -946,7 +947,7 @@ user-versus-app authorization. It omits directory tours, generic
 coding standards, setup tutorials, and a version-sensitive CLI flag catalog.
 
 The command guidance names generated `npm run check`, `typecheck`, `test`, and
-`lint:forge` workflows; Forge tests use Vitest. Deployment and installation
+`lint:check:forge` workflows; Forge tests use Vitest. Deployment and installation
 upgrades use `forge:deploy` and `forge:upgrade`, with explicit approval after
 scope or egress changes. Other Forge operations use the generated `forge:*`
 SecretSpec wrappers rather than bare CLI commands or copied flags. Registration
@@ -1186,17 +1187,17 @@ without inheriting Bun as an npm CLI JavaScript file. Tools use `--npm-path bun`
 Unmatched wildcard families succeed without running tasks; missing literal tasks
 fail. Generated profiles always contribute required `lint:check:*` producers.
 
-Producers own membership through single-level `lint:check:*` aliases:
-- Biome contributes `lint:check:biome` and `lint:check:format`.
-- TypeScript contributes `lint:check:typecheck`.
-- Prelint contributes `lint:check:prelint` and `lint:check:forge` on Forge apps.
-- Fallow contributes `lint:check:fallow` when selected on libraries or tools.
+Producers own membership through single-level `lint:check:*` scripts:
+- Biome contributes `lint:check:biome` (`biome lint`) and `lint:check:format` delegates to standalone `format:check`.
+- TypeScript contributes `lint:check:typecheck` delegating to standalone `typecheck`.
+- Prelint contributes `lint:check:prelint` (ast-grep scan) and `lint:check:forge` (forge lint) on Forge apps.
+- Fallow contributes `lint:check:fallow` (`FALLOW_TELEMETRY=off fallow --summary`) when selected on libraries or tools.
 
-The aliases call the existing direct scripts, which remain available. Docs lint
-stays separate. The aggregate does not match the `lint:check` leaf, `lint:fix`,
-or nested watch scripts. A newly selected producer joins by declaring a family
-member, without editing the aggregate or hooks. Duplicate script ownership is
-still rejected by package assembly.
+Standalone `format:check` and `typecheck` remain available for independent use.
+Docs lint stays separate. The aggregate does not match the `lint:fix` or nested
+watch scripts. A newly selected producer joins by declaring a `lint:check:*` member,
+without editing the aggregate or hooks. Duplicate script ownership is still
+rejected by package assembly.
 
 The runner executes members in parallel with labelled output, fails on a member
 failure, and aborts unfinished siblings. Lint itself does not require Git

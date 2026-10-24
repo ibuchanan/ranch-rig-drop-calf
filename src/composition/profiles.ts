@@ -110,7 +110,7 @@ export const PROFILES: Record<ProjectKind, Capability[]> = {
     bunBuild(),
     typeScriptToolchain({ ownsBuild: false, packageManager: "bun" }),
     bunTesting(),
-    fallow({ packageManager: "bun" }),
+    fallow(),
     cleanBuild(),
     todo(),
     docsLinting({

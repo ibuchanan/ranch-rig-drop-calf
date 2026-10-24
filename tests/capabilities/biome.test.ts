@@ -48,7 +48,7 @@ test.each(kinds)(
             PATH: `${join(import.meta.dir, "../../node_modules/.bin")}:${process.env.PATH ?? ""}`,
           },
         });
-      for (const script of ["lint:check", "format:check"]) {
+      for (const script of ["lint:check:biome", "format:check"]) {
         const ignored = run(script);
         expect(ignored.status, ignored.stdout + ignored.stderr).toBe(0);
         writeFileSync(join(root, "src/invalid.js"), "const = ;\n");

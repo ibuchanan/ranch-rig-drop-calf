@@ -63,8 +63,8 @@ test("update enforces selected dependencies and scripts while preserving unrelat
         JSON.stringify({
           name: "owner",
           scripts: {
-            "lint:prelint": "ast-grep scan owner",
-            "lint:forge": "owner forge",
+            "lint:check:prelint": "ast-grep scan owner",
+            "lint:check:forge": "owner forge",
             lint: "owner lint",
             custom: "keep",
           },
@@ -129,8 +129,8 @@ test.each(["library", "forge-app", "tool", "agent-skill"])(
           : LINT_COMMAND,
       );
       if (kind === "forge-app") {
-        expect(pkg.scripts["lint:prelint"]).toBe(PRELINT_COMMAND);
-        expect(pkg.scripts["lint:forge"]).toBe("forge lint");
+        expect(pkg.scripts["lint:check:prelint"]).toBe(PRELINT_COMMAND);
+        expect(pkg.scripts["lint:check:forge"]).toBe("forge lint");
         expect(pkg.devDependencies[AST_GREP_PACKAGE]).toBe(
           TOOL_VERSIONS.astGrep,
         );
@@ -138,15 +138,15 @@ test.each(["library", "forge-app", "tool", "agent-skill"])(
           TOOL_VERSIONS.forgePrelint,
         );
       } else {
-        expect(pkg.scripts["lint:prelint"]).toBeUndefined();
-        expect(pkg.scripts["lint:forge"]).toBeUndefined();
+        expect(pkg.scripts["lint:check:prelint"]).toBeUndefined();
+        expect(pkg.scripts["lint:check:forge"]).toBeUndefined();
         expect(pkg.devDependencies[AST_GREP_PACKAGE]).toBeUndefined();
         expect(pkg.devDependencies[PRELINT_PACKAGE]).toBeUndefined();
       }
       expect(await module.update(initialized, kind)).toBe(initialized);
       Object.assign(pkg.scripts, {
-        "lint:prelint": "owner prelint",
-        "lint:forge": "owner forge",
+        "lint:check:prelint": "owner prelint",
+        "lint:check:forge": "owner forge",
       });
       Object.assign(pkg.devDependencies, {
         [AST_GREP_PACKAGE]: "0.0.1",
@@ -157,10 +157,10 @@ test.each(["library", "forge-app", "tool", "agent-skill"])(
         .withNewFile("lefthook.yml", "owner hooks\r\n");
       const updated = await module.update(edited, kind);
       const actual = JSON.parse(await updated.file("package.json").contents());
-      expect(actual.scripts["lint:prelint"]).toBe(
+      expect(actual.scripts["lint:check:prelint"]).toBe(
         kind === "forge-app" ? PRELINT_COMMAND : "owner prelint",
       );
-      expect(actual.scripts["lint:forge"]).toBe(
+      expect(actual.scripts["lint:check:forge"]).toBe(
         kind === "forge-app" ? "forge lint" : "owner forge",
       );
       expect(actual.devDependencies[AST_GREP_PACKAGE]).toBe(

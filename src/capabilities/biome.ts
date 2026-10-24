@@ -15,8 +15,7 @@ export const BIOME_TEMPLATE = "templates/biome";
 export const BIOME_SCRIPTS = {
   format: "biome format --write",
   "format:check": "biome format",
-  "lint:check": "biome lint",
-  "lint:check:biome": "npm run lint:check",
+  "lint:check:biome": "biome lint",
   "lint:check:format": "npm run format:check",
   "lint:fix": "biome lint --write",
 } as const;
@@ -121,7 +120,6 @@ export function biomeToolchain({
       policy: {
         scripts: {
           ...BIOME_SCRIPTS,
-          "lint:check:biome": runScript(packageManager, "lint:check"),
           "lint:check:format": runScript(packageManager, "format:check"),
         },
       },

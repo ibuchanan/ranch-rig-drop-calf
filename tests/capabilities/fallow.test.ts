@@ -24,7 +24,8 @@ for (const kind of ["library", "tool"]) {
       const config = await initialized.file(".fallowrc.jsonc").contents();
       expect(config).toContain('"git-cliff"');
       const pkg = JSON.parse(await initialized.file("package.json").contents());
-      expect(pkg.scripts["lint:fallow"]).toBe(FALLOW_SCRIPT);
+      expect(pkg.scripts["lint:check:fallow"]).toBe(FALLOW_SCRIPT);
+      expect(pkg.scripts["lint:fallow"]).toBeUndefined();
       expect(pkg.devDependencies.fallow).toBe(TOOL_VERSIONS.fallow);
       const edited = initialized
         .withNewFile(".fallowrc.jsonc", '{"rules":{"unused-files":"off"}}\n')
@@ -32,7 +33,7 @@ for (const kind of ["library", "tool"]) {
           "package.json",
           JSON.stringify({
             ...pkg,
-            scripts: { ...pkg.scripts, "lint:fallow": "owner" },
+            scripts: { ...pkg.scripts, "lint:check:fallow": "owner" },
             devDependencies: { ...pkg.devDependencies, fallow: "0.0.1" },
           }),
         );
@@ -43,7 +44,7 @@ for (const kind of ["library", "tool"]) {
       const maintained = JSON.parse(
         await updated.file("package.json").contents(),
       );
-      expect(maintained.scripts["lint:fallow"]).toBe(FALLOW_SCRIPT);
+      expect(maintained.scripts["lint:check:fallow"]).toBe(FALLOW_SCRIPT);
       expect(maintained.devDependencies.fallow).toBe(TOOL_VERSIONS.fallow);
       expect(await module.update(updated, kind)).toBe(updated);
       const removed = updated.withoutFile(".fallowrc.jsonc");
@@ -68,7 +69,7 @@ for (const kind of ["library", "tool"]) {
       const omitted = JSON.parse(
         await optedOut.file("package.json").contents(),
       );
-      expect(omitted.scripts["lint:fallow"]).toBeUndefined();
+      expect(omitted.scripts["lint:check:fallow"]).toBeUndefined();
       expect(omitted.devDependencies.fallow).toBeUndefined();
       expect(
         resolveProfile(kind, [], ["fallow"]).map((item) => item.name),

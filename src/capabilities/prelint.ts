@@ -10,10 +10,8 @@ const PRELINT_GLOBS = ["!specs/**", "!node_modules/**"] as const;
 const PRELINT_CONFIG = `./node_modules/${PRELINT_PACKAGE}/sgconfig.ecosol.yml`;
 export const PRELINT_COMMAND = `ast-grep scan ${PRELINT_GLOBS.map((glob) => `--globs '${glob}'`).join(" ")} --config ${PRELINT_CONFIG}`;
 export const PRELINT_SCRIPTS = {
-  "lint:prelint": PRELINT_COMMAND,
-  "lint:forge": "forge lint",
-  "lint:check:prelint": "npm run lint:prelint",
-  "lint:check:forge": "npm run lint:forge",
+  "lint:check:prelint": PRELINT_COMMAND,
+  "lint:check:forge": "forge lint",
 } as const;
 
 export function prelint(): Capability {
@@ -35,7 +33,7 @@ export function prelint(): Capability {
         },
       ],
     },
-    // Lint owns the aggregate; prelint declares membership through named aliases.
+    // Lint owns the aggregate; prelint contributes its check scripts.
     packageJson: {
       seed: {
         devDependencies: {

@@ -46,7 +46,17 @@ for (const kind of Object.keys(PROFILES)) {
     expect(forward.packageJson.devDependencies["npm-run-all2"]).toBe(
       TOOL_VERSIONS.npmRunAll2,
     );
-    expect(members(forward.packageJson.scripts)).toEqual(
+    const scripts = forward.packageJson.scripts;
+    expect(scripts["lint:check:biome"]).toBe("biome lint");
+    for (const name of [
+      "lint:check",
+      "lint:biome",
+      "lint:fallow",
+      "lint:forge",
+      "lint:prelint",
+    ])
+      expect(scripts[name]).toBeUndefined();
+    expect(members(scripts)).toEqual(
       [
         "lint:check:biome",
         ...(kind === "library" || kind === "tool" ? ["lint:check:fallow"] : []),
@@ -136,16 +146,11 @@ test.each(["forge-app", "tool"])(
   async (kind) => {
     const { packageJson } = buildProject(kind, "sample", "tester");
     const scripts = { ...packageJson.scripts };
-    for (const name of [
-      "lint:check",
-      "format:check",
-      "typecheck",
-      "lint:forge",
-      "lint:prelint",
-    ]) {
+    for (const name of members(scripts)) {
       scripts[name] = `printf '${name}-ran\\n'`;
     }
     scripts["lint:check:new-producer"] = "printf 'new-producer-ran\\n'";
+    scripts["lint:check"] = "exit 30";
     scripts["lint:docs"] = "exit 31";
     scripts["lint:fix"] = "exit 32";
     scripts["lint:check:biome:watch"] = "exit 33";
@@ -154,7 +159,9 @@ test.each(["forge-app", "tool"])(
     for (const name of members(scripts))
       expect(result.output).toContain(`[${name}`);
     expect(result.output).toContain("new-producer-ran");
-    expect(result.output.match(/\]\s+lint:check-ran\r?\n/g)).toHaveLength(1);
+    expect(result.output.match(/\]\s+lint:check:biome-ran\r?\n/g)).toHaveLength(
+      1,
+    );
     expect(result.output).not.toContain("Task not found");
   },
   20_000,

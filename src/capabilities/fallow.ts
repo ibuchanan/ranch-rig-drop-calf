@@ -1,17 +1,11 @@
 import { type Capability, noOp } from "../core/capability.ts";
-import {
-  type PackageManagerOption,
-  runScript,
-} from "../core/package-manager.ts";
 import { templateTree } from "../core/templates.ts";
 import { TOOL_VERSIONS } from "../core/versions.ts";
 
 export const FALLOW_TEMPLATE = "templates/fallow";
-export const FALLOW_SCRIPT = "fallow --fail-on-issues";
+export const FALLOW_SCRIPT = "FALLOW_TELEMETRY=off fallow --summary";
 
-export function fallow({
-  packageManager = "npm",
-}: PackageManagerOption = {}): Capability {
+export function fallow(): Capability {
   return {
     name: "fallow",
     documentation: {
@@ -23,15 +17,14 @@ export function fallow({
             "Checks unused code, dependencies, duplication, and complexity.",
         },
       ],
-      init: "Seed Fallow, lint:fallow, and an owner-managed config for tool and library projects.",
+      init: "Seed Fallow, lint:check:fallow, and an owner-managed config for tool and library projects.",
     },
     selection: { without: true, default: true },
     packageJson: {
       seed: { devDependencies: { fallow: TOOL_VERSIONS.fallow } },
       policy: {
         scripts: {
-          "lint:fallow": FALLOW_SCRIPT,
-          "lint:check:fallow": runScript(packageManager, "lint:fallow"),
+          "lint:check:fallow": FALLOW_SCRIPT,
         },
       },
     },
@@ -39,10 +32,10 @@ export function fallow({
       project.templates.push(templateTree(FALLOW_TEMPLATE));
     },
     update: noOp(
-      "Fallow config is owner-managed after init, including deletion; its package.json contribution enforces lint:fallow and keeps the seeded dependency fresh.",
+      "Fallow config is owner-managed after init, including deletion; its package.json contribution enforces lint:check:fallow and keeps the seeded dependency fresh.",
     ),
     validate: noOp(
-      "Fallow has no configuration-only check; source analysis belongs to lint:fallow, not capability validation.",
+      "Fallow has no configuration-only check; source analysis belongs to lint:check:fallow, not capability validation.",
     ),
   };
 }

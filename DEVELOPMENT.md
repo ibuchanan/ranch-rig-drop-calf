@@ -66,7 +66,8 @@ bun run check
 `check` runs Lefthook's `pre-push` commands (`lint` and `test`) in parallel,
 the same dispatch generated `tool` repositories use. `lint` runs every
 `lint:check:*` script (Biome lint, Biome format, typecheck, and Fallow) in
-parallel. To run one step on its own:
+parallel. Lint-only checks call tools directly; formatting and typechecking reuse
+their standalone scripts. To run one step on its own:
 
 ```bash
 bun run test
@@ -197,7 +198,7 @@ Entry point:
   validation.
 - `src/capabilities/git-hooks.ts`: Lefthook config and prepare/check scripts.
 - `src/capabilities/lint.ts`: Git-independent lint aggregation with npm-run-all2;
-  producers contribute `lint:check:*` aliases alongside their direct scripts.
+  producers contribute `lint:check:*` scripts, invoking lint-only tools directly.
 - `src/capabilities/gitignore.ts`: `.gitignore` blocks (see
   [The generated `.gitignore`](#the-generated-gitignore)).
 - `src/capabilities/library-build.ts`: tsdown config and the library build

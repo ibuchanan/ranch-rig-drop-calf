@@ -92,15 +92,15 @@ test.each(["library", "forge-app", "tool", "agent-skill"])(
       expect(scripts["release:publish"]).toBeUndefined();
       expect(await result.exists("scripts/release.sh")).toBe(true);
       expect(await result.exists("scripts/release.ts")).toBe(false);
-      expect(Boolean(scripts["lint:forge"])).toBe(kind === "forge-app");
-      expect(Boolean(scripts["lint:prelint"])).toBe(kind === "forge-app");
-      expect(Boolean(scripts["lint:fallow"])).toBe(
+      expect(Boolean(scripts["lint:check:forge"])).toBe(kind === "forge-app");
+      expect(Boolean(scripts["lint:check:prelint"])).toBe(kind === "forge-app");
+      expect(Boolean(scripts["lint:check:fallow"])).toBe(
         kind === "library" || kind === "tool",
       );
       expect(await result.exists(".fallowrc.jsonc")).toBe(
         kind === "library" || kind === "tool",
       );
-      expect(Boolean(scripts["lint:check"])).toBe(true);
+      expect(Boolean(scripts["lint:check:biome"])).toBe(true);
       expect(Boolean(scripts["forge:deploy"])).toBe(kind === "forge-app");
       if (kind === "library") expect(packageJson.main).toBe("dist/index.cjs");
       else expect(Object.hasOwn(packageJson, "main")).toBe(false);
