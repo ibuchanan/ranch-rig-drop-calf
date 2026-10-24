@@ -40,6 +40,7 @@ import {
   changelogTemplates,
   docsTemplates,
   fallowTemplates,
+  forgeDocsTemplates,
   gitHooksTemplates,
   libraryBuildTemplates,
   packageCheckTemplates,
@@ -182,7 +183,11 @@ const KIND_EXPECTATIONS: Record<string, KindExpectations> = {
     },
     scripts: { ...PRELINT_SCRIPTS, clean: "rm -rf dist" },
     typescript: typescriptTemplates,
-    templates: (preset) => [vitestTemplates(), ...whenPresetAll(preset)],
+    templates: (preset) => [
+      vitestTemplates(),
+      forgeDocsTemplates(),
+      ...whenPresetAll(preset),
+    ],
     extraFiles: ["AGENTS.md", ...SECRETS_ASSETS],
     readFromOutput: [],
     fileModes: {},
@@ -235,9 +240,9 @@ function seededTemplates(expected: KindExpectations, preset?: string) {
     ...[...expected.typescript()].filter(
       ([path]) => path !== "tsconfig.declarations.json",
     ),
-    ...expected.templates(preset).flatMap((tree) => [...tree]),
     ...gitHooksTemplates(),
     ...docsTemplates(),
+    ...expected.templates(preset).flatMap((tree) => [...tree]),
     ...changelogTemplates(),
     ...releaseTemplates(),
   ]);
@@ -383,8 +388,7 @@ describe("pinned OSS templates", () => {
             .get("DEVELOPMENT.md")
             ?.startsWith(
               expected.runner.rewrite(
-                docsTemplates().get("DEVELOPMENT.md") ??
-                  "missing docs template",
+                seeded.get("DEVELOPMENT.md") ?? "missing docs template",
               ),
             ),
         ).toBe(true);

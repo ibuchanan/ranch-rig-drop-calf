@@ -11,6 +11,7 @@ import { BIOME_TEMPLATE } from "../../src/capabilities/biome.ts";
 import { BUN_TEMPLATE } from "../../src/capabilities/bun.ts";
 import { CATALOG_TEMPLATE } from "../../src/capabilities/catalog.ts";
 import { CHANGELOG_TEMPLATE } from "../../src/capabilities/changelog.ts";
+import { FORGE_DOCS_TEMPLATE } from "../../src/capabilities/docs.ts";
 import { FALLOW_TEMPLATE } from "../../src/capabilities/fallow.ts";
 import { GIT_HOOKS_TEMPLATE } from "../../src/capabilities/git-hooks.ts";
 import {
@@ -33,6 +34,7 @@ import {
   changelogTemplates,
   docsTemplates,
   fallowTemplates,
+  forgeDocsTemplates,
   gitHooksTemplates,
   gitignoreTemplates,
   libraryBuildTemplates,
@@ -131,6 +133,7 @@ export function mockModuleSource(
     [AGENT_SKILL_AIDEV_TEMPLATE, mockDirectory(aidevTemplates("agent-skill"))],
     [CATALOG_TEMPLATE, mockDirectory(catalogTemplates())],
     ["templates/docs", mockDirectory(docs)],
+    [FORGE_DOCS_TEMPLATE, mockDirectory(forgeDocsTemplates())],
     [
       BUN_TEMPLATE,
       mockDirectory(

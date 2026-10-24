@@ -8,7 +8,10 @@ import {
 import { BIOME_TEMPLATE } from "../../src/capabilities/biome.ts";
 import { CATALOG_TEMPLATE } from "../../src/capabilities/catalog.ts";
 import { CHANGELOG_TEMPLATE } from "../../src/capabilities/changelog.ts";
-import { DOCS_TEMPLATE } from "../../src/capabilities/docs.ts";
+import {
+  DOCS_TEMPLATE,
+  FORGE_DOCS_TEMPLATE,
+} from "../../src/capabilities/docs.ts";
 import { FALLOW_TEMPLATE } from "../../src/capabilities/fallow.ts";
 import { GIT_HOOKS_TEMPLATE } from "../../src/capabilities/git-hooks.ts";
 import { GITIGNORE_TEMPLATE } from "../../src/capabilities/gitignore.ts";
@@ -60,6 +63,7 @@ const KIND_TEMPLATES: Record<
   "forge-app": {
     paths: [
       AIDEV_TEMPLATE,
+      FORGE_DOCS_TEMPLATE,
       SECRETS_TEMPLATE,
       "templates/vitest",
       TYPESCRIPT_TEMPLATE,

@@ -18,7 +18,10 @@ import { runInit, verb } from "../support/capability-fixtures.ts";
 import { mockContainer } from "../support/container-source.ts";
 import { isBunKind } from "../support/kinds.ts";
 import { mockDirectory, mockModuleSource } from "../support/module-source.ts";
-import { docsTemplates } from "../support/templates-source.ts";
+import {
+  docsTemplates,
+  forgeDocsTemplates,
+} from "../support/templates-source.ts";
 
 test("docs template paths do not overlap other generated files", () => {
   for (const kind of ["library", "forge-app", "tool", "agent-skill"]) {
@@ -175,12 +178,17 @@ const guideFor = (kind: string, text: string) =>
 
 test.each(DOC_KINDS)("%s composed init seeds every docs template", (kind) =>
   withInitialized(kind, async ({ initialized }) => {
-    for (const [path, text] of docsTemplates()) {
+    const templates = new Map([
+      ...docsTemplates(),
+      ...(kind === "forge-app" ? forgeDocsTemplates() : []),
+    ]);
+    for (const [path, text] of templates) {
       const actual = await initialized.file(path).contents();
-      // DEVELOPMENT.md gains a repository-layout section after its template text.
-      if (path === "DEVELOPMENT.md")
+      // DEVELOPMENT.md gains a repository-layout section after its selected template.
+      if (path === "DEVELOPMENT.md") {
         expect(actual.startsWith(guideFor(kind, text))).toBe(true);
-      else expect(actual).toBe(text);
+        expect(actual.includes("Fence Rider")).toBe(kind === "forge-app");
+      } else expect(actual).toBe(text);
     }
   }),
 );

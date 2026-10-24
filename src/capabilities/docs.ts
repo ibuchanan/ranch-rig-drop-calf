@@ -9,6 +9,7 @@ import { bunTools, REPOSITORY, runTool } from "../core/tool-run.ts";
 import { TOOL_VERSIONS } from "../core/versions.ts";
 
 export const DOCS_TEMPLATE = "templates/docs";
+export const FORGE_DOCS_TEMPLATE = "templates/docs-forge";
 export const DOCS_COMMAND =
   'markdownlint-cli2 "**/*.md" && cspell lint "**/*.md"';
 export const DOCS_CONFIGS = [
@@ -66,6 +67,7 @@ async function validateDocs(directory: Directory): Promise<Validation> {
 }
 
 type DocsLayout = {
+  developmentTemplate?: string;
   testDirectory: string;
   testPurpose: string;
   scriptsPurpose?: string;
@@ -130,20 +132,24 @@ export function docsLinting(
       },
     },
     init(project) {
-      project.templates.push(
-        templateTree(DOCS_TEMPLATE, async (destination, source) => {
-          const seeded = destination.withDirectory(".", source);
-          const path = "DEVELOPMENT.md";
-          const contents = await source.file(path).contents();
-          const evaluations = project.templates.some(
-            (template) => template.path === EVALS_TEMPLATE,
-          );
-          return seeded.withNewFile(
-            path,
-            `${forPackageManager(contents, layout.packageManager ?? "npm")}\n## Repository layout\n\n${repositoryLayout(layout, evaluations)}`,
-          );
-        }),
-      );
+      const templates = [DOCS_TEMPLATE];
+      if (layout.developmentTemplate)
+        templates.push(layout.developmentTemplate);
+      for (const template of templates)
+        project.templates.push(
+          templateTree(template, async (destination, source) => {
+            const seeded = destination.withDirectory(".", source);
+            const path = "DEVELOPMENT.md";
+            const contents = await source.file(path).contents();
+            const evaluations = project.templates.some(
+              (template) => template.path === EVALS_TEMPLATE,
+            );
+            return seeded.withNewFile(
+              path,
+              `${forPackageManager(contents, layout.packageManager ?? "npm")}\n## Repository layout\n\n${repositoryLayout(layout, evaluations)}`,
+            );
+          }),
+        );
     },
     update: noOp(
       "Docs configuration and documents are owner-managed after init, including deletions; its package.json contribution enforces lint:docs and keeps the seeded tool dependencies fresh.",

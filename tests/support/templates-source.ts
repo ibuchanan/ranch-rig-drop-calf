@@ -25,6 +25,8 @@ export const catalogTemplates = () => templatesIn("catalog");
 
 export const docsTemplates = () => templatesIn("docs");
 
+export const forgeDocsTemplates = () => templatesIn("docs-forge");
+
 export const typescriptTemplates = () => templatesIn("typescript");
 
 export const skillStarterTemplates = () => templatesIn("skill-starter");

@@ -12,7 +12,7 @@ import { catalog } from "../capabilities/catalog.ts";
 import { changelogToolchain } from "../capabilities/changelog.ts";
 import { citation } from "../capabilities/citation.ts";
 import { cleanBuild } from "../capabilities/clean-build.ts";
-import { docsLinting } from "../capabilities/docs.ts";
+import { docsLinting, FORGE_DOCS_TEMPLATE } from "../capabilities/docs.ts";
 import { evals } from "../capabilities/evals.ts";
 import { fallow } from "../capabilities/fallow.ts";
 import { forgeAhead } from "../capabilities/forge-ahead.ts";
@@ -89,6 +89,7 @@ export const PROFILES: Record<ProjectKind, Capability[]> = {
     cleanBuild(),
     todo(),
     docsLinting({
+      developmentTemplate: FORGE_DOCS_TEMPLATE,
       testDirectory: "test",
       testPurpose: "Forge app tests (Vitest) and optional evaluations",
       scriptsPurpose: "Forge setup and deployment helpers",
