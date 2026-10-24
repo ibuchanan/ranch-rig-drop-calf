@@ -1,6 +1,7 @@
 import { expect, spyOn, test } from "bun:test";
 import { type Directory, dag } from "@dagger.io/dagger";
 import { parse } from "yaml";
+import { CHECK_COMMAND } from "../../src/capabilities/lint.ts";
 import { packageCheck } from "../../src/capabilities/package-check.ts";
 import {
   buildProject,
@@ -14,7 +15,7 @@ import { DropCalf } from "../../src/index.ts";
 import { runUpdate } from "../support/capability-fixtures.ts";
 import { mockDirectory, mockModuleSource } from "../support/module-source.ts";
 
-test("generated library has a package checker and check dispatches it through the seeded pre-push hook", async () => {
+test("generated library includes package checks in check and pre-push delegates to it", async () => {
   const source = mockModuleSource();
   const empty = spyOn(dag, "directory").mockImplementation(() =>
     mockDirectory(),
@@ -28,14 +29,14 @@ test("generated library has a package checker and check dispatches it through th
     );
     expect(await output.exists("scripts/pack-check.sh")).toBe(true);
     const pkg = JSON.parse(await output.file("package.json").contents());
-    expect(pkg.scripts.check).toBe("lefthook run pre-push --force");
+    expect(pkg.scripts.check).toBe(CHECK_COMMAND);
     expect(pkg.scripts["pack:check"]).toBe(
       "npm run build && sh scripts/pack-check.sh",
     );
     const hooks = parse(await output.file("lefthook.yml").contents());
-    expect(hooks["pre-push"].commands.pack.run).toBe(
-      "npm run pack:check --if-present",
-    );
+    expect(hooks["pre-push"].commands).toEqual({
+      check: { run: "npm run check" },
+    });
   } finally {
     empty.mockRestore();
     source.mockRestore();

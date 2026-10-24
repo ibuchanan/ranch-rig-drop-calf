@@ -119,7 +119,9 @@ const BUN_RUNNER: Runner = {
       .replaceAll("npm install", "bun install")
       .replaceAll("npm run", "bun run"),
   rewriteHooks: (hooks) =>
-    hooks.replaceAll(/npm run (\S+) --if-present/g, "bun run --if-present $1"),
+    hooks
+      .replaceAll(/npm run (\S+) --if-present/g, "bun run --if-present $1")
+      .replaceAll("npm run", "bun run"),
 };
 
 const BUN_TEST_SCRIPTS = {

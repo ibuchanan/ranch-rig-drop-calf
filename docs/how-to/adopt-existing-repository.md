@@ -88,16 +88,19 @@ owner content. `update` does not create the catalog or restore init-only files.
    Review the new, untracked catalog separately; plain `git diff` does not show
    untracked files. If your project uses a lockfile, reconcile dependencies with
    its package manager deliberately: Drop Calf does not install packages or
-   update the lockfile. When adopting the script-family lint workflow in a project
-   generated before it was introduced, add its runner before running checks:
+   update the lockfile. When adopting the lint and check workflow in a project
+   generated before it was introduced, add the runner before running checks:
 
    ```bash
    bun add --dev --exact npm-run-all2@8.0.4
    ```
 
-   Update enforces `scripts.lint` but does not add an undeclared seed dependency.
-   Existing `lefthook.yml` files remain owner-managed; the old custom `lint`
-   group is no longer used by `scripts.lint` and can be removed after review.
+   Update enforces both `scripts.lint` and `scripts.check` but does not add an
+   undeclared seed dependency. Existing `lefthook.yml` files remain owner-managed;
+   replace the seeded lint/test/size/pack pre-push commands with a single command
+   running `npm run check` (`bun run check` for tools and agent skills). Preserve
+   unrelated owner checks and avoid retaining duplicate commands. The old custom
+   `lint` group is no longer used by `scripts.lint` and can be removed after review.
 
 5. **Validate and check the project.** Run Drop Calf's read-only validation for
    the same profile and selection flags, then the repository's own checks where

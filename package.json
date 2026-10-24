@@ -5,7 +5,7 @@
   "module": "index.ts",
   "scripts": {
     "prepare": "lefthook install || true",
-    "check": "lefthook run pre-push --force",
+    "check": "run-p --npm-path bun --print-label \"{lint,test,size:check,pack:check}\"",
     "format": "biome format --write",
     "format:check": "biome format",
     "lint": "run-p --npm-path bun --print-label \"lint:check:*\"",

@@ -34,10 +34,11 @@ npm, a POSIX shell, and writable temporary storage.
    bun run check
    ```
 
-   Freshly seeded `lefthook.yml` includes `pack:check` in pre-push, and `check`
-   dispatches that same group. For an existing repository, add
-   `npm run pack:check --if-present` to your chosen hook group yourself if wanted;
-   Drop Calf update preserves owner-edited hook files, including deletion.
+   The `check` script runs `lint`, `test`, and `pack:check` in parallel. Freshly
+   seeded `lefthook.yml` includes a pre-push hook that dispatches `npm run check`.
+   For an existing repository, ensure the check script is present and pre-push is
+   configured to run it; Drop Calf update preserves owner-edited hook files,
+   including deletion.
 
 Do not substitute standalone `validate` for this workflow. It checks configuration
 acceptance without building or packing; package-check explicitly reports skipped

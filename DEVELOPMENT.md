@@ -63,8 +63,10 @@ shell.
 bun run check
 ```
 
-`check` runs Lefthook's `pre-push` commands (`lint` and `test`) in parallel,
-the same dispatch generated `tool` repositories use. `lint` runs every
+`check` uses `npm-run-all2` to run `lint`, `test`, `size:check`, and `pack:check`
+in parallel when present. This repository has `lint` and `test`; generated Forge
+apps also have `size:check`, and libraries have `pack:check`. Lefthook's pre-push
+hook calls `check`. `lint` runs every
 `lint:check:*` script (Biome lint, Biome format, typecheck, and Fallow) in
 parallel. Lint-only checks call tools directly; formatting and typechecking reuse
 their standalone scripts. To run one step on its own:
@@ -196,8 +198,9 @@ Entry point:
 - `src/capabilities/forge-ahead.ts`: Forge Ahead dependencies.
 - `src/capabilities/forge-manifest.ts`: Forge manifest runtime and `forge lint`
   validation.
-- `src/capabilities/git-hooks.ts`: Lefthook config and prepare/check scripts.
-- `src/capabilities/lint.ts`: Git-independent lint aggregation with npm-run-all2;
+- `src/capabilities/git-hooks.ts`: Lefthook config and prepare script;
+  pre-push delegates to check.
+- `src/capabilities/lint.ts`: Git-independent lint/check aggregation with npm-run-all2;
   producers contribute `lint:check:*` scripts, invoking lint-only tools directly.
 - `src/capabilities/gitignore.ts`: `.gitignore` blocks (see
   [The generated `.gitignore`](#the-generated-gitignore)).
@@ -389,10 +392,10 @@ acquire implicit test APIs. The current prelint rule
 imports are supported by Vitest and the integration tests verify them.
 The typecheck overlay includes tests and the Vitest
 config, with modern module resolution confined to local checks. Tests and test
-config stay outside the Forge handler build. The pre-push hook invokes `lint`,
-whose script family includes `typecheck`, so broken tests block pushing as broken
-source does. The lint aggregate runs without Git metadata; `check` still invokes
-Lefthook's pre-push group. Docs lint remains a separate `lint:docs` command.
+config stay outside the Forge handler build. The pre-push hook invokes `check`,
+which includes `lint` and its `typecheck` member, so broken tests block pushing
+as broken source does. Both aggregates run without Git metadata.
+Docs lint remains a separate `lint:docs` command.
 
 `bun test tests/e2e/testing.e2e.test.ts --path-ignore-patterns='vendor/**'` verifies real
 Dagger-generated and initialized scaffolds. It needs an engine and network for

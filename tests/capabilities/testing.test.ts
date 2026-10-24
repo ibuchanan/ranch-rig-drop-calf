@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
 import { BUN_TEST_SCRIPTS } from "../../src/capabilities/bun-testing.ts";
-import { LINT_COMMAND } from "../../src/capabilities/lint.ts";
+import { CHECK_COMMAND, LINT_COMMAND } from "../../src/capabilities/lint.ts";
 import { buildProject } from "../../src/composition/profiles.ts";
 import { TOOL_VERSIONS } from "../../src/core/versions.ts";
 import { gitHooksTemplates } from "../support/templates-source.ts";
@@ -25,10 +25,11 @@ test("Forge pre-push checks reach the typecheck command through lint", () => {
   const hooks = Bun.YAML.parse(
     gitHooksTemplates().get("lefthook.yml") ?? "",
   ) as {
-    "pre-push": { commands: { lint: { run: string } } };
+    "pre-push": { commands: { check: { run: string } } };
     lint?: unknown;
   };
-  expect(hooks["pre-push"].commands.lint.run).toBe("npm run lint --if-present");
+  expect(hooks["pre-push"].commands.check.run).toBe("npm run check");
+  expect(scripts.check).toBe(CHECK_COMMAND);
   expect(scripts.lint).toBe(LINT_COMMAND);
   expect(hooks.lint).toBeUndefined();
   expect(scripts["lint:check:typecheck"]).toBe("npm run typecheck");

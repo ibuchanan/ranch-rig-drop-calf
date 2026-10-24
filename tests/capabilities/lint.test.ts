@@ -8,7 +8,11 @@ import {
   writeFileSync,
 } from "node:fs";
 import { join, resolve } from "node:path";
-import { LINT_COMMAND, lint } from "../../src/capabilities/lint.ts";
+import {
+  CHECK_COMMAND,
+  LINT_COMMAND,
+  lint,
+} from "../../src/capabilities/lint.ts";
 import {
   blueprintFor,
   buildProject,
@@ -27,7 +31,7 @@ const members = (scripts: Record<string, string>) =>
     .sort();
 
 for (const kind of Object.keys(PROFILES)) {
-  test(`${kind} owns lint independently of hook selection or composition order`, async () => {
+  test(`${kind} owns lint/check independently of hook selection or composition order`, async () => {
     const capabilities = resolveProfile(kind).filter(
       (item) => item.name !== "git-hooks",
     );
@@ -41,6 +45,11 @@ for (const kind of Object.keys(PROFILES)) {
       isBunKind(kind)
         ? LINT_COMMAND.replace("--npm-path npm", "--npm-path bun")
         : LINT_COMMAND,
+    );
+    expect(forward.packageJson.scripts.check).toBe(
+      isBunKind(kind)
+        ? CHECK_COMMAND.replace("--npm-path npm", "--npm-path bun")
+        : CHECK_COMMAND,
     );
     expect(reversed.packageJson.scripts).toEqual(forward.packageJson.scripts);
     expect(forward.packageJson.devDependencies["npm-run-all2"]).toBe(
@@ -99,13 +108,14 @@ test("lint updates its own aggregate and preserves owner scripts idempotently", 
   const pkg = JSON.parse(await output.file("package.json").contents());
   expect(pkg.scripts).toEqual({
     lint: LINT_COMMAND,
+    check: CHECK_COMMAND,
     "lint:check:owner": "echo owner",
     custom: "echo custom",
   });
   expect(await updateCapabilities(output, [lint()])).toBe(output);
 });
 
-async function runLint(scripts: Record<string, string>) {
+async function runLint(scripts: Record<string, string>, workflow = "lint") {
   const scratch = join(root, ".scratch");
   mkdirSync(scratch, { recursive: true });
   const directory = mkdtempSync(join(scratch, "tmp_rovo_lint with spaces-"));
@@ -123,7 +133,7 @@ async function runLint(scripts: Record<string, string>) {
         env,
       }).exitCode,
     ).not.toBe(0);
-    const child = Bun.spawn([process.execPath, "run", "lint"], {
+    const child = Bun.spawn([process.execPath, "run", workflow], {
       cwd: directory,
       env,
       stdout: "pipe",
@@ -197,6 +207,74 @@ test("real runner rejects a missing literal task", async () => {
   expect(result.output).toContain("Task not found");
   expect(result.output).not.toContain("should-not-run");
 });
+
+test.each(Object.keys(PROFILES))(
+  "%s check runs exactly the available verification scripts once without Git",
+  async (kind) => {
+    const { scripts: generated } = buildProject(
+      kind,
+      "sample",
+      "tester",
+    ).packageJson;
+    const scripts: Record<string, string> = { ...generated };
+    const tasks = ["lint", "test", "size:check", "pack:check"];
+    for (const name of tasks) {
+      if (generated[name]) scripts[name] = `echo ${name}-ran`;
+    }
+    for (const name of [
+      "lint:fix",
+      "lint:docs",
+      "test:watch",
+      "test:coverage",
+      "size:check:watch",
+      "pack:check:watch",
+      "release:check",
+    ]) {
+      scripts[name] = "echo unrelated-script-ran; exit 23";
+    }
+    const result = await runLint(scripts, "check");
+    expect(result.code).toBe(0);
+    for (const name of tasks) {
+      const occurrences =
+        result.output.match(new RegExp(`\\]\\s+${name}-ran\\r?\\n`, "g")) ?? [];
+      expect(occurrences).toHaveLength(generated[name] ? 1 : 0);
+    }
+    expect(result.output).not.toMatch(/\]\s+unrelated-script-ran/);
+  },
+  20_000,
+);
+
+test("check includes optional scripts added by the owner", async () => {
+  const result = await runLint(
+    {
+      check: CHECK_COMMAND,
+      lint: "echo lint-ran",
+      test: "echo test-ran",
+      "size:check": "echo size-ran",
+      "pack:check": "echo pack-ran",
+    },
+    "check",
+  );
+  expect(result.code).toBe(0);
+  for (const label of ["lint", "test", "size:check", "pack:check"])
+    expect(result.output).toContain(`[${label}`);
+  expect(result.output).toContain("size-ran");
+  expect(result.output).toContain("pack-ran");
+});
+
+test("check propagates a failure and aborts an unfinished sibling", async () => {
+  const result = await runLint(
+    {
+      check: CHECK_COMMAND,
+      lint: "sleep 1; echo failure-output; exit 7",
+      test: "sleep 30; echo should-not-finish",
+    },
+    "check",
+  );
+  expect(result.code).toBe(1);
+  expect(result.output).toContain("exited with 7");
+  expect(result.output).not.toMatch(/\]\s+should-not-finish\r?\n/);
+}, 20_000);
 
 test("test runner version matches the generated pin", () => {
   expect(

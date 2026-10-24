@@ -5,7 +5,7 @@ import {
   GIT_HOOKS_TEMPLATE,
   gitHooks,
 } from "../../src/capabilities/git-hooks.ts";
-import { LINT_COMMAND } from "../../src/capabilities/lint.ts";
+import { CHECK_COMMAND, LINT_COMMAND } from "../../src/capabilities/lint.ts";
 import {
   buildProject,
   resolveProfile,
@@ -14,6 +14,7 @@ import {
   updateCapabilities,
   validateCapabilities,
 } from "../../src/core/capability.ts";
+import { forPackageManager } from "../../src/core/package-manager.ts";
 import { createBlueprint } from "../../src/core/project.ts";
 import { TOOL_VERSIONS } from "../../src/core/versions.ts";
 import { DropCalf } from "../../src/index.ts";
@@ -76,7 +77,7 @@ test.each([false, true])(
     }
     expect(JSON.parse(await output.file("package.json").contents())).toEqual({
       name: "owner",
-      scripts: { ...scripts, lint: "owner", custom: "keep" },
+      scripts: { ...scripts, lint: "owner", check: "owner", custom: "keep" },
       devDependencies: { lefthook: TOOL_VERSIONS.lefthook, custom: "1" },
       dependencies: { keep: "1" },
     });
@@ -103,12 +104,10 @@ test.each(["library", "forge-app", "tool", "agent-skill"])(
         "tester",
         "sample",
       );
-      const expectedConfig = isBunKind(kind)
-        ? config().replaceAll(
-            /npm run (\S+) --if-present/g,
-            "bun run --if-present $1",
-          )
-        : config();
+      const expectedConfig = forPackageManager(
+        config(),
+        isBunKind(kind) ? "bun" : "npm",
+      );
       expect(await initialized.file("lefthook.yml").contents()).toBe(
         expectedConfig,
       );
@@ -147,6 +146,9 @@ test.each(["library", "forge-app", "tool", "agent-skill"])(
       expect(updated.scripts).toEqual({
         ...pkg.scripts,
         ...GIT_HOOKS_SCRIPTS,
+        check: isBunKind(kind)
+          ? CHECK_COMMAND.replace("--npm-path npm", "--npm-path bun")
+          : CHECK_COMMAND,
         lint: isBunKind(kind)
           ? LINT_COMMAND.replace("--npm-path npm", "--npm-path bun")
           : LINT_COMMAND,
@@ -164,7 +166,7 @@ test.each(["library", "forge-app", "tool", "agent-skill"])(
 );
 
 test.each(["library", "forge-app", "tool", "agent-skill"])(
-  "%s git-hooks owns prepare/check and lint owns the aggregate in any composition order",
+  "%s git-hooks owns prepare and lint owns lint/check in any composition order",
   (kind) => {
     const capabilities = resolveProfile(kind);
     for (const script of ["prepare", "lint", "check"]) {
@@ -174,7 +176,7 @@ test.each(["library", "forge-app", "tool", "agent-skill"])(
         return Object.hasOwn(project.packageJson.scripts, script);
       });
       expect(owners.map((capability) => capability.name)).toEqual([
-        script === "lint" ? "lint" : "git-hooks",
+        script === "prepare" ? "git-hooks" : "lint",
       ]);
     }
     const project = createBlueprint("sample", "", "tester");
@@ -275,24 +277,17 @@ test.each(["library", "forge-app", "tool", "agent-skill"])(
         ? LINT_COMMAND.replace("--npm-path npm", "--npm-path bun")
         : LINT_COMMAND,
     );
-    expect(scripts.check).toBe("lefthook run pre-push --force");
-    const ymlBase = config();
-    const yml = isBunKind(kind)
-      ? ymlBase.replaceAll(
-          /npm run (\S+) --if-present/g,
-          "bun run --if-present $1",
-        )
-      : ymlBase;
+    expect(scripts.check).toBe(
+      isBunKind(kind)
+        ? CHECK_COMMAND.replace("--npm-path npm", "--npm-path bun")
+        : CHECK_COMMAND,
+    );
+    const yml = forPackageManager(config(), isBunKind(kind) ? "bun" : "npm");
     expect(yml).not.toMatch(/^lint:/m);
-    if (isBunKind(kind)) {
-      expect(yml).toContain("run: bun run --if-present lint");
-      expect(yml).toContain("run: bun run --if-present size:check");
-      expect(yml).not.toMatch(/run: bun run --if-present size\s/);
-    } else {
-      expect(yml).toContain("run: npm run lint --if-present");
-      expect(yml).toContain("run: npm run size:check --if-present");
-      expect(yml).not.toMatch(/run: npm run size\s.*--if-present/);
-    }
+    const hooks = Bun.YAML.parse(yml) as { "pre-push": { commands: object } };
+    expect(hooks["pre-push"].commands).toEqual({
+      check: { run: `${isBunKind(kind) ? "bun" : "npm"} run check` },
+    });
     expect(yml).toMatch(/^pre-push:/m);
   },
 );

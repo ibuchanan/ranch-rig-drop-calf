@@ -13,10 +13,9 @@ import { TOOL_VERSIONS } from "../core/versions.ts";
 export const GIT_HOOKS_TEMPLATE = "templates/git-hooks";
 export const GIT_HOOKS_SCRIPTS = {
   prepare: "lefthook install || true",
-  check: "lefthook run pre-push --force",
 } as const;
 
-/** Git-hooks owns prepare/check; composition selects build-on-prepare. */
+/** Git-hooks owns prepare; composition selects build-on-prepare. */
 export function gitHooks({
   buildOnPrepare = false,
   packageManager = "npm",
@@ -29,7 +28,7 @@ export function gitHooks({
           name: "Lefthook",
           url: "https://lefthook.dev/",
           purpose:
-            "Dispatches the check workflow and Git hooks from lefthook.yml.",
+            "Runs Git hooks from lefthook.yml, with pre-push delegating to the check script.",
         },
         {
           name: "Gitleaks",
@@ -39,8 +38,8 @@ export function gitHooks({
         },
       ],
       init: buildOnPrepare
-        ? "Seed Lefthook, build-before-hooks prepare, check dispatch script, and lefthook.yml."
-        : "Seed Lefthook, prepare/check dispatch scripts, and lefthook.yml.",
+        ? "Seed Lefthook, build-before-hooks prepare, and lefthook.yml delegating pre-push to check."
+        : "Seed Lefthook, prepare, and lefthook.yml delegating pre-push to check.",
       validate:
         "Run lefthook validate with isolated Git metadata; never install or execute hooks.",
     },
@@ -67,7 +66,7 @@ export function gitHooks({
       );
     },
     update: noOp(
-      "Hook configuration is owner-managed after init; its package.json contribution enforces the dispatch scripts and keeps the seeded Lefthook dependency fresh.",
+      "Hook configuration is owner-managed after init; its package.json contribution enforces prepare and keeps the seeded Lefthook dependency fresh.",
     ),
     validate: validateGitHooks,
   };

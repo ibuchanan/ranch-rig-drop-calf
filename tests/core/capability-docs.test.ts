@@ -11,9 +11,11 @@ import {
   replaceGeneratedBlock,
 } from "../../scripts/capability-reference.ts";
 import { bunTesting } from "../../src/capabilities/bun-testing.ts";
+import { CHECK_COMMAND } from "../../src/capabilities/lint.ts";
 import { vitestTesting } from "../../src/capabilities/vitest.ts";
 import { buildProject, PROFILES } from "../../src/composition/profiles.ts";
 import { type Capability, noOpReasons } from "../../src/core/capability.ts";
+import { isBunKind } from "../support/kinds.ts";
 
 const root = new URL("../../", import.meta.url);
 
@@ -146,5 +148,9 @@ test("every initialized kind supplies the documented check workflow", () => {
   for (const kind of Object.keys(PROFILES))
     expect(
       buildProject(kind, "sample", "tester").packageJson.scripts.check,
-    ).toBe("lefthook run pre-push --force");
+    ).toBe(
+      isBunKind(kind)
+        ? CHECK_COMMAND.replace("--npm-path npm", "--npm-path bun")
+        : CHECK_COMMAND,
+    );
 });
