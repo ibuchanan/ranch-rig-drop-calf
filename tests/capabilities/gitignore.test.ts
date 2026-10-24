@@ -3,12 +3,12 @@ import type { Directory, File } from "@dagger.io/dagger";
 import { dag } from "@dagger.io/dagger";
 import fc from "fast-check";
 import {
-  ADDITIONAL_IGNORES,
   availableSets,
   buildGitignore,
   copyGitignoreAssets,
   GITIGNORE_ENDPOINT,
   GITIGNORE_QUERY,
+  GITIGNORE_TEMPLATE,
   GITIGNORE_TEMPLATES,
   gitignore,
   normalizeSet,
@@ -20,6 +20,8 @@ import {
 import { resolveProfile } from "../../src/composition/profiles.ts";
 import { validateCapabilities } from "../../src/core/capability.ts";
 import { InvalidOptionsError } from "../../src/core/errors.ts";
+import { createBlueprint } from "../../src/core/project.ts";
+import { seedTemplates } from "../../src/core/templates.ts";
 import { DropCalf } from "../../src/index.ts";
 import { isBunKind } from "../support/kinds.ts";
 import {
@@ -27,8 +29,17 @@ import {
   mockModuleSource,
   pinnedGitignore,
 } from "../support/module-source.ts";
+import { gitignoreTemplates } from "../support/templates-source.ts";
 
 const pin = pinnedGitignore();
+
+/** Read the authored template's additional ignores for tests. */
+const additionalIgnores = () => {
+  const templates = gitignoreTemplates();
+  const contents = templates.get(".gitignore");
+  if (!contents) throw new Error("Missing .gitignore in gitignore template");
+  return contents;
+};
 
 const ownerLines = fc.array(
   fc
@@ -99,7 +110,7 @@ test.each(["library", "forge-app", "tool", "agent-skill"])(
           initial ? new Map([[".gitignore", initial]]) : undefined,
         );
         const seeded = await module.init(input, kind, "tester", "sample");
-        const expected = `${initial}${initial ? "\n" : ""}${buildGitignore(pin)}`;
+        const expected = `${initial}${initial ? "\n" : ""}${buildGitignore(pin, additionalIgnores())}`;
         expect(await seeded.file(".gitignore").contents()).toBe(expected);
         expect(await module.update(seeded, kind)).toBe(seeded);
         const edited = seeded.withNewFile(
@@ -126,6 +137,44 @@ test.each(["library", "forge-app", "tool", "agent-skill"])(
     }
   },
 );
+
+test("init and update read additional ignores from the authored template", async () => {
+  const owner = "# owner\r\n!keep/\r\n\r\n";
+  const authored = additionalIgnores().replace(".session/", "custom-session/");
+  const source = mockModuleSource(
+    new Map([[`${GITIGNORE_TEMPLATE}/.gitignore`, authored]]),
+  );
+  try {
+    const capability = gitignore();
+    if (typeof capability.update !== "function")
+      throw new Error("gitignore has no update");
+    const project = createBlueprint("sample", "", "tester");
+    if (typeof capability.init !== "function")
+      throw new Error("gitignore has no init");
+    capability.init(project);
+    const input = mockDirectory(new Map([[".gitignore", owner]]));
+    const seeded = await seedTemplates(
+      input,
+      dag.currentModule().source(),
+      project.templates,
+    );
+    expect(await seeded.file(".gitignore").contents()).toBe(
+      `${owner}\n${buildGitignore(pin, authored)}`,
+    );
+    const drifted = mockDirectory(
+      new Map([
+        [".gitignore", owner + buildGitignore(pin, additionalIgnores())],
+      ]),
+    );
+    const updated = await capability.update(drifted);
+    expect(await updated.file(".gitignore").contents()).toBe(
+      owner + buildGitignore(pin, authored),
+    );
+    expect(await capability.update(updated)).toBe(updated);
+  } finally {
+    source.mockRestore();
+  }
+});
 
 test("gitignore update never creates missing blocks and validate explicitly skips without reading", async () => {
   const source = mockModuleSource();
@@ -179,7 +228,9 @@ test("every default template resolves to a section in the pin", () => {
   const known = availableSets(pin);
   for (const name of GITIGNORE_TEMPLATES)
     expect(known).toContain(name.toLowerCase());
-  expect(buildGitignore(pin)).toContain(ADDITIONAL_IGNORES);
+  expect(buildGitignore(pin, additionalIgnores())).toContain(
+    additionalIgnores(),
+  );
 });
 
 describe("normalizeSet", () => {
@@ -202,13 +253,13 @@ describe("parseTemplate", () => {
 });
 
 describe("buildGitignore", () => {
-  const built = buildGitignore(template);
+  const built = buildGitignore(template, additionalIgnores());
 
   test("keeps provenance, sections, and the personal defaults", () => {
     expect(built).toStartWith("# Created by ");
     expect(built).toContain("### Node ###");
     expect(built).toContain("### VisualStudioCode ###");
-    expect(built.endsWith(ADDITIONAL_IGNORES)).toBe(true);
+    expect(built.endsWith(additionalIgnores())).toBe(true);
   });
 
   test("delimits both owned blocks", () => {
@@ -236,7 +287,7 @@ describe("buildGitignore", () => {
   });
 
   test("selects only the requested sections", () => {
-    const nodeOnly = buildGitignore(template, ["node"]);
+    const nodeOnly = buildGitignore(template, additionalIgnores(), ["node"]);
     expect(nodeOnly).toContain("### Node ###");
     expect(nodeOnly).toContain("node_modules/");
     expect(nodeOnly).not.toContain("### macOS ###");
@@ -246,15 +297,21 @@ describe("buildGitignore", () => {
   });
 
   test("keeps the extras regardless of the selected sets", () => {
-    expect(buildGitignore(template, ["node"])).toContain("/.cocoindex_code/");
+    expect(buildGitignore(template, additionalIgnores(), ["node"])).toContain(
+      "/.cocoindex_code/",
+    );
   });
 
   test("rejects an unknown set and lists what the pin can satisfy", () => {
-    expect(() => buildGitignore(template, ["nope"])).toThrow(
-      InvalidOptionsError,
+    expect(() =>
+      buildGitignore(template, additionalIgnores(), ["nope"]),
+    ).toThrow(InvalidOptionsError);
+    expect(() =>
+      buildGitignore(template, additionalIgnores(), ["nope"]),
+    ).toThrow(/choose from/);
+    expect(buildGitignore(template, additionalIgnores(), [])).toContain(
+      additionalIgnores(),
     );
-    expect(() => buildGitignore(template, ["nope"])).toThrow(/choose from/);
-    expect(buildGitignore(template, [])).toContain(ADDITIONAL_IGNORES);
   });
 
   test("ends with exactly one newline", () => {
@@ -291,9 +348,9 @@ describe("updateGitignore", () => {
       "\r\n# unrelated block\r\n# Created by someone else\r\nowner/\r\n# End of someone else\r\n";
     const after = "\r\n!node_modules/keep\r\n# owner EOF";
     const old = `${before}${upstream("node")}${between}${upstream("linux")}${after}`;
-    const wanted = `${before}${buildGitignore(template, ["node"]).split("\n# Created by drop-calf")[0]}${between}${buildGitignore(template, ["linux"]).split("\n# Created by drop-calf")[0]}${after}`;
-    expect(updateGitignore(old, template)).toBe(wanted);
-    expect(updateGitignore(wanted, template)).toBe(wanted);
+    const wanted = `${before}${buildGitignore(template, additionalIgnores(), ["node"]).split("\n# Created by drop-calf")[0]}${between}${buildGitignore(template, additionalIgnores(), ["linux"]).split("\n# Created by drop-calf")[0]}${after}`;
+    expect(updateGitignore(old, template, additionalIgnores())).toBe(wanted);
+    expect(updateGitignore(wanted, template, additionalIgnores())).toBe(wanted);
   });
 
   test("refreshes only managed blocks across topic selections and owner text", () => {
@@ -318,7 +375,7 @@ describe("updateGitignore", () => {
             old.push(prefix + upstream(sets.join(",")).replaceAll("\n", eol));
             wanted.push(
               prefix +
-                buildGitignore(template, sets).split(
+                buildGitignore(template, additionalIgnores(), sets).split(
                   "\n# Created by drop-calf",
                 )[0],
             );
@@ -327,7 +384,7 @@ describe("updateGitignore", () => {
             old.push(
               "# Created by drop-calf additional ignores\nstale/\n# End of drop-calf additional ignores\n",
             );
-            wanted.push(ADDITIONAL_IGNORES);
+            wanted.push(additionalIgnores());
           }
           const suffix = tail.length ? `${tail.join("\r\n")}\r\n` : "";
           const contents = (old.join("") + suffix).replace(
@@ -338,9 +395,15 @@ describe("updateGitignore", () => {
             /\r?\n$/,
             finalNewline ? "$&" : "",
           );
-          const updated = updateGitignore(contents, template);
+          const updated = updateGitignore(
+            contents,
+            template,
+            additionalIgnores(),
+          );
           expect(updated).toBe(expected);
-          expect(updateGitignore(updated, template)).toBe(updated);
+          expect(updateGitignore(updated, template, additionalIgnores())).toBe(
+            updated,
+          );
         },
       ),
     );
@@ -350,6 +413,7 @@ describe("updateGitignore", () => {
     const result = updateGitignore(
       upstream("linux", "### Node ###\n"),
       template,
+      additionalIgnores(),
     );
     expect(result).toContain("### Linux ###");
     expect(result).not.toContain("### Node ###");
@@ -361,6 +425,7 @@ describe("updateGitignore", () => {
     const result = updateGitignore(
       `${upstream("node,yarn", "### yarn ###\n.yarn/*\n")}\n# owner\n.yarn/owner-only\n`,
       template,
+      additionalIgnores(),
     );
     expect(result).toContain(`${GITIGNORE_ENDPOINT}/node\n`);
     expect(result).not.toContain("### yarn ###");
@@ -371,8 +436,8 @@ describe("updateGitignore", () => {
   test("refreshes additional ignores independently and leaves owner vendor rules", () => {
     const old =
       "# Created by drop-calf additional ignores\nvendor/\nstale/\n# End of drop-calf additional ignores\n\nvendor/\n";
-    expect(updateGitignore(old, template)).toBe(
-      `${ADDITIONAL_IGNORES}\nvendor/\n`,
+    expect(updateGitignore(old, template, additionalIgnores())).toBe(
+      `${additionalIgnores()}\nvendor/\n`,
     );
   });
 
@@ -380,28 +445,29 @@ describe("updateGitignore", () => {
     const result = updateGitignore(
       upstream("Node,yarn", "stale/\n", "https://www.gitignore.io/api"),
       template,
+      additionalIgnores(),
     );
     expect(result).toContain(`${GITIGNORE_ENDPOINT}/node\n`);
-    const empty = buildGitignore(template, []);
-    expect(updateGitignore(empty, template)).toBe(empty);
-    expect(updateGitignore(upstream("yarn"), template)).toContain(
-      `${GITIGNORE_ENDPOINT}/\n`,
-    );
+    const empty = buildGitignore(template, additionalIgnores(), []);
+    expect(updateGitignore(empty, template, additionalIgnores())).toBe(empty);
+    expect(
+      updateGitignore(upstream("yarn"), template, additionalIgnores()),
+    ).toContain(`${GITIGNORE_ENDPOINT}/\n`);
   });
 
   test("preserves CR-sensitive pinned rules and the absence of a final newline", () => {
     const old = upstream("macos").trimEnd();
-    const result = updateGitignore(old, template);
+    const result = updateGitignore(old, template, additionalIgnores());
     expect(result).toContain("\nIcon\r\r\n");
     expect(result.endsWith("\n")).toBe(false);
-    expect(updateGitignore(result, template)).toBe(result);
+    expect(updateGitignore(result, template, additionalIgnores())).toBe(result);
   });
 
   test("never adopts unmarked lines or unrelated Created by comments", () => {
     const owner =
       "# owner\r\nnode_modules/\r\n!keep/\r\n# Created by https://example.com/api/node\r\n";
-    expect(updateGitignore(owner, template)).toBe(owner);
-    expect(updateGitignore("", template)).toBe("");
+    expect(updateGitignore(owner, template, additionalIgnores())).toBe(owner);
+    expect(updateGitignore("", template, additionalIgnores())).toBe("");
   });
 
   test.each([
@@ -410,35 +476,62 @@ describe("updateGitignore", () => {
     `# Created by ${GITIGNORE_ENDPOINT}/node\n# End of ${GITIGNORE_ENDPOINT}/linux\n`,
     `# Created by ${GITIGNORE_ENDPOINT}/node\n# Created by ${GITIGNORE_ENDPOINT}/linux\n`,
   ])("refuses malformed owned block markers: %j", (old) => {
-    expect(() => updateGitignore(old, template)).toThrow(
+    expect(() => updateGitignore(old, template, additionalIgnores())).toThrow(
       /cannot parse .gitignore/,
     );
   });
 
   test("refuses unsupported topics without replacing the block", () => {
-    expect(() => updateGitignore(upstream("rust"), template)).toThrow(
-      InvalidOptionsError,
-    );
+    expect(() =>
+      updateGitignore(upstream("rust"), template, additionalIgnores()),
+    ).toThrow(InvalidOptionsError);
   });
 });
 
 describe("copyGitignoreAssets", () => {
+  test("propagates a missing additional template before writing", async () => {
+    const input = mockDirectory();
+    const write = spyOn(input, "withNewFile");
+    const missing = fakeFile("");
+    spyOn(missing, "contents").mockRejectedValue(
+      new Error("additional template not found"),
+    );
+    await expect(
+      copyGitignoreAssets(input, fakeFile(template), missing),
+    ).rejects.toThrow("additional template not found");
+    expect(write).not.toHaveBeenCalled();
+  });
+
   test("writes a generated .gitignore into the supplied directory", async () => {
     const output = await copyGitignoreAssets(
       mockDirectory(),
       fakeFile(template),
+      fakeFile(additionalIgnores()),
     );
-    expect(await gitignoreOf(output)).toBe(buildGitignore(template));
+    expect(await gitignoreOf(output)).toBe(
+      buildGitignore(template, additionalIgnores()),
+    );
   });
 
   test("defaults to every pinned template and honours an explicit subset", async () => {
     const all = await gitignoreOf(
-      await copyGitignoreAssets(mockDirectory(), fakeFile(template)),
+      await copyGitignoreAssets(
+        mockDirectory(),
+        fakeFile(template),
+        fakeFile(additionalIgnores()),
+      ),
     );
     const subset = await gitignoreOf(
-      await copyGitignoreAssets(mockDirectory(), fakeFile(template), ["node"]),
+      await copyGitignoreAssets(
+        mockDirectory(),
+        fakeFile(template),
+        fakeFile(additionalIgnores()),
+        ["node"],
+      ),
     );
-    expect(subset).toBe(buildGitignore(template, ["node"]));
+    expect(subset).toBe(
+      buildGitignore(template, additionalIgnores(), ["node"]),
+    );
     expect(subset).not.toBe(all);
     expect(subset).not.toContain("### macOS ###");
   });
@@ -447,7 +540,12 @@ describe("copyGitignoreAssets", () => {
     const input = mockDirectory();
     const write = spyOn(input, "withNewFile");
     await expect(
-      copyGitignoreAssets(input, fakeFile(template), ["nope"]),
+      copyGitignoreAssets(
+        input,
+        fakeFile(template),
+        fakeFile(additionalIgnores()),
+        ["nope"],
+      ),
     ).rejects.toBeInstanceOf(InvalidOptionsError);
     expect(write).not.toHaveBeenCalled();
   });
@@ -472,16 +570,24 @@ describe("copyGitignoreAssets", () => {
           const output = await copyGitignoreAssets(
             input,
             fakeFile(template),
+            fakeFile(additionalIgnores()),
             sets,
           );
           const separator = owner ? (owner.endsWith("\n") ? "\n" : "\n\n") : "";
           expect(await gitignoreOf(output)).toBe(
-            owner + separator + buildGitignore(template, sets),
+            owner +
+              separator +
+              buildGitignore(template, additionalIgnores(), sets),
           );
           expect(await output.file("owner.txt").contents()).toBe("untouched");
           expect([...input.files]).toEqual(before);
           expect(
-            await copyGitignoreAssets(output, fakeFile(template), sets),
+            await copyGitignoreAssets(
+              output,
+              fakeFile(template),
+              fakeFile(additionalIgnores()),
+              sets,
+            ),
           ).toBe(output);
         },
       ),
@@ -492,14 +598,20 @@ describe("copyGitignoreAssets", () => {
     const output = await copyGitignoreAssets(
       mockDirectory(
         new Map([
-          [".gitignore", `# owner\n${buildGitignore(template)}\n!keep\n`],
+          [
+            ".gitignore",
+            `# owner\n${buildGitignore(template, additionalIgnores())}\n!keep\n`,
+          ],
         ]),
       ),
       fakeFile(template),
+      fakeFile(additionalIgnores()),
       ["linux"],
     );
     expect(await gitignoreOf(output)).toBe(
-      `# owner\n${buildGitignore(template, ["linux"])}\n!keep\n`,
+      `# owner\n${buildGitignore(template, additionalIgnores(), [
+        "linux",
+      ])}\n!keep\n`,
     );
     expect(await gitignoreOf(output)).not.toContain(
       `${GITIGNORE_ENDPOINT}/${GITIGNORE_QUERY}`,
@@ -511,7 +623,11 @@ describe("copyGitignoreAssets", () => {
     const input = mockDirectory(new Map([[".gitignore", old]]));
     const write = spyOn(input, "withNewFile");
     await expect(
-      copyGitignoreAssets(input, fakeFile(template)),
+      copyGitignoreAssets(
+        input,
+        fakeFile(template),
+        fakeFile(additionalIgnores()),
+      ),
     ).rejects.toThrow(/end marker/);
     expect(write).not.toHaveBeenCalled();
   });
@@ -519,9 +635,9 @@ describe("copyGitignoreAssets", () => {
   test("propagates a missing pin instead of writing a partial file", async () => {
     const input = mockDirectory();
     const write = spyOn(input, "withNewFile");
-    await expect(copyGitignoreAssets(input, fakeFile(""))).rejects.toThrow(
-      /missing or malformed/,
-    );
+    await expect(
+      copyGitignoreAssets(input, fakeFile(""), fakeFile(additionalIgnores())),
+    ).rejects.toThrow(/missing or malformed/);
     expect(write).not.toHaveBeenCalled();
   });
 });

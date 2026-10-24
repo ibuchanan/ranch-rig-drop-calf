@@ -13,7 +13,10 @@ import { CATALOG_TEMPLATE } from "../../src/capabilities/catalog.ts";
 import { CHANGELOG_TEMPLATE } from "../../src/capabilities/changelog.ts";
 import { FALLOW_TEMPLATE } from "../../src/capabilities/fallow.ts";
 import { GIT_HOOKS_TEMPLATE } from "../../src/capabilities/git-hooks.ts";
-import { PINNED_GITIGNORE } from "../../src/capabilities/gitignore.ts";
+import {
+  GITIGNORE_TEMPLATE,
+  PINNED_GITIGNORE,
+} from "../../src/capabilities/gitignore.ts";
 import { OSS_ASSETS } from "../../src/capabilities/oss.ts";
 import { SECRETS_TEMPLATE } from "../../src/capabilities/secrets.ts";
 import { SKILL_STARTER_TEMPLATE } from "../../src/capabilities/skill-starter.ts";
@@ -31,6 +34,7 @@ import {
   docsTemplates,
   fallowTemplates,
   gitHooksTemplates,
+  gitignoreTemplates,
   libraryBuildTemplates,
   packageCheckTemplates,
   promptfooTemplates,
@@ -112,13 +116,15 @@ export function mockModuleSource(
   const gitHooks = gitHooksTemplates();
   const secrets = secretsTemplates();
   const gitignore = pinnedGitignore();
-  const source = {
-    file: (path: string) => ({
-      text: path === PINNED_GITIGNORE ? gitignore : templates.get(path),
-      contents: async () =>
-        path === PINNED_GITIGNORE ? gitignore : templates.get(path),
-    }),
-  };
+  const files = new Map([
+    [PINNED_GITIGNORE, gitignore],
+    ...[...gitignoreTemplates()].map(
+      ([path, contents]) =>
+        [`${GITIGNORE_TEMPLATE}/${path}`, contents] as const,
+    ),
+    ...templates,
+  ]);
+  const source = mockDirectory(files);
   const trees = new Map<string, ReturnType<typeof mockDirectory>>([
     [AIDEV_TEMPLATE, mockDirectory(aidevTemplates())],
     [LIBRARY_AIDEV_TEMPLATE, mockDirectory(aidevTemplates("library"))],

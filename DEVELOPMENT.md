@@ -330,8 +330,9 @@ are unchanged. See `src/capabilities/bun.ts` for both capabilities.
 ## Seeded assets
 
 `.gitignore` is a seeded asset, not a blueprint file: like the OSS and docs
-trees, it is pinned outside `ProjectBlueprint`. Its capability declares
-`vendor/gitignore` for `seedTemplates` to assemble into the rendered `Directory`.
+trees, its source assets live outside `ProjectBlueprint`. Its capability declares
+`templates/gitignore` for `seedTemplates` to assemble with `vendor/gitignore`
+into the rendered `Directory`.
 That keeps assembly pure and testable, and means
 `buildProject` does not produce `.gitignore` — a unit test asserting on generated
 `.gitignore` content should assert on `buildGitignore` instead.
@@ -528,11 +529,11 @@ never downgrades, and skips GitHub references.
 `src/capabilities/gitignore.ts` assembles `.gitignore` from the gitignore.io
 templates in `GITIGNORE_TEMPLATES` (`visualstudiocode`, `linux`, `macos`, `windows`,
 `node`, and `turbo`), de-duplicating rules on first occurrence, then appends
-`ADDITIONAL_IGNORES`: `.fallow/`, `.scratch/`, `.session/`, and
-`/.cocoindex_code/`. The internal gitignore seed helper selects a subset by
-gitignore.io name; the default is all of them, and an unknown name fails before
-anything is written. The generated URLs record the selected subset, not every
-available topic in the pin.
+additional defaults from `templates/gitignore/.gitignore` (`.fallow/`, `.scratch/`,
+`.session/`, and `/.cocoindex_code/`). The internal gitignore seed helper selects
+a subset by gitignore.io name; the default is all of them, and an unknown name
+fails before anything is written. The generated URLs record the selected subset,
+not every available topic in the pin.
 
 The topic block uses Toptal's `# Created by <URL>` / `# End of <URL>` markers.
 Additional defaults use a separate `# Created by drop-calf additional ignores` /

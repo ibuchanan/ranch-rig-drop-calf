@@ -22,16 +22,7 @@ export const GITIGNORE_QUERY = GITIGNORE_TEMPLATES.join(",");
 export const PINNED_GITIGNORE = "vendor/gitignore";
 
 /** Additional defaults have their own block, independent of topic selection. */
-export const ADDITIONAL_IGNORES = `# Created by drop-calf additional ignores
-# Additional ignores
-.fallow/
-.scratch/
-.session/
-
-# CocoIndex Code (ccc)
-/.cocoindex_code/
-# End of drop-calf additional ignores
-`;
+export const GITIGNORE_TEMPLATE = "templates/gitignore";
 
 const EXTRAS = "drop-calf additional ignores";
 const SECTION_HEADING = /^### (.+?) ###$/;
@@ -142,9 +133,10 @@ function buildTopicBlock(template: string, sets: readonly string[]): string {
 /** Init seeds the upstream topic block followed by the additional-ignore block. */
 export function buildGitignore(
   template: string,
+  additionalIgnores: string,
   sets: readonly string[] = GITIGNORE_TEMPLATES,
 ): string {
-  return `${buildTopicBlock(template, sets)}\n${ADDITIONAL_IGNORES}`;
+  return `${buildTopicBlock(template, sets)}\n${additionalIgnores}`;
 }
 
 /** The two kinds of block Drop Calf owns; each is replaced whole, never line by line. */
@@ -173,9 +165,10 @@ function parseMarker(line: string): BlockMarker | undefined {
 function replacementBlock(
   spec: BlockSpec,
   template: string,
+  additionalIgnores: string,
   sets: readonly string[] | undefined,
 ): string {
-  if (spec.kind === "extras") return ADDITIONAL_IGNORES;
+  if (spec.kind === "extras") return additionalIgnores;
   return buildTopicBlock(
     template,
     sets ?? spec.topics.map(normalizeSet).filter((set) => set !== "yarn"),
@@ -233,11 +226,15 @@ function* ownedBlocks(contents: string): Generator<OwnedBlock> {
 /** The owned blocks init adds when the file lacks them. */
 const SEEDED_BLOCKS: Record<
   BlockKind,
-  (template: string, sets?: readonly string[]) => string
+  (
+    template: string,
+    additionalIgnores: string,
+    sets?: readonly string[],
+  ) => string
 > = {
-  topics: (template, sets) =>
+  topics: (template, _additionalIgnores, sets) =>
     buildTopicBlock(template, sets ?? GITIGNORE_TEMPLATES),
-  extras: () => ADDITIONAL_IGNORES,
+  extras: (_template, additionalIgnores) => additionalIgnores,
 };
 
 /**
@@ -248,13 +245,19 @@ const SEEDED_BLOCKS: Record<
 function replaceBlocks(
   contents: string,
   template: string,
+  additionalIgnores: string,
   sets?: readonly string[],
 ): { text: string; found: ReadonlySet<BlockKind> } {
   let cursor = 0;
   let text = "";
   const found = new Set<BlockKind>();
   for (const block of ownedBlocks(contents)) {
-    const replacement = replacementBlock(block.spec, template, sets);
+    const replacement = replacementBlock(
+      block.spec,
+      template,
+      additionalIgnores,
+      sets,
+    );
     // The marker's newline belongs to the block; an EOF marker stays at EOF.
     text +=
       contents.slice(cursor, block.start) +
@@ -266,21 +269,31 @@ function replaceBlocks(
 }
 
 /** Update uses the topics recorded in each owned block; unmarked files are intact. */
-export function updateGitignore(contents: string, template: string): string {
-  return replaceBlocks(contents, template).text;
+export function updateGitignore(
+  contents: string,
+  template: string,
+  additionalIgnores: string,
+): string {
+  return replaceBlocks(contents, template, additionalIgnores).text;
 }
 
 /** Init does the same, then seeds whichever owned blocks the file lacks. */
 function seedGitignore(
   contents: string,
   template: string,
+  additionalIgnores: string,
   sets?: readonly string[],
 ): string {
-  const { text, found } = replaceBlocks(contents, template, sets);
+  const { text, found } = replaceBlocks(
+    contents,
+    template,
+    additionalIgnores,
+    sets,
+  );
   return appendBlocks(
     text,
     BLOCK_KINDS.filter((kind) => !found.has(kind)).map((kind) =>
-      SEEDED_BLOCKS[kind](template, sets),
+      SEEDED_BLOCKS[kind](template, additionalIgnores, sets),
     ),
   );
 }
@@ -299,15 +312,17 @@ export async function readPinnedTemplate(source: File): Promise<string> {
 export async function copyGitignoreAssets(
   destination: Directory,
   source: File,
+  additionalSource: File,
   sets?: readonly string[],
 ): Promise<Directory> {
   const template = await readPinnedTemplate(source);
+  const additionalIgnores = await additionalSource.contents();
   // Reject an explicit unsupported selection even if no upstream block is present.
   if (sets) buildTopicBlock(template, sets);
   const contents = (await destination.exists(".gitignore"))
     ? await destination.file(".gitignore").contents()
     : "";
-  const wanted = seedGitignore(contents, template, sets);
+  const wanted = seedGitignore(contents, template, additionalIgnores, sets);
   return wanted === contents
     ? destination
     : destination.withNewFile(".gitignore", wanted);
@@ -331,18 +346,26 @@ export function gitignore(): Capability {
     },
     init(project) {
       project.templates.push({
-        path: PINNED_GITIGNORE,
+        path: GITIGNORE_TEMPLATE,
         seed: (destination, source) =>
-          copyGitignoreAssets(destination, source.file(PINNED_GITIGNORE)),
+          copyGitignoreAssets(
+            destination,
+            source.file(PINNED_GITIGNORE),
+            source.file(`${GITIGNORE_TEMPLATE}/.gitignore`),
+          ),
       });
     },
     async update(directory) {
       if (!(await directory.exists(".gitignore"))) return directory;
       const contents = await directory.file(".gitignore").contents();
+      const moduleSource = dag.currentModule().source();
       const template = await readPinnedTemplate(
-        dag.currentModule().source().file(PINNED_GITIGNORE),
+        moduleSource.file(PINNED_GITIGNORE),
       );
-      const wanted = updateGitignore(contents, template);
+      const additionalIgnores = await moduleSource
+        .file(`${GITIGNORE_TEMPLATE}/.gitignore`)
+        .contents();
+      const wanted = updateGitignore(contents, template, additionalIgnores);
       return wanted === contents
         ? directory
         : directory.withNewFile(".gitignore", wanted);

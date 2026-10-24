@@ -50,3 +50,5 @@ export const releaseTemplates = () => templatesIn("release");
 export const libraryBuildTemplates = () => templatesIn("library-build");
 
 export const promptfooTemplates = () => templatesIn("promptfoo");
+
+export const gitignoreTemplates = () => templatesIn("gitignore");

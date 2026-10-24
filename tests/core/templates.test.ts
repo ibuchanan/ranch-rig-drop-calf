@@ -11,7 +11,7 @@ import { CHANGELOG_TEMPLATE } from "../../src/capabilities/changelog.ts";
 import { DOCS_TEMPLATE } from "../../src/capabilities/docs.ts";
 import { FALLOW_TEMPLATE } from "../../src/capabilities/fallow.ts";
 import { GIT_HOOKS_TEMPLATE } from "../../src/capabilities/git-hooks.ts";
-import { PINNED_GITIGNORE } from "../../src/capabilities/gitignore.ts";
+import { GITIGNORE_TEMPLATE } from "../../src/capabilities/gitignore.ts";
 import { LIBRARY_BUILD_TEMPLATE } from "../../src/capabilities/library-build.ts";
 import { PINNED_OSS } from "../../src/capabilities/oss.ts";
 import { PACKAGE_CHECK_TEMPLATE } from "../../src/capabilities/package-check.ts";
@@ -36,7 +36,7 @@ const COMMON_TEMPLATES = [
   BIOME_TEMPLATE,
   CATALOG_TEMPLATE,
   PINNED_OSS,
-  PINNED_GITIGNORE,
+  GITIGNORE_TEMPLATE,
   CHANGELOG_TEMPLATE,
   DOCS_TEMPLATE,
   GIT_HOOKS_TEMPLATE,
