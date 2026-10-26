@@ -43,7 +43,6 @@ const COMMON_TEMPLATES = [
   CHANGELOG_TEMPLATE,
   DOCS_TEMPLATE,
   GIT_HOOKS_TEMPLATE,
-  "templates/release",
 ];
 
 /** Template trees added per kind; `withEvals` ones appear only under `--preset all`. */
@@ -54,6 +53,7 @@ const KIND_TEMPLATES: Record<
   library: {
     paths: [
       LIBRARY_AIDEV_TEMPLATE,
+      "templates/release",
       LIBRARY_BUILD_TEMPLATE,
       PACKAGE_CHECK_TEMPLATE,
       FALLOW_TEMPLATE,
@@ -70,10 +70,18 @@ const KIND_TEMPLATES: Record<
     ],
     withEvals: [EVALS_TEMPLATE],
   },
-  tool: { paths: ["templates/bun", FALLOW_TEMPLATE, TYPESCRIPT_BUN_TEMPLATE] },
+  tool: {
+    paths: [
+      "templates/release",
+      "templates/bun",
+      FALLOW_TEMPLATE,
+      TYPESCRIPT_BUN_TEMPLATE,
+    ],
+  },
   "agent-skill": {
     paths: [
       AGENT_SKILL_AIDEV_TEMPLATE,
+      "templates/release",
       "templates/bun",
       SKILL_STARTER_TEMPLATE,
       TYPESCRIPT_BUN_TEMPLATE,

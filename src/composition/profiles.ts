@@ -77,7 +77,6 @@ export const PROFILES: Record<ProjectKind, Capability[]> = {
     nodeBaseline({ engines: "remove" }),
     forgeManifest(),
     changelogToolchain(),
-    release(),
     forgeSecrets(),
     prelint(),
     biomeToolchain(),

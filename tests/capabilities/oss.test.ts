@@ -236,7 +236,11 @@ function expectedPackageJson(
 }
 
 /** Every template tree `init` seeds for a kind, later trees overriding earlier ones. */
-function seededTemplates(expected: KindExpectations, preset?: string) {
+function seededTemplates(
+  expected: KindExpectations,
+  preset?: string,
+  kind?: string,
+) {
   return new Map([
     ...biomeTemplates(),
     ...[...expected.typescript()].filter(
@@ -246,11 +250,23 @@ function seededTemplates(expected: KindExpectations, preset?: string) {
     ...docsTemplates(),
     ...expected.templates(preset).flatMap((tree) => [...tree]),
     ...changelogTemplates(),
-    ...releaseTemplates(),
+    ...(kind === "forge-app" ? [] : releaseTemplates()),
   ]);
 }
 
 /** The exact text `init` writes for every file fully determined by a template. */
+async function addReleaseScript(kind: string, seeded: Map<string, string>) {
+  if (kind === "forge-app") return;
+  const output = await runUpdate(
+    capabilityOf(kind, "release"),
+    mockDirectory(new Map([["package.json", "{}"]])),
+  );
+  seeded.set(
+    "scripts/release.sh",
+    await output.file("scripts/release.sh").contents(),
+  );
+}
+
 function expectedContents(
   expected: KindExpectations,
   seeded: ReadonlyMap<string, string>,
@@ -374,15 +390,8 @@ describe("pinned OSS templates", () => {
         expect(JSON.parse(writes.get("package.json") ?? "null")).toEqual(
           expectedPackageJson(project.packageJson, expected),
         );
-        const seeded = seededTemplates(expected, preset);
-        const releaseOutput = await runUpdate(
-          capabilityOf(kind, "release"),
-          mockDirectory(new Map([["package.json", "{}"]])),
-        );
-        seeded.set(
-          "scripts/release.sh",
-          await releaseOutput.file("scripts/release.sh").contents(),
-        );
+        const seeded = seededTemplates(expected, preset, kind);
+        await addReleaseScript(kind, seeded);
         for (const [path, contents] of expectedContents(expected, seeded))
           expect(writes.get(path), path).toBe(contents);
         expect(

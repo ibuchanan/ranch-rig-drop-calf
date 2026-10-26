@@ -9,7 +9,7 @@ import { validateCapabilities } from "../../src/core/capability.ts";
 import { runUpdate } from "../support/capability-fixtures.ts";
 import { mockDirectory, mockModuleSource } from "../support/module-source.ts";
 
-test.each(["library", "forge-app", "tool", "agent-skill"])(
+test.each(["library", "tool", "agent-skill"])(
   "%s selects a required one-command release with one git-cliff owner",
   (kind) => {
     const selected = resolveProfile(kind);
