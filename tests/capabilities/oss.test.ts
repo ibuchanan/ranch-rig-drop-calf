@@ -43,6 +43,7 @@ import {
   forgeDocsTemplates,
   gitHooksTemplates,
   libraryBuildTemplates,
+  nodeTemplates,
   packageCheckTemplates,
   promptfooTemplates,
   releaseTemplates,
@@ -163,6 +164,7 @@ const KIND_EXPECTATIONS: Record<string, KindExpectations> = {
     typescript: typescriptTemplates,
     templates: () => [
       libraryBuildTemplates(),
+      nodeTemplates(),
       packageCheckTemplates(),
       fallowTemplates(),
     ],
@@ -188,6 +190,7 @@ const KIND_EXPECTATIONS: Record<string, KindExpectations> = {
     templates: (preset) => [
       vitestTemplates(),
       forgeDocsTemplates(),
+      nodeTemplates(),
       ...whenPresetAll(preset),
     ],
     extraFiles: ["AGENTS.md", ...SECRETS_ASSETS],

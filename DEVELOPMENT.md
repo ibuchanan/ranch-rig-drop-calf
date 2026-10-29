@@ -206,7 +206,7 @@ Entry point:
   [The generated `.gitignore`](#the-generated-gitignore)).
 - `src/capabilities/library-build.ts`: tsdown config and the library build
   script.
-- `src/capabilities/node.ts`: `.nvmrc`, `.npmrc`, `@types/node`, and the catalog
+- `src/capabilities/node.ts`: `.nvmrc`, `.npmrc` (authored in `templates/node/.npmrc`), `@types/node`, and the catalog
   license.
 - `src/capabilities/oss.ts`: pinned OSS documents (see
   [Refreshing the pinned OSS templates](#refreshing-the-pinned-oss-templates)).

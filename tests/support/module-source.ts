@@ -18,6 +18,7 @@ import {
   GITIGNORE_TEMPLATE,
   PINNED_GITIGNORE,
 } from "../../src/capabilities/gitignore.ts";
+import { NODE_TEMPLATE } from "../../src/capabilities/node.ts";
 import { OSS_ASSETS } from "../../src/capabilities/oss.ts";
 import { SECRETS_TEMPLATE } from "../../src/capabilities/secrets.ts";
 import { SKILL_STARTER_TEMPLATE } from "../../src/capabilities/skill-starter.ts";
@@ -38,6 +39,7 @@ import {
   gitHooksTemplates,
   gitignoreTemplates,
   libraryBuildTemplates,
+  nodeTemplates,
   packageCheckTemplates,
   promptfooTemplates,
   releaseTemplates,
@@ -124,6 +126,9 @@ export function mockModuleSource(
       ([path, contents]) =>
         [`${GITIGNORE_TEMPLATE}/${path}`, contents] as const,
     ),
+    ...[...nodeTemplates()].map(
+      ([path, contents]) => [`${NODE_TEMPLATE}/${path}`, contents] as const,
+    ),
     ...templates,
   ]);
   const source = mockDirectory(files);
@@ -151,6 +156,7 @@ export function mockModuleSource(
     [TYPESCRIPT_TEMPLATE, mockDirectory(typeScript)],
     [TYPESCRIPT_BUN_TEMPLATE, mockDirectory(typescriptBunTemplates())],
     [SKILL_STARTER_TEMPLATE, mockDirectory(skillStarterTemplates())],
+    [NODE_TEMPLATE, mockDirectory(nodeTemplates())],
     [BIOME_TEMPLATE, mockDirectory(biome)],
     [FALLOW_TEMPLATE, mockDirectory(fallowTemplates())],
     [CHANGELOG_TEMPLATE, mockDirectory(changelog)],

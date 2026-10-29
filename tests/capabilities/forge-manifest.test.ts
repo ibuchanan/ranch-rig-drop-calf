@@ -18,7 +18,7 @@ import { TOOL_VERSIONS } from "../../src/core/versions.ts";
 import { DropCalf } from "../../src/index.ts";
 import { capabilityOf, verb } from "../support/capability-fixtures.ts";
 import { mockContainer } from "../support/container-source.ts";
-import { mockDirectory } from "../support/module-source.ts";
+import { mockDirectory, mockModuleSource } from "../support/module-source.ts";
 
 const runtime = "nodejs22.x";
 test.each([
@@ -211,24 +211,31 @@ test("update derives the runtime from .nvmrc, preserves other files and is idemp
   expect([...input.files]).toEqual(before);
 });
 test("Node first establishes its policy; manifest then reads the resulting .nvmrc", async () => {
+  const source = mockModuleSource();
   const input = mockDirectory(
     new Map([
       [".nvmrc", "22\n"],
       ["manifest.yml", "app:\n  runtime:\n    name: nodejs22.x\n"],
     ]),
   );
-  const output = await updateCapabilities(input, [
-    capabilityOf("forge-app", "node"),
-    forgeManifest(),
-  ]);
-  expect(await output.file(".nvmrc").contents()).toBe("24\n");
-  expect(await output.file("manifest.yml").contents()).toContain("nodejs24.x");
-  expect(
-    await updateCapabilities(output, [
+  try {
+    const output = await updateCapabilities(input, [
       capabilityOf("forge-app", "node"),
       forgeManifest(),
-    ]),
-  ).toBe(output);
+    ]);
+    expect(await output.file(".nvmrc").contents()).toBe("24\n");
+    expect(await output.file("manifest.yml").contents()).toContain(
+      "nodejs24.x",
+    );
+    expect(
+      await updateCapabilities(output, [
+        capabilityOf("forge-app", "node"),
+        forgeManifest(),
+      ]),
+    ).toBe(output);
+  } finally {
+    source.mockRestore();
+  }
 });
 test("standalone update rejects an ambiguous pin without changing the input", async () => {
   const input = mockDirectory(

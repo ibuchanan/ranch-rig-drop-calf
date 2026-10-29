@@ -16,6 +16,7 @@ import { FALLOW_TEMPLATE } from "../../src/capabilities/fallow.ts";
 import { GIT_HOOKS_TEMPLATE } from "../../src/capabilities/git-hooks.ts";
 import { GITIGNORE_TEMPLATE } from "../../src/capabilities/gitignore.ts";
 import { LIBRARY_BUILD_TEMPLATE } from "../../src/capabilities/library-build.ts";
+import { NODE_TEMPLATE } from "../../src/capabilities/node.ts";
 import { PINNED_OSS } from "../../src/capabilities/oss.ts";
 import { PACKAGE_CHECK_TEMPLATE } from "../../src/capabilities/package-check.ts";
 import { SECRETS_TEMPLATE } from "../../src/capabilities/secrets.ts";
@@ -55,6 +56,7 @@ const KIND_TEMPLATES: Record<
       LIBRARY_AIDEV_TEMPLATE,
       "templates/release",
       LIBRARY_BUILD_TEMPLATE,
+      NODE_TEMPLATE,
       PACKAGE_CHECK_TEMPLATE,
       FALLOW_TEMPLATE,
       TYPESCRIPT_TEMPLATE,
@@ -64,6 +66,7 @@ const KIND_TEMPLATES: Record<
     paths: [
       AIDEV_TEMPLATE,
       FORGE_DOCS_TEMPLATE,
+      NODE_TEMPLATE,
       SECRETS_TEMPLATE,
       "templates/vitest",
       TYPESCRIPT_TEMPLATE,

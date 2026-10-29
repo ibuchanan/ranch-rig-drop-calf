@@ -4,6 +4,7 @@ import type { Capability, Validation } from "../core/capability.ts";
 import { ensureFile } from "../core/files.ts";
 import { isPlainObject } from "../core/guards.ts";
 import { editPackageJson, readPackageJson } from "../core/package-json.ts";
+import { templateTree } from "../core/templates.ts";
 import { nodeContainer, REPOSITORY, runTool } from "../core/tool-run.ts";
 import { NODE_MAJOR, TOOL_VERSIONS } from "../core/versions.ts";
 import { updatePackageLicense } from "./package-metadata.ts";
@@ -16,8 +17,9 @@ import { updatePackageLicense } from "./package-metadata.ts";
  * The engines option decides whether update removes or preserves owner declarations.
  */
 export const NODE_NVMRC = `${NODE_MAJOR}\n`;
-const NPM_REGISTRY = "https://registry.npmjs.org/";
-export const NPMRC = `# Use the public npm registry (not the default for internal Atlassians)\nregistry=${NPM_REGISTRY}\n`;
+
+/** The authored `.npmrc`; init seeds it and update replaces the whole file with it. */
+export const NODE_TEMPLATE = "templates/node";
 /** Whether a declared `@types/node` range admits only the selected major. */
 function withinMajor(types: unknown, major: string): boolean {
   const range = typeof types === "string" ? validRange(types) : null;
@@ -46,9 +48,14 @@ async function updateNode(
         )
           dependencies["@types/node"] = major;
     });
+  const npmrc = await dag
+    .currentModule()
+    .source()
+    .file(`${NODE_TEMPLATE}/.npmrc`)
+    .contents();
   for (const [path, wanted] of [
     [".nvmrc", `${major ?? NODE_MAJOR}\n`],
-    [".npmrc", NPMRC],
+    [".npmrc", npmrc],
   ] as const)
     result = await ensureFile(result, path, wanted);
   return result;
@@ -135,7 +142,7 @@ export function nodeBaseline({
     },
     init(project) {
       project.files.set(".nvmrc", `${baseline}\n`);
-      project.files.set(".npmrc", NPMRC);
+      project.templates.push(templateTree(NODE_TEMPLATE));
     },
     update: (directory) => updateNode(directory, major),
     validate: validateNode,

@@ -11,7 +11,7 @@ import {
 } from "node:fs";
 import { join } from "node:path";
 import { forgeRuntimeFromNvmrc } from "../../src/capabilities/forge-manifest.ts";
-import { NODE_NVMRC, NPMRC } from "../../src/capabilities/node.ts";
+import { NODE_NVMRC } from "../../src/capabilities/node.ts";
 import { resolveProfile } from "../../src/composition/profiles.ts";
 import { assemblePackage } from "../../src/core/package-json.ts";
 
@@ -151,7 +151,9 @@ for (const kind of ["library", "forge-app"]) {
       expect(readFileSync(join(output, ".nvmrc"), "utf8")).toBe(
         kind === "library" ? "22\n" : NODE_NVMRC,
       );
-      expect(readFileSync(join(output, ".npmrc"), "utf8")).toBe(NPMRC);
+      expect(readFileSync(join(output, ".npmrc"), "utf8")).toBe(
+        readFileSync(join(repo, "templates/node/.npmrc"), "utf8"),
+      );
       expect(readFileSync(join(output, "manifest.yml"), "utf8")).toBe(
         kind === "forge-app"
           ? manifest.replace("nodejs22.x", NODE_FORGE_RUNTIME)

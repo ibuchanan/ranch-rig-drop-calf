@@ -1,6 +1,6 @@
-import { describe, expect, spyOn, test } from "bun:test";
+import { afterEach, beforeEach, describe, expect, spyOn, test } from "bun:test";
 import { dag } from "@dagger.io/dagger";
-import { NPMRC, nodeBaseline } from "../../src/capabilities/node.ts";
+import { NODE_TEMPLATE, nodeBaseline } from "../../src/capabilities/node.ts";
 import { buildProject } from "../../src/composition/profiles.ts";
 import { ParseError } from "../../src/core/errors.ts";
 import { mergeScaffoldPackage } from "../../src/core/package-json.ts";
@@ -11,9 +11,20 @@ import {
   verb,
 } from "../support/capability-fixtures.ts";
 import { mockContainer } from "../support/container-source.ts";
-import { mockDirectory } from "../support/module-source.ts";
+import { mockDirectory, mockModuleSource } from "../support/module-source.ts";
+import { nodeTemplates } from "../support/templates-source.ts";
 
 const kinds = ["library", "forge-app"];
+
+/** The authored `.npmrc` the capability seeds and update restores. */
+const npmrc = () => nodeTemplates().get(".npmrc") ?? "";
+
+/** Update reads the authored `.npmrc` from the module source. */
+let source: ReturnType<typeof mockModuleSource>;
+beforeEach(() => {
+  source = mockModuleSource();
+});
+afterEach(() => source.mockRestore());
 const licenseCatalog =
   "metadata:\n  annotations:\n    forge-ranch/license: Apache-2.0\n";
 
@@ -21,13 +32,16 @@ describe("node baseline", () => {
   test.each(["library", "forge-app"])(
     "%s pins one Node baseline across package.json, .nvmrc and .npmrc",
     (kind) => {
-      const { packageJson: pkg, files } = buildProject(
-        kind,
-        "sample",
-        "tester",
-      );
+      const {
+        packageJson: pkg,
+        files,
+        templates,
+      } = buildProject(kind, "sample", "tester");
       expect(files.get(".nvmrc")).toBe(kind === "library" ? "22\n" : "24\n");
-      expect(files.get(".npmrc")).toBe(NPMRC);
+      expect(files.has(".npmrc")).toBe(false);
+      expect(templates.map((template) => template.path)).toContain(
+        NODE_TEMPLATE,
+      );
       expect(pkg.engines).toBeUndefined();
       expect(pkg.devDependencies["@types/node"]).toBe(
         kind === "library" ? "22" : "24",
@@ -60,6 +74,7 @@ test.each(kinds)(
     const input = mockDirectory(
       new Map([
         ...project.files,
+        [".npmrc", npmrc()],
         ["catalog-info.yaml", licenseCatalog],
         [
           "package.json",
@@ -112,7 +127,7 @@ test.each(kinds)(
     expect(await output.file(".nvmrc").contents()).toBe(
       kind === "library" ? "22\n" : "24\n",
     );
-    expect(await output.file(".npmrc").contents()).toBe(NPMRC);
+    expect(await output.file(".npmrc").contents()).toBe(npmrc());
     expect(await output.file("README.md").contents()).toBe("owner text");
     expect(await output.file("manifest.yml").contents()).toBe(manifest);
     expect(await runUpdate(capabilityOf(kind, "node"), output)).toBe(output);
