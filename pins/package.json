@@ -13,7 +13,7 @@
     "@forge/cli": "14.2.0",
     "agent-skills-toolkit": "github:ibuchanan/agent-skills-toolkit",
     "cspell": "10.4.0",
-    "fallow": "3.34.1",
+    "fallow": "3.35.0",
     "fence-rider": "github:ibuchanan/ranch-rig-fence-rider",
     "git-cliff": "2.14.2",
     "lefthook": "2.2.2",
