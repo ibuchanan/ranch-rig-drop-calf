@@ -573,7 +573,11 @@ installs them or injects secret values.
 - **init** overlays one asset from `templates/secretspec`: owner-managed
   `secretspec.toml`. The TOML project name is substituted with string escaping.
   `FORGE_SITE` is required, with no assumed site; `FORGE_PRODUCT` and
-  `FORGE_ENVIRONMENT` have defaults. Runtime and manifest variables are declared in
+  `FORGE_ENVIRONMENT` have defaults. Each declaration routes through a semantic
+  storage role in `providers` (`shared_config` for the FORGE_* controls; the commented
+  credential example uses `project_secrets`) that operators bind to backends in their
+  own SecretSpec configuration, so the template never names a backend or defines
+  aliases in `[providers]`. Runtime and manifest variables are declared in
   the default profile and listed in `[scopes.runtime]` or `[scopes.manifest]`; the
   template carries them as comments. Init is first-time setup: an existing asset is
   replaced. The package contribution seeds the `fence-rider` dev dependency as a

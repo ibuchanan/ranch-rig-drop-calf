@@ -1,5 +1,6 @@
 import { expect, spyOn, test } from "bun:test";
 import { type Directory, dag } from "@dagger.io/dagger";
+import { parse as parseToml } from "smol-toml";
 import {
   copySecretsAssets,
   FENCE_RIDER_PACKAGE,
@@ -109,6 +110,16 @@ function secretTemplate(): string {
 function seededSecrets() {
   return mockDirectory(new Map([["secretspec.toml", secretTemplate()]]));
 }
+
+test("the template routes every Forge control through the shared_config role", () => {
+  const config = parseToml(secretTemplate()) as {
+    profiles: { default: Record<string, { providers?: string[] }> };
+    providers?: unknown;
+  };
+  for (const key of ["FORGE_SITE", "FORGE_PRODUCT", "FORGE_ENVIRONMENT"])
+    expect(config.profiles.default[key]?.providers).toEqual(["shared_config"]);
+  expect(config.providers).toBeUndefined();
+});
 
 const VALID_TOML =
   '[project]\nname="owner"\nrevision="1.0"\n[profiles.default]\nAPI_TOKEN={ required=["external"], default="secret-marker" }\n[profiles.default.defaults]\nproviders=["owner"]\n[scopes.runtime]\nsecrets=["API_TOKEN"]\n';
