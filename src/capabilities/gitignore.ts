@@ -1,6 +1,10 @@
 import { type Directory, dag, type File } from "@dagger.io/dagger";
 import { type Capability, noOp } from "../core/capability.ts";
-import { InvalidOptionsError, ParseError } from "../core/errors.ts";
+import {
+  InvalidOptionsError,
+  ParseError,
+  PrerequisiteError,
+} from "../core/errors.ts";
 
 // gitignore.io redirects here; use the canonical host when refreshing the pin.
 export const GITIGNORE_ENDPOINT =
@@ -302,9 +306,13 @@ function seedGitignore(
 export async function readPinnedTemplate(source: File): Promise<string> {
   const contents = await source.contents();
   if (!parseTemplate(contents).sections.length)
-    throw new Error(
-      `${PINNED_GITIGNORE} is missing or malformed; run \`bun run refresh:gitignore\` and commit it.`,
-    );
+    throw new PrerequisiteError({
+      source: "gitignore",
+      path: PINNED_GITIGNORE,
+      discovered: "is missing or malformed",
+      wanted: "a pinned ignore template with at least one section",
+      remedy: "run `bun run refresh:gitignore` and commit the result",
+    });
   return contents;
 }
 

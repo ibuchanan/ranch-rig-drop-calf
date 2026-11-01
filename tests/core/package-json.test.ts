@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test";
 import type { Directory } from "@dagger.io/dagger";
 import fc from "fast-check";
-import { ParseError } from "../../src/core/errors.ts";
+import { ConflictError, ParseError } from "../../src/core/errors.ts";
 import {
   assemblePackage,
   editPackageJson,
@@ -203,12 +203,12 @@ test.each([
       contributor("a", { policy: { scripts: { lint: "a" } } }),
       contributor("b", { seed: { scripts: { lint: "b" } } }),
     ],
-    "scripts.lint is contributed by both a and b",
+    "scripts.lint: is contributed by both a and b",
   ],
   [
     "one capability's seed and policy",
     [contributor("a", { seed: { files: ["x"] }, policy: { files: ["y"] } })],
-    "files is contributed by both a and a",
+    "files: is contributed by both a and a",
   ],
   [
     "a removal and a value",
@@ -216,9 +216,10 @@ test.each([
       contributor("a", { policy: { engines: { node: "24" } } }),
       contributor("b", { remove: ["engines"] }),
     ],
-    "engines is contributed by both a and b",
+    "engines: is contributed by both a and b",
   ],
 ])("assembly rejects a key claimed by %s", (_case, contributors, message) => {
+  expect(() => assemblePackage(contributors)).toThrow(ConflictError);
   expect(() => assemblePackage(contributors)).toThrow(message);
 });
 

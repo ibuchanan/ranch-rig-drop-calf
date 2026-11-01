@@ -13,7 +13,7 @@ import {
   updateCapabilities,
   validateCapabilities,
 } from "../../src/core/capability.ts";
-import { ParseError } from "../../src/core/errors.ts";
+import { ParseError, PrerequisiteError } from "../../src/core/errors.ts";
 import { TOOL_VERSIONS } from "../../src/core/versions.ts";
 import { DropCalf } from "../../src/index.ts";
 import { capabilityOf, verb } from "../support/capability-fixtures.ts";
@@ -273,16 +273,16 @@ test.each([
     const spy = spyOn(dag, "container");
     try {
       const validate = verb(forgeManifest(), "validate");
-      const result = await validate(input, {
+      const context = {
         forgeEmail: credentials.email,
         forgeApiToken: credentials.token,
-      });
-      expect(result).toEqual({
-        status: "failed",
-        reason: expect.stringContaining(
-          "supply both --forge-email and --forge-api-token",
-        ),
-      });
+      };
+      await expect(validate(input, context)).rejects.toBeInstanceOf(
+        PrerequisiteError,
+      );
+      await expect(validate(input, context)).rejects.toThrow(
+        "supply both --forge-email and --forge-api-token",
+      );
       expect(spy).not.toHaveBeenCalled();
     } finally {
       spy.mockRestore();

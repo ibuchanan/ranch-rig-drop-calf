@@ -16,6 +16,7 @@ import {
   scaffoldSteps,
 } from "./composition/profiles.ts";
 import { updateCapabilities, validateCapabilities } from "./core/capability.ts";
+import { ConflictError, InvalidOptionsError } from "./core/errors.ts";
 import { carryFile, firstExisting, readOptionalFile } from "./core/files.ts";
 import { INIT_MARKERS } from "./core/init-markers.ts";
 import { mergeScaffoldPackage, scaffoldName } from "./core/package-json.ts";
@@ -103,9 +104,13 @@ export class DropCalf {
     );
     const marker = await firstExisting(directory, INIT_MARKERS);
     if (marker)
-      throw new Error(
-        `init is a one-time operation: ${marker} already exists; use update instead.`,
-      );
+      throw new ConflictError({
+        source: "init",
+        path: marker,
+        discovered: "already exists",
+        wanted: "a fresh repository",
+        remedy: "use update instead",
+      });
     const scaffold = await readOptionalFile(directory, "package.json");
     let cleaned = directory;
     for (const step of scaffoldSteps(profile)) cleaned = await step(cleaned);
@@ -187,7 +192,8 @@ export class DropCalf {
     sshAgent?: Socket,
     knownHosts?: File,
   ): Promise<Directory> {
-    if (publish && !git) throw new Error("Publication requires --git.");
+    if (publish && !git)
+      throw new InvalidOptionsError("Publication requires --git.");
     if (git)
       return repositoryWorkflow(
         {

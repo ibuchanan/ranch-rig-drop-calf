@@ -1,5 +1,6 @@
 import { type Directory, dag } from "@dagger.io/dagger";
 import { type Capability, noOp } from "../core/capability.ts";
+import { ConflictError } from "../core/errors.ts";
 import { ensureFile, firstExisting } from "../core/files.ts";
 import { parseJsonObject, readPackageJson } from "../core/package-json.ts";
 import { templateTree } from "../core/templates.ts";
@@ -22,13 +23,21 @@ async function rejectCompetingConfig(
     CONFIG_EXTENSIONS.map((extension) => `tsdown.config.${extension}`),
   );
   if (path)
-    throw new Error(
-      `library-build: ${path} conflicts with the managed JSON pipeline; move its entry and dependency settings to ${LIBRARY_BUILD_CONFIG} and remove ${path}.`,
-    );
+    throw new ConflictError({
+      source: "library-build",
+      path,
+      discovered: "shadows the managed JSON pipeline",
+      wanted: `entry and dependency settings in ${LIBRARY_BUILD_CONFIG}`,
+      remedy: `move those settings to ${LIBRARY_BUILD_CONFIG} and remove ${path}`,
+    });
   if (Object.hasOwn(pkg, "tsdown"))
-    throw new Error(
-      `library-build: package.json#tsdown conflicts with ${LIBRARY_BUILD_CONFIG}; move its settings to ${LIBRARY_BUILD_CONFIG} and remove the tsdown field.`,
-    );
+    throw new ConflictError({
+      source: "library-build",
+      path: "package.json#tsdown",
+      discovered: `shadows ${LIBRARY_BUILD_CONFIG}`,
+      wanted: "build settings in the managed JSON pipeline",
+      remedy: `move the tsdown settings to ${LIBRARY_BUILD_CONFIG} and remove the field`,
+    });
 }
 
 const FORMATS = ["esm", "cjs"];

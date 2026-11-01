@@ -2,6 +2,7 @@ import { afterEach, beforeEach, expect, spyOn, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { type Container, type Directory, dag } from "@dagger.io/dagger";
+import { InvalidOptionsError } from "../../src/core/errors.ts";
 import {
   type RepositoryInput,
   repositoryWorkflow,
@@ -215,6 +216,9 @@ test.each([
     "SSH requires a known-hosts file; host verification is never disabled.",
   ],
 ])("preflight rejects %s", async (_name, overrides, message) => {
+  await expect(run(input(overrides))).rejects.toBeInstanceOf(
+    InvalidOptionsError,
+  );
   await expect(run(input(overrides))).rejects.toThrow(message);
 });
 
@@ -222,6 +226,7 @@ test("an existing .git requires a history bundle", async () => {
   const withGit = input({
     directory: { exists: async () => true } as unknown as Directory,
   });
+  await expect(run(withGit)).rejects.toBeInstanceOf(InvalidOptionsError);
   await expect(run(withGit)).rejects.toThrow(
     "Existing repositories require --history bundle; never copy .git.",
   );

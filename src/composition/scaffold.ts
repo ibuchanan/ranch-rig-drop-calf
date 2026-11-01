@@ -10,7 +10,7 @@ import {
   parseDocument,
   type Scalar,
 } from "yaml";
-import { ParseError } from "../core/errors.ts";
+import { ConflictError, ParseError } from "../core/errors.ts";
 import { PACKAGE_JSON, stripScaffold } from "../core/package-json.ts";
 
 /**
@@ -43,9 +43,13 @@ function planRenames(paths: readonly string[]): Rename[] {
     .map((from) => ({ from, to: from.replace(/\.js(x?)$/, ".ts$1") }));
   const collision = renames.find(({ to }) => existing.has(to));
   if (collision)
-    throw new Error(
-      `cannot rename ${collision.from}: ${collision.to} already exists; resolve the collision before init.`,
-    );
+    throw new ConflictError({
+      source: "scaffold",
+      path: collision.from,
+      discovered: `destination ${collision.to} already exists`,
+      wanted: "a free destination for every adopted source file",
+      remedy: "resolve the collision before init",
+    });
   return renames;
 }
 

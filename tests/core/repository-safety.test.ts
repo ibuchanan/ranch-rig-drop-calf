@@ -6,6 +6,7 @@ import {
   sourceFingerprint,
 } from "../../scripts/repository/checkout.ts";
 import { deliverRepository } from "../../scripts/repository/delivery.ts";
+import { ConflictError } from "../../src/core/errors.ts";
 import { git } from "../../src/core/git.ts";
 import {
   finishRepository,
@@ -83,7 +84,14 @@ test.each([
 test("init refuses existing markers before committing a baseline", () => {
   const { repo, options } = fixture();
   writeFileSync(join(repo, "catalog-info.yaml"), "existing");
-  expect(() => prepareRepository(repo, options)).toThrow("one-time operation");
+  let failure: unknown;
+  try {
+    prepareRepository(repo, options);
+  } catch (error) {
+    failure = error;
+  }
+  expect(failure).toBeInstanceOf(ConflictError);
+  expect((failure as Error).message).toContain("one-time operation");
   expect(() => git(repo, "rev-parse", "--verify", "HEAD")).toThrow();
 });
 
@@ -97,6 +105,9 @@ test("a mismatched deterministic branch is rejected rather than reset", () => {
   const result = finishRepository(repo, tree, options, output);
   git(repo, "reset", "--hard", base);
   git(repo, "branch", "--force", result.updateBranch ?? "", base);
+  expect(() => finishRepository(repo, tree, options, output)).toThrow(
+    ConflictError,
+  );
   expect(() => finishRepository(repo, tree, options, output)).toThrow(
     "Update branch collision",
   );

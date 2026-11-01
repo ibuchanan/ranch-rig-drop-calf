@@ -13,7 +13,7 @@ import {
   type Validation,
   type ValidationContext,
 } from "../core/capability.ts";
-import { ParseError } from "../core/errors.ts";
+import { ParseError, PrerequisiteError } from "../core/errors.ts";
 import { bunTools, REPOSITORY, runTool, TOOLS } from "../core/tool-run.ts";
 import { TOOL_VERSIONS } from "../core/versions.ts";
 
@@ -111,11 +111,14 @@ async function validateForgeManifest(
   if (!(await directory.exists("manifest.yml")))
     return { status: "skipped", reason: "manifest.yml is missing" };
   if (!forgeEmail || !forgeApiToken)
-    return {
-      status: "failed",
-      reason:
-        "forge-manifest: forge lint requires authentication; supply both --forge-email and --forge-api-token as Dagger Secrets. Missing credentials are an execution prerequisite failure, not a manifest acceptance verdict.",
-    };
+    throw new PrerequisiteError({
+      source: "forge-manifest",
+      path: "manifest.yml",
+      discovered: "forge lint requires authentication",
+      wanted: "forgeEmail and forgeApiToken as Dagger secrets",
+      remedy:
+        "supply both --forge-email and --forge-api-token; missing credentials are an execution prerequisite, not a manifest acceptance verdict",
+    });
   const cli = `${TOOLS}/node_modules/@forge/cli/out/bin/cli.js`;
   const container = bunTools(`@forge/cli@${TOOL_VERSIONS.forgeCli}`)
     .withEnvVariable("CI", "1")

@@ -1,6 +1,7 @@
 import type { Directory } from "@dagger.io/dagger";
 import { NpmPackageJsonLint } from "npm-package-json-lint";
 import { type Capability, noOp, type Validation } from "../core/capability.ts";
+import { ValidationError } from "../core/errors.ts";
 import { isPlainObject } from "../core/guards.ts";
 import { editPackageJson, readPackageJson } from "../core/package-json.ts";
 import {
@@ -16,14 +17,21 @@ async function updatePackageMetadata(directory: Directory): Promise<Directory> {
   const catalog = await readCatalog(directory, "package-metadata");
   const name = catalog.getIn(["metadata", "annotations", PACKAGE_NAME]);
   if (typeof name !== "string" || !name.trim())
-    throw new Error(
-      `package-metadata: ${CATALOG_FILE} ${PACKAGE_NAME} must be a nonempty string; set the package name annotation before updating.`,
-    );
+    throw new ValidationError({
+      source: "package-metadata",
+      path: `${CATALOG_FILE}#${PACKAGE_NAME}`,
+      discovered: "is not a nonempty string",
+      wanted: "a package name annotation",
+      remedy: "set the annotation before updating",
+    });
   const description = catalog.getIn(["metadata", "description"]);
   if (description !== undefined && typeof description !== "string")
-    throw new Error(
-      `package-metadata: ${CATALOG_FILE} metadata.description must be a string.`,
-    );
+    throw new ValidationError({
+      source: "package-metadata",
+      path: `${CATALOG_FILE}#metadata.description`,
+      discovered: "must be a string",
+      remedy: "write the catalog description as a YAML string",
+    });
   const wanted: Record<string, unknown> = {
     name,
     description,
@@ -63,9 +71,12 @@ async function validatePackageMetadata(
   const pkg = (await readPackageJson(directory)) ?? {};
   // The linter has no author-type rule; valid-values-author enforces an allowlist.
   if (!isValidAuthor(pkg.author))
-    throw new Error(
-      "package.json: author must be a string or an object with a string name.",
-    );
+    throw new ValidationError({
+      source: "package-metadata",
+      path: "package.json#author",
+      discovered: "is not a string or an object with a string name",
+      remedy: "set author to a name string or an object with a name string",
+    });
   const report = new NpmPackageJsonLint({
     packageJsonObject: pkg,
     packageJsonFilePath: "package.json",
@@ -74,9 +85,12 @@ async function validatePackageMetadata(
   }).lint();
   const issues = report.results.flatMap((result) => result.issues);
   if (issues.length)
-    throw new Error(
-      `package.json: ${issues.map((issue) => issue.toString()).join("; ")}`,
-    );
+    throw new ValidationError({
+      source: "package-metadata",
+      path: "package.json",
+      discovered: issues.map((issue) => issue.toString()).join("; "),
+      remedy: "fix the reported metadata fields",
+    });
   return { status: "validated" };
 }
 

@@ -14,6 +14,7 @@ import {
   updateCapabilities,
   validateCapabilities,
 } from "../../src/core/capability.ts";
+import { ParseError, ValidationError } from "../../src/core/errors.ts";
 import { TOOL_VERSIONS } from "../../src/core/versions.ts";
 import { DropCalf } from "../../src/index.ts";
 import { verb } from "../support/capability-fixtures.ts";
@@ -239,6 +240,18 @@ test.each([
   const result = await validateCapabilities(input, [forgeSecrets()]);
   expect(result[0]).toMatchObject({ status: "failed" });
   expect((result[0] as { reason: string }).reason).toContain(reason);
+});
+
+test("validation separates TOML syntax from declaration rules", async () => {
+  const validate = verb(forgeSecrets(), "validate");
+  const withConfig = (contents: string) =>
+    mockDirectory(new Map([["secretspec.toml", contents]]));
+  await expect(validate(withConfig("[broken"))).rejects.toBeInstanceOf(
+    ParseError,
+  );
+  await expect(
+    validate(withConfig('[project]\nname="x"\nrevision="2.0"')),
+  ).rejects.toBeInstanceOf(ValidationError);
 });
 
 test("validation reports absence and redacts TOML diagnostics", async () => {

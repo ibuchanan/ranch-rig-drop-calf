@@ -170,8 +170,6 @@ decision before it is specified.
 - **Additional scripts.** `dev` (watch), `generate`/`generate:rovo`, and
   a separate encrypted-variables script from the `init-repo` script table;
   `forge:variables:set` already uploads encrypted through Fence Rider.
-- **Error classes.** `PrerequisiteError` and `ValidationError` alongside
-  `ParseError` and `InvalidOptionsError`.
 
 Deliberately not carried over: `--force`/`--merge`, conflict reports, and
 file-type mutation modes (superseded by

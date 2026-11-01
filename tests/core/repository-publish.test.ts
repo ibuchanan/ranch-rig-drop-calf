@@ -2,6 +2,7 @@ import { expect, test } from "bun:test";
 import { execFileSync } from "node:child_process";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { ConflictError } from "../../src/core/errors.ts";
 import { git } from "../../src/core/git.ts";
 import {
   finishRepository,
@@ -72,6 +73,9 @@ test("target advance refuses publication but retains a recovery branch", () => {
   git(source, "commit", "-m", "feat: concurrent change");
   const advanced = git(source, "rev-parse", "HEAD");
   git(source, "push", remote, "main");
+  expect(() => publishRepository(isolated, options, result)).toThrow(
+    ConflictError,
+  );
   expect(() => publishRepository(isolated, options, result)).toThrow(
     "changed; update branch retained",
   );

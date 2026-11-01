@@ -19,7 +19,10 @@ import {
 } from "../../src/capabilities/gitignore.ts";
 import { resolveProfile } from "../../src/composition/profiles.ts";
 import { validateCapabilities } from "../../src/core/capability.ts";
-import { InvalidOptionsError } from "../../src/core/errors.ts";
+import {
+  InvalidOptionsError,
+  PrerequisiteError,
+} from "../../src/core/errors.ts";
 import { createBlueprint } from "../../src/core/project.ts";
 import { seedTemplates } from "../../src/core/templates.ts";
 import { DropCalf } from "../../src/index.ts";
@@ -326,6 +329,9 @@ describe("readPinnedTemplate", () => {
   });
 
   test("rejects a source with no sections rather than emitting bare extras", async () => {
+    await expect(readPinnedTemplate(fakeFile(""))).rejects.toBeInstanceOf(
+      PrerequisiteError,
+    );
     await expect(readPinnedTemplate(fakeFile(""))).rejects.toThrow(
       /missing or malformed/,
     );

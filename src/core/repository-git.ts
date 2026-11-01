@@ -8,6 +8,12 @@ import {
   writeFileSync,
 } from "node:fs";
 import { join, resolve } from "node:path";
+import {
+  ConflictError,
+  InvalidOptionsError,
+  PrerequisiteError,
+  ValidationError,
+} from "./errors.ts";
 import { git, optionalGit } from "./git.ts";
 import { enforce, type Guard, withEnv } from "./guards.ts";
 import { INIT_MARKERS } from "./init-markers.ts";
@@ -40,7 +46,14 @@ const FROM_HISTORY: Source = {
   guards: [
     {
       fails: ({ directory }) => readdirSync(directory).length > 0,
-      message: "Repository checkout destination must be empty.",
+      failure: () =>
+        new ConflictError({
+          source: "repository",
+          path: "checkout",
+          discovered: "destination is not empty",
+          wanted: "an empty checkout destination",
+          remedy: "choose a directory that does not exist yet",
+        }),
     },
   ],
   acquire({ directory, options, history }) {
@@ -61,11 +74,21 @@ const FROM_SCAFFOLD: Source = {
   guards: [
     {
       fails: ({ directory }) => existsSync(join(directory, ".git")),
-      message: "Supply repository history as a bundle; do not copy .git.",
+      failure: () =>
+        new InvalidOptionsError(
+          "Supply repository history as a bundle; do not copy .git.",
+        ),
     },
     {
       fails: ({ options }) => options.operation === "update",
-      message: "update requires repository history or a remote URL.",
+      failure: () =>
+        new PrerequisiteError({
+          source: "repository",
+          path: "history",
+          discovered: "update requires repository history or a remote URL",
+          wanted: "a history bundle or a remote URL before updating",
+          remedy: "supply --history or --remote-url",
+        }),
     },
   ],
   acquire({ directory, options }) {
@@ -77,7 +100,10 @@ const FROM_SCAFFOLD: Source = {
 const BEFORE_ACQUIRE: readonly Guard<Checkout>[] = [
   {
     fails: ({ options }) => options.branch.startsWith("drop-calf/update/"),
-    message: "Select a target branch, not a Drop Calf update branch.",
+    failure: () =>
+      new InvalidOptionsError(
+        "Select a target branch, not a Drop Calf update branch.",
+      ),
   },
 ];
 
@@ -86,27 +112,54 @@ const AFTER_ACQUIRE: readonly Guard<Checkout>[] = [
     fails: ({ directory, options }) =>
       options.operation === "init" &&
       INIT_MARKERS.some((path) => existsSync(join(directory, path))),
-    message: "init is a one-time operation; use update instead.",
+    failure: () =>
+      new ConflictError({
+        source: "init",
+        path: "repository",
+        discovered: "init is a one-time operation",
+        wanted: "a repository that has not been initialized",
+        remedy: "use update instead",
+      }),
   },
 ];
 
 const NOT_CLEAN: Guard<Checkout> = {
   fails: ({ directory }) => git(directory, "status", "--porcelain") !== "",
-  message: "Repository must be clean.",
+  failure: () =>
+    new ConflictError({
+      source: "repository",
+      path: "working tree",
+      discovered: "must be clean",
+      remedy: "commit or discard local changes before running",
+    }),
 };
 
 const AFTER_INITIAL_COMMIT: readonly Guard<Checkout>[] = [
   {
     fails: ({ directory }) =>
       git(directory, "rev-parse", "--is-shallow-repository") !== "false",
-    message: "Full Git history is required.",
+    failure: () =>
+      new PrerequisiteError({
+        source: "repository",
+        path: "history",
+        discovered: "is a shallow clone",
+        wanted: "full Git history",
+        remedy: "fetch the complete history instead of a shallow clone",
+      }),
   },
   {
     fails: ({ directory }) =>
       git(directory, "ls-files", "--stage")
         .split("\n")
         .some((line) => line.startsWith("160000 ")),
-    message: "Submodules are not supported by repository workflows.",
+    failure: () =>
+      new ValidationError({
+        source: "repository",
+        path: "gitlinks",
+        discovered: "submodules are present",
+        wanted: "a repository without submodules",
+        remedy: "remove gitlinks before running repository workflows",
+      }),
   },
 ];
 
@@ -257,9 +310,13 @@ const RECORD_CHANGE: Record<
       commit(directory, UPDATE_COMMIT, options, timestamp);
     } else {
       if (!holdsThisChange(change, existing))
-        throw new Error(
-          `Update branch collision: ${branch}; refusing to overwrite it.`,
-        );
+        throw new ConflictError({
+          source: "repository",
+          path: branch,
+          discovered: "Update branch collision",
+          wanted: "no branch with an unrelated change at that name",
+          remedy: "delete or rename the existing branch, then rerun",
+        });
       git(directory, "switch", "-C", branch, existing);
     }
     const updateCommit = git(directory, "rev-parse", "HEAD");
@@ -332,9 +389,13 @@ export function publishRepository(
     updateRef,
   ).split(/\s/)[0];
   if (existing && existing !== result.updateCommit)
-    throw new Error(
-      `Remote update branch collision: ${result.updateBranch}; refusing to overwrite it.`,
-    );
+    throw new ConflictError({
+      source: "repository",
+      path: result.updateBranch,
+      discovered: "Remote update branch collision",
+      wanted: "no remote branch with an unrelated commit at that name",
+      remedy: "delete or rename the remote branch, then rerun",
+    });
   git(
     directory,
     "push",
@@ -345,9 +406,12 @@ export function publishRepository(
     /\s/,
   )[0];
   if (current !== result.base)
-    throw new Error(
-      `Remote ${options.branch} changed; update branch retained. Rerun against the new HEAD.`,
-    );
+    throw new ConflictError({
+      source: "repository",
+      path: options.branch,
+      discovered: `Remote ${options.branch} changed`,
+      remedy: "update branch retained; rerun against the new HEAD",
+    });
   git(directory, "push", options.remoteUrl, `HEAD:${target}`);
   return { ...result, published: true };
 }

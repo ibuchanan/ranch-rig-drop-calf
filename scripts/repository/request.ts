@@ -2,6 +2,10 @@ import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, realpathSync } from "node:fs";
 import { basename, join, resolve } from "node:path";
 import { parseArgs } from "node:util";
+import {
+  InvalidOptionsError,
+  PrerequisiteError,
+} from "../../src/core/errors.ts";
 import { enforce, type Guard } from "../../src/core/guards.ts";
 import { scaffoldName } from "../../src/core/package-json.ts";
 import { inspectCheckout } from "./checkout.ts";
@@ -72,18 +76,33 @@ export type Request = {
 const REQUEST_GUARDS: readonly Guard<Request>[] = [
   {
     fails: ({ spec, original }) => spec.requiresCommit && !original.head,
-    message: "update requires an existing Git commit.",
+    failure: () =>
+      new PrerequisiteError({
+        source: "request",
+        path: "history",
+        discovered: "update requires an existing Git commit",
+        remedy: "commit the repository before updating",
+      }),
   },
   {
     fails: ({ values, original }) =>
       Boolean(values["target-branch"] && original.branch) &&
       values["target-branch"] !== original.branch,
-    message: "Target must match the checked-out branch.",
+    failure: ({ values, original }) =>
+      new InvalidOptionsError(
+        `request: target branch: --target-branch ${values["target-branch"]} does not match the checked-out ${original.branch}; check out that branch or omit --target-branch.`,
+      ),
   },
   {
     fails: ({ identity }) => !identity.name || !identity.email,
-    message:
-      "Configure user.name/user.email or supply --author-name and --author-email.",
+    failure: () =>
+      new PrerequisiteError({
+        source: "request",
+        path: "identity",
+        discovered: "Git author name or email is missing",
+        remedy:
+          "configure user.name and user.email or supply --author-name and --author-email",
+      }),
   },
 ];
 

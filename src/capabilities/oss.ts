@@ -1,5 +1,6 @@
 import { type Directory, dag } from "@dagger.io/dagger";
 import { type Capability, noOp } from "../core/capability.ts";
+import { InvalidOptionsError, ValidationError } from "../core/errors.ts";
 import { ensureFile } from "../core/files.ts";
 import { OSS_LICENSE } from "../core/license.ts";
 import { templateTree } from "../core/templates.ts";
@@ -60,14 +61,21 @@ export async function copyOssAssets(
   const catalog = await readCatalog(destination, "oss");
   const name = catalog.getIn(["metadata", "title"]);
   if (typeof name !== "string" || !name.trim())
-    throw new Error(
-      `oss: ${CATALOG_FILE} metadata.title must be a nonempty string.`,
-    );
+    throw new ValidationError({
+      source: "oss",
+      path: `${CATALOG_FILE}#metadata.title`,
+      discovered: "must be a nonempty string",
+      remedy: "set the catalog title before updating",
+    });
   const license = catalog.getIn(["metadata", "annotations", LICENSE]);
   if (license !== OSS_LICENSE)
-    throw new Error(
-      `oss: ${CATALOG_FILE} ${LICENSE} must be ${OSS_LICENSE}; the pinned LICENSE template supports only ${OSS_LICENSE}.`,
-    );
+    throw new ValidationError({
+      source: "oss",
+      path: `${CATALOG_FILE}#${LICENSE}`,
+      discovered: `is ${JSON.stringify(license) ?? "missing"}`,
+      wanted: OSS_LICENSE,
+      remedy: `set the license annotation to ${OSS_LICENSE}; the pinned LICENSE template supports only ${OSS_LICENSE}`,
+    });
   const metadata = {
     name,
     owner: catalogOwnerId(catalog.getIn(["spec", "owner"])),
@@ -120,6 +128,6 @@ export function oss(): Capability {
 
 export function validateOssOwner(owner: string): void {
   if (!/^[a-z][a-z0-9._-]*$/i.test(owner)) {
-    throw new Error("OSS owner must be a nonempty staff ID");
+    throw new InvalidOptionsError("OSS owner must be a nonempty staff ID");
   }
 }

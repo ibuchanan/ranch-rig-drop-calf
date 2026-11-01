@@ -1,5 +1,6 @@
 import { cpSync, existsSync, readFileSync, rmSync } from "node:fs";
 import { join, resolve } from "node:path";
+import { ConflictError, ValidationError } from "../../src/core/errors.ts";
 import { git, optionalGit } from "../../src/core/git.ts";
 import { enforce, type Guard, withEnv } from "../../src/core/guards.ts";
 import type { RepositoryResult } from "../../src/core/repository-types.ts";
@@ -32,19 +33,30 @@ function drifted(
 const BEFORE_IMPORT: readonly Guard<Delivery>[] = [
   {
     fails: ({ result }) => result.status === "failed",
-    message: ({ result, artifacts }) =>
+    failure: ({ result, artifacts }) =>
       `${result.error}; recovery artifacts retained at ${artifacts}`,
   },
   {
     fails: (delivery) => drifted(delivery, delivery.expected.branch),
-    message: ({ artifacts }) =>
-      `Checkout changed during generation; recovery artifacts retained at ${artifacts}`,
+    failure: ({ artifacts }) =>
+      new ConflictError({
+        source: "delivery",
+        path: "checkout",
+        discovered: "changed during generation",
+        remedy: `recovery artifacts retained at ${artifacts}`,
+      }),
   },
   {
     fails: ({ result, expected }) =>
       result.targetBranch !== expected.branch ||
       (expected.head !== undefined && result.base !== expected.head),
-    message: "Result does not match the captured repository base.",
+    failure: () =>
+      new ConflictError({
+        source: "delivery",
+        path: "result.json",
+        discovered: "does not match the captured repository base",
+        remedy: "regenerate the update from the current checkout",
+      }),
   },
 ];
 
@@ -52,7 +64,13 @@ const AFTER_IMPORT: readonly Guard<Delivery>[] = [
   {
     fails: ({ directory, result }) =>
       git(directory, "rev-parse", `${result.head}^{commit}`) !== result.head,
-    message: "Result commit is unavailable.",
+    failure: () =>
+      new ValidationError({
+        source: "delivery",
+        path: "result.json",
+        discovered: "result commit is unavailable after import",
+        remedy: "regenerate the update and deliver again",
+      }),
   },
 ];
 
@@ -60,7 +78,13 @@ const AFTER_IMPORT: readonly Guard<Delivery>[] = [
 const BEFORE_ADVANCE: readonly Guard<Delivery>[] = [
   {
     fails: (delivery) => drifted(delivery),
-    message: "Checkout changed before delivery; bundle retained.",
+    failure: () =>
+      new ConflictError({
+        source: "delivery",
+        path: "checkout",
+        discovered: "changed before delivery",
+        remedy: "bundle retained; rerun against the current checkout",
+      }),
   },
 ];
 
@@ -92,7 +116,12 @@ function claimUpdateBranch({ directory, result }: Delivery): void {
   if (existing === undefined)
     git(directory, "branch", updateBranch, updateCommit);
   else if (existing !== updateCommit)
-    throw new Error(`Local update branch collision: ${updateBranch}`);
+    throw new ConflictError({
+      source: "delivery",
+      path: updateBranch,
+      discovered: "Local update branch collision",
+      remedy: "delete or rename the local branch, then rerun",
+    });
 }
 
 function fastForward({ directory, result }: Delivery): void {
@@ -111,9 +140,12 @@ function adoptScaffoldBaseline(delivery: Delivery): void {
   withEnv({ GIT_INDEX_FILE: baselineIndex }, () => {
     git(directory, "read-tree", result.base);
     if (git(directory, "diff", "--name-only").length > 0)
-      throw new Error(
-        "Scaffold no longer matches the captured baseline; bundle retained.",
-      );
+      throw new ConflictError({
+        source: "delivery",
+        path: "scaffold",
+        discovered: "no longer matches the captured baseline",
+        remedy: "bundle retained; rerun against the current checkout",
+      });
   });
   cpSync(baselineIndex, resolve(directory, index));
   rmSync(baselineIndex);

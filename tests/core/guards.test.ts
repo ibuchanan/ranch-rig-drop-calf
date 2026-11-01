@@ -1,4 +1,5 @@
 import { expect, test } from "bun:test";
+import { ConflictError } from "../../src/core/errors.ts";
 import { enforce, type Guard, withEnv } from "../../src/core/guards.ts";
 
 test("enforce throws the first failing guard's message and skips later guards", () => {
@@ -9,30 +10,45 @@ test("enforce throws the first failing guard's message and skips later guards", 
         evaluated.push("a");
         return false;
       },
-      message: "a",
+      failure: "a",
     },
     {
       fails: (n) => {
         evaluated.push("b");
         return n > 1;
       },
-      message: (n) => `b saw ${n}`,
+      failure: (n) => `b saw ${n}`,
     },
     {
       fails: () => {
         evaluated.push("c");
         return true;
       },
-      message: "c",
+      failure: "c",
     },
   ];
   expect(() => enforce(2, guards)).toThrow("b saw 2");
   expect(evaluated).toEqual(["a", "b"]);
 });
 
+test("enforce throws a taxonomy failure as-is", () => {
+  const failure = new ConflictError({
+    source: "repository",
+    path: "AGENTS.md",
+    discovered: "already exists",
+    remedy: "use update instead",
+  });
+  expect(() => enforce(0, [{ fails: () => true, failure }])).toThrow(
+    ConflictError,
+  );
+  expect(() => enforce(0, [{ fails: () => true, failure }])).toThrow(
+    failure.message,
+  );
+});
+
 test("enforce returns quietly when every guard passes", () => {
   expect(() =>
-    enforce(0, [{ fails: () => false, message: "no" }]),
+    enforce(0, [{ fails: () => false, failure: "no" }]),
   ).not.toThrow();
   expect(() => enforce(0, [])).not.toThrow();
 });

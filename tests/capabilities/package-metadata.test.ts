@@ -9,7 +9,11 @@ import {
 } from "../../src/capabilities/catalog.ts";
 import { buildProject } from "../../src/composition/profiles.ts";
 import { validateCapabilities } from "../../src/core/capability.ts";
-import { ParseError } from "../../src/core/errors.ts";
+import {
+  ParseError,
+  PrerequisiteError,
+  ValidationError,
+} from "../../src/core/errors.ts";
 import { DropCalf } from "../../src/index.ts";
 import {
   capabilityOf,
@@ -260,12 +264,12 @@ test.each([
 ])("update rejects unusable catalog: %s", async (_label, edit, message) => {
   const doc = parseDocument(catalog());
   (edit as (doc: ReturnType<typeof parseDocument>) => unknown)(doc);
-  await expect(
-    runUpdate(
-      capabilityOf("tool", "package-metadata"),
-      repository({}, doc.toString()),
-    ),
-  ).rejects.toThrow(message as string);
+  const update = runUpdate(
+    capabilityOf("tool", "package-metadata"),
+    repository({}, doc.toString()),
+  );
+  await expect(update).rejects.toBeInstanceOf(ValidationError);
+  await expect(update).rejects.toThrow(message as string);
 });
 
 test("update skips a missing package and rejects missing or malformed sources without inventing metadata", async () => {
@@ -273,12 +277,12 @@ test("update skips a missing package and rejects missing or malformed sources wi
   expect(
     await runUpdate(capabilityOf("forge-app", "package-metadata"), empty),
   ).toBe(empty);
-  await expect(
-    runUpdate(
-      capabilityOf("tool", "package-metadata"),
-      mockDirectory(new Map([["package.json", "{}"]])),
-    ),
-  ).rejects.toThrow("catalog-info.yaml is missing");
+  const missing = runUpdate(
+    capabilityOf("tool", "package-metadata"),
+    mockDirectory(new Map([["package.json", "{}"]])),
+  );
+  await expect(missing).rejects.toBeInstanceOf(PrerequisiteError);
+  await expect(missing).rejects.toThrow("catalog-info.yaml");
   for (const pkg of ["{broken", "null", "[]"]) {
     await expect(
       runUpdate(
@@ -338,6 +342,9 @@ test.each([
   [{ author: { name: 42 } }, "author"],
 ])("standalone validation rejects malformed field %j", async (pkg, reason) => {
   const input = repository(pkg);
+  await expect(
+    verb(capabilityOf("forge-app", "package-metadata"), "validate")(input),
+  ).rejects.toBeInstanceOf(ValidationError);
   expect(
     await validateCapabilities(input, [
       capabilityOf("forge-app", "package-metadata"),

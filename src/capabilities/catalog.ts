@@ -2,7 +2,11 @@ import type { Directory } from "@dagger.io/dagger";
 import { validate } from "@roadiehq/roadie-backstage-entity-validator";
 import { isMap, parseDocument, visit } from "yaml";
 import { type Capability, noOp, type Validation } from "../core/capability.ts";
-import { ParseError } from "../core/errors.ts";
+import {
+  PrerequisiteError,
+  ParseError,
+  ValidationError,
+} from "../core/errors.ts";
 import { templateTree } from "../core/templates.ts";
 
 export const CATALOG_FILE = "catalog-info.yaml";
@@ -14,9 +18,13 @@ export const LICENSE = "forge-ranch/license";
 /** Consumers require the catalog before deriving their owned outputs. */
 export async function readCatalog(directory: Directory, consumer: string) {
   if (!(await directory.exists(CATALOG_FILE)))
-    throw new Error(
-      `${consumer}: ${CATALOG_FILE} is missing; initialize the catalog before updating.`,
-    );
+    throw new PrerequisiteError({
+      source: consumer,
+      path: CATALOG_FILE,
+      discovered: "is missing",
+      wanted: "shared metadata before owned outputs are derived",
+      remedy: "run init to seed the catalog, then update",
+    });
   return catalogDocument(await directory.file(CATALOG_FILE).contents());
 }
 
@@ -28,9 +36,13 @@ export async function readCatalogLicense(
   const catalog = await readCatalog(directory, consumer);
   const license = catalog.getIn(["metadata", "annotations", LICENSE]);
   if (typeof license !== "string" || !license.trim())
-    throw new Error(
-      `${consumer}: ${CATALOG_FILE} ${LICENSE} must be a nonempty string; set the license annotation before updating.`,
-    );
+    throw new ValidationError({
+      source: consumer,
+      path: `${CATALOG_FILE}#${LICENSE}`,
+      discovered: "is not a nonempty string",
+      wanted: "a license annotation",
+      remedy: "set the license annotation before updating",
+    });
   return license;
 }
 
@@ -38,9 +50,13 @@ export function catalogCopyrightDate(date: unknown): string {
   const match =
     typeof date === "string" ? /^(\d{4})(?:-(\d{4}))?$/.exec(date) : null;
   if (!match || (match[2] !== undefined && match[2] < (match[1] ?? "")))
-    throw new Error(
-      `${CATALOG_FILE}: ${COPYRIGHT_DATE} must be YYYY or YYYY-YYYY with an ordered range`,
-    );
+    throw new ValidationError({
+      source: "catalog",
+      path: `${CATALOG_FILE}#${COPYRIGHT_DATE}`,
+      discovered: `is ${JSON.stringify(date) ?? String(date)}`,
+      wanted: "YYYY or YYYY-YYYY with an ordered range",
+      remedy: "set a single year or an ordered inclusive range",
+    });
   return match[0];
 }
 
@@ -74,9 +90,13 @@ export function catalogOwnerId(owner: unknown): string {
         )
       : null;
   if (!match?.[1])
-    throw new Error(
-      `${CATALOG_FILE}: spec.owner must be a user entity reference`,
-    );
+    throw new ValidationError({
+      source: "catalog",
+      path: `${CATALOG_FILE}#spec.owner`,
+      discovered: `is ${JSON.stringify(owner) ?? String(owner)}`,
+      wanted: "a user entity reference",
+      remedy: "set spec.owner to user:default/<staff-id>",
+    });
   return match[1];
 }
 
@@ -89,7 +109,13 @@ function catalogName(name: string): string {
     .slice(0, 63)
     .replace(/[^a-z0-9]+$/, "");
   if (!normalized)
-    throw new Error("Catalog name must contain a letter or digit");
+    throw new ValidationError({
+      source: "catalog",
+      path: "metadata.name",
+      discovered: `normalizes ${JSON.stringify(name)} to an empty identifier`,
+      wanted: "a letter or digit",
+      remedy: "give the project a name with a letter or digit",
+    });
   return normalized;
 }
 
@@ -137,12 +163,21 @@ async function validateCatalog(directory: Directory): Promise<Validation> {
   try {
     await validate(contents, false);
   } catch (error) {
-    throw new Error(
-      `${CATALOG_FILE}: ${error instanceof Error ? error.message : String(error)}`,
-    );
+    throw new ValidationError({
+      source: "catalog",
+      path: CATALOG_FILE,
+      discovered: error instanceof Error ? error.message : String(error),
+      remedy: "fix the component entity so Backstage accepts it",
+    });
   }
   if (document.get("kind") !== "Component")
-    throw new Error(`${CATALOG_FILE}: expected a Component entity`);
+    throw new ValidationError({
+      source: "catalog",
+      path: `${CATALOG_FILE}#kind`,
+      discovered: `is ${JSON.stringify(document.get("kind"))}`,
+      wanted: "Component",
+      remedy: "declare a Backstage Component entity",
+    });
   catalogOwnerId(document.getIn(["spec", "owner"]));
   const date = document.getIn(["metadata", "annotations", COPYRIGHT_DATE]);
   if (date !== undefined) catalogCopyrightDate(date);

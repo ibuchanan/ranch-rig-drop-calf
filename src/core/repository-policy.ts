@@ -1,3 +1,4 @@
+import { InvalidOptionsError, ValidationError } from "./errors.ts";
 import { git } from "./git.ts";
 import type { RepositoryOptions } from "./repository-types.ts";
 
@@ -25,11 +26,11 @@ export function checkOptions({
     !authorEmail.trim() ||
     /[\r\n\0]/.test(authorName + authorEmail)
   )
-    throw new Error(
+    throw new InvalidOptionsError(
       "Git author name and email must be nonblank single-line values.",
     );
   const problem = remoteUrl ? remoteProblem(remoteUrl) : undefined;
-  if (problem) throw new Error(problem);
+  if (problem) throw new InvalidOptionsError(problem);
 }
 
 /** Refuse common credential files even if an incomplete scaffold ignore file misses them. */
@@ -55,7 +56,10 @@ export function checkStagedFiles(directory: string): void {
       /(?:_auth|password|token)\s*=/i.test(git(directory, "show", `:${path}`)),
   );
   if (unsafe.length)
-    throw new Error(
-      `Refusing to commit potential credentials: ${unsafe.join(", ")}. Ignore or remove them first.`,
-    );
+    throw new ValidationError({
+      source: "repository",
+      path: unsafe.join(", "),
+      discovered: "refusing to commit potential credentials",
+      remedy: "ignore or remove them first",
+    });
 }

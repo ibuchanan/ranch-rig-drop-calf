@@ -10,6 +10,7 @@ import {
   buildProject,
   resolveProfile,
 } from "../../src/composition/profiles.ts";
+import { ConflictError } from "../../src/core/errors.ts";
 import {
   updateCapabilities,
   validateCapabilities,
@@ -188,24 +189,24 @@ test.each(["{broken", "null", "[]"])(
 test("executable or package config conflicts fail with migration guidance, never shadow owner settings", async () => {
   for (const extension of ["ts", "mts", "cts", "js", "mjs", "cjs"]) {
     const path = `tsdown.config.${extension}`;
-    await expect(
-      runUpdate(
-        libraryBuild(),
-        mockDirectory(
-          new Map([
-            ["package.json", "{}"],
-            [path, "owner config"],
-          ]),
-        ),
-      ),
-    ).rejects.toThrow(`remove ${path}`);
-  }
-  await expect(
-    runUpdate(
+    const update = runUpdate(
       libraryBuild(),
-      mockDirectory(new Map([["package.json", '{"tsdown":{}}']])),
-    ),
-  ).rejects.toThrow("package.json#tsdown");
+      mockDirectory(
+        new Map([
+          ["package.json", "{}"],
+          [path, "owner config"],
+        ]),
+      ),
+    );
+    await expect(update).rejects.toBeInstanceOf(ConflictError);
+    await expect(update).rejects.toThrow(`remove ${path}`);
+  }
+  const update = runUpdate(
+    libraryBuild(),
+    mockDirectory(new Map([["package.json", '{"tsdown":{}}']])),
+  );
+  await expect(update).rejects.toBeInstanceOf(ConflictError);
+  await expect(update).rejects.toThrow("package.json#tsdown");
 });
 
 test("dependency convergence precedes compiler update on the first pass", async () => {

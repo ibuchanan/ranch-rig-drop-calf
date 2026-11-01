@@ -7,6 +7,7 @@ import {
   changelogToolchain,
 } from "../../src/capabilities/changelog.ts";
 import { buildProject } from "../../src/composition/profiles.ts";
+import { ValidationError } from "../../src/core/errors.ts";
 import {
   updateCapabilities,
   validateCapabilities,
@@ -273,9 +274,11 @@ test("validation reports the command's own output when the policy fails", async 
       "error: invalid type\ngit-cliff exit=1",
   });
   try {
-    await expect(
-      verb(changelogToolchain(), "validate")(directory(true)),
-    ).rejects.toThrow(/git-cliff validation failed: error: invalid type/);
+    const failure = verb(changelogToolchain(), "validate")(directory(true));
+    await expect(failure).rejects.toBeInstanceOf(ValidationError);
+    await expect(failure).rejects.toThrow(
+      /git-cliff validation failed: error: invalid type/,
+    );
   } finally {
     spy.mockRestore();
   }

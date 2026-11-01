@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, spyOn, test } from "bun:test";
 import { dag } from "@dagger.io/dagger";
 import { NODE_TEMPLATE, nodeBaseline } from "../../src/capabilities/node.ts";
 import { buildProject } from "../../src/composition/profiles.ts";
-import { ParseError } from "../../src/core/errors.ts";
+import { ParseError, ValidationError } from "../../src/core/errors.ts";
 import { mergeScaffoldPackage } from "../../src/core/package-json.ts";
 import { TOOL_VERSIONS } from "../../src/core/versions.ts";
 import {
@@ -51,8 +51,10 @@ describe("node baseline", () => {
 
   test.each(["", "0", "-22", "22.x", "22\n", "node22", "22.0"])(
     "rejects invalid explicit Node major %j",
-    (major) =>
-      expect(() => nodeBaseline({ major })).toThrow("positive numeric major"),
+    (major) => {
+      expect(() => nodeBaseline({ major })).toThrow(ValidationError);
+      expect(() => nodeBaseline({ major })).toThrow("positive numeric major");
+    },
   );
 
   test("never authors a manifest.yml; forge create supplies it", () => {

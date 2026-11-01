@@ -1,6 +1,7 @@
 import type { Directory } from "@dagger.io/dagger";
 import { parse as parseToml } from "smol-toml";
 import { type Capability, noOp, type Validation } from "../core/capability.ts";
+import { ParseError, ValidationError } from "../core/errors.ts";
 import { isPlainObject } from "../core/guards.ts";
 import { templateTree } from "../core/templates.ts";
 import { TOOL_VERSIONS } from "../core/versions.ts";
@@ -62,7 +63,7 @@ function parseSecretspec(contents: string): Record<string, unknown> {
     return parseToml(contents);
   } catch {
     // Parser diagnostics can include source lines; declarations may hold defaults.
-    throw new Error("secretspec.toml: invalid TOML");
+    throw new ParseError("secretspec.toml", "invalid TOML");
   }
 }
 
@@ -73,9 +74,13 @@ function checkProject(project: unknown): void {
     !project.name.trim() ||
     project.revision !== "1.0"
   )
-    throw new Error(
-      'secretspec.toml: project.name must be nonempty and project.revision must be "1.0"',
-    );
+    throw new ValidationError({
+      source: "secrets",
+      path: "secretspec.toml#project",
+      discovered:
+        'project.name must be nonempty and project.revision must be "1.0"',
+      remedy: 'set a project name and revision = "1.0"',
+    });
 }
 
 const isOptional = (value: unknown, valid: (value: unknown) => boolean) =>
@@ -89,29 +94,54 @@ function checkDeclaration(
   declaration: Record<string, unknown>,
 ): void {
   if (!isOptional(declaration.description, isString))
-    throw new Error(`secretspec.toml: ${path}.description must be a string`);
+    throw new ValidationError({
+      source: "secrets",
+      path: `secretspec.toml#${path}.description`,
+      discovered: "must be a string",
+      remedy: "write the description as a TOML string",
+    });
   if (!isOptional(declaration.required, isRequirement))
-    throw new Error(
-      `secretspec.toml: ${path}.required must be boolean or an array of group names`,
-    );
+    throw new ValidationError({
+      source: "secrets",
+      path: `secretspec.toml#${path}.required`,
+      discovered: "must be boolean or an array of group names",
+      remedy: "use true, false, or a TOML array of group names",
+    });
   if (!isOptional(declaration.default, isString))
-    throw new Error(`secretspec.toml: ${path}.default must be a string`);
+    throw new ValidationError({
+      source: "secrets",
+      path: `secretspec.toml#${path}.default`,
+      discovered: "must be a string",
+      remedy: "write the default as a TOML string",
+    });
 }
 
 /** Returns the default profile, which Fence Rider resolves. */
 function checkProfiles(profiles: unknown): Record<string, unknown> {
   if (!isPlainObject(profiles) || !isPlainObject(profiles.default))
-    throw new Error(
-      "secretspec.toml: profiles.default must be a table for Fence Rider's default profile",
-    );
+    throw new ValidationError({
+      source: "secrets",
+      path: "secretspec.toml#profiles.default",
+      discovered: "must be a table for Fence Rider's default profile",
+      remedy:
+        "declare [profiles.default] with the secrets Fence Rider resolves",
+    });
   for (const [name, profile] of Object.entries(profiles)) {
     if (!isPlainObject(profile))
-      throw new Error(`secretspec.toml: profile ${name} must be a table`);
+      throw new ValidationError({
+        source: "secrets",
+        path: `secretspec.toml#profiles.${name}`,
+        discovered: "must be a declaration table",
+        remedy: `make ${name} a TOML table`,
+      });
     for (const [key, declaration] of Object.entries(profile)) {
       if (!isPlainObject(declaration))
-        throw new Error(
-          `secretspec.toml: ${name}.${key} must be a declaration table`,
-        );
+        throw new ValidationError({
+          source: "secrets",
+          path: `secretspec.toml#${name}.${key}`,
+          discovered: "must be a declaration table",
+          remedy: `declare ${key} as a table of declaration fields`,
+        });
       if (key !== "defaults") checkDeclaration(`${name}.${key}`, declaration);
     }
   }
@@ -126,29 +156,43 @@ function checkScopeMember(
   profile: Record<string, unknown>,
 ): void {
   if (key === "defaults" || !Object.hasOwn(profile, key))
-    throw new Error(
-      `secretspec.toml: scopes.${scope} member ${key} is not declared in profiles.default`,
-    );
+    throw new ValidationError({
+      source: "secrets",
+      path: `secretspec.toml#scopes.${scope}`,
+      discovered: `member ${key} is not declared in profiles.default`,
+      remedy: `declare ${key} in [profiles.default] or remove it from the scope`,
+    });
   if (scope === "runtime" && key.startsWith("FORGE_"))
-    throw new Error(
-      `secretspec.toml: FORGE_* keys target the CLI and must not be in scopes.runtime (${key})`,
-    );
+    throw new ValidationError({
+      source: "secrets",
+      path: `secretspec.toml#scopes.runtime`,
+      discovered: `FORGE_* keys target the CLI and must not be in scopes.runtime (${key})`,
+      remedy: `move ${key} to scopes.manifest`,
+    });
 }
 
 /** Scope members must be declared; runtime members upload, so local controls stay out. */
 function checkScopes(scopes: unknown, profile: Record<string, unknown>): void {
   if (scopes === undefined) return;
   if (!isPlainObject(scopes))
-    throw new Error("secretspec.toml: scopes must be a table");
+    throw new ValidationError({
+      source: "secrets",
+      path: "secretspec.toml#scopes",
+      discovered: "must be a table",
+      remedy: "declare scopes.manifest and scopes.runtime as TOML tables",
+    });
   for (const scope of SCOPES) {
     const members = isPlainObject(scopes[scope])
       ? scopes[scope].secrets
       : undefined;
     if (members === undefined) continue;
     if (!Array.isArray(members) || !members.every(isString))
-      throw new Error(
-        `secretspec.toml: scopes.${scope}.secrets must be an array of names`,
-      );
+      throw new ValidationError({
+        source: "secrets",
+        path: `secretspec.toml#scopes.${scope}.secrets`,
+        discovered: "must be an array of names",
+        remedy: "list declared secret names as a TOML string array",
+      });
     for (const key of members) checkScopeMember(scope, key, profile);
   }
 }

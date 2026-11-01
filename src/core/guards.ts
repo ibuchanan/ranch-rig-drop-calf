@@ -1,7 +1,10 @@
-/** A named precondition: when `fails` holds for the subject, the run stops with `message`. */
+import type { DropCalfError } from "./errors.ts";
+
+/** A named precondition: when `fails` holds for the subject, the run stops with `failure`. */
 export type Guard<T> = {
   fails: (subject: T) => boolean;
-  message: string | ((subject: T) => string);
+  /** Text to explain the stop, or a taxonomy error to throw as-is. */
+  failure: string | DropCalfError | ((subject: T) => string | DropCalfError);
 };
 
 /** A JSON-style object: not null, not an array. */
@@ -15,11 +18,11 @@ export function isPlainObject(
 export function enforce<T>(subject: T, guards: readonly Guard<T>[]): void {
   const broken = guards.find(({ fails }) => fails(subject));
   if (!broken) return;
-  throw new Error(
-    typeof broken.message === "function"
-      ? broken.message(subject)
-      : broken.message,
-  );
+  const outcome =
+    typeof broken.failure === "function"
+      ? broken.failure(subject)
+      : broken.failure;
+  throw typeof outcome === "string" ? new Error(outcome) : outcome;
 }
 
 /** Runs `run` with environment variables set, restoring each prior value afterwards. */

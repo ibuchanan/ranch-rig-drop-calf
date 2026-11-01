@@ -1,5 +1,6 @@
 import type { Directory } from "@dagger.io/dagger";
 import { type Capability, noOp, type Validation } from "../core/capability.ts";
+import { ValidationError } from "../core/errors.ts";
 import {
   forPackageManager,
   type PackageManagerOption,
@@ -88,6 +89,11 @@ async function validateGitHooks(directory: Directory): Promise<Validation> {
     .withExec(["sh", "-c", 'lefthook validate 2>&1; echo "lefthook exit=$?"'])
     .stdout();
   if (report.trim().match(/lefthook exit=(\d+)$/)?.[1] !== "0")
-    throw new Error(`lefthook validation failed: ${report.trim()}`);
+    throw new ValidationError({
+      source: "git-hooks",
+      path: "lefthook.yml",
+      discovered: `lefthook validation failed: ${report.trim()}`,
+      remedy: "fix the reported hook configuration",
+    });
   return { status: "validated" };
 }

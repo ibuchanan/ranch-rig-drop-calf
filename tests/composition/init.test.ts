@@ -6,7 +6,7 @@ import {
 } from "../../src/capabilities/forge-manifest.ts";
 import { NODE_NVMRC } from "../../src/capabilities/node.ts";
 import { buildProject } from "../../src/composition/profiles.ts";
-import { ParseError } from "../../src/core/errors.ts";
+import { ConflictError, ParseError } from "../../src/core/errors.ts";
 import {
   mergeScaffoldPackage,
   scaffoldName,
@@ -278,9 +278,10 @@ test.each(
     const before = [...input.files];
     await expect(
       new DropCalf()[operation](input, "forge-app", "tester", "sample"),
-    ).rejects.toThrow(
-      `init is a one-time operation: ${marker} already exists; use update instead.`,
-    );
+    ).rejects.toBeInstanceOf(ConflictError);
+    await expect(
+      new DropCalf()[operation](input, "forge-app", "tester", "sample"),
+    ).rejects.toThrow(`${marker}: already exists`);
     expect([...input.files]).toEqual(before);
   },
 );
@@ -313,7 +314,10 @@ test.each(["library", "forge-app", "tool", "agent-skill"])(
         const before = [...input.files];
         await expect(
           module.init(input, profile, "tester", "sample"),
-        ).rejects.toThrow(`${marker} already exists; use update instead`);
+        ).rejects.toBeInstanceOf(ConflictError);
+        await expect(
+          module.init(input, profile, "tester", "sample"),
+        ).rejects.toThrow(`${marker}: already exists`);
         expect([...input.files]).toEqual(before);
       }
     } finally {

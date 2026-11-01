@@ -1,7 +1,7 @@
 import type { Directory } from "@dagger.io/dagger";
 import semver from "semver";
 import sortPackageJson from "sort-package-json";
-import { ParseError } from "./errors.ts";
+import { ConflictError, ParseError } from "./errors.ts";
 import { isPlainObject } from "./guards.ts";
 
 /**
@@ -170,9 +170,13 @@ export function assemblePackage(
   for (const claim of contributors.flatMap(claimsBy)) {
     const owner = owners.get(claim.key);
     if (owner !== undefined)
-      throw new Error(
-        `package.json: ${claim.key} is contributed by both ${owner} and ${claim.owner}; exactly one capability must own it.`,
-      );
+      throw new ConflictError({
+        source: "package.json",
+        path: claim.key,
+        discovered: `is contributed by both ${owner} and ${claim.owner}`,
+        wanted: "exactly one capability owner",
+        remedy: "remove the key from one contribution",
+      });
     owners.set(claim.key, claim.owner);
     claim.place(assembled);
   }

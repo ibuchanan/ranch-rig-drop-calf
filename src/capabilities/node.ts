@@ -1,6 +1,7 @@
 import { type Directory, dag } from "@dagger.io/dagger";
 import { subset, validRange } from "semver";
 import type { Capability, Validation } from "../core/capability.ts";
+import { PrerequisiteError, ValidationError } from "../core/errors.ts";
 import { ensureFile } from "../core/files.ts";
 import { isPlainObject } from "../core/guards.ts";
 import { updatePackageLicense } from "../core/license.ts";
@@ -73,7 +74,13 @@ async function validateNode(directory: Directory): Promise<Validation> {
   const asset =
     arch === "amd64" ? "fnm-linux" : arch === "arm64" ? "fnm-arm64" : undefined;
   if (!asset)
-    throw new Error(`fnm validation: unsupported platform ${platform}`);
+    throw new PrerequisiteError({
+      source: "node",
+      path: "host platform",
+      discovered: `unsupported platform ${platform}`,
+      wanted: "a Linux amd64 or arm64 platform",
+      remedy: "run node validation on a supported platform",
+    });
   const binary = dag.http(
     `https://github.com/Schniz/fnm/releases/download/v${TOOL_VERSIONS.fnm}/${asset}.zip`,
   );
@@ -107,9 +114,12 @@ export function nodeBaseline({
 }: NodeBaselineOptions = {}): Capability {
   const baseline = major ?? NODE_MAJOR;
   if (!/^[1-9]\d*$/.test(baseline) || baseline.trim() !== baseline)
-    throw new Error(
-      `node: expected a positive numeric major, received ${baseline}`,
-    );
+    throw new ValidationError({
+      source: "node",
+      path: "node baseline",
+      discovered: `expected a positive numeric major, received ${baseline}`,
+      remedy: "pass a positive integer major version",
+    });
   const typesPolicy =
     major === undefined
       ? "keep @types/node fresh"

@@ -17,6 +17,7 @@ import {
   PINNED_OSS,
   PINNED_OSS_UPSTREAM,
   transformOssTemplate,
+  validateOssOwner,
 } from "../../src/capabilities/oss.ts";
 import { PRELINT_SCRIPTS } from "../../src/capabilities/prelint.ts";
 import { SECRETS_ASSETS } from "../../src/capabilities/secrets.ts";
@@ -29,6 +30,12 @@ import {
   updateCapabilities,
   validateCapabilities,
 } from "../../src/core/capability.ts";
+import {
+  InvalidOptionsError,
+  ParseError,
+  PrerequisiteError,
+  ValidationError,
+} from "../../src/core/errors.ts";
 import { TOOL_VERSIONS } from "../../src/core/versions.ts";
 import { DropCalf } from "../../src/index.ts";
 import { capabilityOf, runUpdate } from "../support/capability-fixtures.ts";
@@ -508,6 +515,13 @@ test("OSS update replaces authoritative documents and OWNER, leaves README/catal
   }
 });
 
+test.each(["", "two words", "bad/name", "-leading"])(
+  "an owner staff ID is required before composition: %j",
+  (owner) => {
+    expect(() => validateOssOwner(owner)).toThrow(InvalidOptionsError);
+  },
+);
+
 test("init pulls OSS values from the edited catalog seed rather than metadata arguments", async () => {
   const source = mockOssSource();
   const directory = spyOn(dag, "directory").mockImplementation(() =>
@@ -573,6 +587,9 @@ test.each(mutations)(
     const directory = input().withNewFile(CATALOG_FILE, document.toString());
     const write = spyOn(directory, "withNewFile");
     try {
+      await expect(copyOssAssets(directory, assets())).rejects.toBeInstanceOf(
+        ValidationError,
+      );
       await expect(copyOssAssets(directory, assets())).rejects.toThrow(
         CATALOG_FILE,
       );
@@ -593,6 +610,10 @@ test.each([
     contents === undefined
       ? mockDirectory()
       : mockDirectory(new Map([[CATALOG_FILE, contents]]));
+  const error = contents === undefined ? PrerequisiteError : ParseError;
+  await expect(copyOssAssets(directory, assets())).rejects.toBeInstanceOf(
+    error,
+  );
   await expect(copyOssAssets(directory, assets())).rejects.toThrow(
     CATALOG_FILE,
   );

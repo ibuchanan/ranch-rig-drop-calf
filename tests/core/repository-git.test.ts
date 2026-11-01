@@ -1,6 +1,7 @@
 import { expect, test } from "bun:test";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { PrerequisiteError, ValidationError } from "../../src/core/errors.ts";
 import { git } from "../../src/core/git.ts";
 import {
   finishRepository,
@@ -86,14 +87,22 @@ test("update retains a two-parent merge and deterministic branch across retries"
 test("fresh init rejects potential credentials before recording any history", () => {
   const { repo, options } = fixture();
   writeFileSync(join(repo, ".env"), "TOKEN=secret");
-  expect(() => prepareRepository(repo, options)).toThrow(
-    "potential credentials",
-  );
+  let failure: unknown;
+  try {
+    prepareRepository(repo, options);
+  } catch (error) {
+    failure = error;
+  }
+  expect(failure).toBeInstanceOf(ValidationError);
+  expect((failure as Error).message).toContain("potential credentials");
   expect(() => git(repo, "rev-parse", "--verify", "HEAD")).toThrow();
 });
 
 test("empty init creates a baseline and update without history is rejected", () => {
   const { repo, options } = fixture();
+  expect(() =>
+    prepareRepository(repo, { ...options, operation: "update" }),
+  ).toThrow(PrerequisiteError);
   expect(() =>
     prepareRepository(repo, { ...options, operation: "update" }),
   ).toThrow("requires repository history");

@@ -7,7 +7,10 @@ import {
   CATALOG_TEMPLATE,
   COPYRIGHT_DATE,
   catalog,
+  LICENSE,
   PACKAGE_NAME,
+  readCatalog,
+  readCatalogLicense,
   renderCatalog,
 } from "../../src/capabilities/catalog.ts";
 import { buildProject, PROFILES } from "../../src/composition/profiles.ts";
@@ -16,6 +19,11 @@ import {
   updateCapabilities,
   validateCapabilities,
 } from "../../src/core/capability.ts";
+import {
+  ParseError,
+  PrerequisiteError,
+  ValidationError,
+} from "../../src/core/errors.ts";
 import { DropCalf } from "../../src/index.ts";
 import { verb } from "../support/capability-fixtures.ts";
 import { mockDirectory, mockModuleSource } from "../support/module-source.ts";
@@ -188,6 +196,32 @@ test("missing catalog validation is skipped, not accepted or bootstrapped", asyn
     status: "skipped",
     reason: "catalog-info.yaml is missing",
   });
+});
+
+test("catalog readers refuse missing or unlicensed shared metadata", async () => {
+  await expect(
+    readCatalog(repository(), "package-metadata"),
+  ).rejects.toBeInstanceOf(PrerequisiteError);
+  const unlicensed = parseDocument(seeded());
+  unlicensed.deleteIn(["metadata", "annotations", LICENSE]);
+  await expect(
+    readCatalogLicense(repository(unlicensed.toString()), "oss"),
+  ).rejects.toBeInstanceOf(ValidationError);
+});
+
+test("catalog validation separates unparseable input from broken metadata rules", async () => {
+  const validate = verb(catalog(), "validate");
+  await expect(
+    validate(repository("metadata: [broken\n")),
+  ).rejects.toBeInstanceOf(ParseError);
+  for (const contents of [
+    seeded().replace("kind: Component", "kind: System"),
+    seeded({ copyrightDate: "24" }),
+    seeded().replace("user:default/tester", "group:default/tester"),
+  ])
+    await expect(validate(repository(contents))).rejects.toBeInstanceOf(
+      ValidationError,
+    );
 });
 
 test.each(["2024", "2024-2026", "2024-2024"])(

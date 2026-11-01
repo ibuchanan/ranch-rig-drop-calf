@@ -1,5 +1,6 @@
 import type { Directory } from "@dagger.io/dagger";
 import { type Capability, noOp, type Validation } from "../core/capability.ts";
+import { ValidationError } from "../core/errors.ts";
 import { templateTree } from "../core/templates.ts";
 import { npmTools, REPOSITORY } from "../core/tool-run.ts";
 import { TOOL_VERSIONS } from "../core/versions.ts";
@@ -113,6 +114,11 @@ async function validateChangelog(directory: Directory): Promise<Validation> {
     .stdout();
   const code = report.trim().match(/git-cliff exit=(\d+)$/)?.[1];
   if (code !== "0")
-    throw new Error(`git-cliff validation failed: ${report.trim()}`);
+    throw new ValidationError({
+      source: "changelog",
+      path: "cliff.toml",
+      discovered: `git-cliff validation failed: ${report.trim()}`,
+      remedy: "fix the reported changelog configuration",
+    });
   return { status: "validated" };
 }

@@ -8,6 +8,7 @@ import {
   type Socket,
 } from "@dagger.io/dagger";
 import { enforce, type Guard } from "./guards.ts";
+import { InvalidOptionsError } from "./errors.ts";
 import type { WorkflowStage } from "./repository-git.ts";
 import type { RepositoryOptions } from "./repository-types.ts";
 import { nodeContainer } from "./tool-run.ts";
@@ -28,20 +29,27 @@ const PREFLIGHT: readonly Guard<Preflight>[] = [
   {
     fails: ({ input }) =>
       input.publish && (!input.remoteUrl || input.operation !== "update"),
-    message: "Publication requires update with a remote URL.",
+    failure: () =>
+      new InvalidOptionsError("Publication requires update with a remote URL."),
   },
   {
     fails: ({ hasGit }) => hasGit,
-    message: "Existing repositories require --history bundle; never copy .git.",
+    failure: () =>
+      new InvalidOptionsError(
+        "Existing repositories require --history bundle; never copy .git.",
+      ),
   },
   {
     fails: ({ input }) => Boolean(input.remoteUrl && input.history),
-    message: "Choose remote URL or local history, not both.",
+    failure: () =>
+      new InvalidOptionsError("Choose remote URL or local history, not both."),
   },
   {
     fails: ({ input }) => Boolean(input.sshAgent && !input.knownHosts),
-    message:
-      "SSH requires a known-hosts file; host verification is never disabled.",
+    failure: () =>
+      new InvalidOptionsError(
+        "SSH requires a known-hosts file; host verification is never disabled.",
+      ),
   },
 ];
 
@@ -49,10 +57,11 @@ const WORKFLOW = "/workflow";
 
 /** Modules the container script imports by relative path, so they sit beside it. */
 const WORKFLOW_MODULES = [
-  "repository-git.ts",
+  "errors.ts",
   "git.ts",
   "guards.ts",
   "init-markers.ts",
+  "repository-git.ts",
   "repository-policy.ts",
   "repository-types.ts",
 ] as const;

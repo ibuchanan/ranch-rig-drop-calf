@@ -15,9 +15,10 @@ import {
   resolveProfile,
 } from "../../src/composition/profiles.ts";
 import { validateCapabilities } from "../../src/core/capability.ts";
+import { ParseError } from "../../src/core/errors.ts";
 import { TOOL_VERSIONS } from "../../src/core/versions.ts";
 import { DropCalf } from "../../src/index.ts";
-import { runUpdate } from "../support/capability-fixtures.ts";
+import { runUpdate, verb } from "../support/capability-fixtures.ts";
 import { mockContainer } from "../support/container-source.ts";
 import { mockDirectory, mockModuleSource } from "../support/module-source.ts";
 
@@ -142,16 +143,16 @@ test("Bun validation checks TOML syntax without executing owner preloads or runt
     expect(await validateCapabilities(input, [bunBaseline()])).toEqual([
       { capability: "bun", status: "validated" },
     ]);
-    expect(
-      await validateCapabilities(
-        mockDirectory(new Map([["bunfig.toml", "[invalid\n"]])),
-        [bunBaseline()],
-      ),
-    ).toEqual([
+    const invalid = mockDirectory(new Map([["bunfig.toml", "[invalid\n"]]));
+    await expect(
+      verb(bunBaseline(), "validate")(invalid),
+    ).rejects.toBeInstanceOf(ParseError);
+    expect(await validateCapabilities(invalid, [bunBaseline()])).toEqual([
       {
         capability: "bun",
         status: "failed",
-        reason: "bun: bunfig.toml contains invalid TOML",
+        reason:
+          "cannot parse bunfig.toml: invalid TOML; fix the file before continuing.",
       },
     ]);
     expect(commands).toEqual([]);

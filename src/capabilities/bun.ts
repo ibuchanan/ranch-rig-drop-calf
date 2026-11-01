@@ -1,6 +1,7 @@
 import type { Directory } from "@dagger.io/dagger";
 import { parse as parseToml } from "smol-toml";
 import { type Capability, noOp, type Validation } from "../core/capability.ts";
+import { ParseError } from "../core/errors.ts";
 import { updatePackageLicense } from "../core/license.ts";
 import { templateTree } from "../core/templates.ts";
 import { TOOL_VERSIONS } from "../core/versions.ts";
@@ -15,7 +16,7 @@ async function validateBun(directory: Directory): Promise<Validation> {
   try {
     parseToml(await directory.file("bunfig.toml").contents());
   } catch {
-    throw new Error("bun: bunfig.toml contains invalid TOML");
+    throw new ParseError("bunfig.toml", "invalid TOML");
   }
   return { status: "validated" };
 }

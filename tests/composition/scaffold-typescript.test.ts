@@ -2,6 +2,7 @@ import { expect, test } from "bun:test";
 import fc from "fast-check";
 import { parseDocument } from "yaml";
 import { planScaffoldTypeScript } from "../../src/composition/scaffold.ts";
+import { ConflictError } from "../../src/core/errors.ts";
 
 const backend =
   "modules:\n  function:\n    - key: main\n      handler: index.run\n";
@@ -130,9 +131,10 @@ test.each([
         const to = `${stem}.${ts}`;
         const paths = reversed ? [to, from] : [from, to];
         const before = [...paths];
-        expect(() => planScaffoldTypeScript(paths, backend)).toThrow(
-          `${to} already exists`,
-        );
+        const fail = () => planScaffoldTypeScript(paths, backend);
+        expect(fail).toThrow(ConflictError);
+        expect(fail).toThrow(`${to} already exists`);
+        expect(() => fail()).toThrow(`scaffold: ${from}:`);
         expect(paths).toEqual(before);
       }),
     );
