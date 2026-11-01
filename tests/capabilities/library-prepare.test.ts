@@ -53,8 +53,12 @@ test.each([
       expect(readFileSync(join(root, "lifecycle.log"), "utf8")).toBe(
         "build\nhooks\n",
       );
+      // Git 2.56 renamed the unusable-gitfile diagnostic; both wordings mean
+      // Git metadata is not a repository, which is the failure being surfaced.
       if (scenario !== "successful hooks")
-        expect(result.stderr).toContain("not a git repository");
+        expect(result.stderr).toMatch(
+          /not a git repository|does not point to a valid repository/,
+        );
       if (scenario === "unusable Git metadata") {
         expect(readFileSync(join(root, ".git"), "utf8")).toBe(
           "gitdir: /does-not-exist\n",
