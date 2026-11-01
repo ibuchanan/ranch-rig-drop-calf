@@ -11,14 +11,51 @@ export const SECRETS_TEMPLATE = "templates/secretspec";
 export const SECRETS_ASSETS = ["secretspec.toml"] as const;
 export const FENCE_RIDER_PACKAGE = "fence-rider";
 
+/** TOML basic strings forbid raw control characters (U+0000–U+001F, U+007F) plus `"` and `\`. */
+const TOML_SHORT_ESCAPES: Record<string, string> = {
+  "\b": "\\b",
+  "\t": "\\t",
+  "\n": "\\n",
+  "\f": "\\f",
+  "\r": "\\r",
+};
+
+const unicodeEscape = (codePoint: number) =>
+  `\\u${codePoint.toString(16).toUpperCase().padStart(4, "0")}`;
+
+const isSurrogate = (codePoint: number) =>
+  codePoint >= 0xd800 && codePoint <= 0xdfff;
+const isControl = (codePoint: number) =>
+  codePoint <= 0x1f || codePoint === 0x7f;
+
+/** TOML `\uXXXX` escapes carry a Unicode scalar value, so an unpaired surrogate is unreachable. */
+function escapeTomlCharacter(character: string): string {
+  const codePoint = character.codePointAt(0) ?? 0;
+  if (isSurrogate(codePoint))
+    throw new ValidationError({
+      source: "secrets",
+      path: "secretspec.toml#project.name",
+      discovered: `contains ${unicodeEscape(codePoint)}, an unpaired surrogate`,
+      remedy: "rename the project with characters TOML can represent",
+    });
+  if (character === '"') return '\\"';
+  if (character === "\\") return "\\\\";
+  const short = TOML_SHORT_ESCAPES[character];
+  if (short) return short;
+  return isControl(codePoint) ? unicodeEscape(codePoint) : character;
+}
+
+function tomlBasicString(value: string): string {
+  return `"${[...value].map(escapeTomlCharacter).join("")}"`;
+}
+
 export function transformSecretsTemplate(
   path: string,
   contents: string,
   name: string,
 ): string {
   if (path !== "secretspec.toml") return contents;
-  // JSON string escaping is compatible with TOML basic strings for project names.
-  return contents.replaceAll('"[project-name]"', JSON.stringify(name));
+  return contents.replaceAll('"[project-name]"', tomlBasicString(name));
 }
 
 /** This seeding boundary handles TOML name substitution. */

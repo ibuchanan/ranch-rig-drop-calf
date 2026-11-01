@@ -270,6 +270,55 @@ test("validation reports absence and redacts TOML diagnostics", async () => {
   expect(JSON.stringify(result)).not.toContain("secret-marker");
 });
 
+test("project-name substitution escapes characters TOML forbids raw", () => {
+  expect(
+    transformSecretsTemplate(
+      "secretspec.toml",
+      'name = "[project-name]"',
+      "a\u007fb",
+    ),
+  ).toBe('name = "a\\u007Fb"');
+});
+
+test("project-name substitution rejects names TOML cannot represent", () => {
+  expect(() =>
+    transformSecretsTemplate(
+      "secretspec.toml",
+      'name = "[project-name]"',
+      "a\ud800b",
+    ),
+  ).toThrow(ValidationError);
+});
+
+test("project-name substitution uses TOML short and unicode escapes", () => {
+  expect(
+    transformSecretsTemplate(
+      "secretspec.toml",
+      'name = "[project-name]"',
+      'a\b\t\n\f\r\u0000\u0001\u001f"\\b',
+    ),
+  ).toBe('name = "a\\b\\t\\n\\f\\r\\u0000\\u0001\\u001F\\"\\\\b"');
+});
+
+test("escaping exotic project names round-trips through a TOML parser", () => {
+  const names = [
+    "sample-app",
+    'quotes"and\\slashes',
+    "tab\there\nnewline",
+    "del\u007fchar",
+    "emoji 🐄 and ümlauts",
+    "\u0000\u001f controls",
+  ];
+  for (const name of names) {
+    const toml = transformSecretsTemplate(
+      "secretspec.toml",
+      'name = "[project-name]"',
+      name,
+    );
+    expect(parseToml(toml)).toEqual({ name });
+  }
+});
+
 test("TOML project-name substitution escapes quotes and newlines", async () => {
   const name = 'name"with\\slashes\nand newline';
   const contents = transformSecretsTemplate(
