@@ -1,5 +1,7 @@
 import { expect, spyOn, test } from "bun:test";
 import { type Directory, dag } from "@dagger.io/dagger";
+import { readFileSync } from "node:fs";
+import { join, resolve } from "node:path";
 import { release } from "../../src/capabilities/release.ts";
 import {
   buildProject,
@@ -8,6 +10,8 @@ import {
 import { validateCapabilities } from "../../src/core/capability.ts";
 import { runUpdate } from "../support/capability-fixtures.ts";
 import { mockDirectory, mockModuleSource } from "../support/module-source.ts";
+
+const root = resolve(import.meta.dir, "../..");
 
 test.each(["library", "tool", "agent-skill"])(
   "%s selects a required one-command release with one git-cliff owner",
@@ -115,6 +119,24 @@ test("adoption fills a missing release check without deleting custom legacy comm
   } finally {
     source.mockRestore();
   }
+});
+
+test("project release requirement covers the kinds that select release, not forge-app", () => {
+  const spec = readFileSync(join(root, "specs/07-project-release.md"), "utf8");
+  expect(spec).toContain(
+    "Every newly generated `library`, `tool`, and `agent-skill` repository must",
+  );
+  expect(spec).toContain("expose `scripts.release`.");
+});
+
+test("release guide covers the kinds that select release, not forge-app", () => {
+  const guide = readFileSync(
+    join(root, "docs/how-to/release-project.md"),
+    "utf8",
+  );
+  expect(guide).toContain(
+    "Use this procedure for `library`, `tool`, and `agent-skill` repositories",
+  );
 });
 
 test("standalone release validation cannot read files or invoke tools", async () => {

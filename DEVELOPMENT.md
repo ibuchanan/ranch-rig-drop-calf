@@ -296,8 +296,8 @@ bun test tests/e2e/package-check.e2e.test.ts --path-ignore-patterns='vendor/**'
 ## Project release
 
 The unified `release` capability maintains one standalone
-`templates/release/scripts/release.sh` Bash script for all four project kinds:
-`library`, `forge-app`, `tool`, and `agent-skill`. The script performs releases
+`templates/release/scripts/release.sh` Bash script for the release-selecting
+kinds: `library`, `tool`, and `agent-skill`. The script performs releases
 directly on `main` and pushes to `origin main`. Package metadata commands are
 selected during scaffolding: npm kinds use `npm version`, Bun kinds use `jq`.
 There is no generated TypeScript helper or runtime package-manager detection.
@@ -313,7 +313,7 @@ For repositories still using the legacy two-command `release:prepare` and
 [Publish a prepared library release to Git](docs/how-to/publish-library-release.md).
 
 The release E2E test suite validates the complete workflow: checks, version
-updates, changelog rendering, commit, tag, and atomic push for all four project
+updates, changelog rendering, commit, tag, and atomic push for the release
 kinds in a single invocation.
 
 ```bash

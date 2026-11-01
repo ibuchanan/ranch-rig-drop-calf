@@ -2,10 +2,10 @@
 
 <!-- cspell:words versionless -->
 
-Use this procedure for `library`, `forge-app`, `tool`, and `agent-skill`
-repositories with the shared `release` script. One invocation runs checks,
-updates version metadata and release notes, commits, tags, and pushes.
-There is no manual checkpoint between these operations.
+Use this procedure for `library`, `tool`, and `agent-skill` repositories
+with the shared `release` script. One invocation runs checks, updates version
+metadata and release notes, commits, tags, and pushes. There is no manual
+checkpoint between these operations.
 
 ## Prerequisites
 
@@ -49,7 +49,6 @@ are:
 | Kind                  | Default checks                                            |
 | --------------------- | --------------------------------------------------------- |
 | `library`             | `npm run test && npm run typecheck && npm run pack:check` |
-| `forge-app`           | `npm run test && npm run typecheck`                       |
 | `tool`, `agent-skill` | `bun run test && bun run typecheck`                       |
 
 A missing/failing check or an unexpected file change blocks release before

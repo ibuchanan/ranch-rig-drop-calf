@@ -144,7 +144,7 @@ function expectUnreleased(cwd: string, remote: string, head: string) {
   expect(git(cwd, "tag", "--list", "v0.2.0")).toBe("");
 }
 
-test.each(["library", "forge-app", "tool", "agent-skill"])(
+test.each(["library", "tool", "agent-skill"])(
   "%s releases main to origin with scaffolded metadata commands",
   async (kind) => {
     const { cwd, remote } = await fixture(kind);

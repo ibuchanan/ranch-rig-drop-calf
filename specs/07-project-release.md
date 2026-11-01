@@ -16,10 +16,10 @@ pushes that commit and tag to a selected destination. Registry publication,
 Forge deployment, and public changelog publication are separate effects; a
 successful project release does not imply any of them.
 
-Every newly generated `library`, `forge-app`, `tool`, and `agent-skill`
-repository must expose `scripts.release`. The repository must be able to run
-its installed release procedure without calling Drop Calf or Dagger. Updating
-the installed procedure must be a reviewable repository change.
+Every newly generated `library`, `tool`, and `agent-skill` repository must
+expose `scripts.release`. The repository must be able to run its installed
+release procedure without calling Drop Calf or Dagger. Updating the installed
+procedure must be a reviewable repository change.
 
 **One invocation performs the complete release:** checks, version and changelog
 updates, commit, tag, and push. There is no mandatory preparation command,
@@ -66,9 +66,9 @@ repositories requires reviewing the update diff and old command removal.
 
 ### 3.1 Peer convention contract
 
-All four project kinds (`library`, `forge-app`, `tool`, `agent-skill`) use a
-shared `release` capability that replaces the library-only predecessor. One
-required `release` script invocation performs all steps: checks, version/changelog
+The `library`, `tool`, and `agent-skill` kinds use a shared `release`
+capability that replaces the library-only predecessor. One required `release`
+script invocation performs all steps: checks, version/changelog
 updates, commit, tag, and atomic push to `origin main`. No flags, no interactive
 checkpoint, no subcommands.
 
@@ -94,13 +94,13 @@ concurrency lock, no automatic resume. Peer libraries keep visible command seque
 
 ### 3.2 Capability and package scripts
 
-| Resource                                         | Init                              | Update                                         | Validation                                     |
-| ------------------------------------------------ | --------------------------------- | ---------------------------------------------- | ---------------------------------------------- |
-| `release`                                        | Policy contribution in every kind | Maintain the command                           | Never execute a release                        |
-| `scripts/release.sh`                             | Copy authored templates           | Maintain as policy; not owner extension points | Syntax and behavior tests in isolated fixtures |
-| `release:check`                                  | Seed per-kind checks              | Preserve owner changes                         | Report missing required command before release |
-| `git-cliff` pin and `changelog` command          | Existing `changelog` ownership    | Existing freshness policy                      | Existing changelog validation                  |
-| `cliff.toml`, release notes, versions, lockfiles | Existing owners                   | Release capability update preserves them       | No release-file writes on the host             |
+| Resource                                         | Init                                 | Update                                         | Validation                                     |
+| ------------------------------------------------ | ------------------------------------ | ---------------------------------------------- | ---------------------------------------------- |
+| `release`                                        | Policy contribution in release kinds | Maintain the command                           | Never execute a release                        |
+| `scripts/release.sh`                             | Copy authored templates              | Maintain as policy; not owner extension points | Syntax and behavior tests in isolated fixtures |
+| `release:check`                                  | Seed per-kind checks                 | Preserve owner changes                         | Report missing required command before release |
+| `git-cliff` pin and `changelog` command          | Existing `changelog` ownership       | Existing freshness policy                      | Existing changelog validation                  |
+| `cliff.toml`, release notes, versions, lockfiles | Existing owners                      | Release capability update preserves them       | No release-file writes on the host             |
 
 No capability lifecycle operation may commit, tag, push, or announce a release.
 An existing repository with a conflicting custom `release` script requires a
@@ -110,11 +110,12 @@ not edits to policy-managed helper files.
 
 Implementation touchpoints:
 - Replace `src/capabilities/library-release.ts` with the shared capability;
-  select it in every profile in `src/composition/profiles.ts`.
+  select it in the release-selecting profiles in `src/composition/profiles.ts`.
 - Add the standalone Bash script under `templates/release`, without a
   TypeScript helper or the old two-command protocol.
 - Extend `tests/composition/kind-outputs.test.ts` to require `release` for every
-  kind. Update capability ownership tests and generated inventories.
+  kind that selects it, not `forge-app`. Update capability ownership tests and
+  generated inventories.
 - Adapt existing release tests for one invocation, npm and Bun, and all
   kind-specific check lists. Replace the two-stage guides when behavior ships.
 
@@ -322,8 +323,9 @@ registry publication or deployment.
 
 ### Generator and distribution
 
-- All four kinds emit a working `release` entry point. New repositories have
-  no prepare/publish aliases, manual checkpoints, or preparation receipts.
+- The release-selecting kinds emit a working `release` entry point. New
+  repositories have no prepare/publish aliases, manual checkpoints, or
+  preparation receipts.
 - Init/update/validate never commit, tag, push, or change release artifacts.
 - One capability owns release wiring; `changelog` alone owns its tool pin.
   Update is idempotent and preserves owner checks. Package-manager commands
@@ -335,7 +337,7 @@ registry publication or deployment.
 - One Bash invocation completes checks, version/changelog updates, commit, tag,
   and atomic push to `origin main` without flags or interactive approval.
 - Disposable Git repositories with local bare remotes exercise npm and Bun,
-  all four kinds, initial releases, and later patch/minor/major changes.
+  the release kinds, initial releases, and later patch/minor/major changes.
 - Generated output preserves changelog history/header, updates only declared
   release files, keeps package/tag versions aligned, and leaves Bun lock bytes
   unchanged.
