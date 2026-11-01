@@ -8,10 +8,77 @@ import {
   resolveProfile,
 } from "../../src/composition/profiles.ts";
 import { validateCapabilities } from "../../src/core/capability.ts";
-import { runUpdate } from "../support/capability-fixtures.ts";
+import {
+  capabilityOf,
+  kinds,
+  runUpdate,
+} from "../support/capability-fixtures.ts";
 import { mockDirectory, mockModuleSource } from "../support/module-source.ts";
 
 const root = resolve(import.meta.dir, "../..");
+
+/** specs/07 §1: these kinds expose `scripts.release`; `forge-app` does not. */
+const RELEASE_KINDS = ["agent-skill", "library", "tool"];
+
+test.each(kinds)("%s release wiring matches specs/07 per kind", (kind) => {
+  const releases = RELEASE_KINDS.includes(kind);
+  const selected = resolveProfile(kind);
+  const project = buildProject(kind, "sample", "tester");
+  const scripts = project.packageJson.scripts;
+  expect(selected.some((capability) => capability.name === "release")).toBe(
+    releases,
+  );
+  expect(scripts.release).toBe(
+    releases ? "bash scripts/release.sh" : undefined,
+  );
+  expect(Boolean(scripts["release:check"])).toBe(releases);
+  expect(scripts["release:prepare"]).toBeUndefined();
+  expect(scripts["release:publish"]).toBeUndefined();
+  expect(
+    project.templates.some((template) => template.path === "templates/release"),
+  ).toBe(releases);
+  expect(
+    selected
+      .filter(
+        (capability) =>
+          capability.packageJson?.seed?.devDependencies?.["git-cliff"],
+      )
+      .map((capability) => capability.name),
+  ).toEqual(["changelog"]);
+});
+
+test.each(RELEASE_KINDS)(
+  "%s release script renders its package manager and declared release files",
+  async (kind) => {
+    const source = mockModuleSource();
+    try {
+      const output = await runUpdate(
+        capabilityOf(kind, "release"),
+        mockDirectory(
+          new Map([
+            ["package.json", JSON.stringify({ version: "0.1.0", scripts: {} })],
+          ]),
+        ),
+      );
+      const script = await output.file("scripts/release.sh").contents();
+      expect(script).not.toMatch(/@[A-Z_]+@/);
+      if (kind === "library") {
+        expect(script).toContain('bun run --bun npm version "$version"');
+        expect(script).toContain(
+          "git add -- package.json package-lock.json CHANGELOG.md",
+        );
+        expect(script).toContain("npm run release:check");
+      } else {
+        expect(script).toContain("jq --arg version");
+        expect(script).toContain("git add -- package.json CHANGELOG.md");
+        expect(script).not.toContain("package-lock.json");
+        expect(script).toContain("bun run release:check");
+      }
+    } finally {
+      source.mockRestore();
+    }
+  },
+);
 
 test.each(["library", "tool", "agent-skill"])(
   "%s selects a required one-command release with one git-cliff owner",

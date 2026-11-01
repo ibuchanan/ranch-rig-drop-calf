@@ -1,4 +1,5 @@
 import { expect, test } from "bun:test";
+import { readFileSync } from "node:fs";
 import {
   ConflictError,
   DropCalfError,
@@ -57,4 +58,71 @@ test("every failure class is one catchable taxonomy", () => {
     }),
   ];
   for (const failure of failures) expect(failure).toBeInstanceOf(DropCalfError);
+});
+
+/** specs/02 §6: every failure names its function, path, discovery, and remedy. */
+const structuredFailures = [
+  PrerequisiteError,
+  ConflictError,
+  ValidationError,
+] as const;
+
+for (const ErrorClass of structuredFailures) {
+  test(`${ErrorClass.name} names the function, path, discovery, want, and remedy`, () => {
+    const failure = {
+      source: "release",
+      path: "scripts/release.sh",
+      discovered: "is missing",
+      wanted: "a one-command release script",
+      remedy: "run init or update",
+    };
+    const error = new ErrorClass(failure);
+    expect(error).toBeInstanceOf(DropCalfError);
+    expect(error.failure).toEqual(failure);
+    expect(error.message).toBe(
+      "release: scripts/release.sh: is missing; wanted a one-command release script; run init or update.",
+    );
+  });
+}
+
+test("a parse failure names the file and the step that unblocks the owner", () => {
+  const error = new ParseError("package.json", "unexpected token");
+  expect(error.message).toBe(
+    "cannot parse package.json: unexpected token; fix the file before continuing.",
+  );
+  expect(error).toBeInstanceOf(DropCalfError);
+});
+
+test("the taxonomy in specs/02 §6 matches the exported error classes", async () => {
+  const spec = readFileSync(
+    new URL("../../specs/02-project-functions.md", import.meta.url),
+    "utf8",
+  );
+  const heading = "## 6. Error and conflict classes";
+  expect(spec).toContain(heading);
+  const named = [
+    ...spec
+      .slice(spec.indexOf(heading) + heading.length)
+      .matchAll(/`(\w+Error)`/g),
+  ]
+    .map((match) => match[1] ?? "")
+    .sort();
+  expect(named).toEqual([
+    "ConflictError",
+    "InvalidOptionsError",
+    "ParseError",
+    "PrerequisiteError",
+    "ValidationError",
+  ]);
+  const taxonomy = await import("../../src/core/errors.ts");
+  const exported = Object.entries(taxonomy)
+    .filter(
+      ([name, value]) =>
+        name.endsWith("Error") &&
+        name !== "DropCalfError" &&
+        typeof value === "function",
+    )
+    .map(([name]) => name)
+    .sort();
+  expect(exported).toEqual(named);
 });
