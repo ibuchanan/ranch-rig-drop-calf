@@ -13,9 +13,9 @@ verification.
 ## Decision
 
 Seed Fallow by default for `tool` and `library`, with
-`--without-functions fallow` to opt out. The generated `lint:fallow` script
-runs dead-code, duplication, and health analysis, failing on findings. Seed an
-owner-managed `.fallowrc.jsonc` that excludes `git-cliff`: the changelog
+`--without-functions fallow` to opt out. The generated `lint:check:fallow`
+script runs dead-code, duplication, and health analysis, failing on findings.
+Seed an owner-managed `.fallowrc.jsonc` that excludes `git-cliff`: the changelog
 script invokes its `git cliff` binary, which Fallow does not recognize as use
 of the dependency.
 
@@ -26,7 +26,8 @@ report false unused code. Agent skills are not a target of this adoption.
 
 Update enforces the script and refreshes the seeded pin but does not restore
 or overwrite the config. Capability validation skips source scanning with an
-explicit reason; run `lint:fallow` in the project after installing dependencies.
+explicit reason; run `lint:check:fallow` in the project after installing
+dependencies.
 
 ## Alternatives considered
 

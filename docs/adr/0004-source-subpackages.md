@@ -145,6 +145,7 @@ compiler and a reviewer can check.
 ## Related specifications
 
 - [Overview and domain terms](../../specs/00-drop-calf-overview.md)
+- [Project kinds and their capability profiles](../../specs/01-project-kinds.md)
 - [Project-function contract and policies](../../specs/02-project-functions.md)
 - [ADR 0002: package.json assembled from capability contributions](0002-package-json-assembled-from-capability-contributions.md)
 

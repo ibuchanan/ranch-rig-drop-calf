@@ -109,8 +109,8 @@ Owner-specific behavior belongs in declared checks or supported configuration,
 not edits to policy-managed helper files.
 
 Implementation touchpoints:
-- Replace `src/capabilities/library-release.ts` with the shared capability;
-  select it in the release-selecting profiles in `src/composition/profiles.ts`.
+- The shared capability is `src/capabilities/release.ts`; the release-selecting
+  profiles in `src/composition/profiles.ts` select it.
 - Add the standalone Bash script under `templates/release`, without a
   TypeScript helper or the old two-command protocol.
 - Extend `tests/composition/kind-outputs.test.ts` to require `release` for every

@@ -50,46 +50,51 @@ merely whether it can run commands in parallel.
 ## 3. Current lint surface
 
 Current script ownership is deliberately distributed across capabilities in
-`src/capabilities/`. The `git-hooks` capability currently owns the aggregate
-`lint` and `check` package scripts; `templates/git-hooks/lefthook.yml` owns hook
-dispatch. The hook's `lint` group explicitly runs the following entries with
-`--if-present` and in parallel:
-- `lint:prelint` from `prelint` (selected for `forge-app`);
-- `lint:check` from `biome` (all kinds; Biome formatting checks are also run
-  separately);
-- `lint:fallow` from optional `fallow` (selected by default for `library` and
-  `tool`, removable with `--without-functions fallow`);
-- `lint:forge` from `prelint` (selected for `forge-app`);
-- `typecheck` from `typescript` (all kinds);
-- `format:check` from `biome` (all kinds).
+`src/capabilities/`. The `lint` capability owns the aggregate `lint` and `check`
+package scripts and seeds `npm-run-all2`; `templates/git-hooks/lefthook.yml`
+owns hook dispatch. The `git-hooks` capability seeds Lefthook and `prepare` and
+its hooks delegate rather than enumerate checks: pre-commit runs gitleaks and
+`format`, and pre-push delegates to `npm run check`.
 
-All kinds select `docs`, which contributes `lint:docs`, but Lefthook's current
-`lint` group does **not** invoke that script. Thus the current logical lint
-membership is:
+`lint` runs every single-level `lint:check:*` producer in parallel, and `check`
+runs the wider `{lint,test,size:check,pack:check}` workflow. Producers therefore
+own membership by declaring a `lint:check:*` script:
+- `lint:check:biome` from `biome` (all kinds); `lint:check:format` from `biome`
+  also delegates to the standalone `format:check`;
+- `lint:check:typecheck` from `typescript` (all kinds) delegates to the
+  standalone `typecheck`;
+- `lint:check:prelint` and `lint:check:forge` from `prelint` (selected for
+  `forge-app`);
+- `lint:check:fallow` from optional `fallow` (selected by default for `library`
+  and `tool`, removable with `--without-functions fallow`);
+- `lint:check:skills` from `skill-toolkit` (selected for `agent-skill`).
+
+All kinds select `docs`, which contributes `lint:docs`, but the `lint:check:*`
+family does **not** match that script. Thus the current logical lint membership
+is:
 
 | Project kind  | Lint checks after capability selection                       |
 | ------------- | ------------------------------------------------------------ |
 | `library`     | Biome, Fallow by default (optional), typecheck, format check |
-| `forge-app`   | prelint, Biome, Forge lint, typecheck, format check          |
+| `forge-app`   | prelint, Forge lint, Biome, typecheck, format check          |
 | `tool`        | Biome, Fallow by default (optional), typecheck, format check |
-| `agent-skill` | Biome, typecheck, format check                               |
+| `agent-skill` | Biome, skill check, typecheck, format check                  |
 
-These are the current Lefthook members, not an endorsement that every check
-should remain classified as lint. The `docs` capability contributes `lint:docs`,
-but it is not currently part of the `lint` workflow; whether to add it is a
-separate behavior change, not a mechanical migration. The important test case is
-whether membership follows the selected capability set. `check` is a separate
-wider workflow: its pre-push hook also runs tests, size checking, and package
-checking when those scripts exist. Those tasks are outside this lint comparison.
+These are the current members, not an endorsement that every check should remain
+classified as lint. The `docs` capability contributes `lint:docs`, but it is not
+currently part of the `lint` workflow; whether to add it is a separate behavior
+change, not a mechanical migration. The important test case is whether
+membership follows the selected capability set. `check` is a separate wider
+workflow that the pre-push hook delegates to: it also runs tests and, where those
+scripts exist, size and package checking. Those tasks are outside this lint
+comparison.
 
-There are currently two compatibility details to preserve or explicitly
-reconsider:
-- `lint:check` is a leaf script name today. A wildcard convention such as
-  `lint:check:*` would require renaming the Biome leaf (for example,
-  `lint:check:biome`) and namespacing other check leaves consistently.
+Two properties of the current family are load-bearing:
+- `lint:check:*` matches exactly one colon-delimited level, so a deeper name such
+  as `lint:check:biome:watch` does not join the aggregate.
 - `typecheck` and `format:check` are stable public scripts as well as lint
-  members. Membership should not force users to lose those direct entrypoints or
-  create accidental duplicate execution.
+  members, and the `lint:check:*` entries delegate to them. Membership preserves
+  those direct entrypoints without duplicate execution.
 
 ## 4. Candidate models traced through lint
 
@@ -150,10 +155,10 @@ ignored, but an all-missing/typo pattern also succeeds.
 
 **Composition ownership:** package scripts are already assembled from capability
 contributions. Each capability can contribute a uniquely named script;
-`git-hooks` (or a new workflow-owning capability) contributes only the stable
-aggregate. Existing package contributions reject duplicate script keys, which is
-helpful for collisions. The main additional contract is a namespaced family and
-a test that each selected lint contributor lands inside it.
+the `lint` capability contributes only the stable aggregate. Existing package
+contributions reject duplicate script keys, which is helpful for collisions. The
+main additional contract is a namespaced family and a test that each selected
+lint contributor lands inside it.
 
 ### 4.2 Nx: wildcard prerequisite targets
 
@@ -354,8 +359,9 @@ all four kinds:
 ### References
 
 - Current composition: `src/composition/profiles.ts`,
-  `src/capabilities/git-hooks.ts`, `src/capabilities/biome.ts`,
-  `src/capabilities/prelint.ts`, `src/capabilities/fallow.ts`,
+  `src/capabilities/lint.ts`, `src/capabilities/git-hooks.ts`,
+  `src/capabilities/biome.ts`, `src/capabilities/prelint.ts`,
+  `src/capabilities/fallow.ts`, `src/capabilities/skill-toolkit.ts`,
   `src/capabilities/docs.ts`, `src/capabilities/typescript.ts`,
   `templates/git-hooks/lefthook.yml`, `src/core/package-json.ts`.
 - [`npm-run-all2`: glob-like script matching and

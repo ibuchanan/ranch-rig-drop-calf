@@ -110,5 +110,5 @@ their `scripts/release-prepare.ts` and `scripts/release-publish.ts` helpers as p
 Do not customize those helpers in place; update replaces them. The `changelog`
 capability alone supplies the git-cliff pin and seeds the owner-managed
 `cliff.toml`. Update does not prepare releases, and
-standalone `library-release` validation is an explicit no-op, not a substitute for
+standalone `release` validation is an explicit no-op, not a substitute for
 this procedure.

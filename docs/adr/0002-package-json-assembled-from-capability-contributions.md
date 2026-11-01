@@ -24,8 +24,11 @@ directly; each declares a contribution of **seed** and **policy** entries (see
 - Scripts are typically policy. Dependencies are seed; freshness keeps seeded
   dependencies from falling behind Drop Calf's pins, deterministically and
   without downgrading owner choices.
-- Two capabilities contributing the same key is an error. Collisions are
-  expected; resolution rules will be designed from the real cases found.
+- Exactly one capability owns each key it contributes. Two capabilities
+  contributing the same key is rejected during assembly: the module names both
+  owners and writes nothing. There is no merge, precedence, or last-writer rule,
+  so a collision is resolved by deciding which capability owns the key, not by
+  ordering the contributions.
 - Rules that depend on repository contents, such as the license derived from
   the catalog, stay in the owning capability's `update` and use the module's
   low-level edit primitive.
@@ -65,7 +68,7 @@ and re-adds dependencies they removed.
 
 ## Amendment (2026-11-01)
 
-The collision-resolution question in the Decision is now answered: the
-single-owner module (`src/core/package-json.ts`) rejects colliding
-contributions, and the ownership decision is Accepted. Architectural
-decisions land in the ADR before implementation settles on them.
+The collision policy above was resolved on this date and folded into the
+Decision: `src/core/package-json.ts` rejects a key that more than one capability
+contributes. The question is closed; later changes to collision handling amend
+the Decision rather than reopening it here.

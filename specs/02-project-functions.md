@@ -1204,6 +1204,7 @@ Producers own membership through single-level `lint:check:*` scripts:
 - TypeScript contributes `lint:check:typecheck` delegating to standalone `typecheck`.
 - Prelint contributes `lint:check:prelint` (ast-grep scan) and `lint:check:forge` (forge lint) on Forge apps.
 - Fallow contributes `lint:check:fallow` (`FALLOW_TELEMETRY=off fallow --summary`) when selected on libraries or tools.
+- Skill toolkit contributes `lint:check:skills` (`check-skill --all`) on agent skills.
 
 Standalone `format:check` and `typecheck` remain available for independent use.
 Docs lint stays separate. The aggregate does not match the `lint:fix` or nested
