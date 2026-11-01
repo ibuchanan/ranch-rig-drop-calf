@@ -1,6 +1,6 @@
 # ADR 0002: package.json is assembled from capability contributions
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Date:** 2026-10-12
 
 ## Context
@@ -62,3 +62,10 @@ show its full intended state to a human reading the blueprint.
 
 Keeps tools pinned exactly, but downgrades owners who deliberately moved ahead
 and re-adds dependencies they removed.
+
+## Amendment (2026-11-01)
+
+The collision-resolution question in the Decision is now answered: the
+single-owner module (`src/core/package-json.ts`) rejects colliding
+contributions, and the ownership decision is Accepted. Architectural
+decisions land in the ADR before implementation settles on them.

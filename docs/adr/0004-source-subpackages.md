@@ -147,3 +147,10 @@ compiler and a reviewer can check.
 - [Overview and domain terms](../../specs/00-drop-calf-overview.md)
 - [Project-function contract and policies](../../specs/02-project-functions.md)
 - [ADR 0002: package.json assembled from capability contributions](0002-package-json-assembled-from-capability-contributions.md)
+
+## Amendment (2026-11-01)
+
+The configuration statements are clarified: the ADR's coverage claim concerns
+`src/` only, and exclude entries for `vendor/`, `templates/`, and scratch
+trees are operational hygiene rather than architectural decisions.
+Architectural decisions land in the ADR before implementation settles on them.
