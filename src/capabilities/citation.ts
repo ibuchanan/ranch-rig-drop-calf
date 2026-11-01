@@ -1,6 +1,6 @@
 import { stringify } from "yaml";
 import { type Capability, noOp } from "../core/capability.ts";
-import { OSS_LICENSE } from "./oss.ts";
+import { OSS_LICENSE } from "../core/license.ts";
 
 export const CITATION_FILE = "CITATION.cff";
 

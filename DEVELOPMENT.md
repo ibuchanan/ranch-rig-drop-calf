@@ -167,6 +167,9 @@ Entry point:
 - `src/core/package-json.ts`: `package.json` assembly from capability
   contributions
   ([ADR 0002](docs/adr/0002-package-json-assembled-from-capability-contributions.md)).
+- `src/core/license.ts`: the OSS license constant and the `package.json.license`
+  write primitive, so runtime baselines derive the value without importing
+  another capability.
 - `src/core/templates.ts`: `templateTree`, ordered seed steps, and the shared
   `EVALS_TEMPLATE` path other capabilities detect.
 - `src/core/tool-run.ts`: the containerized-tool runner and failure convention
@@ -187,8 +190,8 @@ Entry point:
 - `src/capabilities/biome.ts`: Biome config, `.editorconfig`, and format/lint
   scripts.
 - `src/capabilities/bun-testing.ts`: Bun test scripts.
-- `src/capabilities/catalog.ts`: `catalog-info.yaml` and the metadata readers
-  that other capabilities use.
+- `src/capabilities/catalog.ts`: `catalog-info.yaml` and the metadata readers,
+  including the license annotation, that other capabilities use.
 - `src/capabilities/changelog.ts`: git-cliff config and the release changelog.
 - `src/capabilities/clean-build.ts`: the `clean` script.
 - `src/capabilities/docs.ts`: docs lint configs and Diátaxis starter documents.

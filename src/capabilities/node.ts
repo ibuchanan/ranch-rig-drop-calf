@@ -3,11 +3,12 @@ import { subset, validRange } from "semver";
 import type { Capability, Validation } from "../core/capability.ts";
 import { ensureFile } from "../core/files.ts";
 import { isPlainObject } from "../core/guards.ts";
+import { updatePackageLicense } from "../core/license.ts";
 import { editPackageJson, readPackageJson } from "../core/package-json.ts";
 import { templateTree } from "../core/templates.ts";
 import { nodeContainer, REPOSITORY, runTool } from "../core/tool-run.ts";
 import { NODE_MAJOR, TOOL_VERSIONS } from "../core/versions.ts";
-import { updatePackageLicense } from "./package-metadata.ts";
+import { readCatalogLicense } from "./catalog.ts";
 
 /**
  * Update owns .nvmrc and the whole .npmrc; Forge manifest updates are separate.
@@ -38,7 +39,9 @@ async function updateNode(
   directory: Directory,
   major?: string,
 ): Promise<Directory> {
-  let result = await updatePackageLicense(directory, "node");
+  let result = await updatePackageLicense(directory, () =>
+    readCatalogLicense(directory, "node"),
+  );
   if (major !== undefined && (await readPackageJson(result)))
     result = await editPackageJson(result, (pkg) => {
       for (const dependencies of declaredSections(pkg))

@@ -20,6 +20,20 @@ export async function readCatalog(directory: Directory, consumer: string) {
   return catalogDocument(await directory.file(CATALOG_FILE).contents());
 }
 
+/** Consumers require a nonempty license annotation before mutating owned outputs. */
+export async function readCatalogLicense(
+  directory: Directory,
+  consumer: string,
+): Promise<string> {
+  const catalog = await readCatalog(directory, consumer);
+  const license = catalog.getIn(["metadata", "annotations", LICENSE]);
+  if (typeof license !== "string" || !license.trim())
+    throw new Error(
+      `${consumer}: ${CATALOG_FILE} ${LICENSE} must be a nonempty string; set the license annotation before updating.`,
+    );
+  return license;
+}
+
 export function catalogCopyrightDate(date: unknown): string {
   const match =
     typeof date === "string" ? /^(\d{4})(?:-(\d{4}))?$/.exec(date) : null;

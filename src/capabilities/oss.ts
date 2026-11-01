@@ -1,6 +1,7 @@
 import { type Directory, dag } from "@dagger.io/dagger";
 import { type Capability, noOp } from "../core/capability.ts";
 import { ensureFile } from "../core/files.ts";
+import { OSS_LICENSE } from "../core/license.ts";
 import { templateTree } from "../core/templates.ts";
 import {
   CATALOG_FILE,
@@ -10,8 +11,6 @@ import {
   LICENSE,
   readCatalog,
 } from "./catalog.ts";
-
-export const OSS_LICENSE = "Apache-2.0";
 
 /**
  * Upstream of the OSS templates. It is a private Bitbucket repository, so it

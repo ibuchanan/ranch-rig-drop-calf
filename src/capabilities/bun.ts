@@ -1,9 +1,10 @@
 import type { Directory } from "@dagger.io/dagger";
 import { parse as parseToml } from "smol-toml";
 import { type Capability, noOp, type Validation } from "../core/capability.ts";
+import { updatePackageLicense } from "../core/license.ts";
 import { templateTree } from "../core/templates.ts";
 import { TOOL_VERSIONS } from "../core/versions.ts";
-import { updatePackageLicense } from "./package-metadata.ts";
+import { readCatalogLicense } from "./catalog.ts";
 
 export const BUN_TEMPLATE = "templates/bun";
 
@@ -41,7 +42,10 @@ export function bunBaseline(): Capability {
     init(project) {
       project.templates.push(templateTree(BUN_TEMPLATE));
     },
-    update: (directory) => updatePackageLicense(directory, "bun"),
+    update: (directory) =>
+      updatePackageLicense(directory, () =>
+        readCatalogLicense(directory, "bun"),
+      ),
     validate: validateBun,
   };
 }
