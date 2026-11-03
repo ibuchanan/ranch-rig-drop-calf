@@ -105,7 +105,7 @@ for (const kind of ["library", "forge-app"]) {
         "update",
         "--directory",
         input,
-        "--profile",
+        "--kind",
         kind,
         "export",
         "--path",
@@ -165,7 +165,7 @@ for (const kind of ["library", "forge-app"]) {
           "update",
           "--directory",
           output,
-          "--profile",
+          "--kind",
           kind,
           "changes",
           "--from",
@@ -204,7 +204,7 @@ for (const { version, status } of [
       writeFileSync(join(root, "owner.txt"), "kept\n");
       const before = snapshot(root);
       const report = JSON.parse(
-        daggerCall("validate", "--directory", root, "--profile", "agent-skill"),
+        daggerCall("validate", "--directory", root, "--kind", "agent-skill"),
       );
       const node = report.find(
         (entry: { capability: string }) => entry.capability === "node",
@@ -253,7 +253,7 @@ app:
         "init",
         "--directory",
         scaffold,
-        "--profile",
+        "--kind",
         "forge-app",
         "--owner",
         "tester",
@@ -271,7 +271,7 @@ app:
         "update",
         "--directory",
         output,
-        "--profile",
+        "--kind",
         "forge-app",
         "changes",
         "--from",

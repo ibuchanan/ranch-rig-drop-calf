@@ -26,7 +26,7 @@ function report(directory: string): {
       "validate",
       "--directory",
       directory,
-      "--profile",
+      "--kind",
       "agent-skill",
     ],
     {

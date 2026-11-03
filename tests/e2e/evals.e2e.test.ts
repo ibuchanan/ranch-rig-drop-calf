@@ -28,7 +28,7 @@ function report(directory: string): {
       "validate",
       "--directory",
       directory,
-      "--profile",
+      "--kind",
       "forge-app",
       "--with-functions",
       "evals",

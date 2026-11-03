@@ -59,7 +59,7 @@ owner content. `update` does not create the catalog or restore init-only files.
 
    ```bash
    dagger call -m github.com/ibuchanan/ranch-rig-drop-calf update \
-     --directory . --profile forge-app changes --from . as-patch contents
+     --directory . --kind forge-app changes --from . as-patch contents
    ```
 
    Replace `forge-app` if needed. The patch compares the updated Dagger directory
@@ -79,7 +79,7 @@ owner content. `update` does not create the catalog or restore init-only files.
 
    ```bash
    dagger call -m github.com/ibuchanan/ranch-rig-drop-calf update \
-     --directory . --profile forge-app changes --from . export --path .
+     --directory . --kind forge-app changes --from . export --path .
    git diff --check
    git status --short
    git diff
@@ -108,7 +108,7 @@ owner content. `update` does not create the catalog or restore init-only files.
 
    ```bash
    dagger call -m github.com/ibuchanan/ranch-rig-drop-calf validate \
-     --directory . --profile forge-app
+     --directory . --kind forge-app
    ```
 
    Inspect each `failed` result and `skipped` reason in the JSON report; a

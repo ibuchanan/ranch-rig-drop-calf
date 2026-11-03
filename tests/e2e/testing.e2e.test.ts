@@ -86,7 +86,7 @@ test.each(["empty", "initialized"])(
         app,
         "--package-name",
         "sample",
-        "--profile",
+        "--kind",
         "forge-app",
         "--owner",
         "tester",

@@ -73,7 +73,7 @@ for (const { name, config, status, base } of [
             "validate",
             "--directory",
             root,
-            "--profile",
+            "--kind",
             "agent-skill",
           ],
           {

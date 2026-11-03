@@ -17,13 +17,17 @@ test("Dagger secrets seed, owner edits, validation and idempotent update", () =>
   mkdirSync(join(repo, ".scratch"), { recursive: true });
   const root = mkdtempSync(join(repo, ".scratch/tmp_rovo_secrets_e2e_"));
   const call = (...args: string[]) =>
-    execFileSync("dagger", ["--progress", "plain", "call", ...args], {
-      cwd: repo,
-      encoding: "utf8",
-      timeout: 240_000,
-      stdio: "pipe",
-      env: { ...process.env, DAGGER_NO_NAG: "1" },
-    });
+    execFileSync(
+      "dagger",
+      ["--progress", "plain", "call", "-m", repo, ...args],
+      {
+        cwd: repo,
+        encoding: "utf8",
+        timeout: 240_000,
+        stdio: "pipe",
+        env: { ...process.env, DAGGER_NO_NAG: "1" },
+      },
+    );
   try {
     const empty = join(root, "empty");
     const seed = join(root, "seed");
@@ -34,7 +38,7 @@ test("Dagger secrets seed, owner edits, validation and idempotent update", () =>
       "init",
       "--directory",
       empty,
-      "--profile",
+      "--kind",
       "forge-app",
       "--owner",
       "tester",
@@ -50,7 +54,7 @@ test("Dagger secrets seed, owner edits, validation and idempotent update", () =>
     writeFileSync(join(seed, "secretspec.toml"), config);
     const validate = () =>
       JSON.parse(
-        call("validate", "--directory", seed, "--profile", "forge-app"),
+        call("validate", "--directory", seed, "--kind", "forge-app"),
       ).find((entry: { capability: string }) => entry.capability === "secrets");
     expect(validate()).toEqual({
       capability: "secrets",
@@ -73,7 +77,7 @@ test("Dagger secrets seed, owner edits, validation and idempotent update", () =>
       "update",
       "--directory",
       seed,
-      "--profile",
+      "--kind",
       "forge-app",
       "export",
       "--path",
@@ -83,7 +87,7 @@ test("Dagger secrets seed, owner edits, validation and idempotent update", () =>
       "update",
       "--directory",
       first,
-      "--profile",
+      "--kind",
       "forge-app",
       "export",
       "--path",

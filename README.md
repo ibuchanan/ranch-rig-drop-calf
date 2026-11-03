@@ -55,7 +55,7 @@ this repository.
 
    ```bash
    dagger call -m github.com/ibuchanan/ranch-rig-drop-calf init-changes \
-     --directory . --profile forge-app --owner your-staff-id
+     --directory . --kind forge-app --owner your-staff-id
    ```
 
    `init-changes` removes the scaffold files Drop Calf replaces, generates
@@ -74,7 +74,7 @@ this repository.
 
    ```bash
    dagger call -m github.com/ibuchanan/ranch-rig-drop-calf init-changes \
-     --directory . --profile forge-app --owner your-staff-id export --path .
+     --directory . --kind forge-app --owner your-staff-id export --path .
    npm install
    ```
 
@@ -89,7 +89,7 @@ this repository.
    ```bash
    npm run check
    dagger call -m github.com/ibuchanan/ranch-rig-drop-calf validate \
-     --directory . --profile forge-app \
+     --directory . --kind forge-app \
      --forge-email env://FORGE_EMAIL --forge-api-token env://FORGE_API_TOKEN
    ```
 
@@ -119,9 +119,9 @@ then preview and export the changes:
 mkdir my-library
 cd my-library
 dagger call -m github.com/ibuchanan/ranch-rig-drop-calf init-changes \
-  --directory . --profile library --owner your-staff-id
+  --directory . --kind library --owner your-staff-id
 dagger call -m github.com/ibuchanan/ranch-rig-drop-calf init-changes \
-  --directory . --profile library --owner your-staff-id export --path .
+  --directory . --kind library --owner your-staff-id export --path .
 ```
 
 Choose the profile you need. Empty-directory setup does not create source
@@ -136,7 +136,7 @@ Then install and verify the same profile you initialized:
 npm install
 npm run check
 dagger call -m github.com/ibuchanan/ranch-rig-drop-calf validate \
-  --directory . --profile library
+  --directory . --kind library
 ```
 
 `npm run check` can fail on owner source, formatting, or bundle budgets; an empty
@@ -150,7 +150,7 @@ The result is a starter configuration, **not a complete runnable
 application**: scripts, checks, and configuration, without source files or
 installed dependencies.
 - **Profiles:** `library`, `forge-app`, `tool`, and `agent-skill`.
-  `--profile` is required; an unknown or ambiguous name fails before anything
+  `--kind` is required; an unknown or ambiguous name fails before anything
   is generated.
 - **OSS files:** `LICENSE` (Apache-2.0), `README.md`, `CONTRIBUTING.md`,
   `CODE_OF_CONDUCT.md`, `SECURITY.md`, and `.atlassian/OWNER`, copied from a
@@ -253,17 +253,17 @@ for local usage, GitHub Actions and Bitbucket Pipelines examples, and recovery.
 
 ## Other entry points
 
-- `init --directory <dir> --profile <name> --owner <id>` returns the
+- `init --directory <dir> --kind <name> --owner <id>` returns the
   initialized directory. Add `entries` to list its top-level contents; prefer
   `init-changes ... export --path <dir>` to apply changes to disk, including
   scaffold deletions. Add `--git` to commit changes and export a Git bundle.
-- `update --directory <dir> --profile <name>` applies every capability's update
+- `update --directory <dir> --kind <name>` applies every capability's update
   policy.
   Node update replaces the whole `.npmrc` and `.nvmrc`, removes Forge package
   `engines`, and preserves `@types/node`. On `forge-app`, manifest update then
   derives the runtime from `.nvmrc`; review the result before exporting it.
   Add `--git` to commit changes and export a Git bundle.
-- `validate --directory <dir> --profile <name>` returns a read-only capability
+- `validate --directory <dir> --kind <name>` returns a read-only capability
   report. Node validation uses fnm in a container to select the version requested
   by `.nvmrc`, potentially downloading Node; it is not a baseline-compliance or
   Forge-deployability check. Forge manifest validation separately runs pinned

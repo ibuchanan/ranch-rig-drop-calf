@@ -178,7 +178,7 @@ export function daggerArguments(
     "call",
     operation,
     ...flags("directory", snapshot),
-    ...flags("profile", values.profile),
+    ...flags("kind", values.profile),
     "--git",
     ...flags("target-branch", branch),
     ...flags("author-name", identity.name),

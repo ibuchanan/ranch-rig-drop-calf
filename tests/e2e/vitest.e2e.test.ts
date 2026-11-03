@@ -27,7 +27,7 @@ function call(...args: string[]) {
 }
 function report(directory: string): { status: string; reason?: string } {
   const result = JSON.parse(
-    call("validate", "--directory", directory, "--profile", "forge-app"),
+    call("validate", "--directory", directory, "--kind", "forge-app"),
   ).find((entry: { capability: string }) => entry.capability === "test");
   return result;
 }

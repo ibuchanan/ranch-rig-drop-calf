@@ -55,7 +55,7 @@ for (const kind of ["library", "tool", "forge-app", "agent-skill"]) {
         "init",
         "--directory",
         input,
-        "--profile",
+        "--kind",
         kind,
         "--owner",
         "tester",

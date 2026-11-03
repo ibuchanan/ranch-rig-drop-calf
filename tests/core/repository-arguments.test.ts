@@ -59,7 +59,7 @@ test("init forwards owner, name, description, preset, and repeated function flag
     "init",
     "--directory",
     "/tmp/run/input",
-    "--profile",
+    "--kind",
     "tool",
     "--git",
     "--target-branch",

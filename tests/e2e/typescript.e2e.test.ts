@@ -33,7 +33,7 @@ function call(...args: string[]) {
 
 function report(directory: string): { status: string; reason?: string } {
   return JSON.parse(
-    call("validate", "--directory", directory, "--profile", "tool"),
+    call("validate", "--directory", directory, "--kind", "tool"),
   ).find((entry: { capability: string }) => entry.capability === "typescript");
 }
 
@@ -50,7 +50,7 @@ for (const kind of ["library", "forge-app", "tool", "agent-skill"]) {
         "init",
         "--directory",
         input,
-        "--profile",
+        "--kind",
         kind,
         "--owner",
         "tester",
@@ -65,7 +65,7 @@ for (const kind of ["library", "forge-app", "tool", "agent-skill"]) {
           "update",
           "--directory",
           initialized,
-          "--profile",
+          "--kind",
           kind,
           "changes",
           "--from",
@@ -92,7 +92,7 @@ for (const kind of ["library", "forge-app", "tool", "agent-skill"]) {
         "update",
         "--directory",
         initialized,
-        "--profile",
+        "--kind",
         kind,
         "export",
         "--path",
@@ -114,7 +114,7 @@ for (const kind of ["library", "forge-app", "tool", "agent-skill"]) {
           "update",
           "--directory",
           updated,
-          "--profile",
+          "--kind",
           kind,
           "changes",
           "--from",
@@ -133,7 +133,7 @@ for (const kind of ["library", "forge-app", "tool", "agent-skill"]) {
         "update",
         "--directory",
         updated,
-        "--profile",
+        "--kind",
         kind,
         "export",
         "--path",

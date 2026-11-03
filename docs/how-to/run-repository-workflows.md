@@ -13,6 +13,10 @@ bun run scripts/repository.ts init \
   --directory /absolute/path/to/app --profile forge-app --owner your-staff-id
 ```
 
+The launcher keeps its own `--profile` option and forwards it to Dagger as
+`--kind`. When you call the Dagger functions directly, as in the CI examples
+below, use `--kind`.
+
 The launcher reads your Git `user.name` and `user.email`. Alternatively, pass
 `--author-name` and `--author-email`. A fresh scaffold gets a baseline commit,
 then a second commit containing the initialization. Existing history is preserved.
@@ -51,7 +55,7 @@ For a fresh scaffold:
 
 ```bash
 dagger -m "$DROP_CALF_MODULE" call init \
-  --directory "$APP_DIRECTORY" --profile forge-app --owner "$OWNER" --git \
+  --directory "$APP_DIRECTORY" --kind forge-app --owner "$OWNER" --git \
   --author-name "$GIT_AUTHOR_NAME" --author-email "$GIT_AUTHOR_EMAIL" \
   export --path "$ARTIFACT_DIRECTORY"
 jq -e '.status != "failed"' "$ARTIFACT_DIRECTORY/result.json"
@@ -73,7 +77,7 @@ as required by your provider; a raw token is not a complete header.
 ```bash
 mkdir -p empty-input
 dagger -m "$DROP_CALF_MODULE" call update \
-  --directory empty-input --profile forge-app --git \
+  --directory empty-input --kind forge-app --git \
   --remote-url "$REPOSITORY_URL" --target-branch "$TARGET_BRANCH" \
   --author-name "$GIT_AUTHOR_NAME" --author-email "$GIT_AUTHOR_EMAIL" \
   --auth-header env:DROP_CALF_AUTH_HEADER --publish \
@@ -132,7 +136,7 @@ jobs:
           export DROP_CALF_AUTH_HEADER="Authorization: Basic $encoded"
           mkdir -p empty-input
           dagger -m "$DROP_CALF_MODULE" call update \
-            --directory empty-input --profile forge-app --git \
+            --directory empty-input --kind forge-app --git \
             --remote-url "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}.git" \
             --target-branch "$TARGET_BRANCH" \
             --author-name "$GIT_AUTHOR_NAME" \
@@ -163,7 +167,7 @@ pipelines:
             - mkdir -p empty-input
             - >-
               dagger -m "$DROP_CALF_MODULE" call update
-              --directory empty-input --profile forge-app --git
+              --directory empty-input --kind forge-app --git
               --remote-url "https://bitbucket.org/${BITBUCKET_REPO_FULL_NAME}.git"
               --target-branch "$TARGET_BRANCH"
               --author-name "$GIT_AUTHOR_NAME" --author-email "$GIT_AUTHOR_EMAIL"

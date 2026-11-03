@@ -127,7 +127,7 @@ describe.skipIf(!enabled)("forge create then init", () => {
           "init-changes",
           "--directory",
           app,
-          "--profile",
+          "--kind",
           "forge-app",
           "--owner",
           "tester",

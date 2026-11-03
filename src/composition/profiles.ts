@@ -157,7 +157,7 @@ function projectKind(profile: string | undefined): ProjectKind {
   const kind = PROJECT_KINDS.find((known) => known === profile);
   if (!kind)
     throw new InvalidOptionsError(
-      `Select a project kind with --profile: ${PROJECT_KINDS.join(", ")} (received ${JSON.stringify(profile)}).`,
+      `Select a project kind with --kind: ${PROJECT_KINDS.join(", ")} (received ${JSON.stringify(profile)}).`,
     );
   return kind;
 }

@@ -24,7 +24,7 @@ function report(directory: string): Entry {
         "validate",
         "--directory",
         directory,
-        "--profile",
+        "--kind",
         "forge-app",
       ],
       {

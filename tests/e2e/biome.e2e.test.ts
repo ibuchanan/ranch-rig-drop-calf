@@ -49,7 +49,7 @@ for (const kind of ["library", "tool", "forge-app", "agent-skill"]) {
         "init",
         "--directory",
         input,
-        "--profile",
+        "--kind",
         kind,
         "--owner",
         "tester",
@@ -64,7 +64,7 @@ for (const kind of ["library", "tool", "forge-app", "agent-skill"]) {
           "update",
           "--directory",
           initialized,
-          "--profile",
+          "--kind",
           kind,
           "changes",
           "--from",
@@ -96,7 +96,7 @@ for (const kind of ["library", "tool", "forge-app", "agent-skill"]) {
         "update",
         "--directory",
         initialized,
-        "--profile",
+        "--kind",
         kind,
         "export",
         "--path",
@@ -152,7 +152,7 @@ for (const kind of ["library", "tool", "forge-app", "agent-skill"]) {
           "update",
           "--directory",
           output,
-          "--profile",
+          "--kind",
           kind,
           "changes",
           "--from",
@@ -217,7 +217,7 @@ for (const { name, config, base, status } of [
       writeFileSync(join(root, "bad.ts"), "const broken = ((\n");
       writeFileSync(join(root, ".editorconfig"), "[*]\nindent_style = tab\n");
       const report = JSON.parse(
-        daggerCall("validate", "--directory", root, "--profile", "tool"),
+        daggerCall("validate", "--directory", root, "--kind", "tool"),
       );
       const biome = report.find(
         (entry: { capability: string }) => entry.capability === "biome",

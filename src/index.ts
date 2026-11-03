@@ -54,7 +54,7 @@ export class DropCalf {
   @func()
   async init(
     directory: Directory,
-    profile: string,
+    kind: string,
     owner: string,
     packageName?: string,
     description = "",
@@ -78,7 +78,7 @@ export class DropCalf {
           authorEmail,
           publish: false,
           provenance: await provenance(
-            profile,
+            kind,
             withFunctions,
             withoutFunctions,
             preset,
@@ -87,7 +87,7 @@ export class DropCalf {
         (input) =>
           this.init(
             input,
-            profile,
+            kind,
             owner,
             packageName,
             description,
@@ -97,7 +97,7 @@ export class DropCalf {
           ),
       );
     const capabilities = resolveProfile(
-      profile,
+      kind,
       withFunctions,
       withoutFunctions,
       preset,
@@ -113,7 +113,7 @@ export class DropCalf {
       });
     const scaffold = await readOptionalFile(directory, "package.json");
     let cleaned = directory;
-    for (const step of scaffoldSteps(profile)) cleaned = await step(cleaned);
+    for (const step of scaffoldSteps(kind)) cleaned = await step(cleaned);
     const name =
       packageName ??
       scaffoldName(scaffold) ??
@@ -146,7 +146,7 @@ export class DropCalf {
   @func()
   async initChanges(
     directory: Directory,
-    profile: string,
+    kind: string,
     owner: string,
     packageName?: string,
     description = "",
@@ -157,7 +157,7 @@ export class DropCalf {
     return (
       await this.init(
         directory,
-        profile,
+        kind,
         owner,
         packageName,
         description,
@@ -177,7 +177,7 @@ export class DropCalf {
   @func({ cache: "never" })
   async update(
     directory: Directory,
-    profile: string,
+    kind: string,
     withFunctions: string[] = [],
     withoutFunctions: string[] = [],
     preset?: string,
@@ -209,18 +209,18 @@ export class DropCalf {
           sshAgent,
           knownHosts,
           provenance: await provenance(
-            profile,
+            kind,
             withFunctions,
             withoutFunctions,
             preset,
           ),
         },
         (input) =>
-          this.update(input, profile, withFunctions, withoutFunctions, preset),
+          this.update(input, kind, withFunctions, withoutFunctions, preset),
       );
     return updateCapabilities(
       directory,
-      resolveProfile(profile, withFunctions, withoutFunctions, preset),
+      resolveProfile(kind, withFunctions, withoutFunctions, preset),
     );
   }
 
@@ -228,7 +228,7 @@ export class DropCalf {
   @func()
   async validate(
     directory: Directory,
-    profile: string,
+    kind: string,
     withFunctions: string[] = [],
     withoutFunctions: string[] = [],
     preset?: string,
@@ -236,7 +236,7 @@ export class DropCalf {
     forgeApiToken?: Secret,
   ): Promise<string> {
     const capabilities = resolveProfile(
-      profile,
+      kind,
       withFunctions,
       withoutFunctions,
       preset,

@@ -35,7 +35,8 @@ export async function ensureFile(
   const stale =
     (await readOptionalFile(directory, path)) !== wanted ||
     (options?.permissions !== undefined &&
-      (await directory.stat(path).permissions()) !== options.permissions);
+      (await (await directory.stat(path))?.permissions()) !==
+        options.permissions);
   return stale ? directory.withNewFile(path, wanted, options) : directory;
 }
 

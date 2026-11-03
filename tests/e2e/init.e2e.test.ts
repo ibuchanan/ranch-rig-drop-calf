@@ -113,7 +113,7 @@ function initialize(
       operation,
       "--directory",
       directory,
-      "--profile",
+      "--kind",
       profile,
       "--owner",
       "tester",

@@ -50,10 +50,11 @@ same shell that runs Dagger. Then install dependencies and load the module:
 
 ```bash
 bun install
-dagger call init --help
+dagger -m . call init --help
 ```
 
-Loading the module generates its local SDK. If Dagger cannot connect, confirm
+Loading the module does not generate the TypeScript bindings; `dagger generate
+--dagger-typescript-sdk -y` does (see below). If Dagger cannot connect, confirm
 that `podman info` succeeds and that the runner host is set in the current
 shell.
 
@@ -87,15 +88,29 @@ writing generated files locally:
 
 ```bash
 mkdir -p .scratch/tmp_rovo_empty
-dagger call init --directory .scratch/tmp_rovo_empty \
-  --profile library --owner tester --package-name sample entries
+dagger -m . call init --directory .scratch/tmp_rovo_empty \
+  --kind library --owner tester --package-name sample entries
 rmdir .scratch/tmp_rovo_empty
 ```
 
-The CLI loads the module from `dagger.json` and may generate a local `sdk/`
-directory (ignored by Biome). `tsconfig.json` resolves `@dagger.io/dagger`
-through that generated SDK, so if type checking reports a missing
-`sdk/index.ts`, load the module with `dagger call init --help` before retrying.
+The CLI loads the module from `dagger-module.toml`; the root module needs
+explicit loading with `-m .`. The generated TypeScript bindings live in
+`clients/dagger/`, and `package.json` depends on them as
+`"@dagger.io/dagger": "file:./clients/dagger"`. `clients/`, the generated
+`__dagger.dispatch.ts` and `entrypoint/` are excluded from Biome, Fallow and
+coverage. Regenerate them after changing a public function's signature, or when
+type checking cannot resolve `@dagger.io/dagger`:
+
+```bash
+dagger generate --dagger-typescript-sdk -y
+bun install
+```
+
+Regeneration takes a few minutes. This module is verified against Dagger
+`v1.0.0-beta.23`, and `dagger.lock` pins the TypeScript SDK modules. After
+upgrading the Dagger CLI, regenerate and run `bun run check` before relying on
+it, because beta releases have reserved flag names and changed API shapes (see
+[ADR 0005](docs/adr/0005-rename-profile-argument-to-kind.md)).
 
 ### End-to-end tests
 
