@@ -41,8 +41,9 @@ in the [specifications](specs/00-drop-calf-overview.md) are not all implemented.
 
 You need the [Forge CLI](https://developer.atlassian.com/platform/forge/getting-started/),
 the [Dagger CLI](https://docs.dagger.io/install/) with a running engine, and
-npm. Dagger fetches Drop Calf from GitHub, so you do not need a checkout of
-this repository.
+npm. Drop Calf needs Dagger 1.0 beta 18 or later and is tested with
+`v1.0.0-beta.23`; older releases, including 0.21, are not supported. Dagger
+fetches Drop Calf from GitHub, so you do not need a checkout of this repository.
 1. Create the app. `forge create` registers it in your developer space and
    supplies `manifest.yml` and `src/`:
 
