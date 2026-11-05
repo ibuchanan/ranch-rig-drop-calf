@@ -16,7 +16,7 @@ import { biomeTemplates } from "../support/templates-source.ts";
 const kinds = ["library", "forge-app", "tool", "agent-skill"];
 
 test.each(kinds)(
-  "%s seeded Biome checks ignore specs and dist without relying on .gitignore",
+  "%s seeded Biome checks ignore specs, dist, and OSS templates without relying on .gitignore",
   (kind) => {
     const root = mkdtempSync(
       join(import.meta.dir, "../../.scratch/tmp_rovo_biome_"),
@@ -34,10 +34,26 @@ test.each(kinds)(
       const initialized = spawnSync("git", ["init", "-q"], { cwd: root });
       expect(initialized.status).toBe(0);
       writeFileSync(join(root, ".gitignore"), "");
-      for (const folder of ["specs", "dist", "src", "src/specs", "src/dist"])
+      for (const folder of [
+        "specs",
+        "dist",
+        "src",
+        "src/specs",
+        "src/dist",
+        ".atlassian",
+      ])
         mkdirSync(join(root, folder), { recursive: true });
       for (const folder of ["specs", "dist", "src/specs", "src/dist"])
         writeFileSync(join(root, folder, "invalid.js"), "const = ;\n");
+      for (const path of [
+        "CODE_OF_CONDUCT.md",
+        "CONTRIBUTING.md",
+        "LICENSE",
+        "README.md",
+        "SECURITY.md",
+        ".atlassian/OWNER",
+      ])
+        writeFileSync(join(root, path), "#  Unformatted heading\n");
       writeFileSync(join(root, "src/valid.js"), "const value = 1;\n");
       const run = (script: string) =>
         spawnSync("bun", ["run", script], {
@@ -55,6 +71,14 @@ test.each(kinds)(
         const included = run(script);
         expect(included.status, included.stdout + included.stderr).not.toBe(0);
         rmSync(join(root, "src/invalid.js"));
+        if (script === "format:check") {
+          writeFileSync(join(root, "src/guide.md"), "#  Unformatted heading\n");
+          const markdown = run(script);
+          expect(markdown.status, markdown.stdout + markdown.stderr).not.toBe(
+            0,
+          );
+          rmSync(join(root, "src/guide.md"));
+        }
       }
       const validation = spawnSync(
         join(import.meta.dir, "../../node_modules/.bin/biome"),
