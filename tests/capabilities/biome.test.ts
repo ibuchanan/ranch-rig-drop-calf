@@ -49,7 +49,6 @@ test.each(kinds)(
         "CODE_OF_CONDUCT.md",
         "CONTRIBUTING.md",
         "LICENSE",
-        "README.md",
         "SECURITY.md",
         ".atlassian/OWNER",
       ])
