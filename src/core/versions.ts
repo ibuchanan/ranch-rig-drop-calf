@@ -24,6 +24,7 @@ export const TOOL_VERSIONS = {
   npmRunAll2: pin["npm-run-all2"],
   astGrep: pin["@ast-grep/cli"],
   agentSkillsToolkit: pin["agent-skills-toolkit"],
+  skillWrangler: pin["skill-wrangler"],
   forgePrelint: pin["@forge-ahead/prelint"],
   fallow: pin.fallow,
   fenceRider: pin["fence-rider"],

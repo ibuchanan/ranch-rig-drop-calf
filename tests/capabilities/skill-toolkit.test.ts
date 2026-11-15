@@ -38,13 +38,15 @@ test("agent-skill seeds the toolkit reference and joins lint as a producer", () 
   );
 });
 
-test("only agent-skill selects the toolkit", () => {
-  for (const kind of ["library", "forge-app", "tool"])
-    expect(
-      buildProject(kind, "sample", "tester").packageJson.devDependencies[
-        SKILL_TOOLKIT_PACKAGE
-      ],
-    ).toBeUndefined();
+test("only agent-skill selects toolkit authoring scripts", () => {
+  for (const kind of ["library", "forge-app", "tool"]) {
+    expect(resolveProfile(kind).map(({ name }) => name)).not.toContain(
+      "skill-toolkit",
+    );
+    const { scripts } = buildProject(kind, "sample", "tester").packageJson;
+    for (const script of Object.keys(SKILL_TOOLKIT_SCRIPTS))
+      expect(scripts[script]).toBeUndefined();
+  }
 });
 
 test("agent-skill runs on Bun: stock bunfig, @types/bun, and the Bun TypeScript base", () => {

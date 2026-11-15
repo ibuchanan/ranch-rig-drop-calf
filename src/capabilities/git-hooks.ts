@@ -19,8 +19,12 @@ export const GIT_HOOKS_SCRIPTS = {
 /** Git-hooks owns prepare; composition selects build-on-prepare. */
 export function gitHooks({
   buildOnPrepare = false,
+  linkSkills = false,
   packageManager = "npm",
-}: PackageManagerOption & { buildOnPrepare?: boolean } = {}): Capability {
+}: PackageManagerOption & {
+  buildOnPrepare?: boolean;
+  linkSkills?: boolean;
+} = {}): Capability {
   return {
     name: "git-hooks",
     documentation: {
@@ -38,9 +42,11 @@ export function gitHooks({
             "Scans staged changes for secrets in the pre-commit hook; install separately.",
         },
       ],
-      init: buildOnPrepare
-        ? "Seed Lefthook, build-before-hooks prepare, and lefthook.yml delegating pre-push to check."
-        : "Seed Lefthook, prepare, and lefthook.yml delegating pre-push to check.",
+      init: linkSkills
+        ? "Seed Lefthook, hooks-before-skills prepare, prepare:hooks, and lefthook.yml delegating pre-push to check."
+        : buildOnPrepare
+          ? "Seed Lefthook, build-before-hooks prepare, and lefthook.yml delegating pre-push to check."
+          : "Seed Lefthook, prepare, and lefthook.yml delegating pre-push to check.",
       validate:
         "Run lefthook validate with isolated Git metadata; never install or execute hooks.",
     },
@@ -49,9 +55,12 @@ export function gitHooks({
       policy: {
         scripts: {
           ...GIT_HOOKS_SCRIPTS,
-          prepare: buildOnPrepare
-            ? `${runScript(packageManager, "build")} && (${GIT_HOOKS_SCRIPTS.prepare})`
-            : GIT_HOOKS_SCRIPTS.prepare,
+          prepare: linkSkills
+            ? `run-s --npm-path ${packageManager} ${buildOnPrepare ? "build " : ""}prepare:hooks 'skill:link-*'`
+            : buildOnPrepare
+              ? `${runScript(packageManager, "build")} && (${GIT_HOOKS_SCRIPTS.prepare})`
+              : GIT_HOOKS_SCRIPTS.prepare,
+          ...(linkSkills ? { "prepare:hooks": GIT_HOOKS_SCRIPTS.prepare } : {}),
         },
       },
     },

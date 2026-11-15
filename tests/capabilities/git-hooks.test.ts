@@ -32,7 +32,7 @@ test.each([false, true])(
       ...GIT_HOOKS_SCRIPTS,
       prepare: buildOnPrepare
         ? "npm run build && (lefthook install || true)"
-        : "lefthook install || true",
+        : GIT_HOOKS_SCRIPTS.prepare,
     };
     const project = createBlueprint("sample", "", "tester");
     if (typeof capability.init !== "function") throw new Error("missing init");
@@ -116,7 +116,9 @@ test.each(["library", "forge-app", "tool", "agent-skill"])(
       const prepare =
         kind === "library"
           ? "npm run build && (lefthook install || true)"
-          : "lefthook install || true";
+          : kind === "forge-app"
+            ? "run-s --npm-path npm prepare:hooks 'skill:link-*'"
+            : GIT_HOOKS_SCRIPTS.prepare;
       expect(pkg.scripts.prepare).toBe(prepare);
       Object.assign(pkg.scripts, {
         prepare: "owner",
@@ -270,7 +272,9 @@ test.each(["library", "forge-app", "tool", "agent-skill"])(
     expect(scripts.prepare).toBe(
       kind === "library"
         ? "npm run build && (lefthook install || true)"
-        : "lefthook install || true",
+        : kind === "forge-app"
+          ? "run-s --npm-path npm prepare:hooks 'skill:link-*'"
+          : GIT_HOOKS_SCRIPTS.prepare,
     );
     expect(scripts.lint).toBe(
       isBunKind(kind)

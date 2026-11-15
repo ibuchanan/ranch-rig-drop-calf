@@ -95,6 +95,20 @@ owner content. `update` does not create the catalog or restore init-only files.
    bun add --dev --exact npm-run-all2@8.0.4
    ```
 
+   When adopting `forge-app` with skills linking, also install its dependency
+   seeds before running the new prepare workflow:
+
+   ```bash
+   npm add --dev agent-skills-toolkit@github:ibuchanan/agent-skills-toolkit skill-wrangler@github:ibuchanan/ranch-hand-skill-wrangler.git
+   ```
+
+   `forge-app` prepare runs `prepare:hooks` followed by every `skill:link-*`
+   script. Libraries retain build-before-hooks without linking. Only
+   hook-installation failures are tolerated.
+   Other kinds (`tool`, `agent-skill`) do not select skills and run `lefthook install || true`
+   without `run-s` composition. Review these lifecycle changes before installing
+   dependencies.
+
    Update enforces both `scripts.lint` and `scripts.check` but does not add an
    undeclared seed dependency. Existing `lefthook.yml` files remain owner-managed;
    replace the seeded lint/test/size/pack pre-push commands with a single command

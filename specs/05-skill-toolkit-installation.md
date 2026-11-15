@@ -12,9 +12,20 @@ validators behind them) and, in the toolkit's own repository, a set of skills
 that help an agent author other skills. Drop Calf must decide what "installed"
 means for each, who owns the result, and how it stays fresh.
 
-## Current state
+## Current decision (2026-11-15)
 
-The `skill-toolkit` capability seeds `agent-skills-toolkit` as a dev dependency
+[ADR 0006](../docs/adr/0006-skills-linking-and-prepare-tasks.md) supersedes the
+installation recommendation below: `forge-app` selects `skills`, which seeds
+`agent-skills-toolkit` and `skill-wrangler` as GitHub dev dependencies and enforces
+`skill:link-wrangler: link-skills --package skill-wrangler`. `forge-app` git-hooks
+owns a sequential `prepare` running `prepare:hooks` then `'skill:link-*'`. `skill-toolkit` is selected by `agent-skill` only and retains
+authoring scripts and tooling dependencies. Libraries and tools do not select
+`skills` or run skill linking. The experiments and upstream limitations below are
+historical observations, not a fresh validation of the current toolkit or linker.
+
+## Historical state
+
+The `skill-toolkit` capability seeded `agent-skills-toolkit` as a dev dependency
 pinned to `github:ibuchanan/agent-skills-toolkit` and contributes two scripts:
 `lint:check:skills` (`check-skill --all`) and `skill:new` (`init-skill`).
 

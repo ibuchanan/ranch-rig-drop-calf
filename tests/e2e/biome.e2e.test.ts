@@ -132,7 +132,13 @@ for (const kind of ["library", "tool", "forge-app", "agent-skill"]) {
             : CHECK_COMMAND,
         ...(kind === "library"
           ? { prepare: `npm run build && (${GIT_HOOKS_SCRIPTS.prepare})` }
-          : {}),
+          : kind === "forge-app"
+            ? {
+                prepare: "run-s --npm-path npm prepare:hooks 'skill:link-*'",
+                "prepare:hooks": GIT_HOOKS_SCRIPTS.prepare,
+                "skill:link-wrangler": "link-skills --package skill-wrangler",
+              }
+            : {}),
         lint:
           kind === "tool"
             ? LINT_COMMAND.replace("--npm-path npm", "--npm-path bun")

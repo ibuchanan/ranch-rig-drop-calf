@@ -31,6 +31,7 @@ import { forgeSecrets } from "../capabilities/secrets.ts";
 import { bundleSize } from "../capabilities/size-limit.ts";
 import { skillStarter } from "../capabilities/skill-starter.ts";
 import { skillToolkit } from "../capabilities/skill-toolkit.ts";
+import { skills } from "../capabilities/skills.ts";
 import { todo } from "../capabilities/todo.ts";
 import { typeScriptToolchain } from "../capabilities/typescript.ts";
 import { vitestTesting } from "../capabilities/vitest.ts";
@@ -76,6 +77,7 @@ export const PROFILES: Record<ProjectKind, Capability[]> = {
     gitignore(),
     nodeBaseline({ engines: "remove" }),
     forgeManifest(),
+    skills(),
     changelogToolchain(),
     forgeSecrets(),
     prelint(),
@@ -93,7 +95,7 @@ export const PROFILES: Record<ProjectKind, Capability[]> = {
       testPurpose: "Forge app tests (Vitest) and optional evaluations",
       scriptsPurpose: "Forge setup and deployment helpers",
     }),
-    gitHooks(),
+    gitHooks({ linkSkills: true }),
     evals(),
     aidev({ guidance: AIDEV_TEMPLATE }),
   ],
