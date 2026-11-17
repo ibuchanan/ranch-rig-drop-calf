@@ -3,6 +3,9 @@
   "private": true,
   "type": "module",
   "module": "index.ts",
+  "dagger": {
+    "baseImage": "oven/bun:1.4.2-alpine"
+  },
   "scripts": {
     "prepare": "lefthook install || true",
     "check": "run-p --npm-path bun --print-label \"{lint,test,size:check,pack:check}\"",

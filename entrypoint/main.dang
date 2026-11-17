@@ -182,7 +182,7 @@ type Entrypoint implements ModuleEntrypoint {
   """
   let base: Container! {
     container
-      .from("oven/bun:1.3.0-alpine@sha256:37e6b1cbe053939bccf6ae4507977ed957eaa6e7f275670b72ad6348e0d2c11f")
+      .from("oven/bun:1.4.2-alpine")
       .withMountedCache("/root/.bun/install/cache", cacheVolume("dagger-typescript-bun"))
   }
 
